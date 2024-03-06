@@ -130,6 +130,37 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -160,30 +191,49 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">pub mod </span>source_initializers {
-    <span class="kw">use crate</span>::{settings, Config};
-    <span class="kw">use </span>frame_support::dispatch::DispatchResult;
+</span><span class="doccomment">/// Working with different liquidity sources
+</span><span class="kw">pub mod </span>liquidity_sources {
+    <span class="kw">use </span><span class="kw">crate</span>::pallet_tools;
+    <span class="kw">use </span><span class="kw">crate</span>::Config;
+    <span class="kw">use </span>assets::AssetIdOf;
+    <span class="kw">use </span>common::DexIdOf;
+    <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
     <span class="kw">use </span>frame_support::ensure;
     <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
     <span class="kw">use </span>order_book::{MomentOf, OrderBookId};
+    <span class="kw">use </span>pallet_tools::pool_xyk::AssetPairInput;
+    <span class="kw">use </span>pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
     <span class="kw">use </span>sp_std::vec::Vec;
 
-    <span class="doccomment">/// Create multiple many order books with parameters and fill them according to given parameters.
+    <span class="doccomment">/// Initialize xyk pool liquidity source.
     ///
-    /// Balance for placing the orders is minted automatically, trading pairs are
-    /// created if needed.
+    /// Parameters:
+    /// - `caller`: Some account to use during the initialization; assets are minted and extrinsics
+    /// are called with it.
+    /// - `pairs`: Asset pairs to initialize.
+    </span><span class="kw">pub fn </span>initialize_xyk&lt;T: Config + pool_xyk::Config&gt;(
+        caller: T::AccountId,
+        pairs: Vec&lt;AssetPairInput&lt;DexIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AssetPairInput&lt;DexIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;&gt;&gt;, DispatchError&gt; {
+        pallet_tools::pool_xyk::initialize::&lt;T&gt;(caller, pairs)
+    }
+
+    <span class="doccomment">/// Create multiple order books with parameters and fill them according to given parameters.
+    ///
+    /// Balance for placing the orders is minted automatically, trading pairs are created if needed.
     ///
     /// Parameters:
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
-    /// - `settings`: Parameters for creation of the order book and placing the orders in each order book.
-    </span><span class="kw">pub fn </span>order_book&lt;T: Config&gt;(
+    /// - `settings`: Parameters for creation of the order book and placing the orders in each
+    /// order book.
+    </span><span class="kw">pub fn </span>create_and_fill_order_book_batch&lt;T: Config&gt;(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec&lt;(
             OrderBookId&lt;T::AssetId, T::DEXId&gt;,
-            settings::OrderBookAttributes,
-            settings::OrderBookFill&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
+            pallet_tools::order_book::OrderBookAttributes,
+            pallet_tools::order_book::FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
         )&gt;,
     ) -&gt; DispatchResult {
         <span class="kw">let </span>creation_settings: Vec&lt;<span class="kw">_</span>&gt; = settings
@@ -196,28 +246,19 @@
                 <span class="kw">crate</span>::Error::&lt;T&gt;::OrderBookAlreadyExists
             );
         }
-        <span class="kw">crate</span>::pallet_tools::order_book::create_multiple_empty_unchecked::&lt;T&gt;(creation_settings)<span class="question-mark">?</span>;
+        pallet_tools::order_book::create_empty_batch_unchecked::&lt;T&gt;(creation_settings)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>orders_settings: Vec&lt;<span class="kw">_</span>&gt; = settings
             .into_iter()
             .map(|(id, <span class="kw">_</span>, fill_settings)| (id, fill_settings))
             .collect();
-        <span class="kw">crate</span>::pallet_tools::order_book::fill_multiple_empty_unchecked::&lt;T&gt;(
+        pallet_tools::order_book::fill_batch_unchecked::&lt;T&gt;(
             bids_owner,
             asks_owner,
             orders_settings,
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
-}
-
-<span class="kw">pub mod </span>source_filling {
-    <span class="kw">use crate</span>::{settings, Config};
-    <span class="kw">use </span>frame_support::dispatch::DispatchResult;
-    <span class="kw">use </span>frame_support::ensure;
-    <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
-    <span class="kw">use </span>order_book::{MomentOf, OrderBookId};
-    <span class="kw">use </span>sp_std::vec::Vec;
 
     <span class="doccomment">/// Fill the order books according to given parameters.
     ///
@@ -227,12 +268,12 @@
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for placing the orders in each order book.
-    </span><span class="kw">pub fn </span>order_book&lt;T: Config&gt;(
+    </span><span class="kw">pub fn </span>fill_order_book&lt;T: Config&gt;(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec&lt;(
             OrderBookId&lt;T::AssetId, T::DEXId&gt;,
-            settings::OrderBookFill&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
+            pallet_tools::order_book::FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
         )&gt;,
     ) -&gt; DispatchResult {
         <span class="kw">for </span>(order_book_id, <span class="kw">_</span>) <span class="kw">in </span>settings.iter() {
@@ -241,10 +282,31 @@
                 <span class="kw">crate</span>::Error::&lt;T&gt;::CannotFillUnknownOrderBook
             );
         }
-        <span class="kw">crate</span>::pallet_tools::order_book::fill_multiple_empty_unchecked::&lt;T&gt;(
-            bids_owner, asks_owner, settings,
-        )<span class="question-mark">?</span>;
+        pallet_tools::order_book::fill_batch_unchecked::&lt;T&gt;(bids_owner, asks_owner, settings)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Initialize xst liquidity source. Can both update prices of base assets and synthetics.
+    ///
+    /// ## Parameters
+    ///
+    /// - `base`: Synthetic base asset price update. Usually buy price &gt; sell.
+    /// - `synthetics`: Synthetic initialization; registration of an asset + setting up prices for target quotes.
+    /// - `relayer`: Account which will be the author of prices fed to `band` pallet;
+    ///
+    /// ## Return
+    ///
+    /// Due to limited precision of fixed-point numbers, the requested price might not be precisely
+    /// obtainable. Therefore, actual resulting price of synthetics is returned.
+    </span><span class="kw">pub fn </span>initialize_xst&lt;T: Config&gt;(
+        base: <span class="prelude-ty">Option</span>&lt;BaseInput&gt;,
+        synthetics: Vec&lt;SyntheticInput&lt;T::AssetId, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
+        relayer: T::AccountId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SyntheticOutput&lt;T::AssetId&gt;&gt;, DispatchError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(base_prices) = base {
+            pallet_tools::xst::initialize_base_assets::&lt;T&gt;(base_prices)<span class="question-mark">?</span>;
+        }
+        pallet_tools::xst::initialize_synthetics::&lt;T&gt;(synthetics, relayer)
     }
 }
 </code></pre></div>

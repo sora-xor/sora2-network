@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["liquidity_proxy","order_book","pool_xyk","price_tools","xst"]};

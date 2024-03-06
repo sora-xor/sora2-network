@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SyntheticExistence","SyntheticQuoteDirection"],"struct":["BaseInput","BaseXorPrices","SyntheticInput","SyntheticOutput","SyntheticQuote"]};

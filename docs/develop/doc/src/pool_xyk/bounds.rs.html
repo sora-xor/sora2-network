@@ -112,6 +112,8 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -148,18 +150,20 @@
 <span class="doccomment">/// Values for resource amount
 </span><span class="attr">#[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 </span><span class="kw">pub enum </span>Bounds&lt;Balance&gt; {
-    <span class="doccomment">/// This is a consequence of computations (not set by user).
+    <span class="doccomment">/// A consequence of computations instead of a value set by a user.
     </span>Calculated(Balance),
-    <span class="doccomment">/// This value is set by user as fixed and determined value.
+    <span class="doccomment">/// A value set by a user as fixed and determined value.
     </span>Desired(Balance),
-    <span class="doccomment">/// This is an unknown value, bounded by some logic or ranges.
+    <span class="doccomment">/// An undetermined value, bounded by some logic or ranges.
     </span>Min(Balance),
-    Max(Balance),
-    <span class="doccomment">/// This is an unknown value when pool is empty. When pool is not empty this works like a range.
+    <span class="doccomment">/// An undetermined value, bounded by some logic or ranges.
+    </span>Max(Balance),
+    <span class="doccomment">/// A determined value when pool is empty.
+    /// When pool is not empty it works like a range.
     </span>RangeFromDesiredToMin(Balance, Balance),
-    <span class="doccomment">/// This is just an unknown value that must be calculated.
-    </span>Decide,
-    <span class="doccomment">/// This is used in some checks tests and predicates, than value is not needed.
+    <span class="doccomment">/// An unknown value that must be calculated.
+    </span>ToDecide,
+    <span class="doccomment">/// Used in when value is not needed (checks tests and predicates).
     </span>Dummy,
 }
 
