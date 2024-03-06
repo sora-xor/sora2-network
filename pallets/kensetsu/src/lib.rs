@@ -1066,7 +1066,6 @@ pub mod pallet {
             Self::incentivize_ken_token(borrow_tax)?;
             // TODO
             // benchmarking
-            // tests
             let borrow_amount_with_tax = will_to_borrow_amount
                 .checked_add(borrow_tax)
                 .ok_or(Error::<T>::ArithmeticError)?;
@@ -1343,11 +1342,11 @@ pub mod pallet {
         }
 
         /// Buys back KEN token with stablecoin and burns them. Then 80% of burned is reminted and
-        /// sent to demeter farming XOR/KUSD pool.
+        /// sent to demeter farming reward for liquidity providers to XOR/KUSD pool.
         ///
         /// ## Parameters
-        /// - kusd_amount - borrow tax from borrowing amount.
-        fn incentivize_ken_token(borrow_tax_kusd: Balance) -> Result<Balance, DispatchError> {
+        /// - borrow_tax_kusd - borrow tax from borrowing amount.
+        fn incentivize_ken_token(borrow_tax_kusd: Balance) -> DispatchResult {
             if borrow_tax_kusd > 0 {
                 Self::mint_treasury(borrow_tax_kusd)?;
                 let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
@@ -1363,7 +1362,7 @@ pub mod pallet {
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
                 assets::Pallet::<T>::burn_from(
-                    &T::KusdAssetId::get(),
+                    &T::KenAssetId::get(),
                     &technical_account_id,
                     &technical_account_id,
                     swap_outcome.amount,
@@ -1376,11 +1375,10 @@ pub mod pallet {
                     to_remint,
                 )?;
 
-                // TODO send to demeter XOR/KUSD
-                Ok(swap_outcome.amount)
-            } else {
-                Ok(balance!(0))
+                // TODO send to demeter XOR/KUSD ???
             }
+
+            Ok(())
         }
 
         /// Cover CDP debt with protocol balance

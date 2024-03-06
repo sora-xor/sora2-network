@@ -35,7 +35,7 @@ use common::{AssetInfoProvider, Balance, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
-use sp_arithmetic::Perbill;
+use sp_arithmetic::{Perbill, Percent};
 use sp_runtime::traits::One;
 use sp_runtime::AccountId32;
 
@@ -102,6 +102,11 @@ pub fn set_bad_debt(bad_debt: Balance) {
 /// Asserts that protocol bad debt is expected amount.
 pub fn assert_bad_debt(expected_amount: Balance) {
     assert_eq!(BadDebt::<TestRuntime>::get(), expected_amount);
+}
+
+/// Sets protocol borrow tax.
+pub fn set_borrow_tax(borrow_tax: Percent) {
+    BorrowTax::<TestRuntime>::set(borrow_tax);
 }
 
 /// Sets risk manager for protocol

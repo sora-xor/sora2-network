@@ -90,11 +90,14 @@ impl MockLiquidityProxy {
 
     /// Sets output amount in KUSD, mints this amount to LiquidityProxy account
     /// This amount will be used in the next exchange
-    pub fn set_output_amount_for_the_next_exchange(output_amount_kusd: Balance) {
+    pub fn set_output_amount_for_the_next_exchange(
+        asset_id: AssetId32<PredefinedAssetId>,
+        output_amount_kusd: Balance,
+    ) {
         assets::Pallet::<TestRuntime>::update_balance(
             RuntimeOrigin::root(),
             Self::EXCHANGE_TECH_ACCOUNT,
-            KUSD,
+            asset_id,
             output_amount_kusd.try_into().unwrap(),
         )
         .expect("must succeed");
@@ -151,7 +154,32 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
         if *output_asset_id == KUSD || *output_asset_id == KEN {
             match amount {
-                SwapAmount::WithDesiredInput { .. } => unimplemented!(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in,
+                    min_amount_out,
+                } => {
+                    assets::Pallet::<TestRuntime>::transfer_from(
+                        input_asset_id,
+                        sender,
+                        &Self::EXCHANGE_TECH_ACCOUNT,
+                        desired_amount_in,
+                    )?;
+                    let out_amount = assets::Pallet::<TestRuntime>::free_balance(
+                        output_asset_id,
+                        &Self::EXCHANGE_TECH_ACCOUNT,
+                    )?;
+                    ensure!(
+                        min_amount_out <= out_amount,
+                        DispatchError::Other("Not enough liquidity")
+                    );
+                    assets::Pallet::<TestRuntime>::transfer_from(
+                        output_asset_id,
+                        &Self::EXCHANGE_TECH_ACCOUNT,
+                        receiver,
+                        out_amount,
+                    )?;
+                    Ok(SwapOutcome::new(out_amount, 0))
+                }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out,
                     max_amount_in,
@@ -334,6 +362,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"DAI".to_vec()),
                 AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KEN,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"KEN".to_vec()),
+                AssetName(b"Kensetsu token".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
