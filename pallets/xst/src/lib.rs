@@ -123,9 +123,9 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 #[derive(RuntimeDebug, Clone, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct SyntheticInfo<Symbol> {
-    reference_symbol: Symbol,
+    pub reference_symbol: Symbol,
     /// Fee ratio. 1 = 100%
-    fee_ratio: Fixed,
+    pub fee_ratio: Fixed,
 }
 
 #[frame_support::pallet]
@@ -456,7 +456,6 @@ pub mod pallet {
     }
 }
 
-#[allow(non_snake_case)]
 impl<T: Config> Pallet<T> {
     fn enable_synthetic_asset_unchecked(
         synthetic_asset_id: T::AssetId,
@@ -927,7 +926,7 @@ impl<T: Config> Pallet<T> {
     /// Therefore the price is calculated as REF_sell_price_tools_price / MAIN_buy_price_tools_price
     ///
     /// Refer to price-tools pallet documentation for clarification.
-    fn reference_price(
+    pub fn reference_price(
         asset_id: &T::AssetId,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
