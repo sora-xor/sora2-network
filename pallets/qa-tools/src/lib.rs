@@ -28,38 +28,63 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! # Qa tools pallet
+//!
+//! As mentioned in the name, it's a pallet containing extrinsics or other tools that can help
+//! QAs in their work. Additionally, it is intended to be used for simplifying unit testing.
+//!
+//! Because of its nature, the pallet should never be released in production. Therefore, it is
+//! expected to be guarded by `private-net` feature.
+//! It is not as thoroughly designed and tested as other pallets, so issues with it can be expected.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+#![feature(is_some_and)]
 
 pub use pallet::*;
+pub use weights::WeightInfo;
 
 // private-net to make circular dependencies work
 #[cfg(all(test, feature = "private-net"))]
 mod tests;
+
+pub mod pallet_tools;
 pub mod weights;
-pub use weights::*;
-mod pallet_tools;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use assets::AssetIdOf;
     use common::{
-        AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, PriceVariant, SyntheticInfoProvider,
+        TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use order_book::{MomentOf, OrderBookId};
-    pub use pallet_tools::order_book::settings;
+    use pallet_tools::liquidity_proxy::liquidity_sources;
+    use pallet_tools::pool_xyk::AssetPairInput;
+    use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
     use sp_std::prelude::*;
 
     #[pallet::pallet]
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + order_book::Config {
-        type WeightInfo: WeightInfo;
+    pub trait Config:
+        frame_system::Config
+        + order_book::Config
+        + pool_xyk::Config
+        + xst::Config
+        + price_tools::Config
+        + band::Config
+        + oracle_proxy::Config
+    {
+        /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -69,25 +94,56 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type QaToolsWhitelistCapacity: Get<u32>;
+        type Symbol: From<<Self as band::Config>::Symbol>
+            + From<<Self as xst::Config>::Symbol>
+            + Into<<Self as xst::Config>::Symbol>
+            + Into<<Self as band::Config>::Symbol>
+            + From<common::SymbolName>
+            + Parameter
+            + Ord;
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Requested order books have been created.
+        OrderBooksCreated,
+        /// Requested order book have been filled.
+        OrderBooksFilled,
+        /// Xyk liquidity source has been initialized successfully.
+        XykInitialized {
+            /// Exact prices for token pairs achievable after the initialization.
+            /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
+            prices_achieved: Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>,
+        },
+        /// XST liquidity source has been initialized successfully.
+        XstInitialized {
+            /// Exact `quote`/`exchange` calls achievable after the initialization.
+            /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
+            quotes_achieved: Vec<SyntheticOutput<T::AssetId>>,
+        },
     }
 
     #[pallet::error]
     pub enum Error<T> {
-        // this pallet errors
-        /// Cannot add an account to the whitelist: it's full
-        WhitelistFull,
-        /// The account is already in the whitelist
-        AlreadyInWhitelist,
-        /// The account intended for removal is not in whitelist
-        NotInWhitelist,
+        // common errors
+        /// Error in calculations.
+        ArithmeticError,
+        /// Buy price cannot be lower than sell price of an asset
+        BuyLessThanSell,
 
-        // order_book pallet errors
+        // order book errors
         /// Did not find an order book with given id to fill. Likely an error with order book creation.
         CannotFillUnknownOrderBook,
         /// Order Book already exists
         OrderBookAlreadyExists,
-        /// Price step, best price, and worst price must be a multiple of order book's tick size. Price step must also be non-zero.
+        /// Price step, best price, and worst price must be a multiple of order book's tick size.
+        /// Price step must also be non-zero.
         IncorrectPrice,
         /// Provided range is incorrect, check that lower bound is less or equal than the upper one.
         EmptyRandomRange,
@@ -97,6 +153,40 @@ pub mod pallet {
         TooManyOrders,
         /// The count of prices to fill is too large.
         TooManyPrices,
+
+        // xyk pool errors
+        /// Cannot initialize pool with for non-divisible assets.
+        AssetsMustBeDivisible,
+
+        // xst errors
+        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
+        ReferenceAssetPriceNotFound,
+        /// Cannot register new asset because it already exists.
+        AssetAlreadyExists,
+        /// Could not find already existing synthetic.
+        UnknownSynthetic,
+    }
+
+    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    pub enum InputAssetId<AssetId> {
+        // todo: uncomment
+        // McbcReference,
+        XstReference,
+        Other(AssetId),
+    }
+
+    impl<AssetId> InputAssetId<AssetId> {
+        pub fn resolve<T>(self) -> T::AssetId
+        where
+            T: Config,
+            T::AssetId: From<AssetId>,
+        {
+            match self {
+                // InputAssetId::McbcReference => multicollateral_bonding_curve::ReferenceAssetId::<T>::get(),
+                InputAssetId::XstReference => xst::ReferenceAssetId::<T>::get(),
+                InputAssetId::Other(id) => id.into(),
+            }
+        }
     }
 
     #[pallet::call]
@@ -121,15 +211,15 @@ pub mod pallet {
             asks_owner: T::AccountId,
             settings: Vec<(
                 OrderBookId<T::AssetId, T::DEXId>,
-                settings::OrderBookAttributes,
-                settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+                pallet_tools::order_book::OrderBookAttributes,
+                pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_initializers::order_book::<T>(
+            liquidity_sources::create_and_fill_order_book_batch::<T>(
                 bids_owner, asks_owner, settings,
             )
             .map_err(|e| DispatchErrorWithPostInfo {
@@ -139,6 +229,11 @@ pub mod pallet {
                 },
                 error: e,
             })?;
+
+            // Even though these facts can be deduced from the extrinsic execution success,
+            // it would be strange not to emit anything, while other initialization extrinsics do.
+            Self::deposit_event(Event::<T>::OrderBooksCreated);
+            Self::deposit_event(Event::<T>::OrderBooksFilled);
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
@@ -165,23 +260,142 @@ pub mod pallet {
             asks_owner: T::AccountId,
             settings: Vec<(
                 OrderBookId<T::AssetId, T::DEXId>,
-                settings::OrderBookFill<MomentOf<T>, BlockNumberFor<T>>,
+                pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
             // Replace with more convenient `with_pays_fee` when/if available
             // https://github.com/paritytech/substrate/pull/14470
-            pallet_tools::liquidity_proxy::source_filling::order_book::<T>(
-                bids_owner, asks_owner, settings,
-            )
-            .map_err(|e| DispatchErrorWithPostInfo {
-                post_info: PostDispatchInfo {
-                    actual_weight: None,
-                    pays_fee: Pays::No,
+            liquidity_sources::fill_order_book::<T>(bids_owner, asks_owner, settings).map_err(
+                |e| DispatchErrorWithPostInfo {
+                    post_info: PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee: Pays::No,
+                    },
+                    error: e,
                 },
-                error: e,
-            })?;
+            )?;
+
+            Self::deposit_event(Event::<T>::OrderBooksFilled);
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Initialize xyk pool liquidity source.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `account`: Some account to use during the initialization
+        /// - `pairs`: Asset pairs to initialize.
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::xyk_initialize())]
+        pub fn xyk_initialize(
+            origin: OriginFor<T>,
+            account: AccountIdOf<T>,
+            pairs: Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let prices_achieved =
+                liquidity_sources::initialize_xyk::<T>(account, pairs).map_err(|e| {
+                    DispatchErrorWithPostInfo {
+                        post_info: PostDispatchInfo {
+                            actual_weight: None,
+                            pays_fee: Pays::No,
+                        },
+                        error: e,
+                    }
+                })?;
+
+            Self::deposit_event(Event::<T>::XykInitialized { prices_achieved });
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Initialize xst liquidity source. In xst's `quote`, one of the assets is the synthetic base
+        /// (XST) and the other one is a synthetic asset.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `base_prices`: Synthetic base asset price update. Usually buy price > sell.
+        /// - `synthetics_prices`: Synthetic initialization;
+        /// registration of an asset + setting up prices for target quotes.
+        /// - `relayer`: Account which will be the author of prices fed to `band` pallet;
+        ///
+        /// Emits events with actual quotes achieved after initialization;
+        /// more details in [`liquidity_sources::initialize_xst`]
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::xst_initialize())]
+        pub fn xst_initialize(
+            origin: OriginFor<T>,
+            base_prices: Option<BaseInput>,
+            synthetics_prices: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+            relayer: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let quotes_achieved =
+                liquidity_sources::initialize_xst::<T>(base_prices, synthetics_prices, relayer)
+                    .map_err(|e| DispatchErrorWithPostInfo {
+                        post_info: PostDispatchInfo {
+                            actual_weight: None,
+                            pays_fee: Pays::No,
+                        },
+                        error: e,
+                    })?;
+
+            Self::deposit_event(Event::<T>::XstInitialized { quotes_achieved });
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Set prices of an asset in `price_tools` pallet.
+        /// Ignores pallet restrictions on price speed change.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `asset_per_xor`: Prices (1 XOR in terms of the corresponding asset).
+        /// - `asset_id`: Asset identifier; can be some common constant for easier input.
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
+        pub fn price_tools_set_asset_price(
+            origin: OriginFor<T>,
+            asset_per_xor: pallet_tools::price_tools::AssetPrices,
+            asset_id: InputAssetId<T::AssetId>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let asset_id = asset_id.resolve::<T>();
+            ensure!(
+                asset_per_xor.sell <= asset_per_xor.buy,
+                Error::<T>::BuyLessThanSell
+            );
+            pallet_tools::price_tools::set_price::<T>(
+                &asset_id,
+                asset_per_xor.buy,
+                PriceVariant::Buy,
+            )?;
+            pallet_tools::price_tools::set_price::<T>(
+                &asset_id,
+                asset_per_xor.sell,
+                PriceVariant::Sell,
+            )?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
