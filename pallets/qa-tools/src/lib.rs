@@ -40,7 +40,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
-// it was stabilized in 1.70 so should be safe to apply
 #![feature(is_some_and)]
 
 pub use pallet::*;
@@ -344,9 +343,13 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `origin`: Root
-        /// - `base_prices`: Optionally update price of synthetic base asset. Usually buy price > sell.
-        /// - `synthetics_prices`: Prices to set for synthetics;
-        /// can only set either buy or sell price because the other one is determined by synthetic base asset price
+        /// - `base_prices`: Synthetic base asset price update. Usually buy price > sell.
+        /// - `synthetics_prices`: Synthetic initialization;
+        /// registration of an asset + setting up prices for target quotes.
+        /// - `relayer`: Account which will be the author of prices fed to `band` pallet;
+        ///
+        /// Emits events with actual quotes achieved after initialization;
+        /// more details in [`liquidity_sources::initialize_xst`]
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::xst_initialize())]
         pub fn xst_initialize(
@@ -419,6 +422,13 @@ pub mod pallet {
             })
         }
 
+        /// Set prices of an asset in `price_tools` pallet.
+        /// Ignores pallet restrictions on price speed change.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `asset_per_xor`: Prices (1 XOR in terms of the corresponding asset).
+        /// - `asset_id`: Asset identifier; can be some common constant for easier input.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
         pub fn price_tools_set_asset_price(

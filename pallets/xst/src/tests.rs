@@ -30,15 +30,25 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Pallet, mock::*, test_utils::{relay_new_symbol, relay_symbol}};
+    use crate::{
+        mock::*,
+        test_utils::{relay_new_symbol, relay_symbol},
+        Error, Pallet,
+    };
     use band::FeeCalculationParameters;
-    use common::{self, AssetId32, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, SwapChunk};
-    use frame_support::{assert_ok, assert_noop};
+    use common::{
+        balance, fixed,
+        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo,
+        LiquiditySource, PredefinedAssetId, PriceVariant, SwapChunk, DAI, USDT, VAL, XOR, XST,
+        XSTUSD,
+    };
+    use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount};
     use frame_support::traits::Hooks;
+    use frame_support::{assert_noop, assert_ok};
     use frame_system::pallet_prelude::BlockNumberFor;
     use sp_arithmetic::traits::Zero;
-    use sp_std::collections::vec_deque::VecDeque;
     use sp_arithmetic::FixedU128;
+    use sp_std::collections::vec_deque::VecDeque;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;

@@ -46,6 +46,12 @@ pub mod liquidity_sources {
     use sp_std::vec::Vec;
     use std::collections::BTreeMap;
 
+    /// Initialize xyk pool liquidity source.
+    ///
+    /// Parameters:
+    /// - `caller`: Some account to use during the initialization; assets are minted and extrinsics
+    /// are called with it.
+    /// - `pairs`: Asset pairs to initialize.
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
         pairs: Vec<AssetPairInput<DexIdOf<T>, AssetIdOf<T>>>,
@@ -122,6 +128,12 @@ pub mod liquidity_sources {
     }
 
     /// Initialize xst liquidity source. Can both update prices of base assets and synthetics.
+    ///
+    /// ## Parameters
+    ///
+    /// - `base`: Synthetic base asset price update. Usually buy price > sell.
+    /// - `synthetics`: Synthetic initialization; registration of an asset + setting up prices for target quotes.
+    /// - `relayer`: Account which will be the author of prices fed to `band` pallet;
     ///
     /// ## Return
     ///
