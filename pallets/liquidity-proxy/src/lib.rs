@@ -2388,7 +2388,8 @@ pub mod pallet {
         type LockedLiquiditySourcesManager: LockedLiquiditySourcesManager<LiquiditySourceType>;
         type GetADARAccountId: Get<Self::AccountId>;
         type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-        type MaxAdditionalDataLength: Get<u32>;
+        type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
+        type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
@@ -2497,6 +2498,7 @@ pub mod pallet {
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is
         ///                            determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        /// - `additional_data`: data to include in swap success event.
         #[transactional]
         #[pallet::call_index(2)]
         #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
@@ -2507,6 +2509,7 @@ pub mod pallet {
             max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
+            additional_data: Option<BoundedVec<u8, T::MaxAdditionalDataLengthSwapTransferBatch>>,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
@@ -2523,6 +2526,7 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::BatchSwapExecuted(
                 adar_commission,
                 executed_input_amount,
+                additional_data,
             ));
 
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
@@ -2630,7 +2634,7 @@ pub mod pallet {
             max_amount_in: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
-            additional_data: Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
+            additional_data: Option<BoundedVec<u8, T::MaxAdditionalDataLengthXorlessTransfer>>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
             ensure!(sender != receiver, Error::<T>::TheSameSenderAndReceiver);
@@ -2690,8 +2694,12 @@ pub mod pallet {
         /// Liquidity source was disabled
         LiquiditySourceDisabled(LiquiditySourceType),
         /// Batch of swap transfers has been performed
-        /// [Input asset ADAR Fee, Input amount]
-        BatchSwapExecuted(Balance, Balance),
+        /// [Input asset ADAR Fee, Input amount, Additional Data]
+        BatchSwapExecuted(
+            Balance,
+            Balance,
+            Option<BoundedVec<u8, T::MaxAdditionalDataLengthSwapTransferBatch>>,
+        ),
         /// XORless transfer has been performed
         /// [Asset Id, Caller Account, Receiver Account, Amount, Additional Data]
         XorlessTransfer(
@@ -2699,7 +2707,7 @@ pub mod pallet {
             AccountIdOf<T>,
             AccountIdOf<T>,
             Balance,
-            Option<BoundedVec<u8, T::MaxAdditionalDataLength>>,
+            Option<BoundedVec<u8, T::MaxAdditionalDataLengthXorlessTransfer>>,
         ),
         /// ADAR fee which is withdrawn from reused outcome asset amount
         /// [Asset Id, ADAR Fee]

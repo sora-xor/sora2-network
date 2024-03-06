@@ -43,8 +43,10 @@ use common::{
     TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{assert_noop, assert_ok};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::DispatchError;
 use test_utils::mcbc_excluding_filter;
 
@@ -3651,6 +3653,7 @@ fn test_batch_swap_desired_input_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3658,8 +3661,12 @@ fn test_batch_swap_desired_input_successful() {
     });
 }
 
-#[test]
-fn test_batch_swap_emits_event() {
+fn test_batch_swap_event(
+    event_data: BoundedVec<
+        u8,
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch,
+    >,
+) {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         frame_system::Pallet::<Runtime>::set_block_number(1);
@@ -3690,12 +3697,27 @@ fn test_batch_swap_emits_event() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            Some(event_data.clone()),
         ));
 
         frame_system::Pallet::<Runtime>::assert_last_event(
-            crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(event_data)).into(),
         );
     });
+}
+
+#[test]
+fn test_batch_swap_emits_event() {
+    test_batch_swap_event(BoundedVec::try_from(vec![1, 2, 3, 32, 2, 13, 37]).unwrap());
+}
+
+#[test]
+fn test_batch_swap_max_additional_data() {
+    let max_data_len: u32 =
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch::get();
+    let max_additional_data =
+        BoundedVec::try_from(vec![255; max_data_len.try_into().unwrap()]).unwrap();
+    test_batch_swap_event(max_additional_data)
 }
 
 #[test]
@@ -3740,6 +3762,7 @@ fn test_batch_swap_duplicate_receivers_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3786,6 +3809,7 @@ fn test_batch_swap_desired_input_too_low() {
                 max_input_amount,
                 sources,
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::SlippageNotTolerated
         );
@@ -3832,6 +3856,7 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::AggregationError
         );
@@ -4023,6 +4048,7 @@ fn test_batch_swap_asset_reuse_works() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -4084,6 +4110,7 @@ fn test_batch_swap_asset_reuse_fails() {
                 max_input_amount,
                 sources.clone(),
                 filter_mode,
+                None,
             ),
             Error::<Runtime>::InsufficientBalance
         );
