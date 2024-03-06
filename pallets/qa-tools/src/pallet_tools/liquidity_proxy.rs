@@ -173,32 +173,4 @@ pub mod liquidity_sources {
         }
         Ok(collateral_ref_prices)
     }
-
-    /// Set base token supply for mcbc.
-    /// For details see [`pallet_tools::mcbc::initialize_base_supply`]
-    pub fn initialize_mcbc_base_supply<T: Config>(
-        input: BaseSupply<T::AccountId>,
-    ) -> DispatchResult {
-        pallet_tools::mcbc::initialize_base_supply::<T>(input)
-    }
-
-    /// Initialize collateral-specific variables.
-    ///
-    /// For TBCD use [`initialize_mcbc_tbcd_collateral`]
-    ///
-    /// For details see [`pallet_tools::mcbc::initialize_single_collateral`]
-    pub fn initialize_mcbc_collateral<T: Config>(
-        input: OtherCollateralInput<T::AssetId>,
-    ) -> Result<Option<AssetPrices>, DispatchError> {
-        pallet_tools::mcbc::initialize_single_collateral::<T>(input)
-    }
-
-    /// Initialize TBCD-specific variables.
-    ///
-    /// See [`pallet_tools::mcbc::initialize_tbcd_collateral`]
-    pub fn initialize_mcbc_tbcd_collateral<T: Config>(
-        input: TbcdCollateralInput,
-    ) -> Result<Option<AssetPrices>, DispatchError> {
-        pallet_tools::mcbc::initialize_tbcd_collateral::<T>(input)
-    }
 }

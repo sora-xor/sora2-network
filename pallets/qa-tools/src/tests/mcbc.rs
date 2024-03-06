@@ -40,9 +40,7 @@ use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeEvent, RuntimeOrigin};
-use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::{
-    initialize_mcbc_base_supply, initialize_mcbc_collateral, initialize_mcbc_tbcd_collateral,
-};
+use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::initialize_mcbc;
 use qa_tools::pallet_tools::mcbc as mcbc_tools;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
 use sp_arithmetic::traits::One;
@@ -70,7 +68,7 @@ fn should_init_mcbc_base_supply() {
         );
 
         let added_supply = balance!(1000000);
-        assert_ok!(initialize_mcbc_base_supply::<Runtime>(
+        assert_ok!(mcbc_tools::initialize_base_supply::<Runtime>(
             mcbc_tools::BaseSupply {
                 asset_collector: xor_holder.clone(),
                 target: current_base_supply + added_supply,
@@ -82,7 +80,7 @@ fn should_init_mcbc_base_supply() {
         );
 
         // bring supply back to original
-        assert_ok!(initialize_mcbc_base_supply::<Runtime>(
+        assert_ok!(mcbc_tools::initialize_base_supply::<Runtime>(
             mcbc_tools::BaseSupply {
                 asset_collector: xor_holder.clone(),
                 target: current_base_supply,
@@ -95,7 +93,7 @@ fn should_init_mcbc_base_supply() {
 
         // cannot burn assets not owned by the holder
         assert_err!(
-            initialize_mcbc_base_supply::<Runtime>(mcbc_tools::BaseSupply {
+            mcbc_tools::initialize_base_supply::<Runtime>(mcbc_tools::BaseSupply {
                 asset_collector: xor_holder,
                 target: 0,
             }),
@@ -110,7 +108,7 @@ fn set_and_verify_reference_prices(
     reference_prices: AssetPrices,
 ) {
     let actual_ref_prices =
-        initialize_mcbc_collateral::<Runtime>(mcbc_tools::OtherCollateralInput::<
+        mcbc_tools::initialize_single_collateral::<Runtime>(mcbc_tools::OtherCollateralInput::<
             AssetIdOf<Runtime>,
         > {
             asset: *collateral_asset_id,
@@ -146,7 +144,7 @@ fn test_init_single_collateral_reference_price(collateral_asset_id: AssetIdOf<Ru
     let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
     let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
     assert_err!(
-        initialize_mcbc_collateral::<Runtime>(mcbc_tools::OtherCollateralInput::<
+        mcbc_tools::initialize_single_collateral::<Runtime>(mcbc_tools::OtherCollateralInput::<
             AssetIdOf<Runtime>,
         > {
             asset: collateral_asset_id,
@@ -230,7 +228,7 @@ fn set_and_verify_tbcd_reference_prices(
 ) {
     let collateral_asset_id = TBCD;
 
-    assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(
+    assert_ok!(mcbc_tools::initialize_tbcd_collateral::<Runtime>(
         mcbc_tools::TbcdCollateralInput {
             parameters: mcbc_tools::CollateralCommonParameters {
                 ref_prices: Some(AssetPrices {
@@ -243,7 +241,7 @@ fn set_and_verify_tbcd_reference_prices(
         }
     ));
     let actual_ref_prices =
-        initialize_mcbc_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
+        mcbc_tools::initialize_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
             parameters: mcbc_tools::CollateralCommonParameters {
                 ref_prices: Some(reference_prices.clone()),
                 reserves: None,
@@ -279,7 +277,7 @@ fn should_init_tbcd_reference_price() {
         let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
         let reference_asset_id = reference_asset.clone().resolve::<Runtime>();
         assert_err!(
-            initialize_mcbc_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
+            mcbc_tools::initialize_tbcd_collateral::<Runtime>(mcbc_tools::TbcdCollateralInput {
                 parameters: mcbc_tools::CollateralCommonParameters {
                     ref_prices: Some(AssetPrices {
                         buy: balance!(1),
@@ -301,7 +299,7 @@ fn should_init_tbcd_reference_price() {
         ));
 
         assert_err!(
-            initialize_mcbc_collateral::<Runtime>(mcbc_tools::OtherCollateralInput {
+            mcbc_tools::initialize_single_collateral::<Runtime>(mcbc_tools::OtherCollateralInput {
                 asset: TBCD,
                 parameters: mcbc_tools::CollateralCommonParameters {
                     ref_prices: Some(AssetPrices {
@@ -347,7 +345,7 @@ fn set_and_verify_reserves(collateral_asset_id: &AssetIdOf<Runtime>, target_rese
         },
     };
 
-    assert_ok!(initialize_mcbc_collateral::<Runtime>(input));
+    assert_ok!(mcbc_tools::initialize_single_collateral::<Runtime>(input));
 
     let reserves_tech_account_id =
         multicollateral_bonding_curve_pool::Pallet::<Runtime>::reserves_account_id();
@@ -388,7 +386,7 @@ fn set_and_verify_tbcd_reserves(target_reserves: Balance) {
         ref_xor_prices: None,
     };
 
-    assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(input));
+    assert_ok!(mcbc_tools::initialize_tbcd_collateral::<Runtime>(input));
 
     let reserves_tech_account_id =
         multicollateral_bonding_curve_pool::Pallet::<Runtime>::reserves_account_id();
@@ -412,7 +410,7 @@ fn should_init_tbcd_reserves() {
             },
         };
         assert_err!(
-            initialize_mcbc_collateral::<Runtime>(input),
+            mcbc_tools::initialize_single_collateral::<Runtime>(input),
             qa_tools::Error::<Runtime>::IncorrectCollateralAsset
         );
         set_and_verify_tbcd_reserves(balance!(1000000));
@@ -430,7 +428,7 @@ fn set_and_verify_tbcd_ref_xor_prices(prices: AssetPrices) {
     };
     let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
     let reference_asset_id = reference_asset.resolve::<Runtime>();
-    assert_ok!(initialize_mcbc_tbcd_collateral::<Runtime>(input));
+    assert_ok!(mcbc_tools::initialize_tbcd_collateral::<Runtime>(input));
     assert_eq!(
         price_tools::Pallet::<Runtime>::get_average_price(
             &XOR,
@@ -464,7 +462,7 @@ fn should_init_tbcd_ref_prices() {
             },
         };
         assert_err!(
-            initialize_mcbc_collateral::<Runtime>(input),
+            mcbc_tools::initialize_single_collateral::<Runtime>(input),
             qa_tools::Error::<Runtime>::IncorrectCollateralAsset
         );
         set_and_verify_tbcd_ref_xor_prices(AssetPrices {
@@ -674,8 +672,7 @@ fn init_mcbc_and_check_quote_exchange(
     let reference_asset = qa_tools::InputAssetId::<AssetIdOf<Runtime>>::McbcReference;
     let reference_asset_id = reference_asset.resolve::<Runtime>();
 
-    assert_ok!(qa_tools::Pallet::<Runtime>::mcbc_initialize(
-        RawOrigin::Root.into(),
+    let results = initialize_mcbc::<Runtime>(
         Some(mcbc_tools::BaseSupply {
             asset_collector: xor_holder,
             target: target_supply,
@@ -694,7 +691,8 @@ fn init_mcbc_and_check_quote_exchange(
             },
             ref_xor_prices: Some(ref_xor_prices.clone()),
         }),
-    ));
+    )
+    .unwrap();
     // check the results of initialization
     let (actual_collateral_reference_prices, actual_tbcd_reference_prices) = {
         assert_eq!(
@@ -747,24 +745,21 @@ fn init_mcbc_and_check_quote_exchange(
             ),
             Ok(ref_xor_prices.sell)
         );
-        let events = get_all_mcbc_init_events();
-        // at least current init call
-        assert!(!events.is_empty());
-        let init_collaterals = events.last().unwrap();
         // 2 collaterals initialized in the call
-        assert_eq!(init_collaterals.len(), 2);
+        assert_eq!(results.len(), 2);
 
         // check that the values are close enough to requested
-        let (actual_collateral_reference_prices, actual_tbcd_reference_prices) =
-            match (init_collaterals[0].clone(), init_collaterals[1].clone()) {
-                ((tbcd, tbcd_prices), (collateral, collateral_prices))
-                | ((collateral, collateral_prices), (tbcd, tbcd_prices))
-                    if tbcd == TBCD && collateral == collateral_asset_id =>
-                {
-                    (collateral_prices, tbcd_prices)
-                }
-                _ => panic!("unexpected asset ids in events: {:?}", init_collaterals),
-            };
+        let (actual_collateral_reference_prices, actual_tbcd_reference_prices) = (
+            results
+                .get(&collateral_asset_id)
+                .expect("must return price corresponding the input")
+                .clone(),
+            results
+                .get(&TBCD.into())
+                .expect("must return price corresponding the input")
+                .clone(),
+        );
+
         assert_approx_eq!(
             collateral_reference_prices.buy,
             actual_collateral_reference_prices.buy,
