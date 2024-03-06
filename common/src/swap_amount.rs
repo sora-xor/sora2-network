@@ -628,6 +628,16 @@ impl<AssetId: Ord, AmountType> OutcomeFee<AssetId, AmountType> {
     }
 }
 
+impl<AssetId: Ord, AmountType: Zero> OutcomeFee<AssetId, AmountType> {
+    pub fn from_asset(asset: AssetId, amount: AmountType) -> Self {
+        if amount.is_zero() {
+            Self::new()
+        } else {
+            Self(BTreeMap::from([(asset, amount)]))
+        }
+    }
+}
+
 // Most used fee assets
 impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
 where

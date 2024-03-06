@@ -716,7 +716,10 @@ impl<T: Config> BuyMainAsset<T> {
                 self.amount.into(),
                 true,
             )?;
-            let fee = OutcomeFee::xor(fee_amount);
+
+            // in XOR
+            let fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
             let result = match self.amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                     ensure!(
@@ -1353,7 +1356,10 @@ impl<T: Config> Pallet<T> {
                 reserves_amount >= output_amount,
                 Error::<T>::NotEnoughReserves
             );
-            let fee = OutcomeFee::xor(fee_amount);
+
+            // in XOR
+            let fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
             let result = match amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                     ensure!(
@@ -1577,7 +1583,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
-        let fee = OutcomeFee::xor(fee_amount);
+
+        // in XOR
+        let fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
                 Ok((SwapOutcome::new(output_amount, fee), Self::quote_weight()))
@@ -1749,7 +1758,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
-        let outcome = if input_asset_id == base_asset_id {
+        let (amount, fee) = if input_asset_id == base_asset_id {
             let base_price_wrt_collateral: FixedWrapper = <Pallet<T> as GetMarketInfo<
                 T::AssetId,
             >>::sell_price(
@@ -1772,7 +1781,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                             * base_price_wrt_collateral)
                             .try_into_balance()
                             .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    SwapOutcome::new(collateral_out, OutcomeFee::xor(fee_amount))
+                    (collateral_out, fee_amount)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                     let base_in =
@@ -1785,11 +1794,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     } else {
                         0
                     };
-                    SwapOutcome::new(
+                    (
                         input_amount_with_fee
                             .try_into_balance()
                             .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                        OutcomeFee::xor(fee_amount),
+                        fee_amount,
                     )
                 }
             }
@@ -1811,7 +1820,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         .try_into_balance()
                         .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                     base_out_unwrapped = base_out_unwrapped.saturating_sub(fee_amount);
-                    SwapOutcome::new(base_out_unwrapped, OutcomeFee::xor(fee_amount))
+                    (base_out_unwrapped, fee_amount)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                     let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
@@ -1823,11 +1832,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         .try_into_balance()
                         .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                     let fee_amount = desired_amount_out_with_fee.saturating_sub(desired_amount_out);
-                    SwapOutcome::new(collateral_in, OutcomeFee::xor(fee_amount))
+                    (collateral_in, fee_amount)
                 }
             }
         };
-        Ok(outcome)
+
+        // in XOR
+        let fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee);
+        Ok(SwapOutcome::new(amount, fee))
     }
 
     fn quote_weight() -> Weight {

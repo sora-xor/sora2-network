@@ -823,7 +823,9 @@ impl<T: Config> Pallet<T> {
                     )?
                 };
 
-            let fee = OutcomeFee::xst(fee_amount);
+            // in XST
+            let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
             let result = match swap_amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                     ensure!(
@@ -1002,7 +1004,10 @@ impl<T: Config> Pallet<T> {
                 check_limits,
             )?
         };
-        let fee = OutcomeFee::xst(fee_amount);
+
+        // in XST
+        let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
                 Ok((SwapOutcome::new(output_amount, fee), Self::quote_weight()))
@@ -1096,7 +1101,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee, false)?
         };
 
-        let fee = OutcomeFee::<T::AssetId, Balance>::xst(fee_amount);
+        // in XST
+        let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
         // todo fix (m.tagirov)
         let mut monolith = SwapChunk::new(input_amount, output_amount, fee.get_xst());

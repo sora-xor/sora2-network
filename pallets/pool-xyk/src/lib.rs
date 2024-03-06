@@ -409,44 +409,34 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // Calculate quote.
-        match amount {
+        let (calculated, fee) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
+                Pallet::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_in,
                     deduce_fee,
-                )?;
-
-                let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                    OutcomeFee::xstusd(fee)
-                } else {
-                    OutcomeFee::xor(fee)
-                };
-
-                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
+                )?
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
+                Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_out,
                     deduce_fee,
-                )?;
-
-                let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                    OutcomeFee::xstusd(fee)
-                } else {
-                    OutcomeFee::xor(fee)
-                };
-
-                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
+                )?
             }
-        }
+        };
+
+        // in XOR for dex_id = 0
+        // in XSTUSD for dex_id = 1
+        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee);
+
+        Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
     }
 
     fn step_quote(
@@ -675,7 +665,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         } else {
             common::Fixed::default()
         };
-        Ok(match amount {
+        let (amount, fee) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {
                     // output token is xor, user indicates desired input amount
@@ -698,21 +688,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     (output, fee_amount)
                 };
 
+                let amount = output
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                 let fee_amount = fee_amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                    OutcomeFee::xstusd(fee_amount)
-                } else {
-                    OutcomeFee::xor(fee_amount)
-                };
 
-                SwapOutcome::new(
-                    output
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                    fee,
-                )
+                (amount, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (input, fee_amount) = if get_fee_from_destination {
@@ -735,23 +718,21 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     (input, fee_amount)
                 };
 
+                let amount = input
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                 let fee_amount = fee_amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                    OutcomeFee::xstusd(fee_amount)
-                } else {
-                    OutcomeFee::xor(fee_amount)
-                };
 
-                SwapOutcome::new(
-                    input
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                    fee,
-                )
+                (amount, fee_amount)
             }
-        })
+        };
+
+        // in XOR for dex_id = 0
+        // in XSTUSD for dex_id = 1
+        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee);
+        Ok(SwapOutcome::new(amount, fee))
     }
 
     fn quote_weight() -> Weight {
