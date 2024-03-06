@@ -81,8 +81,8 @@ impl<T: Config> Pallet<T> {
         tech_acc: &TechAccountIdOf<T>,
     ) -> DispatchResult {
         technical::Pallet::<T>::ensure_tech_account_registered(tech_acc)?;
-        //TODO: Maybe checking that asset and dex is exist, it is not really needed if
-        //registration of technical account is a garanty that pair and dex exist.
+        // TODO: Maybe checking that asset and dex is exist, it is not really needed if
+        // registration of technical account is a guarantee that pair and dex exist.
         Ok(())
     }
 

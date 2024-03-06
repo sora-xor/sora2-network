@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
+#![feature(int_roundings)]
 
 #[macro_use]
 extern crate alloc;

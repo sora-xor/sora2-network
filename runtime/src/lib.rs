@@ -1038,7 +1038,8 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
-    pub const MaxAdditionalDataLength: u32 = 128;
+    pub const MaxAdditionalDataLengthXorlessTransfer: u32 = 128;
+    pub const MaxAdditionalDataLengthSwapTransferBatch: u32 = 2000;
     pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"referrals".to_vec(),
@@ -1069,7 +1070,8 @@ impl liquidity_proxy::Config for Runtime {
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
-    type MaxAdditionalDataLength = MaxAdditionalDataLength;
+    type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
+    type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1465,9 +1467,14 @@ parameter_types! {
 
 #[cfg(feature = "private-net")]
 impl qa_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type SyntheticInfoProvider = XSTPool;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
+    type Symbol = <Runtime as band::Config>::Symbol;
 }
 
 parameter_types! {
@@ -2458,7 +2465,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
-        QATools: qa_tools::{Pallet, Call} = 112,
+        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 

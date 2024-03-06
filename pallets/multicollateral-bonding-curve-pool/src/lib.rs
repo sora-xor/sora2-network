@@ -424,7 +424,7 @@ pub mod pallet {
         fixed!(1337)
     }
 
-    /// Cofficients in buy price function.
+    /// Coefficients in buy price function.
     #[pallet::storage]
     #[pallet::getter(fn price_change_step)]
     pub(super) type PriceChangeStep<T: Config> =
