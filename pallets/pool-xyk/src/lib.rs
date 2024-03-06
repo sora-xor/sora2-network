@@ -409,7 +409,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // Calculate quote.
-        let (calculated, fee) = match amount {
+        let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 Pallet::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
@@ -434,7 +434,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         // in XOR for dex_id = 0
         // in XSTUSD for dex_id = 1
-        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee);
+        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
 
         Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
     }
@@ -665,7 +665,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         } else {
             common::Fixed::default()
         };
-        let (amount, fee) = match amount {
+        let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {
                     // output token is xor, user indicates desired input amount
@@ -688,14 +688,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     (output, fee_amount)
                 };
 
-                let amount = output
+                let calculated = output
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                 let fee_amount = fee_amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
 
-                (amount, fee_amount)
+                (calculated, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (input, fee_amount) = if get_fee_from_destination {
@@ -718,21 +718,21 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     (input, fee_amount)
                 };
 
-                let amount = input
+                let calculated = input
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                 let fee_amount = fee_amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
 
-                (amount, fee_amount)
+                (calculated, fee_amount)
             }
         };
 
         // in XOR for dex_id = 0
         // in XSTUSD for dex_id = 1
-        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee);
-        Ok(SwapOutcome::new(amount, fee))
+        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
+        Ok(SwapOutcome::new(calculated, fee))
     }
 
     fn quote_weight() -> Weight {

@@ -245,12 +245,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
             // in XOR for dex_id = 0
             // in XSTUSD for dex_id = 1
-            let mut fee = self.fee.get_by_asset(&dex_info.base_asset_id);
+            let fee = self.fee.get_by_asset(&dex_info.base_asset_id);
 
             // Set recommended or check that fee is correct.
-            #[allow(unused_assignments)]
             if fee.is_zero() {
-                fee = recom_fee;
+                self.fee.add_by_asset(dex_info.base_asset_id, recom_fee);
             } else {
                 if fee < recom_fee {
                     Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?;
