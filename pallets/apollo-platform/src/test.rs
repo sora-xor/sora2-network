@@ -32,7 +32,7 @@ mod test {
         asset_id: AssetId,
         block_number: BlockNumber,
     ) -> (Balance, Balance) {
-        let user_info = pallet::UserLendingInfo::<Runtime>::get(user, asset_id).unwrap();
+        let user_info = pallet::UserLendingInfo::<Runtime>::get(asset_id, user).unwrap();
         let pool_info = pallet::PoolData::<Runtime>::get(asset_id).unwrap();
 
         let total_lending_blocks = balance!(block_number);
@@ -69,7 +69,7 @@ mod test {
         block_number: BlockNumber,
     ) -> (Balance, Balance) {
         let borrow_user_info =
-            pallet::UserBorrowingInfo::<Runtime>::get(user, borrowing_asset_id).unwrap();
+            pallet::UserBorrowingInfo::<Runtime>::get(borrowing_asset_id, user).unwrap();
         let borrowing_user_debt = borrow_user_info.get(&collateral_asset_id).unwrap();
         let borrowing_asset_pool_info =
             pallet::PoolData::<Runtime>::get(borrowing_asset_id).unwrap();
@@ -520,7 +520,7 @@ mod test {
                 balance!(100000)
             );
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
             assert_eq!(lending_user_info.last_lending_block, 0);
@@ -564,7 +564,7 @@ mod test {
 
             run_to_block(101);
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let lending_interest_gains = calculate_lending_earnings(alice(), XOR, 100);
             let lending_interest_gain = lending_interest_gains.0 + lending_interest_gains.1;
 
@@ -577,7 +577,7 @@ mod test {
                 balance!(100000)
             ));
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
             assert_eq!(lending_user_info.last_lending_block, 101);
@@ -898,7 +898,7 @@ mod test {
 
             // Get data after borrow
             let borrowing_user_info =
-                pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
             let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
@@ -997,7 +997,7 @@ mod test {
 
             // Get data before second borrow
             let borrowing_user_info =
-                pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
             let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
@@ -1087,7 +1087,7 @@ mod test {
 
             // Get data after first borrow
             let borrowing_user_info =
-                pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
             let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
@@ -1244,7 +1244,7 @@ mod test {
 
             run_to_block(101);
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
 
             let lending_earnings = calculate_lending_earnings(alice(), XOR, 100);
             let lending_interest = lending_earnings.0 + lending_earnings.1;
@@ -1257,7 +1257,7 @@ mod test {
                 true
             ));
 
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
 
             assert_eq!(lending_user_info.lending_interest, balance!(0));
 
@@ -1517,7 +1517,7 @@ mod test {
                 false
             ));
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
 
             assert_eq!(borrowing_user_debt.borrowing_rewards, balance!(0));
@@ -1652,7 +1652,7 @@ mod test {
                 false
             ));
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt_dot = borrow_user_info.get(&DOT).unwrap();
             let borrowing_user_debt_ksm = borrow_user_info.get(&KSM).unwrap();
 
@@ -1883,7 +1883,7 @@ mod test {
             assert_eq!(pool_info.total_liquidity, balance!(100));
 
             // User lending info
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             assert_eq!(lending_user_info.lending_amount, balance!(100));
 
             assert_ok!(ApolloPlatform::withdraw(
@@ -1911,7 +1911,7 @@ mod test {
             assert_eq!(pool_info.total_liquidity, balance!(50));
 
             // User lending info
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             assert_eq!(lending_user_info.lending_amount, balance!(50));
         });
     }
@@ -1993,7 +1993,7 @@ mod test {
             assert_eq!(pool_info.total_liquidity, balance!(200));
 
             // User lending info
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             assert_eq!(lending_user_info.lending_amount, balance!(100));
 
             // Calculate lending interest
@@ -2030,7 +2030,7 @@ mod test {
             assert_eq!(pool_info.total_liquidity, balance!(100));
 
             // User lending info
-            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(alice(), XOR);
+            let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice());
             assert_eq!(lending_user_info, None);
         });
     }
@@ -2252,7 +2252,7 @@ mod test {
 
             run_to_block(101);
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
@@ -2328,7 +2328,7 @@ mod test {
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
 
             // Check Alice interest rate after repay
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
@@ -2437,7 +2437,7 @@ mod test {
 
             run_to_block(101);
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
@@ -2499,7 +2499,7 @@ mod test {
                 repayed_amount
             ));
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
@@ -2636,7 +2636,7 @@ mod test {
 
             run_to_block(101);
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
             let borrowing_rewards = borrowing_user_debt.borrowing_rewards;
@@ -2720,7 +2720,7 @@ mod test {
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(1000));
             assert_eq!(collateral_asset_pool_info.total_collateral, balance!(0));
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR);
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice());
 
             let new_alice_balance = balance!(300) - repayed_amount;
 
@@ -3415,11 +3415,11 @@ mod test {
             assert_eq!(dot_pool_borrowing_rate, dot_pool_current_borrowing_rate);
 
             // Calculate interest for Alice and Bob
-            let alice_user_info = pallet::UserBorrowingInfo::<Runtime>::get(alice(), XOR).unwrap();
+            let alice_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let alice_xor_borrowing_position = alice_user_info.get(&DOT).unwrap();
             let alice_repay_amount = alice_xor_borrowing_position.borrowing_interest;
 
-            let bob_user_info = pallet::UserBorrowingInfo::<Runtime>::get(bob(), DOT).unwrap();
+            let bob_user_info = pallet::UserBorrowingInfo::<Runtime>::get(DOT, bob()).unwrap();
             let bob_xor_borrowing_position = bob_user_info.get(&XOR).unwrap();
             let bob_repay_amount = bob_xor_borrowing_position.borrowing_interest;
 
