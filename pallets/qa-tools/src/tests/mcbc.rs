@@ -755,7 +755,7 @@ fn init_mcbc_and_check_quote_exchange(
                 .expect("must return price corresponding the input")
                 .clone(),
             results
-                .get(&TBCD.into())
+                .get(&TBCD)
                 .expect("must return price corresponding the input")
                 .clone(),
         );
