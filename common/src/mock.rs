@@ -93,9 +93,12 @@ impl From<PredefinedAssetId> for AssetId32<ComicAssetId> {
 impl From<PredefinedAssetId> for ComicAssetId {
     fn from(asset_id: PredefinedAssetId) -> Self {
         use ComicAssetId::*;
+        // only conversion; the `asset_id`'s place of construction must receive the warnings
+        #[allow(deprecated)]
         match asset_id {
             PredefinedAssetId::XOR => GoldenTicket,
-            #[cfg(any(feature = "private-net", test))]
+            PredefinedAssetId::DOT => AppleTree,
+            PredefinedAssetId::KSM => Apple,
             PredefinedAssetId::USDT => Teapot,
             PredefinedAssetId::VAL => Flower,
             PredefinedAssetId::PSWAP => RedPepper,
