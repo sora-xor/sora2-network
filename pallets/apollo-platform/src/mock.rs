@@ -16,11 +16,12 @@ use {
         parameter_types,
         traits::{Everything, GenesisBuild, Hooks},
     },
+    frame_system::offchain::SendTransactionTypes,
     frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin},
     permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
     sp_runtime::{
-        testing::Header,
+        testing::{Header, TestXt},
         traits::{BlakeTwo256, IdentityLookup, Zero},
         AccountId32, Perbill, Percent,
     },
@@ -81,6 +82,16 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
+}
+
+pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    type Extrinsic = MockExtrinsic;
+    type OverarchingCall = RuntimeCall;
 }
 
 parameter_types! {
