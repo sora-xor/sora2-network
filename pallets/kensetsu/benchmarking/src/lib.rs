@@ -235,20 +235,6 @@ benchmarks! {
         ).unwrap();
     }
 
-    withdraw_collateral {
-        initialize_liquidity_sources::<T>();
-        set_xor_as_collateral_type::<T>();
-        let cdp_id = create_cdp_with_xor::<T>();
-        let amount = balance!(10);
-        deposit_xor_collateral::<T>(cdp_id, amount);
-    }: {
-        kensetsu::Pallet::<T>::withdraw_collateral(
-            RawOrigin::Signed(caller::<T>()).into(),
-            cdp_id,
-            amount
-        ).unwrap();
-    }
-
     borrow {
         kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
             .expect("Must set risk manager");
