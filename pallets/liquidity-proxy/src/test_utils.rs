@@ -32,7 +32,7 @@ use crate::mock::{adar, AccountId, Assets, DEXId, LiquidityProxy};
 use crate::{BatchReceiverInfo, SwapBatchInfo};
 use common::prelude::{FixedWrapper, QuoteAmount, SwapOutcome};
 use common::{
-    assert_approx_eq, balance, AssetId32, AssetInfoProvider, Balance, LiquidityProxyTrait,
+    assert_approx_eq_abs, balance, AssetId32, AssetInfoProvider, Balance, LiquidityProxyTrait,
     LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, XOR,
 };
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ pub fn check_swap_batch_executed_amount(
         account_desired_amount
             .into_iter()
             .for_each(|(account_id, desired_amount)| {
-                assert_approx_eq!(
+                assert_approx_eq_abs!(
                     desired_amount,
                     Assets::free_balance(&asset_id, &account_id).unwrap(),
                     balance!(0.00001)
@@ -93,7 +93,7 @@ pub fn check_adar_commission(
 
     let adar_fee = calculate_adar_commission(actual_input_amount);
 
-    assert_approx_eq!(
+    assert_approx_eq_abs!(
         Assets::free_balance(&XOR, &adar()).unwrap(),
         adar_fee,
         balance!(0.02)

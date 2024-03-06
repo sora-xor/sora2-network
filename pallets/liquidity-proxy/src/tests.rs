@@ -37,14 +37,16 @@ use common::prelude::{
     AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapVariant,
 };
 use common::{
-    assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
-    Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT,
-    ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    assert_approx_eq_abs, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler,
+    FilterMode, Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, ReferencePriceProvider, RewardReason,
+    TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{assert_noop, assert_ok};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::DispatchError;
 use test_utils::mcbc_excluding_filter;
 
@@ -3053,7 +3055,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         .expect("Failed to get a quote");
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_xor_intermediate, balance!(1));
+        assert_approx_eq_abs!(quotes.amount, amount_xor_intermediate, balance!(1));
         assert_eq!(quotes.fee, balance!(0));
         assert!(matches!(
             dist.as_slice(),
@@ -3090,7 +3092,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
+        assert_approx_eq_abs!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
         assert!(amount_without_impact.unwrap() > quotes.amount);
 
         // Buying KSM for XOR
@@ -3106,7 +3108,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         .expect("Failed to get a quote");
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_ksm_out, balance!(1));
+        assert_approx_eq_abs!(quotes.amount, amount_ksm_out, balance!(1));
         assert_eq!(quotes.fee, balance!(0));
         assert!(matches!(
             dist.as_slice(),
@@ -3143,7 +3145,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
+        assert_approx_eq_abs!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
         assert!(amount_without_impact.unwrap() > quotes.amount);
 
         // Buying KSM for VAL
@@ -3162,8 +3164,8 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_ksm_out, balance!(1));
-        assert_approx_eq!(amount_without_impact.unwrap(), amount_ksm_out, balance!(20));
+        assert_approx_eq_abs!(quotes.amount, amount_ksm_out, balance!(1));
+        assert_approx_eq_abs!(amount_without_impact.unwrap(), amount_ksm_out, balance!(20));
         assert!(amount_without_impact.unwrap() > quotes.amount);
     });
 }
@@ -3198,7 +3200,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         .expect("Failed to get a quote");
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_val_in, balance!(1));
+        assert_approx_eq_abs!(quotes.amount, amount_val_in, balance!(1));
         assert_eq!(quotes.fee, balance!(0));
         assert!(matches!(
             dist.as_slice(),
@@ -3235,7 +3237,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             quotes.amount,
             amount_without_impact.unwrap(),
             balance!(5000)
@@ -3255,7 +3257,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         .expect("Failed to get a quote");
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_xor_intermediate, balance!(1));
+        assert_approx_eq_abs!(quotes.amount, amount_xor_intermediate, balance!(1));
         assert_eq!(quotes.fee, balance!(0));
         assert!(matches!(
             dist.as_slice(),
@@ -3292,7 +3294,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             quotes.amount,
             amount_without_impact.unwrap(),
             balance!(5000)
@@ -3315,8 +3317,8 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
-        assert_approx_eq!(
+        assert_approx_eq_abs!(quotes.amount, amount_val_in, balance!(100));
+        assert_approx_eq_abs!(
             amount_without_impact.unwrap(),
             amount_val_in,
             balance!(5000)
@@ -3651,6 +3653,7 @@ fn test_batch_swap_desired_input_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3658,8 +3661,12 @@ fn test_batch_swap_desired_input_successful() {
     });
 }
 
-#[test]
-fn test_batch_swap_emits_event() {
+fn test_batch_swap_event(
+    event_data: BoundedVec<
+        u8,
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch,
+    >,
+) {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         frame_system::Pallet::<Runtime>::set_block_number(1);
@@ -3690,12 +3697,27 @@ fn test_batch_swap_emits_event() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            Some(event_data.clone()),
         ));
 
         frame_system::Pallet::<Runtime>::assert_last_event(
-            crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(event_data)).into(),
         );
     });
+}
+
+#[test]
+fn test_batch_swap_emits_event() {
+    test_batch_swap_event(BoundedVec::try_from(vec![1, 2, 3, 32, 2, 13, 37]).unwrap());
+}
+
+#[test]
+fn test_batch_swap_max_additional_data() {
+    let max_data_len: u32 =
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch::get();
+    let max_additional_data =
+        BoundedVec::try_from(vec![255; max_data_len.try_into().unwrap()]).unwrap();
+    test_batch_swap_event(max_additional_data)
 }
 
 #[test]
@@ -3740,6 +3762,7 @@ fn test_batch_swap_duplicate_receivers_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3786,6 +3809,7 @@ fn test_batch_swap_desired_input_too_low() {
                 max_input_amount,
                 sources,
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::SlippageNotTolerated
         );
@@ -3832,6 +3856,7 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::AggregationError
         );
@@ -3986,7 +4011,7 @@ fn test_batch_swap_asset_reuse_works() {
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356400),
             balance!(0.00001)
@@ -4023,6 +4048,7 @@ fn test_batch_swap_asset_reuse_works() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -4033,17 +4059,17 @@ fn test_batch_swap_asset_reuse_works() {
         frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356394.934457262),
             balance!(0.00001)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&KSM, &alice()).unwrap(),
             balance!(1990),
             balance!(0.00001)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(11989.975),
             balance!(0.00001)
@@ -4084,6 +4110,7 @@ fn test_batch_swap_asset_reuse_fails() {
                 max_input_amount,
                 sources.clone(),
                 filter_mode,
+                None,
             ),
             Error::<Runtime>::InsufficientBalance
         );
@@ -4120,18 +4147,18 @@ fn test_xorless_transfer_works() {
             Default::default(),
         ));
 
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
             balance!(11998),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356401),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &bob()).unwrap(),
             balance!(1),
             balance!(0.01)
@@ -4169,18 +4196,18 @@ fn test_xorless_transfer_without_swap_works() {
             Default::default(),
         ));
 
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
             balance!(11999),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356400),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &bob()).unwrap(),
             balance!(1),
             balance!(0.01)
