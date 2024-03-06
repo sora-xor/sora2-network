@@ -21,12 +21,12 @@
     amount: U256
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.Mint.html" title="struct substrate_gen::runtime::erc20_app::calls::Mint">Mint</a>&gt;</h4></section><section id="method.register_asset_internal" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.register_asset_internal" class="fn">register_asset_internal</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     contract: H160
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.RegisterAssetInternal.html" title="struct substrate_gen::runtime::erc20_app::calls::RegisterAssetInternal">RegisterAssetInternal</a>&gt;</h4></section><section id="method.burn" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.burn" class="fn">burn</a>(
     &amp;self,
     network_id: U256,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     recipient: H160,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.Burn.html" title="struct substrate_gen::runtime::erc20_app::calls::Burn">Burn</a>&gt;</h4></section><section id="method.register_erc20_asset" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.register_erc20_asset" class="fn">register_erc20_asset</a>(
@@ -40,12 +40,12 @@
     &amp;self,
     network_id: U256,
     address: H160,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     decimals: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.RegisterExistingErc20Asset.html" title="struct substrate_gen::runtime::erc20_app::calls::RegisterExistingErc20Asset">RegisterExistingErc20Asset</a>&gt;</h4></section><section id="method.register_native_asset" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.register_native_asset" class="fn">register_native_asset</a>(
     &amp;self,
     network_id: U256,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.RegisterNativeAsset.html" title="struct substrate_gen::runtime::erc20_app::calls::RegisterNativeAsset">RegisterNativeAsset</a>&gt;</h4></section><section id="method.register_native_app" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.register_native_app" class="fn">register_native_app</a>(
     &amp;self,
     network_id: U256,

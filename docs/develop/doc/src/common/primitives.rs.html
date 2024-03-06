@@ -1262,6 +1262,38 @@
 <a href="#1247" id="1247">1247</a>
 <a href="#1248" id="1248">1248</a>
 <a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1392,34 +1424,64 @@
     }
 }
 
-<span class="doccomment">/// Asset identifier.
-</span><span class="attr">#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-#[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize, Hash))]
-#[repr(u8)]
-</span><span class="kw">pub enum </span>PredefinedAssetId {
-    XOR = <span class="number">0</span>,
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;private-net&quot;</span>, test))]
-    </span>USDT = <span class="number">3</span>,
-    VAL = <span class="number">4</span>,
-    PSWAP = <span class="number">5</span>,
-    DAI = <span class="number">6</span>,
-    ETH = <span class="number">7</span>,
-    XSTUSD = <span class="number">8</span>,
-    XST = <span class="number">9</span>,
-    TBCD = <span class="number">10</span>,
-    KUSD = <span class="number">11</span>,
+<span class="kw">pub use </span>_allowed_deprecated::PredefinedAssetId;
+
+<span class="comment">// separate module where deprecated usage is allowed;
+// in order to fix deprecated warnings in derive macros
+</span><span class="kw">mod </span>_allowed_deprecated {
+    <span class="attr">#![allow(deprecated)]
+
+    </span><span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
+    <span class="kw">use </span>frame_support::RuntimeDebug;
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
+    </span><span class="kw">use </span>serde::{Deserialize, Serialize};
+
+    <span class="doccomment">/// Asset identifier.
+    ///
+    /// Note: actual asset ids used for `DOT`, `KSM`, and `USDT` are different from predefined ones,
+    /// so they shouldn&#39;t be used.
+    </span><span class="attr">#[derive(
+        Encode,
+        Decode,
+        Eq,
+        PartialEq,
+        Copy,
+        Clone,
+        PartialOrd,
+        Ord,
+        RuntimeDebug,
+        scale_info::TypeInfo,
+        MaxEncodedLen,
+    )]
+    #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize, Hash))]
+    #[repr(u8)]
+    </span><span class="kw">pub enum </span>PredefinedAssetId {
+        XOR = <span class="number">0</span>,
+        <span class="attr">#[deprecated(
+            note = <span class="string">&quot;asset id for this variant is either absent or different in all environments; \
+                refrain from using the predefined version.&quot;
+        </span>)]
+        </span>DOT = <span class="number">1</span>,
+        <span class="attr">#[deprecated(
+            note = <span class="string">&quot;asset id for this variant is either absent or different in all environments; \
+                    refrain from using the predefined version.&quot;
+        </span>)]
+        </span>KSM = <span class="number">2</span>,
+        <span class="attr">#[deprecated(
+            note = <span class="string">&quot;asset id for this variant is different in production; refrain from using \
+                    the predefined version.&quot;
+        </span>)]
+        </span>USDT = <span class="number">3</span>,
+        VAL = <span class="number">4</span>,
+        PSWAP = <span class="number">5</span>,
+        DAI = <span class="number">6</span>,
+        ETH = <span class="number">7</span>,
+        XSTUSD = <span class="number">8</span>,
+        XST = <span class="number">9</span>,
+        TBCD = <span class="number">10</span>,
+        KUSD = <span class="number">11</span>,
+    }
 }
 
 <span class="kw">pub const </span>XOR: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -1453,7 +1515,9 @@
 </span><span class="kw">pub const </span>ROC: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_bytes(<span class="macro">hex!</span>(
     <span class="string">&quot;0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7&quot;
 </span>));
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;private-net&quot;</span>, test))]
+<span class="comment">// `private-net` is not used in prod
+</span><span class="attr">#[allow(deprecated)]
+#[cfg(any(feature = <span class="string">&quot;private-net&quot;</span>, test))]
 </span><span class="kw">pub const </span>USDT: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_asset_id(PredefinedAssetId::USDT);
 <span class="attr">#[cfg(not(any(feature = <span class="string">&quot;private-net&quot;</span>, test)))]
 </span><span class="kw">pub const </span>USDT: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_bytes(<span class="macro">hex!</span>(

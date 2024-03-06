@@ -3396,6 +3396,8 @@
 <a href="#3381" id="3381">3381</a>
 <a href="#3382" id="3382">3382</a>
 <a href="#3383" id="3383">3383</a>
+<a href="#3384" id="3384">3384</a>
+<a href="#3385" id="3385">3385</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4436,7 +4438,8 @@
     <span class="kw">pub const </span>MaxSubAccounts: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>MaxAdditionalFields: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>MaxRegistrars: u32 = <span class="number">20</span>;
-    <span class="kw">pub const </span>MaxAdditionalDataLength: u32 = <span class="number">128</span>;
+    <span class="kw">pub const </span>MaxAdditionalDataLengthXorlessTransfer: u32 = <span class="number">128</span>;
+    <span class="kw">pub const </span>MaxAdditionalDataLengthSwapTransferBatch: u32 = <span class="number">2000</span>;
     <span class="kw">pub </span>ReferralsReservesAcc: AccountId = {
         <span class="kw">let </span>tech_account_id = TechAccountId::from_generic_pair(
             <span class="string">b&quot;referrals&quot;</span>.to_vec(),
@@ -4467,7 +4470,8 @@
         pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">1</span>, <span class="number">2</span>&gt;,
         EnsureRoot&lt;AccountId&gt;,
     &gt;;
-    <span class="kw">type </span>MaxAdditionalDataLength = MaxAdditionalDataLength;
+    <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
+    <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
 }
 
 <span class="kw">impl </span>mock_liquidity_source::Config&lt;mock_liquidity_source::Instance1&gt; <span class="kw">for </span>Runtime {

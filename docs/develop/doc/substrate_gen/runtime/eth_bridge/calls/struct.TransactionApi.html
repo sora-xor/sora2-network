@@ -27,7 +27,7 @@ network.</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.add_asset" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.add_asset" class="fn">add_asset</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     network_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.AddAsset.html" title="struct substrate_gen::runtime::eth_bridge::calls::AddAsset">AddAsset</a>&gt;</h4></section></summary><div class="docblock"><p>Add a Thischain asset to the bridge whitelist.</p>
 <p>Can only be called by root.</p>
@@ -54,7 +54,7 @@ network.</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.transfer_to_sidechain" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.transfer_to_sidechain" class="fn">transfer_to_sidechain</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     to: H160,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>,
     network_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
@@ -183,13 +183,13 @@ removes it from the request queues.</p>
 <p>Can only be called by a root account.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.remove_sidechain_asset" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.remove_sidechain_asset" class="fn">remove_sidechain_asset</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     network_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.RemoveSidechainAsset.html" title="struct substrate_gen::runtime::eth_bridge::calls::RemoveSidechainAsset">RemoveSidechainAsset</a>&gt;</h4></section></summary><div class="docblock"><p>Remove asset</p>
 <p>Can only be called by root.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.register_existing_sidechain_asset" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.register_existing_sidechain_asset" class="fn">register_existing_sidechain_asset</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     token_address: H160,
     network_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.RegisterExistingSidechainAsset.html" title="struct substrate_gen::runtime::eth_bridge::calls::RegisterExistingSidechainAsset">RegisterExistingSidechainAsset</a>&gt;</h4></section></summary><div class="docblock"><p>Register existing asset</p>

@@ -28,7 +28,7 @@ AssetSymbol should represent string with only uppercase latin chars with max len
 AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.transfer" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.transfer" class="fn">transfer</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     to: AccountId32,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.Transfer.html" title="struct substrate_gen::runtime::assets::calls::Transfer">Transfer</a>&gt;</h4></section></summary><div class="docblock"><p>Performs a checked Asset transfer.</p>
@@ -40,7 +40,7 @@ AssetName should represent string with only uppercase or lowercase latin chars o
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.mint" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.mint" class="fn">mint</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     to: AccountId32,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.Mint.html" title="struct substrate_gen::runtime::assets::calls::Mint">Mint</a>&gt;</h4></section></summary><div class="docblock"><p>Performs a checked Asset mint, can only be done
@@ -53,7 +53,7 @@ by corresponding asset owner account.</p>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.force_mint" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.force_mint" class="fn">force_mint</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     to: AccountId32,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.ForceMint.html" title="struct substrate_gen::runtime::assets::calls::ForceMint">ForceMint</a>&gt;</h4></section></summary><div class="docblock"><p>Performs an unchecked Asset mint, can only be done
@@ -69,7 +69,7 @@ perform extra actions for minting, such as buy-back, extra-minting and etc.</p>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.burn" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.burn" class="fn">burn</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.Burn.html" title="struct substrate_gen::runtime::assets::calls::Burn">Burn</a>&gt;</h4></section></summary><div class="docblock"><p>Performs a checked Asset burn, can only be done
 by corresponding asset owner with own account.</p>
@@ -81,7 +81,7 @@ by corresponding asset owner with own account.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.update_balance" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.update_balance" class="fn">update_balance</a>(
     &amp;self,
     who: AccountId32,
-    currency_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    currency_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.i128.html">i128</a>
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.UpdateBalance.html" title="struct substrate_gen::runtime::assets::calls::UpdateBalance">UpdateBalance</a>&gt;</h4></section></summary><div class="docblock"><p>Add or remove abs(<code>by_amount</code>) from the balance of <code>who</code> under
 <code>currency_id</code>. If positive <code>by_amount</code>, do add, else do remove.</p>
@@ -90,7 +90,7 @@ for testing purposes.</p>
 <p>TODO: move into tests extrinsic collection pallet</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.set_non_mintable" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.set_non_mintable" class="fn">set_non_mintable</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.SetNonMintable.html" title="struct substrate_gen::runtime::assets::calls::SetNonMintable">SetNonMintable</a>&gt;</h4></section></summary><div class="docblock"><p>Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.
 Operation can not be undone.</p>
 <ul>
@@ -99,7 +99,7 @@ Operation can not be undone.</p>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.update_info" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.update_info" class="fn">update_info</a>(
     &amp;self,
-    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/enum.PredefinedAssetId.html" title="enum common::primitives::PredefinedAssetId">PredefinedAssetId</a>&gt;,
+    asset_id: <a class="struct" href="../../../../common/primitives/struct.AssetId32.html" title="struct common::primitives::AssetId32">AssetId32</a>&lt;<a class="enum" href="../../../../common/primitives/_allowed_deprecated/enum.PredefinedAssetId.html" title="enum common::primitives::_allowed_deprecated::PredefinedAssetId">PredefinedAssetId</a>&gt;,
     new_symbol: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../../common/primitives/struct.AssetSymbol.html" title="struct common::primitives::AssetSymbol">AssetSymbol</a>&gt;,
     new_name: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../../common/primitives/struct.AssetName.html" title="struct common::primitives::AssetName">AssetName</a>&gt;
 ) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.UpdateInfo.html" title="struct substrate_gen::runtime::assets::calls::UpdateInfo">UpdateInfo</a>&gt;</h4></section></summary><div class="docblock"><p>Change information about asset. Can only be done by root</p>

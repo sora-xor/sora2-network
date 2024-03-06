@@ -2774,6 +2774,14 @@
 <a href="#2759" id="2759">2759</a>
 <a href="#2760" id="2760">2760</a>
 <a href="#2761" id="2761">2761</a>
+<a href="#2762" id="2762">2762</a>
+<a href="#2763" id="2763">2763</a>
+<a href="#2764" id="2764">2764</a>
+<a href="#2765" id="2765">2765</a>
+<a href="#2766" id="2766">2766</a>
+<a href="#2767" id="2767">2767</a>
+<a href="#2768" id="2768">2768</a>
+<a href="#2769" id="2769">2769</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5164,7 +5172,8 @@
         <span class="kw">type </span>LockedLiquiditySourcesManager: LockedLiquiditySourcesManager&lt;LiquiditySourceType&gt;;
         <span class="kw">type </span>GetADARAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>ADARCommissionRatioUpdateOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin&gt;;
-        <span class="kw">type </span>MaxAdditionalDataLength: Get&lt;u32&gt;;
+        <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer: Get&lt;u32&gt;;
+        <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch: Get&lt;u32&gt;;
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
         <span class="doccomment">/// Weight information for the extrinsics in this Pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
@@ -5273,6 +5282,7 @@
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is
         ///                            determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        /// - `additional_data`: data to include in swap success event.
         </span><span class="attr">#[transactional]
         #[pallet::call_index(<span class="number">2</span>)]
         #[pallet::weight(Pallet::&lt;T&gt;::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
@@ -5283,6 +5293,7 @@
             max_input_amount: Balance,
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
+            additional_data: <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLengthSwapTransferBatch&gt;&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
 
@@ -5299,6 +5310,7 @@
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::BatchSwapExecuted(
                 adar_commission,
                 executed_input_amount,
+                additional_data,
             ));
 
             weight = weight.saturating_add(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer());
@@ -5406,7 +5418,7 @@
             max_amount_in: Balance,
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
-            additional_data: <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;&gt;,
+            additional_data: <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLengthXorlessTransfer&gt;&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>sender = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(sender != receiver, Error::&lt;T&gt;::TheSameSenderAndReceiver);
@@ -5466,8 +5478,12 @@
         <span class="doccomment">/// Liquidity source was disabled
         </span>LiquiditySourceDisabled(LiquiditySourceType),
         <span class="doccomment">/// Batch of swap transfers has been performed
-        /// [Input asset ADAR Fee, Input amount]
-        </span>BatchSwapExecuted(Balance, Balance),
+        /// [Input asset ADAR Fee, Input amount, Additional Data]
+        </span>BatchSwapExecuted(
+            Balance,
+            Balance,
+            <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLengthSwapTransferBatch&gt;&gt;,
+        ),
         <span class="doccomment">/// XORless transfer has been performed
         /// [Asset Id, Caller Account, Receiver Account, Amount, Additional Data]
         </span>XorlessTransfer(
@@ -5475,7 +5491,7 @@
             AccountIdOf&lt;T&gt;,
             AccountIdOf&lt;T&gt;,
             Balance,
-            <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLength&gt;&gt;,
+            <span class="prelude-ty">Option</span>&lt;BoundedVec&lt;u8, T::MaxAdditionalDataLengthXorlessTransfer&gt;&gt;,
         ),
         <span class="doccomment">/// ADAR fee which is withdrawn from reused outcome asset amount
         /// [Asset Id, ADAR Fee]
