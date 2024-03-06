@@ -34,7 +34,7 @@ use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, AssetInfoProvider};
+use common::{balance, AssetInfoProvider, DexInfoProvider};
 use sp_runtime::traits::Zero;
 
 use crate::to_fixed_wrapper;
@@ -241,11 +241,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             let source_amount = self.source.amount.unwrap();
             let destination_amount = self.destination.amount.unwrap();
 
-            let mut fee = if self.dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                self.fee.get_xstusd()
-            } else {
-                self.fee.get_xor()
-            };
+            let dex_info = T::DexInfoProvider::get_dex_info(&self.dex_id)?;
+
+            // in XOR for dex_id = 0
+            // in XSTUSD for dex_id = 1
+            let mut fee = self.fee.get_by_asset(&dex_info.base_asset_id);
 
             // Set recommended or check that fee is correct.
             #[allow(unused_assignments)]
@@ -351,11 +351,11 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 self.fee_account.as_ref().unwrap(),
             )?;
 
-            let fee = if self.dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                self.fee.get_xstusd()
-            } else {
-                self.fee.get_xor()
-            };
+            let dex_info = T::DexInfoProvider::get_dex_info(&self.dex_id)?;
+
+            // in XOR for dex_id = 0
+            // in XSTUSD for dex_id = 1
+            let fee = self.fee.get_by_asset(&dex_info.base_asset_id);
 
             if self.get_fee_from_destination.unwrap() {
                 technical::Pallet::<T>::transfer_in(

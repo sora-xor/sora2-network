@@ -376,8 +376,8 @@ impl<T: Config<I>, I: 'static>
                         target_reserve_b,
                         deduce_fee,
                     )?;
-                    let outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor().into();
-                    let outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor().into();
+                    let outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    let outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     let amount = outcome_b
                         .amount
                         .into_bits()
@@ -403,8 +403,8 @@ impl<T: Config<I>, I: 'static>
                         target_reserve_a,
                         deduce_fee,
                     )?;
-                    let outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor().into();
-                    let outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor().into();
+                    let outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    let outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     let amount = outcome_a
                         .amount
                         .into_bits()

@@ -32,17 +32,17 @@ use core::convert::{TryFrom, TryInto};
 use core::ops::{Mul, MulAssign};
 use core::result::Result;
 
-use alloc::collections::BTreeMap;
 use codec::{Decode, Encode, MaxEncodedLen};
+use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingMul;
-use fixnum::ops::{RoundMode::*, Zero as _};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto, Zero};
+use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto};
 use sp_std::mem;
 use sp_std::ops::{Add, Sub};
 
+use crate::outcome_fee::OutcomeFee;
 use crate::primitives::Balance;
 use crate::Fixed;
 
@@ -602,157 +602,6 @@ where
                 self.rmul(max_amount_in.into(), Floor).unwrap().into(),
             ),
         }
-    }
-}
-
-#[derive(
-    Encode,
-    Decode,
-    Default,
-    Eq,
-    PartialEq,
-    Clone,
-    Ord,
-    PartialOrd,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OutcomeFee<AssetId: Ord, AmountType>(
-    pub sp_std::collections::btree_map::BTreeMap<AssetId, AmountType>,
-);
-
-impl<AssetId: Ord, AmountType> OutcomeFee<AssetId, AmountType> {
-    pub fn new() -> Self {
-        Self(BTreeMap::new())
-    }
-}
-
-impl<AssetId: Ord, AmountType: Zero> OutcomeFee<AssetId, AmountType> {
-    pub fn from_asset(asset: AssetId, amount: AmountType) -> Self {
-        if amount.is_zero() {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(asset, amount)]))
-        }
-    }
-}
-
-// Most used fee assets
-impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
-where
-    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Copy + Zero,
-{
-    pub fn xor(amount: AmountType) -> Self {
-        if amount.is_zero() {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(crate::XOR.into(), amount)]))
-        }
-    }
-
-    pub fn xst(amount: AmountType) -> Self {
-        if amount.is_zero() {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(crate::XST.into(), amount)]))
-        }
-    }
-
-    pub fn xstusd(amount: AmountType) -> Self {
-        if amount.is_zero() {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(crate::XSTUSD.into(), amount)]))
-        }
-    }
-}
-
-impl<AssetId> OutcomeFee<AssetId, Fixed>
-where
-    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-{
-    pub fn xor_fixed(amount: Fixed) -> Self {
-        if amount == Fixed::ZERO {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(crate::XOR.into(), amount)]))
-        }
-    }
-
-    pub fn xst_fixed(amount: Fixed) -> Self {
-        if amount == Fixed::ZERO {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(crate::XST.into(), amount)]))
-        }
-    }
-
-    pub fn xstusd_fixed(amount: Fixed) -> Self {
-        if amount == Fixed::ZERO {
-            Self::new()
-        } else {
-            Self(BTreeMap::from([(crate::XSTUSD.into(), amount)]))
-        }
-    }
-}
-
-impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
-where
-    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Default + Copy,
-{
-    pub fn get_xor(&self) -> AmountType {
-        self.0.get(&crate::XOR.into()).copied().unwrap_or_default()
-    }
-
-    pub fn get_xst(&self) -> AmountType {
-        self.0.get(&crate::XST.into()).copied().unwrap_or_default()
-    }
-
-    pub fn get_xstusd(&self) -> AmountType {
-        self.0
-            .get(&crate::XSTUSD.into())
-            .copied()
-            .unwrap_or_default()
-    }
-}
-
-impl<AssetId, AmountType> OutcomeFee<AssetId, AmountType>
-where
-    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Copy + sp_runtime::traits::Saturating,
-{
-    pub fn add_xor(&mut self, amount: AmountType) {
-        self.0
-            .entry(crate::XOR.into())
-            .and_modify(|xor_amount| *xor_amount = xor_amount.saturating_add(amount))
-            .or_insert(amount);
-    }
-
-    pub fn add_xst(&mut self, amount: AmountType) {
-        self.0
-            .entry(crate::XST.into())
-            .and_modify(|xst_amount| *xst_amount = xst_amount.saturating_add(amount))
-            .or_insert(amount);
-    }
-
-    pub fn add_xstusd(&mut self, amount: AmountType) {
-        self.0
-            .entry(crate::XSTUSD.into())
-            .and_modify(|xstusd_amount| *xstusd_amount = xstusd_amount.saturating_add(amount))
-            .or_insert(amount);
-    }
-
-    pub fn merge(mut self, other: Self) -> Self {
-        for (asset, other_amount) in other.0 {
-            self.0
-                .entry(asset)
-                .and_modify(|amount| *amount = amount.saturating_add(other_amount))
-                .or_insert(other_amount);
-        }
-        self
     }
 }
 
