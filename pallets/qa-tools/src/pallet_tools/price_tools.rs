@@ -29,14 +29,57 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
+use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::ensure;
 use sp_arithmetic::traits::{CheckedDiv, One};
 
+/// Directly set buy & sell XOR prices of `asset_id` (prices of XOR in terms of `asset_id`);
+/// verifying the values beforehand.
+pub fn set_xor_prices<T: Config>(
+    asset_id: &AssetIdOf<T>,
+    xor_prices: AssetPrices,
+) -> DispatchResult {
+    ensure!(
+        xor_prices.buy >= xor_prices.sell,
+        Error::<T>::BuyLessThanSell
+    );
+    set_price_unchecked::<T>(asset_id, xor_prices.buy, PriceVariant::Buy)?;
+    set_price_unchecked::<T>(asset_id, xor_prices.sell, PriceVariant::Sell)?;
+    Ok(())
+}
+
+/// Set XOR prices of `asset_id` in `price_tools` given prices of `asset_id` in terms of
+/// `reference_asset_id`.
+///
+/// Returns actual achieved prices of `asset_id` in terms of `reference_asset_id`.
+pub fn setup_reference_prices<T: Config>(
+    asset_id: &AssetIdOf<T>,
+    reference_asset_id: &AssetIdOf<T>,
+    ref_prices: AssetPrices,
+) -> Result<AssetPrices, DispatchError> {
+    let xor_prices = calculate_xor_prices::<T>(
+        asset_id,
+        reference_asset_id,
+        ref_prices.buy,
+        ref_prices.sell,
+    )?;
+    let actual_prices = relative_prices::<T>(&xor_prices)?;
+    let CalculatedXorPrices {
+        asset_a: collateral_xor_prices,
+        asset_b: _,
+    } = xor_prices;
+    set_xor_prices::<T>(asset_id, collateral_xor_prices)?;
+    Ok(actual_prices)
+}
+
 /// Set price for the asset in `price_tools` ignoring internal limits on change of the price.
-pub(crate) fn set_price<T: Config>(
+/// Note that the values are not checked for sanity; it's possible to set values that result in
+/// crossed market.
+pub(crate) fn set_price_unchecked<T: Config>(
     asset_id: &T::AssetId,
     price: Balance,
     variant: PriceVariant,
@@ -69,8 +112,27 @@ pub struct CalculatedXorPrices {
     pub asset_b: AssetPrices,
 }
 
+/// calculates prices of A in terms of B (B per A) given XOR prices of both
+pub fn relative_prices<T: Config>(
+    xor_prices: &CalculatedXorPrices,
+) -> Result<AssetPrices, DispatchError> {
+    // formulae from `price_tools::get_average_price`
+    let quote_a_buy = BalanceUnit::one()
+        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.sell))
+        .ok_or(Error::<T>::ArithmeticError)?;
+    let quote_b_buy = BalanceUnit::divisible(xor_prices.asset_b.buy);
+    let quote_a_sell = BalanceUnit::one()
+        .checked_div(&BalanceUnit::divisible(xor_prices.asset_a.buy))
+        .ok_or(Error::<T>::ArithmeticError)?;
+    let quote_b_sell = BalanceUnit::divisible(xor_prices.asset_b.sell);
+
+    Ok(AssetPrices {
+        buy: *(quote_a_buy * quote_b_buy).balance(),
+        sell: *(quote_a_sell * quote_b_sell).balance(),
+    })
+}
 /// Calculate prices of XOR in the assets A and B given the expected relative price A in terms of B.
-/// The resulting prices can be directly used for [`set_price`]/`price_tools::incoming_spot_price`,
+/// The resulting prices can be directly used for [`set_xor_prices`]/`price_tools::incoming_spot_price`,
 /// as they require prices of XOR in terms of an asset.
 ///
 /// Note that if both A and B != XOR, then B must already have some price in the `price_tools`.
