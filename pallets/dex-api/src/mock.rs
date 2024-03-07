@@ -152,7 +152,8 @@ impl frame_system::Config for Runtime {
 // We need non-zero weight for testing weight calculation
 pub struct WeightedEmptyLiquiditySource;
 
-impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
+impl<DEXId, AccountId, AssetId: Ord>
+    LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
     for WeightedEmptyLiquiditySource
 {
     fn can_exchange(
@@ -173,7 +174,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote(
             target_id,
             input_asset_id,
@@ -208,7 +209,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         <()>::exchange(
             sender,
             receiver,
@@ -241,7 +242,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote_without_impact(
             target_id,
             input_asset_id,

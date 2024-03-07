@@ -189,7 +189,7 @@ impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityPro
         _amount: common::prelude::QuoteAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+    ) -> Result<common::prelude::SwapOutcome<Balance, AssetId>, sp_runtime::DispatchError> {
         // Implement if needed
         unimplemented!()
     }
@@ -205,7 +205,7 @@ impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityPro
         output_asset_id: &AssetId,
         amount: common::prelude::SwapAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
-    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+    ) -> Result<common::prelude::SwapOutcome<Balance, AssetId>, sp_runtime::DispatchError> {
         let amount = amount.amount();
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
@@ -222,7 +222,7 @@ impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityPro
             amount,
         )?;
 
-        Ok(SwapOutcome::new(amount, 0))
+        Ok(SwapOutcome::new(amount, Default::default()))
     }
 }
 

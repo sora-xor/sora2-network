@@ -376,7 +376,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         _output_asset_id: &AssetId,
         _amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -387,7 +387,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         let assets = vec![ETH, DAI, VAL, PSWAP, XOR, USDT];
         if assets.contains(output_asset_id) {
             // return error if output asset is predefined asset
@@ -396,7 +396,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         } else {
             // return some price for any custom asset
             // it is necessary for benchmark tests
-            Ok(SwapOutcome::new(balance!(2), 0))
+            Ok(SwapOutcome::new(balance!(2), Default::default()))
         }
     }
 }
