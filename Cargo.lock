@@ -2027,6 +2027,7 @@ dependencies = [
  "sp-std",
  "static_assertions",
  "strum 0.25.0",
+ "thiserror",
 ]
 
 [[package]]
@@ -9566,20 +9567,29 @@ name = "qa-tools"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "band",
  "common",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
+ "multicollateral-bonding-curve-pool",
+ "oracle-proxy",
  "order-book",
+ "pallet-balances",
  "parity-scale-codec",
+ "pool-xyk",
+ "price-tools",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "scale-info",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
+ "xst",
 ]
 
 [[package]]

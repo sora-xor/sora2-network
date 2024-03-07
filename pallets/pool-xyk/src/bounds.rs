@@ -34,18 +34,20 @@ use sp_runtime::RuntimeDebug;
 /// Values for resource amount
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub enum Bounds<Balance> {
-    /// This is a consequence of computations (not set by user).
+    /// A consequence of computations instead of a value set by a user.
     Calculated(Balance),
-    /// This value is set by user as fixed and determined value.
+    /// A value set by a user as fixed and determined value.
     Desired(Balance),
-    /// This is an unknown value, bounded by some logic or ranges.
+    /// An undetermined value, bounded by some logic or ranges.
     Min(Balance),
+    /// An undetermined value, bounded by some logic or ranges.
     Max(Balance),
-    /// This is an unknown value when pool is empty. When pool is not empty this works like a range.
+    /// A determined value when pool is empty.
+    /// When pool is not empty it works like a range.
     RangeFromDesiredToMin(Balance, Balance),
-    /// This is just an unknown value that must be calculated.
-    Decide,
-    /// This is used in some checks tests and predicates, than value is not needed.
+    /// An unknown value that must be calculated.
+    ToDecide,
+    /// Used in when value is not needed (checks tests and predicates).
     Dummy,
 }
 
