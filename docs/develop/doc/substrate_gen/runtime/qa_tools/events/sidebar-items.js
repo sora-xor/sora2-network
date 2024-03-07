@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OrderBooksCreated","OrderBooksFilled","XstInitialized","XykInitialized"]};
+window.SIDEBAR_ITEMS = {"struct":["McbcInitialized","OrderBooksCreated","OrderBooksFilled","XstInitialized","XykInitialized"]};

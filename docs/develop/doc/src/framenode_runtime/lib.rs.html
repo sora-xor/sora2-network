@@ -3398,11 +3398,6 @@
 <a href="#3383" id="3383">3383</a>
 <a href="#3384" id="3384">3384</a>
 <a href="#3385" id="3385">3385</a>
-<a href="#3386" id="3386">3386</a>
-<a href="#3387" id="3387">3387</a>
-<a href="#3388" id="3388">3388</a>
-<a href="#3389" id="3389">3389</a>
-<a href="#3390" id="3390">3390</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4866,10 +4861,6 @@
     <span class="kw">type </span>WeightInfo = faucet::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="macro">parameter_types! </span>{
-    <span class="kw">pub </span>QaToolsWhitelistCapacity: u32 = <span class="number">512</span>;
-}
-
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">impl </span>qa_tools::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -4877,7 +4868,6 @@
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>SyntheticInfoProvider = XSTPool;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
-    <span class="kw">type </span>QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
     <span class="kw">type </span>WeightInfo = qa_tools::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>Symbol = &lt;Runtime <span class="kw">as </span>band::Config&gt;::Symbol;
 }
@@ -5870,7 +5860,7 @@
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
         </span>Faucet: faucet::{Pallet, Call, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">80</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
-        </span>QATools: qa_tools::{Pallet, Call, Event&lt;T&gt;} = <span class="number">112</span>,
+        </span>QaTools: qa_tools::{Pallet, Call, Event&lt;T&gt;} = <span class="number">112</span>,
     }
 }
 

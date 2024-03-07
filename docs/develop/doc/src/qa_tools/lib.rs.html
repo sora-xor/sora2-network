@@ -421,6 +421,50 @@
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -481,7 +525,7 @@
     <span class="kw">use </span>assets::AssetIdOf;
     <span class="kw">use </span>common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, PriceVariant, SyntheticInfoProvider,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     <span class="kw">use </span>frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -505,6 +549,7 @@
         + price_tools::Config
         + band::Config
         + oracle_proxy::Config
+        + multicollateral_bonding_curve_pool::Config
     {
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -520,7 +565,6 @@
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
         <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;<span class="self">Self</span>::AssetId&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>QaToolsWhitelistCapacity: Get&lt;u32&gt;;
         <span class="kw">type </span>Symbol: From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>band::Config&gt;::Symbol&gt;
             + From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>xst::Config&gt;::Symbol&gt;
             + Into&lt;&lt;<span class="self">Self </span><span class="kw">as </span>xst::Config&gt;::Symbol&gt;
@@ -549,6 +593,11 @@
             <span class="doccomment">/// Exact `quote`/`exchange` calls achievable after the initialization.
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
             </span>quotes_achieved: Vec&lt;SyntheticOutput&lt;T::AssetId&gt;&gt;,
+        },
+        <span class="doccomment">/// Multicollateral bonding curve liquidity source has been initialized successfully.
+        </span>McbcInitialized {
+            <span class="doccomment">/// Exact reference prices achieved for the collateral assets.
+            </span>collateral_ref_prices: Vec&lt;(T::AssetId, pallet_tools::price_tools::AssetPrices)&gt;,
         },
     }
 
@@ -582,19 +631,27 @@
         </span>AssetsMustBeDivisible,
 
         <span class="comment">// xst errors
-        </span><span class="doccomment">/// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
-        </span>ReferenceAssetPriceNotFound,
-        <span class="doccomment">/// Cannot register new asset because it already exists.
+        </span><span class="doccomment">/// Cannot register new asset because it already exists.
         </span>AssetAlreadyExists,
         <span class="doccomment">/// Could not find already existing synthetic.
         </span>UnknownSynthetic,
+
+        <span class="comment">// mcbc errors
+        </span><span class="doccomment">/// Cannot initialize MCBC for unknown asset.
+        </span>UnknownMcbcAsset,
+        <span class="doccomment">/// TBCD must be initialized using different field/function (see `tbcd_collateral` and `TbcdCollateralInput`).
+        </span>IncorrectCollateralAsset,
+
+        <span class="comment">// price-tools errors
+        </span><span class="doccomment">/// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
+        /// You can use `price_tools_set_asset_price` extrinsic to set its price.
+        </span>ReferenceAssetPriceNotFound,
     }
 
     <span class="attr">#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     </span><span class="kw">pub enum </span>InputAssetId&lt;AssetId&gt; {
-        <span class="comment">// todo: uncomment
-        // McbcReference,
-        </span>XstReference,
+        McbcReference,
+        XstReference,
         Other(AssetId),
     }
 
@@ -605,8 +662,10 @@
             T::AssetId: From&lt;AssetId&gt;,
         {
             <span class="kw">match </span><span class="self">self </span>{
-                <span class="comment">// InputAssetId::McbcReference =&gt; multicollateral_bonding_curve::ReferenceAssetId::&lt;T&gt;::get(),
-                </span>InputAssetId::XstReference =&gt; xst::ReferenceAssetId::&lt;T&gt;::get(),
+                InputAssetId::McbcReference =&gt; {
+                    multicollateral_bonding_curve_pool::ReferenceAssetId::&lt;T&gt;::get()
+                }
+                InputAssetId::XstReference =&gt; xst::ReferenceAssetId::&lt;T&gt;::get(),
                 InputAssetId::Other(id) =&gt; id.into(),
             }
         }
@@ -788,6 +847,48 @@
             })
         }
 
+        <span class="doccomment">/// Initialize mcbc liquidity source.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `base_supply`: Control supply of XOR,
+        /// - `other_collaterals`: Variables related to arbitrary collateral-specific pricing,
+        /// - `tbcd_collateral`: TBCD-specific pricing variables.
+        </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::price_tools_set_reference_asset_price())]
+        </span><span class="kw">pub fn </span>mcbc_initialize(
+            origin: OriginFor&lt;T&gt;,
+            base_supply: <span class="prelude-ty">Option</span>&lt;pallet_tools::mcbc::BaseSupply&lt;T::AccountId&gt;&gt;,
+            other_collaterals: Vec&lt;pallet_tools::mcbc::OtherCollateralInput&lt;T::AssetId&gt;&gt;,
+            tbcd_collateral: <span class="prelude-ty">Option</span>&lt;pallet_tools::mcbc::TbcdCollateralInput&gt;,
+        ) -&gt; DispatchResultWithPostInfo {
+            ensure_root(origin)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>ref_prices = liquidity_sources::initialize_mcbc::&lt;T&gt;(
+                base_supply,
+                other_collaterals,
+                tbcd_collateral,
+            )
+            .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: <span class="prelude-val">None</span>,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })<span class="question-mark">?</span>;
+
+            <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::McbcInitialized {
+                collateral_ref_prices: ref_prices.into_iter().collect(),
+            });
+
+            <span class="comment">// Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            </span><span class="prelude-val">Ok</span>(PostDispatchInfo {
+                actual_weight: <span class="prelude-val">None</span>,
+                pays_fee: Pays::No,
+            })
+        }
+
         <span class="doccomment">/// Set prices of an asset in `price_tools` pallet.
         /// Ignores pallet restrictions on price speed change.
         ///
@@ -805,20 +906,7 @@
             ensure_root(origin)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>asset_id = asset_id.resolve::&lt;T&gt;();
-            <span class="macro">ensure!</span>(
-                asset_per_xor.sell &lt;= asset_per_xor.buy,
-                Error::&lt;T&gt;::BuyLessThanSell
-            );
-            pallet_tools::price_tools::set_price::&lt;T&gt;(
-                <span class="kw-2">&amp;</span>asset_id,
-                asset_per_xor.buy,
-                PriceVariant::Buy,
-            )<span class="question-mark">?</span>;
-            pallet_tools::price_tools::set_price::&lt;T&gt;(
-                <span class="kw-2">&amp;</span>asset_id,
-                asset_per_xor.sell,
-                PriceVariant::Sell,
-            )<span class="question-mark">?</span>;
+            pallet_tools::price_tools::set_xor_prices::&lt;T&gt;(<span class="kw-2">&amp;</span>asset_id, asset_per_xor)<span class="question-mark">?</span>;
 
             <span class="comment">// Extrinsic is only for testing, so we return all fees
             // for simplicity.

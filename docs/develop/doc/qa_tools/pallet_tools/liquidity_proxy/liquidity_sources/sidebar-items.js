@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_and_fill_order_book_batch","fill_order_book","initialize_xst","initialize_xyk"]};
+window.SIDEBAR_ITEMS = {"fn":["create_and_fill_order_book_batch","fill_order_book","initialize_mcbc","initialize_xst","initialize_xyk"]};

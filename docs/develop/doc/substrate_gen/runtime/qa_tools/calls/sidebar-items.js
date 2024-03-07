@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OrderBookCreateAndFillBatch","OrderBookFillBatch","PriceToolsSetAssetPrice","TransactionApi","XstInitialize","XykInitialize"]};
+window.SIDEBAR_ITEMS = {"struct":["McbcInitialize","OrderBookCreateAndFillBatch","OrderBookFillBatch","PriceToolsSetAssetPrice","TransactionApi","XstInitialize","XykInitialize"]};
