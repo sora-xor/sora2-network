@@ -465,6 +465,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 }
 
 impl crate::Config for Runtime {
+    const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self> = 150;
     type RuntimeEvent = RuntimeEvent;
     type PriceTools = MockPriceTools;
     type LiquidityProxyPallet = MockLiquidityProxy;

@@ -76,14 +76,13 @@ pub mod pallet {
         + liquidity_proxy::Config
         + SendTransactionTypes<Call<Self>>
     {
+        const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsPallet<Self::AssetId>;
         type LiquidityProxyPallet: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
-    // type PriceTools<T> = price_tools::Pallet<T>;
-    // type LiquidityProxy<T> = liquidity_proxy::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
@@ -121,6 +120,12 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn pool_info)]
     pub type PoolData<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, PoolInfo, OptionQuery>;
+
+    /// BlockNumber -> AssetId (for updating pools interests by block)
+    #[pallet::storage]
+    #[pallet::getter(fn pools_by_block)]
+    pub type PoolsByBlock<T: Config> =
+        StorageMap<_, Identity, BlockNumberFor<T>, AssetIdOf<T>, OptionQuery>;
 
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
@@ -350,6 +355,11 @@ pub mod pallet {
             };
 
             <PoolData<T>>::insert(asset_id, pool_info);
+
+            // Add pool to PoolsByBlock map
+            let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
+            let block_number: BlockNumberFor<T> = num_of_pools.into();
+            <PoolsByBlock<T>>::insert(block_number, asset_id);
 
             Self::deposit_event(Event::PoolAdded(user, asset_id));
             Ok(().into())
@@ -1206,42 +1216,38 @@ pub mod pallet {
 
         fn update_interests(block_number: BlockNumberFor<T>) -> Weight {
             let mut counter: u64 = 0;
+            let pool_index = block_number % T::BLOCKS_PER_FIFTEEN_MINUTES;
+            let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
+            if pool_index > num_of_pools.into() {
+                return counter.into();
+            }
+            let pool_asset = <PoolsByBlock<T>>::get(pool_index).unwrap_or_default();
 
             // Update lending interests
-            let mut rewards_by_pools: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
-            for (asset_id, user, mut user_info) in UserLendingInfo::<T>::iter() {
+            let mut rewards: Balance = 0;
+            for (account_id, mut user_info) in UserLendingInfo::<T>::iter_prefix(pool_asset) {
                 let user_interests =
-                    Self::calculate_lending_earnings(&user, asset_id, block_number);
+                    Self::calculate_lending_earnings(&account_id, pool_asset, block_number);
                 user_info.lending_interest += user_interests.0 + user_interests.1;
                 user_info.last_lending_block = block_number;
+                rewards += user_interests.1;
 
-                if rewards_by_pools.contains_key(&asset_id) {
-                    let mut rewards = rewards_by_pools[&asset_id];
-                    rewards += user_interests.1;
-                    rewards_by_pools.insert(asset_id, rewards);
-                } else {
-                    rewards_by_pools.insert(asset_id, user_interests.1);
-                }
-
-                <UserLendingInfo<T>>::insert(asset_id, user.clone(), user_info);
+                <UserLendingInfo<T>>::insert(pool_asset, account_id.clone(), user_info);
                 counter += 1;
             }
 
-            for (pool_asset_id, mut pool_info) in PoolData::<T>::iter() {
-                pool_info.rewards = pool_info
-                    .rewards
-                    .checked_sub(rewards_by_pools[&pool_asset_id])
-                    .unwrap_or(0);
-                <PoolData<T>>::insert(pool_asset_id, pool_info);
-                counter += 1;
-            }
+            // Update pool rewards
+            let mut pool_info = <PoolData<T>>::get(pool_asset).unwrap();
+            pool_info.rewards = pool_info.rewards.checked_sub(rewards).unwrap_or(0);
+            <PoolData<T>>::insert(pool_asset, pool_info);
+            counter += 1;
 
             // Update borrowing interests
-            for (asset_id, user, mut user_infos) in UserBorrowingInfo::<T>::iter() {
+            for (account_id, mut user_infos) in UserBorrowingInfo::<T>::iter_prefix(pool_asset) {
                 for (collateral_asset, mut user_info) in user_infos.iter_mut() {
                     let user_interests = Self::calculate_borrowing_interest_and_reward(
-                        &user,
-                        asset_id,
+                        &account_id,
+                        pool_asset,
                         *collateral_asset,
                         block_number,
                     );
@@ -1249,7 +1255,7 @@ pub mod pallet {
                     user_info.borrowing_rewards += user_interests.1;
                     user_info.last_borrowing_block = block_number;
                 }
-                <UserBorrowingInfo<T>>::insert(asset_id, user.clone(), user_infos.clone());
+                <UserBorrowingInfo<T>>::insert(pool_asset, account_id.clone(), user_infos.clone());
                 counter += 1;
             }
 
