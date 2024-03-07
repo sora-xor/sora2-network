@@ -9573,8 +9573,10 @@ dependencies = [
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
+ "multicollateral-bonding-curve-pool",
  "oracle-proxy",
  "order-book",
+ "pallet-balances",
  "parity-scale-codec",
  "pool-xyk",
  "price-tools",
@@ -9586,6 +9588,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
  "xst",
 ]
 

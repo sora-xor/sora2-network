@@ -58,7 +58,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{
         AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, PriceVariant, SyntheticInfoProvider,
+        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -82,6 +82,7 @@ pub mod pallet {
         + price_tools::Config
         + band::Config
         + oracle_proxy::Config
+        + multicollateral_bonding_curve_pool::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -97,7 +98,6 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
-        type QaToolsWhitelistCapacity: Get<u32>;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
@@ -126,6 +126,11 @@ pub mod pallet {
             /// Exact `quote`/`exchange` calls achievable after the initialization.
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
             quotes_achieved: Vec<SyntheticOutput<T::AssetId>>,
+        },
+        /// Multicollateral bonding curve liquidity source has been initialized successfully.
+        McbcInitialized {
+            /// Exact reference prices achieved for the collateral assets.
+            collateral_ref_prices: Vec<(T::AssetId, pallet_tools::price_tools::AssetPrices)>,
         },
     }
 
@@ -159,18 +164,26 @@ pub mod pallet {
         AssetsMustBeDivisible,
 
         // xst errors
-        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
-        ReferenceAssetPriceNotFound,
         /// Cannot register new asset because it already exists.
         AssetAlreadyExists,
         /// Could not find already existing synthetic.
         UnknownSynthetic,
+
+        // mcbc errors
+        /// Cannot initialize MCBC for unknown asset.
+        UnknownMcbcAsset,
+        /// TBCD must be initialized using different field/function (see `tbcd_collateral` and `TbcdCollateralInput`).
+        IncorrectCollateralAsset,
+
+        // price-tools errors
+        /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
+        /// You can use `price_tools_set_asset_price` extrinsic to set its price.
+        ReferenceAssetPriceNotFound,
     }
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
     pub enum InputAssetId<AssetId> {
-        // todo: uncomment
-        // McbcReference,
+        McbcReference,
         XstReference,
         Other(AssetId),
     }
@@ -182,7 +195,9 @@ pub mod pallet {
             T::AssetId: From<AssetId>,
         {
             match self {
-                // InputAssetId::McbcReference => multicollateral_bonding_curve::ReferenceAssetId::<T>::get(),
+                InputAssetId::McbcReference => {
+                    multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get()
+                }
                 InputAssetId::XstReference => xst::ReferenceAssetId::<T>::get(),
                 InputAssetId::Other(id) => id.into(),
             }
@@ -365,6 +380,48 @@ pub mod pallet {
             })
         }
 
+        /// Initialize mcbc liquidity source.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        /// - `base_supply`: Control supply of XOR,
+        /// - `other_collaterals`: Variables related to arbitrary collateral-specific pricing,
+        /// - `tbcd_collateral`: TBCD-specific pricing variables.
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::price_tools_set_reference_asset_price())]
+        pub fn mcbc_initialize(
+            origin: OriginFor<T>,
+            base_supply: Option<pallet_tools::mcbc::BaseSupply<T::AccountId>>,
+            other_collaterals: Vec<pallet_tools::mcbc::OtherCollateralInput<T::AssetId>>,
+            tbcd_collateral: Option<pallet_tools::mcbc::TbcdCollateralInput>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let ref_prices = liquidity_sources::initialize_mcbc::<T>(
+                base_supply,
+                other_collaterals,
+                tbcd_collateral,
+            )
+            .map_err(|e| DispatchErrorWithPostInfo {
+                post_info: PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                },
+                error: e,
+            })?;
+
+            Self::deposit_event(Event::<T>::McbcInitialized {
+                collateral_ref_prices: ref_prices.into_iter().collect(),
+            });
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
         /// Set prices of an asset in `price_tools` pallet.
         /// Ignores pallet restrictions on price speed change.
         ///
@@ -382,20 +439,7 @@ pub mod pallet {
             ensure_root(origin)?;
 
             let asset_id = asset_id.resolve::<T>();
-            ensure!(
-                asset_per_xor.sell <= asset_per_xor.buy,
-                Error::<T>::BuyLessThanSell
-            );
-            pallet_tools::price_tools::set_price::<T>(
-                &asset_id,
-                asset_per_xor.buy,
-                PriceVariant::Buy,
-            )?;
-            pallet_tools::price_tools::set_price::<T>(
-                &asset_id,
-                asset_per_xor.sell,
-                PriceVariant::Sell,
-            )?;
+            pallet_tools::price_tools::set_xor_prices::<T>(&asset_id, asset_per_xor)?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.

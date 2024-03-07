@@ -28,13 +28,45 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Pallet-separated tools. To avoid naming clashes and
-//! to distinguish logic related to different pallets.
+use crate::Config;
+use assets::AssetIdOf;
+use common::{AccountIdOf, FixedInner};
+use frame_support::dispatch::DispatchError;
+use sp_std::cmp::Ordering;
 
-pub mod assets;
-pub mod liquidity_proxy;
-pub mod mcbc;
-pub mod order_book;
-pub mod pool_xyk;
-pub mod price_tools;
-pub mod xst;
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    UnknownAsset,
+    Other(DispatchError),
+}
+
+impl<T: Into<DispatchError>> From<T> for Error {
+    fn from(value: T) -> Self {
+        Self::Other(value.into())
+    }
+}
+
+pub fn change_balance_by<T: Config>(
+    account: &AccountIdOf<T>,
+    asset: &AssetIdOf<T>,
+    balance_delta: FixedInner,
+) -> Result<(), Error> {
+    let owner = assets::Pallet::<T>::asset_owner(asset).ok_or(Error::UnknownAsset)?;
+    match balance_delta.cmp(&0) {
+        Ordering::Greater => {
+            let mint_amount = balance_delta
+                .try_into()
+                .map_err(|_| crate::Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::mint_to(asset, &owner, account, mint_amount)?;
+        }
+        Ordering::Less => {
+            let burn_amount = balance_delta
+                .abs()
+                .try_into()
+                .map_err(|_| crate::Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::burn_from(asset, &owner, account, burn_amount)?;
+        }
+        Ordering::Equal => (),
+    }
+    Ok(())
+}

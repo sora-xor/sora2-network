@@ -867,7 +867,7 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    fn initialize_pool_unchecked(
+    pub fn initialize_pool_unchecked(
         collateral_asset_id: T::AssetId,
         transactional: bool,
     ) -> DispatchResult {
