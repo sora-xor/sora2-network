@@ -1461,10 +1461,6 @@ impl faucet::Config for Runtime {
     type WeightInfo = faucet::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-    pub QaToolsWhitelistCapacity: u32 = 512;
-}
-
 #[cfg(feature = "private-net")]
 impl qa_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -1472,7 +1468,6 @@ impl qa_tools::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type SyntheticInfoProvider = XSTPool;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
 }
@@ -2465,7 +2460,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
-        QATools: qa_tools::{Pallet, Call, Event<T>} = 112,
+        QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 
