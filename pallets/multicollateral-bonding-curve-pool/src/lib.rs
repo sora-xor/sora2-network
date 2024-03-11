@@ -424,7 +424,7 @@ pub mod pallet {
         fixed!(1337)
     }
 
-    /// Cofficients in buy price function.
+    /// Coefficients in buy price function.
     #[pallet::storage]
     #[pallet::getter(fn price_change_step)]
     pub(super) type PriceChangeStep<T: Config> =
@@ -863,7 +863,7 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    fn initialize_pool_unchecked(
+    pub fn initialize_pool_unchecked(
         collateral_asset_id: T::AssetId,
         transactional: bool,
     ) -> DispatchResult {

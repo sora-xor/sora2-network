@@ -28,34 +28,45 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(rustfmt, rustfmt_skip)]
-#![allow(unused_parens)]
-#![allow(unused_imports)]
+use crate::Config;
+use assets::AssetIdOf;
+use common::{AccountIdOf, FixedInner};
+use frame_support::dispatch::DispatchError;
+use sp_std::cmp::Ordering;
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
-use core::marker::PhantomData;
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    UnknownAsset,
+    Other(DispatchError),
+}
 
-pub trait WeightInfo {
-    fn order_book_create_and_fill_batch() -> Weight {
-        Weight::zero()
-    }
-    fn order_book_fill_batch() -> Weight {
-        Weight::zero()
-    }
-    fn xyk_initialize() -> Weight {
-        Weight::zero()
-    }
-    fn xst_initialize() -> Weight {
-        Weight::zero()
-    }
-    fn price_tools_set_reference_asset_price() -> Weight {
-        Weight::zero()
+impl<T: Into<DispatchError>> From<T> for Error {
+    fn from(value: T) -> Self {
+        Self::Other(value.into())
     }
 }
 
-impl WeightInfo for () {}
-
-// This pallet is intended for use only in `private-net`
-// and for testing purposes, thus weights are not important.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {}
+pub fn change_balance_by<T: Config>(
+    account: &AccountIdOf<T>,
+    asset: &AssetIdOf<T>,
+    balance_delta: FixedInner,
+) -> Result<(), Error> {
+    let owner = assets::Pallet::<T>::asset_owner(asset).ok_or(Error::UnknownAsset)?;
+    match balance_delta.cmp(&0) {
+        Ordering::Greater => {
+            let mint_amount = balance_delta
+                .try_into()
+                .map_err(|_| crate::Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::mint_to(asset, &owner, account, mint_amount)?;
+        }
+        Ordering::Less => {
+            let burn_amount = balance_delta
+                .abs()
+                .try_into()
+                .map_err(|_| crate::Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::burn_from(asset, &owner, account, burn_amount)?;
+        }
+        Ordering::Equal => (),
+    }
+    Ok(())
+}
