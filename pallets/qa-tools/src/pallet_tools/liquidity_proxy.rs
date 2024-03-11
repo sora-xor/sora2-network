@@ -43,8 +43,8 @@ pub mod liquidity_sources {
     use pallet_tools::mcbc::{BaseSupply, OtherCollateralInput};
     use pallet_tools::pool_xyk::AssetPairInput;
     use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
+    use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
-    use std::collections::BTreeMap;
 
     /// Initialize xyk pool liquidity source.
     ///
