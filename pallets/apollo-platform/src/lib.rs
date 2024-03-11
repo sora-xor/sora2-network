@@ -730,7 +730,7 @@ pub mod pallet {
 
                 <UserBorrowingInfo<T>>::insert(borrowing_asset, user.clone(), &borrow_user_info);
 
-                Self::distribute_protocol_interest(borrowing_asset, amount_to_repay)?;
+                Self::distribute_protocol_interest(borrowing_asset, amount_to_repay, borrowing_asset)?;
             } else if amount_to_repay > user_info.borrowing_interest
                 && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
             {
@@ -760,7 +760,7 @@ pub mod pallet {
                 borrow_user_info.insert(collateral_asset, user_info);
                 <UserBorrowingInfo<T>>::insert(borrowing_asset, user.clone(), &borrow_user_info);
 
-                Self::distribute_protocol_interest(borrowing_asset, repaid_amount)?;
+                Self::distribute_protocol_interest(borrowing_asset, repaid_amount, borrowing_asset)?;
             } else if amount_to_repay >= user_info.borrowing_interest + user_info.borrowing_amount {
                 // If user is repaying the whole position
                 let total_borrowed_amount =
@@ -808,7 +808,7 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
                 <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
-                Self::distribute_protocol_interest(borrowing_asset, user_info.borrowing_interest)?;
+                Self::distribute_protocol_interest(borrowing_asset, user_info.borrowing_interest, borrowing_asset)?;
             }
 
             Self::deposit_event(Event::Repaid(user, borrowing_asset, amount_to_repay));
@@ -892,7 +892,6 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             let user_infos = UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap();
-            let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
             let mut sum_of_thresholds: Balance = 0;
             let mut total_borrowed: Balance = 0;
             let mut collaterals: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
@@ -931,7 +930,11 @@ pub mod pallet {
 
             // Distribute liquidated collaterals to users and reserves
             for (collateral_asset, collateral_amount) in collaterals.iter() {
-                let _ = Self::distribute_protocol_interest(*collateral_asset, *collateral_amount);
+                let _ = Self::distribute_protocol_interest(
+                    *collateral_asset,
+                    *collateral_amount,
+                    asset_id,
+                );
                 let mut collateral_pool_info = PoolData::<T>::get(*collateral_asset).unwrap();
                 collateral_pool_info.total_collateral = collateral_pool_info
                     .total_collateral
@@ -939,6 +942,8 @@ pub mod pallet {
                     .unwrap_or(0);
                 <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
             }
+            
+            let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
             borrow_pool_info.total_borrowed = borrow_pool_info
                 .total_borrowed
                 .checked_sub(total_borrowed)
@@ -1127,8 +1132,10 @@ pub mod pallet {
         pub fn distribute_protocol_interest(
             asset_id: AssetIdOf<T>,
             amount: Balance,
+            borrowing_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            let mut pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
+            let mut pool_info =
+                PoolData::<T>::get(borrowing_asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
             let caller = Self::account_id();
 
             // Calculate rewards and reserves amounts based on Reserve Factor
@@ -1153,7 +1160,7 @@ pub mod pallet {
 
             pool_info.rewards += buyback_amount;
 
-            <PoolData<T>>::insert(asset_id, pool_info);
+            <PoolData<T>>::insert(borrowing_asset_id, pool_info);
 
             // Calculate 60% of reserves to transfer APOLLO to treasury
             let apollo_amount = (FixedWrapper::from(reserves_amount)

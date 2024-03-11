@@ -140,34 +140,36 @@ mod test {
         .try_into_balance()
         .unwrap_or(0);
 
-        let mut profit_lending_rate: u128 = 0;
-        let mut borrowing_rate: u128 = 0;
+        //let mut profit_lending_rate: u128 = 0;
+        //let mut borrowing_rate: u128 = 0;
 
         if utilization_rate < pool_info.optimal_utilization_rate {
             // Update lending rate
-            profit_lending_rate = (FixedWrapper::from(pool_info.rewards)
+            let profit_lending_rate = (FixedWrapper::from(pool_info.rewards)
                 / FixedWrapper::from(balance!(5256000)))
             .try_into_balance()
             .unwrap_or(0);
 
             // Update borrowing_rate -> Rt = (R0 + (U / Uopt) * Rslope1) / one_year
-            borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
+            let borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
                 + (FixedWrapper::from(utilization_rate)
                     / FixedWrapper::from(pool_info.optimal_utilization_rate))
                     * FixedWrapper::from(pool_info.slope_rate_1))
                 / FixedWrapper::from(balance!(5256000)))
             .try_into_balance()
             .unwrap_or(0);
+
+            return (profit_lending_rate, borrowing_rate);
         } else {
             // Update lending rate
-            profit_lending_rate = ((FixedWrapper::from(pool_info.rewards)
+            let profit_lending_rate = ((FixedWrapper::from(pool_info.rewards)
                 / FixedWrapper::from(balance!(5256000)))
                 * (FixedWrapper::from(balance!(1)) + FixedWrapper::from(utilization_rate)))
             .try_into_balance()
             .unwrap_or(0);
 
             // Update borrowing_rate -> Rt = (R0 + Rslope1 + ((Ut - Uopt) / (1 - Uopt)) * Rslope2) / one_year
-            borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
+            let borrowing_rate = ((FixedWrapper::from(pool_info.base_rate)
                 + FixedWrapper::from(pool_info.slope_rate_1)
                 + ((FixedWrapper::from(utilization_rate)
                     - FixedWrapper::from(pool_info.optimal_utilization_rate))
@@ -177,9 +179,9 @@ mod test {
                 / FixedWrapper::from(balance!(5256000)))
             .try_into_balance()
             .unwrap_or(0);
-        }
 
-        return (profit_lending_rate, borrowing_rate);
+            return (profit_lending_rate, borrowing_rate); 
+        }
     }
 
     fn static_set_dex() {
@@ -3038,21 +3040,21 @@ mod test {
         });
     }
 
-    // #[test]
-    // fn get_price_ok() {
-    //     let mut ext = ExtBuilder::default().build();
-    //     ext.execute_with(|| {
-    //         let xor_price = ApolloPlatform::get_price(XOR);
-    //         let dot_price = ApolloPlatform::get_price(DOT);
-    //         let dai_price = ApolloPlatform::get_price(DAI);
-    //         let ksm_price = ApolloPlatform::get_price(KSM);
+    #[test]
+    fn get_price_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let xor_price = ApolloPlatform::get_price(XOR);
+            let dot_price = ApolloPlatform::get_price(DOT);
+            let dai_price = ApolloPlatform::get_price(DAI);
+            let ksm_price = ApolloPlatform::get_price(KSM);
 
-    //         assert_eq!(xor_price, balance!(1));
-    //         assert_eq!(dot_price, balance!(1));
-    //         assert_eq!(dai_price, balance!(1));
-    //         assert_eq!(ksm_price, balance!(1));
-    //     });
-    // }
+            assert_eq!(xor_price, balance!(1));
+            assert_eq!(dot_price, balance!(1));
+            assert_eq!(dai_price, balance!(0.1));
+            assert_eq!(ksm_price, balance!(1));
+        });
+    }
 
     #[test]
     fn calculate_lending_earnings_ok() {
@@ -3176,7 +3178,7 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                ApolloPlatform::distribute_protocol_interest(XOR, balance!(100)),
+                ApolloPlatform::distribute_protocol_interest(XOR, balance!(100), XOR),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -3208,7 +3210,7 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::distribute_protocol_interest(XOR, balance!(100)),
+                ApolloPlatform::distribute_protocol_interest(XOR, balance!(100), XOR),
                 Error::<Runtime>::CanNotTransferAmountToDevelopers
             );
         });
@@ -3258,7 +3260,8 @@ mod test {
 
             assert_ok!(ApolloPlatform::distribute_protocol_interest(
                 XOR,
-                balance!(100)
+                balance!(100),
+                XOR
             ));
 
             // Check borrowing asset pool values before repay
@@ -3697,11 +3700,19 @@ mod test {
 
             let borrowing_pool_before_lq = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
-            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice());
+            let borrow_user_info_before_lq =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrow_user_info_dot_coll_before_lq = borrow_user_info_before_lq.get(&DOT).unwrap();
+            let borrow_user_info_dai_coll_before_lq = borrow_user_info_before_lq.get(&DAI).unwrap();
 
-            // let borrow_user_info_before_lq = borrow_user_info.get(&XOR);
-
-            // assert_eq!(borrow_user_info_before_lq.collatera_amount, balance!(1100));
+            assert_eq!(
+                borrow_user_info_dot_coll_before_lq.collateral_amount,
+                balance!(100)
+            );
+            assert_eq!(
+                borrow_user_info_dai_coll_before_lq.collateral_amount,
+                balance!(1000)
+            );
 
             assert_eq!(borrowing_pool_before_lq.total_borrowed, balance!(200));
 
@@ -3785,7 +3796,7 @@ mod test {
                 balance!(0)
             );
 
-            // assert_eq!(borrowing_asset_pool_info_after_lq.rewards, balance!(990));
+            assert_eq!(borrowing_asset_pool_info_after_lq.rewards, balance!(990));
 
             assert_eq!(borrow_user_info_after_lq, None);
 
