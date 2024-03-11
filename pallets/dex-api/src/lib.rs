@@ -110,7 +110,7 @@ impl<T: Config>
             };
         }
         match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => quote!(XYKPool),
+            XYKPool => quote!(XYKPool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             XSTPool => quote!(XSTPool),
             OrderBook => quote!(OrderBook),

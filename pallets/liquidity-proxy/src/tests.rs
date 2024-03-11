@@ -2704,7 +2704,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 false,
                 true,
             );
-            assert_noop!(result, crate::Error::<Runtime>::InsufficientLiquidity);
+            assert_noop!(result, Error::<Runtime>::InsufficientLiquidity);
         });
     }
 
