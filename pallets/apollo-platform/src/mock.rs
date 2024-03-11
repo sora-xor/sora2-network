@@ -369,7 +369,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
     ) -> Result<Balance, sp_runtime::DispatchError> {
         match price_variant {
             PriceVariant::Buy => match (input_asset_id, output_asset_id) {
-                (&XOR, &DAI) => Ok(balance!(1)),
+                (&XOR, &DAI) => Ok(balance!(0.1)),
                 (&DAI, &XOR) => Ok(balance!(1)),
                 (&XOR, &DOT) => Ok(balance!(1)),
                 (&DOT, &XOR) => Ok(balance!(1)),
@@ -384,7 +384,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
                 _ => Ok(balance!(0)),
             },
             PriceVariant::Sell => match (input_asset_id, output_asset_id) {
-                (&XOR, &DAI) => Ok(balance!(1)),
+                (&XOR, &DAI) => Ok(balance!(0.1)),
                 (&DAI, &XOR) => Ok(balance!(1)),
                 (&XOR, &DOT) => Ok(balance!(1)),
                 (&DOT, &XOR) => Ok(balance!(1)),

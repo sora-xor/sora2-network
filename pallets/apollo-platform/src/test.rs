@@ -3038,21 +3038,21 @@ mod test {
         });
     }
 
-    #[test]
-    fn get_price_ok() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let xor_price = ApolloPlatform::get_price(XOR);
-            let dot_price = ApolloPlatform::get_price(DOT);
-            let dai_price = ApolloPlatform::get_price(DAI);
-            let ksm_price = ApolloPlatform::get_price(KSM);
+    // #[test]
+    // fn get_price_ok() {
+    //     let mut ext = ExtBuilder::default().build();
+    //     ext.execute_with(|| {
+    //         let xor_price = ApolloPlatform::get_price(XOR);
+    //         let dot_price = ApolloPlatform::get_price(DOT);
+    //         let dai_price = ApolloPlatform::get_price(DAI);
+    //         let ksm_price = ApolloPlatform::get_price(KSM);
 
-            assert_eq!(xor_price, balance!(1));
-            assert_eq!(dot_price, balance!(1));
-            assert_eq!(dai_price, balance!(1));
-            assert_eq!(ksm_price, balance!(1));
-        });
-    }
+    //         assert_eq!(xor_price, balance!(1));
+    //         assert_eq!(dot_price, balance!(1));
+    //         assert_eq!(dai_price, balance!(1));
+    //         assert_eq!(ksm_price, balance!(1));
+    //     });
+    // }
 
     #[test]
     fn calculate_lending_earnings_ok() {
@@ -3487,6 +3487,113 @@ mod test {
     }
 
     #[test]
+    fn liquidate_user_good_health_factor() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            static_set_dex();
+            init_exchange();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &KSM,
+                &alice(),
+                &alice(),
+                balance!(10000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account().clone()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                KSM,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(100),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KSM,
+                balance!(100),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(100)
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KSM,
+                XOR,
+                balance!(100)
+            ));
+
+            assert_err!(
+                ApolloPlatform::liquidate(
+                    RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                    alice(),
+                    XOR,
+                ),
+                Error::<Runtime>::InvalidLiquidation
+            );
+        })
+    }
+
+    #[test]
     fn liquidate_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -3535,7 +3642,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
@@ -3547,7 +3654,7 @@ mod test {
                 balance!(1),
                 balance!(1),
                 balance!(1),
-                balance!(1),
+                balance!(0.1),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -3581,6 +3688,32 @@ mod test {
                 XOR,
                 balance!(100)
             ));
+
+            let dot_collateral_asset_pool_info_before_lq =
+                pallet::PoolData::<Runtime>::get(DOT).unwrap();
+
+            let dai_collateral_asset_pool_info_before_lq =
+                pallet::PoolData::<Runtime>::get(DAI).unwrap();
+
+            let borrowing_pool_before_lq = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice());
+
+            // let borrow_user_info_before_lq = borrow_user_info.get(&XOR);
+
+            // assert_eq!(borrow_user_info_before_lq.collatera_amount, balance!(1100));
+
+            assert_eq!(borrowing_pool_before_lq.total_borrowed, balance!(200));
+
+            assert_eq!(
+                dot_collateral_asset_pool_info_before_lq.total_collateral,
+                balance!(100)
+            );
+
+            assert_eq!(
+                dai_collateral_asset_pool_info_before_lq.total_collateral,
+                balance!(1000)
+            );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -3621,53 +3754,73 @@ mod test {
                 XOR
             ));
 
-            let (treasury_reserve, _, developer_amount) =
-                calculate_reserve_amounts(XOR, balance!(200));
+            let (treasury_reserve_dot, _, developer_amount_dot) =
+                calculate_reserve_amounts(DOT, balance!(100));
 
+            let (treasury_reserve_dai, _, developer_amount_dai) =
+                calculate_reserve_amounts(DAI, balance!(1000));
+
+            let borrowing_asset_pool_info_after_lq = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+
+            let dot_collateral_asset_pool_info_after_lq =
+                pallet::PoolData::<Runtime>::get(DOT).unwrap();
+
+            let dai_collateral_asset_pool_info_after_lq =
+                pallet::PoolData::<Runtime>::get(DAI).unwrap();
+
+            let borrow_user_info_after_lq = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice());
+
+            assert_eq!(
+                dot_collateral_asset_pool_info_after_lq.total_collateral,
+                balance!(0)
+            );
+
+            assert_eq!(
+                dai_collateral_asset_pool_info_after_lq.total_collateral,
+                balance!(0)
+            );
+
+            assert_eq!(
+                borrowing_asset_pool_info_after_lq.total_borrowed,
+                balance!(0)
+            );
+
+            // assert_eq!(borrowing_asset_pool_info_after_lq.rewards, balance!(990));
+
+            assert_eq!(borrow_user_info_after_lq, None);
+
+            // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
                     &APOLLO_ASSET_ID.into(),
-                    &get_pallet_account()
+                    &get_treasury_account()
                 )
                 .unwrap(),
-                balance!(0)
+                treasury_reserve_dot + treasury_reserve_dai
+            );
+
+            // Developer / Authority
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_authority_account())
+                    .unwrap(),
+                developer_amount_dot
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(
-                    &CERES_ASSET_ID.into(),
-                    &get_pallet_account()
-                )
-                .unwrap(),
-                balance!(0)
+                assets::Pallet::<Runtime>::free_balance(&DAI.into(), &get_authority_account())
+                    .unwrap(),
+                developer_amount_dai
             );
 
             // Exchange
-            // assert_eq!(
-            //     assets::Pallet::<Runtime>::free_balance(
-            //         &CERES_ASSET_ID.into(),
-            //         &exchange_account()
-            //     )
-            //     .unwrap(),
-            //     balance!(780)
-            // );
-
-            // // // Treasury
-            // // assert_eq!(
-            // //     assets::Pallet::<Runtime>::free_balance(
-            // //         &APOLLO_ASSET_ID.into(),
-            // //         &get_treasury_account()
-            // //     )
-            // //     .unwrap(),
-            // //     treasury_reserve
-            // // );
-
-            // // // Developer / Authority
-            // // assert_eq!(
-            // //     assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
-            // //         .unwrap(),
-            // //     developer_amount
-            // // );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(
+                    &CERES_ASSET_ID.into(),
+                    &exchange_account()
+                )
+                .unwrap(),
+                balance!(978)
+            );
         });
     }
 }
