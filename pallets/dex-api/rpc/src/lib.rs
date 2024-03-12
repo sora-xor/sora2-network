@@ -38,10 +38,10 @@ use jsonrpsee::{
     proc_macros::rpc,
     types::error::CallError,
 };
-use sp_api::ProvideRuntimeApi;
+use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
-use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
+use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr, Zero};
 use std::sync::Arc;
 
 // Runtime API imports.
@@ -107,9 +107,9 @@ where
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: DEXRuntimeAPI<Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>,
-    AssetId: Codec + Ord,
+    AssetId: Codec + Ord + From<common::AssetId32<common::PredefinedAssetId>>,
     DEXId: Codec,
-    Balance: Codec + MaybeFromStr + MaybeDisplay,
+    Balance: Codec + MaybeFromStr + MaybeDisplay + Copy + Zero,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
 {
@@ -128,16 +128,43 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.quote(
-            &at,
-            dex_id,
-            liquidity_source_type,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            swap_variant,
-        )
-        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+
+        let version = api
+            .api_version::<dyn DEXRuntimeAPI<Block, AssetId, DEXId, Balance,LiquiditySourceType, SwapVariant>>(&at)
+            .map_err(|e| RpcError::Custom(format!("Runtime API error: {}", e)))?;
+
+        let outcome = if version == Some(1) {
+            #[allow(deprecated)]
+            {
+                api.quote_before_version_2(
+                    &at,
+                    dex_id,
+                    liquidity_source_type,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    swap_variant,
+                )
+                .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+                .map(Into::into)
+            }
+        } else if version == Some(2) {
+            api.quote(
+                &at,
+                dex_id,
+                liquidity_source_type,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                swap_variant,
+            )
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+        } else {
+            return Err(RpcError::Custom(
+                "Unsupported or invalid DEXRuntimeAPI version".to_string(),
+            ));
+        };
+        Ok(outcome)
     }
 
     fn can_exchange(
