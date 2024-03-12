@@ -59,6 +59,7 @@ mod tests;
 mod test_utils;
 
 mod compounding;
+mod migrations;
 pub mod weights;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
