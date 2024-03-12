@@ -469,6 +469,7 @@ pub mod pallet {
                     block_number,
                 );
                 user_info.borrowing_interest += calculated_interest.0;
+                user_info.borrowing_rewards += calculated_interest.1;
                 user_info.collateral_amount += collateral_amount;
                 user_info.borrowing_amount += borrowing_amount;
                 user_info.last_borrowing_block = block_number;
@@ -710,6 +711,7 @@ pub mod pallet {
                 block_number,
             );
             user_info.borrowing_interest += interest_and_reward.0;
+            user_info.borrowing_rewards += interest_and_reward.1;
             user_info.last_borrowing_block = block_number;
 
             if amount_to_repay <= user_info.borrowing_interest {
@@ -730,7 +732,11 @@ pub mod pallet {
 
                 <UserBorrowingInfo<T>>::insert(borrowing_asset, user.clone(), &borrow_user_info);
 
-                Self::distribute_protocol_interest(borrowing_asset, amount_to_repay, borrowing_asset)?;
+                Self::distribute_protocol_interest(
+                    borrowing_asset,
+                    amount_to_repay,
+                    borrowing_asset,
+                )?;
             } else if amount_to_repay > user_info.borrowing_interest
                 && amount_to_repay < user_info.borrowing_interest + user_info.borrowing_amount
             {
@@ -760,7 +766,11 @@ pub mod pallet {
                 borrow_user_info.insert(collateral_asset, user_info);
                 <UserBorrowingInfo<T>>::insert(borrowing_asset, user.clone(), &borrow_user_info);
 
-                Self::distribute_protocol_interest(borrowing_asset, repaid_amount, borrowing_asset)?;
+                Self::distribute_protocol_interest(
+                    borrowing_asset,
+                    repaid_amount,
+                    borrowing_asset,
+                )?;
             } else if amount_to_repay >= user_info.borrowing_interest + user_info.borrowing_amount {
                 // If user is repaying the whole position
                 let total_borrowed_amount =
@@ -808,7 +818,11 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
                 <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
-                Self::distribute_protocol_interest(borrowing_asset, user_info.borrowing_interest, borrowing_asset)?;
+                Self::distribute_protocol_interest(
+                    borrowing_asset,
+                    user_info.borrowing_interest,
+                    borrowing_asset,
+                )?;
             }
 
             Self::deposit_event(Event::Repaid(user, borrowing_asset, amount_to_repay));
@@ -942,7 +956,7 @@ pub mod pallet {
                     .unwrap_or(0);
                 <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
             }
-            
+
             let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
             borrow_pool_info.total_borrowed = borrow_pool_info
                 .total_borrowed
@@ -964,7 +978,18 @@ pub mod pallet {
             let distribution_rewards = Self::update_interests(now);
             let rates = Self::update_rates(now);
 
-            distribution_rewards.saturating_add(rates)
+            <LendingRewards<T>>::put(
+                <LendingRewards<T>>::get() - <LendingRewardsPerBlock<T>>::get(),
+            );
+            <BorrowingRewards<T>>::put(
+                <BorrowingRewards<T>>::get() - <BorrowingRewardsPerBlock<T>>::get(),
+            );
+
+            distribution_rewards.saturating_add(rates).saturating_add(
+                T::DbWeight::get()
+                    .reads(4)
+                    .saturating_add(T::DbWeight::get().writes(2)),
+            )
         }
 
         /// Off-chain worker procedure - calls liquidations
@@ -1225,7 +1250,7 @@ pub mod pallet {
             let mut counter: u64 = 0;
             let pool_index = block_number % T::BLOCKS_PER_FIFTEEN_MINUTES;
             let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
-            if pool_index > num_of_pools.into() {
+            if pool_index >= num_of_pools.into() {
                 return counter.into();
             }
             let pool_asset = <PoolsByBlock<T>>::get(pool_index).unwrap_or_default();
@@ -1265,13 +1290,6 @@ pub mod pallet {
                 <UserBorrowingInfo<T>>::insert(pool_asset, account_id.clone(), user_infos.clone());
                 counter += 1;
             }
-
-            <LendingRewards<T>>::put(
-                <LendingRewards<T>>::get() - <LendingRewardsPerBlock<T>>::get(),
-            );
-            <BorrowingRewards<T>>::put(
-                <BorrowingRewards<T>>::get() - <BorrowingRewardsPerBlock<T>>::get(),
-            );
 
             T::DbWeight::get()
                 .reads(counter + 4)
