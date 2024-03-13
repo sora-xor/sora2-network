@@ -386,8 +386,8 @@ pub mod pallet {
 
             ensure!(lending_amount > 0, Error::<T>::InvalidLendingAmount);
             if_std! {
-				println!("lend");
-			}
+                println!("lend");
+            }
             let mut pool_info =
                 <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
 
@@ -917,8 +917,8 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             if_std! {
-				println!("liquidate");
-			}
+                println!("liquidate");
+            }
             let user_infos = UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap();
             let mut sum_of_thresholds: Balance = 0;
             let mut total_borrowed: Balance = 0;
@@ -994,19 +994,16 @@ pub mod pallet {
         /// It is allowed to call only liquidate() and only if it fulfills conditions.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             if_std! {
-				println!("validate");
-			}
+                println!("validate");
+            }
             match call {
-                Call::liquidate {
-                    user,
-                    asset_id
-                } => {
+                Call::liquidate { user, asset_id } => {
                     ValidTransaction::with_tag_prefix("Apollo::liquidate")
-                            .priority(T::UnsignedPriority::get())
-                            .longevity(T::UnsignedLongevity::get())
-                            .and_provides((user, asset_id)) // Is this the correct approach???
-                            .propagate(true)
-                            .build()
+                        .priority(T::UnsignedPriority::get())
+                        .longevity(T::UnsignedLongevity::get())
+                        .and_provides((user, asset_id)) // Is this the correct approach???
+                        .propagate(true)
+                        .build()
                     //let cdp = Self::cdp(cdp_id)
                     //    .ok_or(InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
                     /*else {
@@ -1044,8 +1041,8 @@ pub mod pallet {
         /// Off-chain worker procedure - calls liquidations
         fn offchain_worker(block_number: T::BlockNumber) {
             if_std! {
-				println!("offchain");
-			}
+                println!("offchain");
+            }
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number

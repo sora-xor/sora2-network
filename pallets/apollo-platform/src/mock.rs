@@ -14,7 +14,7 @@ use {
         construct_runtime,
         pallet_prelude::Weight,
         parameter_types,
-        traits::{Everything, GenesisBuild, Hooks, ConstU64},
+        traits::{ConstU64, Everything, GenesisBuild, Hooks},
     },
     frame_system::offchain::SendTransactionTypes,
     frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin},

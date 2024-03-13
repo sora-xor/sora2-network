@@ -11,7 +11,7 @@ mod test {
     use frame_support::traits::Hooks;
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
-    use frame_system::{Pallet};
+    use frame_system::Pallet;
     use hex_literal::hex;
     use sp_core::offchain::{testing::TestOffchainExt, OffchainDbExt, OffchainWorkerExt};
     use sp_runtime::traits::AccountIdConversion;

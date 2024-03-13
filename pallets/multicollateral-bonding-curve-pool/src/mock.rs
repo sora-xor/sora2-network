@@ -672,6 +672,10 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
         // do nothing
         Ok(())
     }
+
+    fn spot_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
+        Ok(balance!(1))
+    }
 }
 
 pub struct ExtBuilder {
