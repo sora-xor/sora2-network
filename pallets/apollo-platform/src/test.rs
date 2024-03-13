@@ -8,11 +8,11 @@ mod test {
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
-    use frame_support::traits::Hooks;
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
-    use frame_system::Pallet;
     use hex_literal::hex;
+    use sp_core::offchain::testing::TestTransactionPoolExt;
+    use sp_core::offchain::TransactionPoolExt;
     use sp_core::offchain::{testing::TestOffchainExt, OffchainDbExt, OffchainWorkerExt};
     use sp_runtime::traits::AccountIdConversion;
 
@@ -22,8 +22,10 @@ mod test {
 
     fn register_offchain_ext(ext: &mut sp_io::TestExternalities) {
         let (offchain, _offchain_state) = TestOffchainExt::with_offchain_db(ext.offchain_db());
+        let (pool, _pool_state) = TestTransactionPoolExt::new();
         ext.register_extension(OffchainDbExt::new(offchain.clone()));
         ext.register_extension(OffchainWorkerExt::new(offchain));
+        ext.register_extension(TransactionPoolExt::new(pool));
     }
 
     fn get_pallet_account() -> AccountId {
@@ -4205,7 +4207,6 @@ mod test {
             );
 
             run_to_block(2);
-            <Pallet<Runtime> as Hooks<BlockNumber>>::offchain_worker(2);
 
             let (treasury_reserve_dot, _, developer_amount_dot) =
                 calculate_reserve_amounts(DOT, balance!(100));

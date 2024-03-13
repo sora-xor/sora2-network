@@ -16,8 +16,9 @@ use {
         parameter_types,
         traits::{ConstU64, Everything, GenesisBuild, Hooks},
     },
-    frame_system::offchain::SendTransactionTypes,
-    frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin},
+    frame_system::{
+        self, offchain::SendTransactionTypes, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin,
+    },
     permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
     sp_runtime::{
@@ -591,6 +592,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
@@ -638,5 +640,6 @@ pub fn run_to_block(n: u64) {
         System::set_block_number(System::block_number() + 1);
         System::on_initialize(System::block_number());
         ApolloPlatform::on_initialize(System::block_number());
+        ApolloPlatform::offchain_worker(System::block_number());
     }
 }
