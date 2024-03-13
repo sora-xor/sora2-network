@@ -28,7 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::Fixed;
+use crate::fixed_wrapper::FixedWrapper;
+use crate::{Balance, Fixed};
 
 use codec::{Decode, Encode};
 use fixnum::ops::Zero as _;
@@ -39,16 +40,7 @@ use sp_runtime::traits::{Saturating, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 
 #[derive(
-    Encode,
-    Decode,
-    Default,
-    Eq,
-    PartialEq,
-    Clone,
-    Ord,
-    PartialOrd,
-    RuntimeDebug,
-    scale_info::TypeInfo,
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutcomeFee<AssetId: Ord, AmountType>(pub BTreeMap<AssetId, AmountType>);
@@ -56,6 +48,12 @@ pub struct OutcomeFee<AssetId: Ord, AmountType>(pub BTreeMap<AssetId, AmountType
 impl<AssetId: Ord, AmountType> OutcomeFee<AssetId, AmountType> {
     pub fn new() -> Self {
         Self(BTreeMap::new())
+    }
+}
+
+impl<AssetId: Ord, AmountType> Default for OutcomeFee<AssetId, AmountType> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -111,6 +109,44 @@ where
                 .or_insert(other_amount);
         }
         self
+    }
+
+    pub fn reduce(mut self, other: Self) -> Self
+    where
+        AmountType: Zero,
+    {
+        for (asset, other_amount) in other.0 {
+            self.0
+                .entry(asset)
+                .and_modify(|amount| *amount = amount.saturating_sub(other_amount))
+                .or_insert(other_amount);
+        }
+        self.0.retain(|_, amount| !amount.is_zero());
+        self
+    }
+}
+
+impl<AssetId: Ord> OutcomeFee<AssetId, Balance> {
+    pub fn rescale_by_ratio(mut self, ratio: FixedWrapper) -> Option<Self> {
+        for value in self.0.values_mut() {
+            *value = (FixedWrapper::from(*value) * ratio.clone())
+                .try_into_balance()
+                .ok()?;
+        }
+        Some(self)
+    }
+
+    // Multiply all values by `n`
+    pub fn mul_n(self, n: usize) -> Self
+    where
+        AssetId: Copy,
+    {
+        Self(
+            self.0
+                .iter()
+                .map(|(&asset, amount)| (asset, amount.saturating_mul(n as Balance)))
+                .collect(),
+        )
     }
 }
 

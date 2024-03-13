@@ -74,151 +74,24 @@ impl<AmountType> SideAmount<AmountType> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Fee<AmountType> {
-    pub xor: AmountType,
-    pub xst: AmountType,
-    pub xstusd: AmountType,
-}
-
-impl<AmountType> Fee<AmountType> {
-    pub fn new(xor: AmountType, xst: AmountType, xstusd: AmountType) -> Self {
-        Self { xor, xst, xstusd }
-    }
-}
-
-impl<AmountType: Zero> Fee<AmountType> {
-    pub fn xor(xor: AmountType) -> Self {
-        Self::new(xor, Zero::zero(), Zero::zero())
-    }
-
-    pub fn xst(xst: AmountType) -> Self {
-        Self::new(Zero::zero(), xst, Zero::zero())
-    }
-
-    pub fn xstusd(xstusd: AmountType) -> Self {
-        Self::new(Zero::zero(), Zero::zero(), xstusd)
-    }
-}
-
-impl<AmountType: Zero> Zero for Fee<AmountType> {
-    fn zero() -> Self {
-        Self::new(Zero::zero(), Zero::zero(), Zero::zero())
-    }
-
-    fn is_zero(&self) -> bool {
-        self.xor.is_zero() && self.xst.is_zero() && self.xstusd.is_zero()
-    }
-}
-
-impl<AmountType: Zero> Default for Fee<AmountType> {
-    fn default() -> Self {
-        Self::zero()
-    }
-}
-
-impl<AmountType> Add for Fee<AmountType>
-where
-    AmountType: Add<Output = AmountType>,
-{
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self::Output {
-        Self::Output::new(
-            self.xor.add(other.xor),
-            self.xst.add(other.xst),
-            self.xstusd.add(other.xstusd),
-        )
-    }
-}
-
-impl Fee<Balance> {
-    pub fn saturating_add(self, rhs: Self) -> Self {
-        Self::new(
-            self.xor.saturating_add(rhs.xor),
-            self.xst.saturating_add(rhs.xst),
-            self.xstusd.saturating_add(rhs.xstusd),
-        )
-    }
-
-    pub fn saturating_sub(self, rhs: Self) -> Self {
-        Self::new(
-            self.xor.saturating_sub(rhs.xor),
-            self.xst.saturating_sub(rhs.xst),
-            self.xstusd.saturating_sub(rhs.xstusd),
-        )
-    }
-
-    pub fn rescale_by_ratio(self, ratio: FixedWrapper) -> Option<Self> {
-        let xor = (FixedWrapper::from(self.xor) * ratio.clone())
-            .try_into_balance()
-            .ok()?;
-        let xst = (FixedWrapper::from(self.xst) * ratio.clone())
-            .try_into_balance()
-            .ok()?;
-        let xstusd = (FixedWrapper::from(self.xstusd) * ratio)
-            .try_into_balance()
-            .ok()?;
-        Some(Self::new(xor, xst, xstusd))
-    }
-
-    // Multiply all values by `n`
-    pub fn mul_n(self, n: usize) -> Option<Self> {
-        let xor = self.xor.checked_mul(n as Balance)?;
-        let xst = self.xst.checked_mul(n as Balance)?;
-        let xstusd = self.xstusd.checked_mul(n as Balance)?;
-        Some(Self::new(xor, xst, xstusd))
-    }
-}
-
-impl<AssetId, AmountType> From<OutcomeFee<AssetId, AmountType>> for Fee<AmountType>
-where
-    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Copy + Zero,
-{
-    fn from(value: OutcomeFee<AssetId, AmountType>) -> Self {
-        Self::new(value.get_xor(), value.get_xst(), value.get_xstusd())
-    }
-}
-
-impl<AssetId, AmountType> From<Fee<AmountType>> for OutcomeFee<AssetId, AmountType>
-where
-    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
-    AmountType: Copy + Zero + Saturating,
-{
-    fn from(value: Fee<AmountType>) -> Self {
-        let mut result = Self::new();
-
-        if !value.xor.is_zero() {
-            result.add_xor(value.xor)
-        }
-
-        if !value.xst.is_zero() {
-            result.add_xst(value.xst)
-        }
-
-        if !value.xstusd.is_zero() {
-            result.add_xstusd(value.xstusd)
-        }
-
-        result
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SwapChunk<AmountType> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwapChunk<AssetId: Ord + Clone, AmountType> {
     pub input: AmountType,
     pub output: AmountType,
-    pub fee: Fee<AmountType>,
+    pub fee: OutcomeFee<AssetId, AmountType>,
 }
 
-impl<AmountType> SwapChunk<AmountType> {
-    pub fn new(input: AmountType, output: AmountType, fee: Fee<AmountType>) -> Self {
+impl<AssetId: Ord + Clone, AmountType> SwapChunk<AssetId, AmountType> {
+    pub fn new(
+        input: AmountType,
+        output: AmountType,
+        fee: OutcomeFee<AssetId, AmountType>,
+    ) -> Self {
         Self { input, output, fee }
     }
 }
 
-impl<AmountType: Copy> SwapChunk<AmountType> {
+impl<AssetId: Ord + Clone, AmountType: Copy> SwapChunk<AssetId, AmountType> {
     pub fn get_associated_field(&self, swap_variant: SwapVariant) -> SideAmount<AmountType> {
         match swap_variant {
             SwapVariant::WithDesiredInput => SideAmount::Input(self.input),
@@ -227,7 +100,9 @@ impl<AmountType: Copy> SwapChunk<AmountType> {
     }
 }
 
-impl<AmountType: PartialEq> PartialEq<SideAmount<AmountType>> for SwapChunk<AmountType> {
+impl<AssetId: Ord + Clone, AmountType: PartialEq> PartialEq<SideAmount<AmountType>>
+    for SwapChunk<AssetId, AmountType>
+{
     fn eq(&self, other: &SideAmount<AmountType>) -> bool {
         match other {
             SideAmount::Input(input) => self.input.eq(input),
@@ -236,7 +111,9 @@ impl<AmountType: PartialEq> PartialEq<SideAmount<AmountType>> for SwapChunk<Amou
     }
 }
 
-impl<AmountType: PartialOrd> PartialOrd<SideAmount<AmountType>> for SwapChunk<AmountType> {
+impl<AssetId: Ord + Clone, AmountType: PartialOrd> PartialOrd<SideAmount<AmountType>>
+    for SwapChunk<AssetId, AmountType>
+{
     fn partial_cmp(
         &self,
         other: &SideAmount<AmountType>,
@@ -248,25 +125,34 @@ impl<AmountType: PartialOrd> PartialOrd<SideAmount<AmountType>> for SwapChunk<Am
     }
 }
 
-impl<AmountType: Zero> Zero for SwapChunk<AmountType> {
+impl<AssetId, AmountType> Zero for SwapChunk<AssetId, AmountType>
+where
+    AssetId: Ord + Clone,
+    AmountType: Zero + Copy + Saturating,
+{
     fn zero() -> Self {
-        Self::new(Zero::zero(), Zero::zero(), Zero::zero())
+        Self::new(Zero::zero(), Zero::zero(), Default::default())
     }
 
     fn is_zero(&self) -> bool {
-        self.input.is_zero() && self.output.is_zero() && self.fee.is_zero()
+        self.input.is_zero() && self.output.is_zero() && self.fee.is_zero_fee()
     }
 }
 
-impl<AmountType: Zero> Default for SwapChunk<AmountType> {
+impl<AssetId, AmountType> Default for SwapChunk<AssetId, AmountType>
+where
+    AssetId: Ord + Clone,
+    AmountType: Zero + Copy + Saturating,
+{
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl<AmountType> Add for SwapChunk<AmountType>
+impl<AssetId, AmountType> Add for SwapChunk<AssetId, AmountType>
 where
-    AmountType: Add<Output = AmountType>,
+    AssetId: Ord + Clone,
+    AmountType: Add<Output = AmountType> + Copy + Saturating,
 {
     type Output = Self;
 
@@ -274,12 +160,12 @@ where
         Self::new(
             self.input.add(other.input),
             self.output.add(other.output),
-            self.fee.add(other.fee),
+            self.fee.merge(other.fee),
         )
     }
 }
 
-impl SwapChunk<Balance> {
+impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
     /// Calculates a price of the chunk
     pub fn price(&self) -> Option<Price> {
         (FixedWrapper::from(self.output) / FixedWrapper::from(self.input))
@@ -347,7 +233,7 @@ impl SwapChunk<Balance> {
         Self::new(
             self.input.saturating_add(rhs.input),
             self.output.saturating_add(rhs.output),
-            self.fee.saturating_add(rhs.fee),
+            self.fee.merge(rhs.fee),
         )
     }
 
@@ -355,7 +241,7 @@ impl SwapChunk<Balance> {
         Self::new(
             self.input.saturating_sub(rhs.input),
             self.output.saturating_sub(rhs.output),
-            self.fee.saturating_sub(rhs.fee),
+            self.fee.reduce(rhs.fee),
         )
     }
 }
@@ -390,10 +276,10 @@ impl<AmountType> SwapLimits<AmountType> {
 impl SwapLimits<Balance> {
     /// Aligns the `chunk` regarding to the `min_amount` limit.
     /// Returns the aligned chunk and the remainder
-    pub fn align_chunk_min(
+    pub fn align_chunk_min<AssetId: Ord + Clone>(
         &self,
-        chunk: SwapChunk<Balance>,
-    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
+        chunk: SwapChunk<AssetId, Balance>,
+    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
         if let Some(min) = self.min_amount {
             match min {
                 SideAmount::Input(min_amount) => {
@@ -413,23 +299,23 @@ impl SwapLimits<Balance> {
 
     /// Aligns the `chunk` regarding to the `max_amount` limit.
     /// Returns the aligned chunk and the remainder
-    pub fn align_chunk_max(
+    pub fn align_chunk_max<AssetId: Ord + Clone>(
         &self,
-        chunk: SwapChunk<Balance>,
-    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
+        chunk: SwapChunk<AssetId, Balance>,
+    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
         if let Some(max) = self.max_amount {
             match max {
                 SideAmount::Input(max_amount) => {
                     if chunk.input > max_amount {
-                        let rescaled = chunk.rescale_by_input(max_amount)?;
-                        let remainder = chunk.saturating_sub(rescaled);
+                        let rescaled = chunk.clone().rescale_by_input(max_amount)?;
+                        let remainder = chunk.saturating_sub(rescaled.clone());
                         return Some((rescaled, remainder));
                     }
                 }
                 SideAmount::Output(max_amount) => {
                     if chunk.output > max_amount {
-                        let rescaled = chunk.rescale_by_output(max_amount)?;
-                        let remainder = chunk.saturating_sub(rescaled);
+                        let rescaled = chunk.clone().rescale_by_output(max_amount)?;
+                        let remainder = chunk.saturating_sub(rescaled.clone());
                         return Some((rescaled, remainder));
                     }
                 }
@@ -440,18 +326,18 @@ impl SwapLimits<Balance> {
 
     /// Aligns the `chunk` regarding to the `amount_precision` limit.
     /// Returns the aligned chunk and the remainder
-    pub fn align_chunk_precision(
+    pub fn align_chunk_precision<AssetId: Ord + Clone>(
         &self,
-        chunk: SwapChunk<Balance>,
-    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
+        chunk: SwapChunk<AssetId, Balance>,
+    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
         if let Some(precision) = self.amount_precision {
             match precision {
                 SideAmount::Input(precision) => {
                     if chunk.input % precision != Balance::zero() {
                         let count = chunk.input.saturating_div(precision);
                         let aligned = count.saturating_mul(precision);
-                        let rescaled = chunk.rescale_by_input(aligned)?;
-                        let remainder = chunk.saturating_sub(rescaled);
+                        let rescaled = chunk.clone().rescale_by_input(aligned)?;
+                        let remainder = chunk.saturating_sub(rescaled.clone());
                         return Some((rescaled, remainder));
                     }
                 }
@@ -459,8 +345,8 @@ impl SwapLimits<Balance> {
                     if chunk.output % precision != Balance::zero() {
                         let count = chunk.output.saturating_div(precision);
                         let aligned = count.saturating_mul(precision);
-                        let rescaled = chunk.rescale_by_output(aligned)?;
-                        let remainder = chunk.saturating_sub(rescaled);
+                        let rescaled = chunk.clone().rescale_by_output(aligned)?;
+                        let remainder = chunk.saturating_sub(rescaled.clone());
                         return Some((rescaled, remainder));
                     }
                 }
@@ -471,10 +357,10 @@ impl SwapLimits<Balance> {
 
     /// Aligns the `chunk` regarding to the limits.
     /// Returns the aligned chunk and the remainder
-    pub fn align_chunk(
+    pub fn align_chunk<AssetId: Ord + Clone>(
         &self,
-        chunk: SwapChunk<Balance>,
-    ) -> Option<(SwapChunk<Balance>, SwapChunk<Balance>)> {
+        chunk: SwapChunk<AssetId, Balance>,
+    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
         let (chunk, remainder) = self.align_chunk_min(chunk)?;
         if !remainder.is_zero() {
             return Some((chunk, remainder));
@@ -496,12 +382,12 @@ impl SwapLimits<Balance> {
 
 /// Discrete result of quotation
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct DiscreteQuotation<AmountType> {
-    pub chunks: VecDeque<SwapChunk<AmountType>>,
+pub struct DiscreteQuotation<AssetId: Ord + Clone, AmountType> {
+    pub chunks: VecDeque<SwapChunk<AssetId, AmountType>>,
     pub limits: SwapLimits<AmountType>,
 }
 
-impl<AmountType> DiscreteQuotation<AmountType> {
+impl<AssetId: Ord + Clone, AmountType> DiscreteQuotation<AssetId, AmountType> {
     pub fn new() -> Self {
         Self {
             chunks: VecDeque::new(),

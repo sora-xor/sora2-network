@@ -189,7 +189,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
 }
 
 /// Indicates that particular object can be used to perform exchanges.
-pub trait LiquiditySource<TargetId, AccountId, AssetId: Ord, Amount, Error> {
+pub trait LiquiditySource<TargetId, AccountId, AssetId: Ord + Clone, Amount, Error> {
     /// Check if liquidity source provides an exchange from given input asset to output asset.
     fn can_exchange(
         target_id: &TargetId,
@@ -215,7 +215,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId: Ord, Amount, Error> {
         amount: QuoteAmount<Amount>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Amount>, Weight), Error>;
+    ) -> Result<(DiscreteQuotation<AssetId, Amount>, Weight), Error>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -335,7 +335,7 @@ impl<Symbol> OnSymbolDisabled<Symbol> for () {
     fn disable_symbol(_symbol: &Symbol) {}
 }
 
-impl<DEXId, AccountId, AssetId: Ord>
+impl<DEXId, AccountId, AssetId: Ord + Clone>
     LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError> for ()
 {
     fn can_exchange(
@@ -363,7 +363,7 @@ impl<DEXId, AccountId, AssetId: Ord>
         _amount: QuoteAmount<Fixed>,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Fixed>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<AssetId, Fixed>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -415,7 +415,7 @@ impl<DEXId, AccountId, AssetId: Ord>
     }
 }
 
-impl<DEXId, AccountId, AssetId: Ord>
+impl<DEXId, AccountId, AssetId: Ord + Clone>
     LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for ()
 {
     fn can_exchange(
@@ -443,7 +443,7 @@ impl<DEXId, AccountId, AssetId: Ord>
         _amount: QuoteAmount<Balance>,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<AssetId, Balance>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -495,9 +495,15 @@ impl<DEXId, AccountId, AssetId: Ord>
     }
 }
 
-pub trait LiquidityRegistry<DEXId, AccountId, AssetId: Ord, LiquiditySourceIndex, Amount, Error>:
-    LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error>
-where
+pub trait LiquidityRegistry<
+    DEXId,
+    AccountId,
+    AssetId: Ord + Clone,
+    LiquiditySourceIndex,
+    Amount,
+    Error,
+>:
+    LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error> where
     DEXId: PartialEq + Clone + Copy,
     LiquiditySourceIndex: PartialEq + Clone + Copy,
 {
