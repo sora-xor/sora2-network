@@ -38,10 +38,10 @@ mod tests {
     use band::FeeCalculationParameters;
     use common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk, SwapLimits};
     use common::{
-        self, assert_approx_eq, balance, fixed,
-        prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount},
-        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo,
-        LiquiditySource, PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD,
+        self, balance, fixed,
+        prelude::{Balance, OutcomeFee, QuoteAmount, SwapAmount},
+        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo, LiquiditySource,
+        PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD,
     };
     use frame_support::traits::Hooks;
     use frame_support::{assert_noop, assert_ok};

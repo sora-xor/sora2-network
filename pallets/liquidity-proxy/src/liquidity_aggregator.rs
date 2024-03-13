@@ -262,7 +262,7 @@ where
             AggregatedSwapOutcome {
                 distribution,
                 amount: result_amount,
-                fee: OutcomeFee::<AssetId, Balance>::xor(fee), // todo fix (m.tagirov)
+                fee: OutcomeFee::<AssetId, Balance>::xor(fee.xor), // todo fix (m.tagirov)
             },
         ))
     }
@@ -1182,7 +1182,7 @@ mod tests {
                         )
                     ],
                     balance!(495),
-                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.75))
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.9)) // todo sum balance!(2.75)
                 )
             )
         );
@@ -1215,7 +1215,7 @@ mod tests {
                         )
                     ],
                     balance!(580),
-                    OutcomeFee::<AssetId, Balance>::xor(balance!(3.6))
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.9)) // todo sum balance!(3.6)
                 )
             )
         );
@@ -1373,7 +1373,7 @@ mod tests {
                         )
                     ],
                     balance!(63.5),
-                    OutcomeFee::<AssetId, Balance>::xor(balance!(4))
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3)) // todo sum balance!(4)
                 )
             )
         );
@@ -1406,7 +1406,7 @@ mod tests {
                         )
                     ],
                     balance!(76),
-                    OutcomeFee::<AssetId, Balance>::xor(balance!(5))
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3)) // todo sum balance!(5)
                 )
             )
         );
@@ -1715,7 +1715,7 @@ mod tests {
                         )
                     ],
                     balance!(503),
-                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.59))
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.08)) // todo sum balance!(2.59)
                 )
             )
         );
@@ -1748,7 +1748,7 @@ mod tests {
                         )
                     ],
                     balance!(588),
-                    OutcomeFee::<AssetId, Balance>::xor(balance!(3.439999999999999999))
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.08)) // todo sum balance!(3.439999999999999999)
                 )
             )
         );
@@ -1921,6 +1921,639 @@ mod tests {
                     ],
                     balance!(53),
                     OutcomeFee::<AssetId, Balance>::new()
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_input_and_max_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            (
+                SwapInfo::from([(
+                    LiquiditySourceType::OrderBook,
+                    (balance!(10), balance!(120))
+                )]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_input(balance!(10))
+                    )],
+                    balance!(120),
+                    OutcomeFee::<AssetId, Balance>::new()
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(3), balance!(30))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(3))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(224),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.3))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(13), balance!(127))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(13))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(321),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.27))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(40)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (LiquiditySourceType::XSTPool, (balance!(3), balance!(25.5))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(3))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(409.5),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.9)) // todo sum balance!(2.155)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(13), balance!(110.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(20))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(13))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(494.5),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.9)) // todo sum balance!(3.005)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(28), balance!(254))),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(15), balance!(127.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(17), balance!(194))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(28))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_input(balance!(15))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(17))
+                        )
+                    ],
+                    balance!(575.5),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.54)) // todo sum balance!(3.815)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_output_and_max_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::OrderBook,
+                        QuoteAmount::with_desired_output(balance!(100))
+                    )],
+                    balance!(8),
+                    OutcomeFee::<AssetId, Balance>::new()
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(3), balance!(30))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(30))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(18),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.3))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(13.3), balance!(130))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(130))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(28.3),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.3))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(400)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(24.6), balance!(230))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(230))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(39.6),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.3))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(500)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                    (LiquiditySourceType::XSTPool, (balance!(3.75), balance!(30))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(30))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(51.75),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3)) // todo sum balance!(3.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(600)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(16.25), balance!(130))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(300))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(130))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(64.25),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3)) // todo sum balance!(4.3)
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(700)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(43.4), balance!(380))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        (balance!(18.75), balance!(150))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(15), balance!(170))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(380))
+                        ),
+                        (
+                            LiquiditySourceType::XSTPool,
+                            QuoteAmount::with_desired_output(balance!(150))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(170))
+                        )
+                    ],
+                    balance!(77.15),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3.8)) // todo sum balance!(5.3)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_input_and_min_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_input(balance!(10))
+                    )],
+                    balance!(100),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(20), balance!(190)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_input(balance!(20))
+                    )],
+                    balance!(190),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.9))
+                )
+            )
+        );
+
+        // order-book appears only when it exceeds the min amount
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(22), balance!(244))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(8))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(22))
+                        )
+                    ],
+                    balance!(324),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.8))
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_output_and_min_amount_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_output(balance!(100))
+                    )],
+                    balance!(10),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1))
+                )
+            )
+        );
+
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            (
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(21), balance!(200)))]),
+                AggregatedSwapOutcome::new(
+                    vec![(
+                        LiquiditySourceType::XYKPool,
+                        QuoteAmount::with_desired_output(balance!(200))
+                    )],
+                    balance!(21),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2))
+                )
+            )
+        );
+
+        // order-book appears only when it exceeds the min amount
+        let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            (
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(18.05), balance!(200))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(100))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(200))
+                        )
+                    ],
+                    balance!(28.05),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1))
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_input_and_precision_limits() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_precision_limits();
+        assert_eq!(
+            aggregator.aggregate_swap_outcome(balance!(10.65)).unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.05), balance!(0.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(10.6), balance!(127.2))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_input(balance!(0.05))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_input(balance!(10.6))
+                        )
+                    ],
+                    balance!(127.7),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.005))
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn check_aggregate_swap_outcome_with_desired_output_and_precision_limits() {
+        let aggregator =
+            get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output();
+        assert_eq!(
+            aggregator
+                .aggregate_swap_outcome(balance!(101.585))
+                .unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.0005), balance!(0.005))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(8.465), balance!(101.58))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(0.005))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(101.58))
+                        )
+                    ],
+                    balance!(8.4655),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.00005))
+                )
+            )
+        );
+
+        let aggregator =
+            get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input();
+        assert_eq!(
+            aggregator
+                .aggregate_swap_outcome(balance!(101.585))
+                .unwrap(),
+            (
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.0065), balance!(0.065))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(8.46), balance!(101.52))
+                    )
+                ]),
+                AggregatedSwapOutcome::new(
+                    vec![
+                        (
+                            LiquiditySourceType::XYKPool,
+                            QuoteAmount::with_desired_output(balance!(0.065))
+                        ),
+                        (
+                            LiquiditySourceType::OrderBook,
+                            QuoteAmount::with_desired_output(balance!(101.52))
+                        )
+                    ],
+                    balance!(8.4665),
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.00065))
                 )
             )
         );

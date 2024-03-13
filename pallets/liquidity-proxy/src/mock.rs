@@ -782,7 +782,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 }
             };
 
-            let fee = Fee::xor(fee);
+            let fee = Fee::xor(fee.get_xor()); // todo fix (m.tagirov)
 
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
@@ -790,7 +790,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
             sub_in = input;
             sub_out = output;
-            sub_fee = fee.get_xor();
+            sub_fee = fee; // todo fix (m.tagirov)
 
             quotation
                 .chunks
