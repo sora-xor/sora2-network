@@ -31,9 +31,10 @@
 // This file contains ALT types
 
 use crate::fixed_wrapper::FixedWrapper;
+use crate::outcome_fee::OutcomeFee;
 use crate::swap_amount::SwapVariant;
 use crate::{Balance, Fixed, Price};
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{Saturating, Zero};
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::ops::Add;
 
@@ -167,6 +168,40 @@ impl Fee<Balance> {
         let xst = self.xst.checked_mul(n as Balance)?;
         let xstusd = self.xstusd.checked_mul(n as Balance)?;
         Some(Self::new(xor, xst, xstusd))
+    }
+}
+
+impl<AssetId, AmountType> From<OutcomeFee<AssetId, AmountType>> for Fee<AmountType>
+where
+    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
+    AmountType: Copy + Zero,
+{
+    fn from(value: OutcomeFee<AssetId, AmountType>) -> Self {
+        Self::new(value.get_xor(), value.get_xst(), value.get_xstusd())
+    }
+}
+
+impl<AssetId, AmountType> From<Fee<AmountType>> for OutcomeFee<AssetId, AmountType>
+where
+    AssetId: Ord + From<crate::AssetId32<crate::PredefinedAssetId>>,
+    AmountType: Copy + Zero + Saturating,
+{
+    fn from(value: Fee<AmountType>) -> Self {
+        let mut result = Self::new();
+
+        if !value.xor.is_zero() {
+            result.add_xor(value.xor)
+        }
+
+        if !value.xst.is_zero() {
+            result.add_xst(value.xst)
+        }
+
+        if !value.xstusd.is_zero() {
+            result.add_xstusd(value.xstusd)
+        }
+
+        result
     }
 }
 

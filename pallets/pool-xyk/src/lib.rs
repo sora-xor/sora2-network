@@ -40,7 +40,7 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::alt::{DiscreteQuotation, Fee, SwapChunk};
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
 };
@@ -505,7 +505,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         volumes.push((amount.amount(), remaining));
 
         let mut sub_sum = Balance::zero();
-        let mut sub_fee = Fee::zero();
+        let mut sub_fee = Balance::zero();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => {
@@ -519,19 +519,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         deduce_fee,
                     )?;
 
-                    let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                        Fee::xstusd(fee)
-                    } else {
-                        Fee::xor(fee)
-                    };
-
                     let output = calculated.saturating_sub(sub_sum);
-                    let fee_chunk = fee.saturating_sub(sub_fee);
+
+                    // in XOR for dex_id = 0
+                    // in XSTUSD for dex_id = 1
+                    let fee_chunk =
+                        OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
+
                     sub_sum = calculated;
                     sub_fee = fee;
                     quotation
                         .chunks
-                        .push_back(SwapChunk::new(step, output, fee_chunk));
+                        .push_back(SwapChunk::new(step, output, fee_chunk.into()));
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
@@ -545,19 +544,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         deduce_fee,
                     )?;
 
-                    let fee = if *dex_id == common::DEXId::PolkaswapXSTUSD.into() {
-                        Fee::xstusd(fee)
-                    } else {
-                        Fee::xor(fee)
-                    };
-
                     let input = calculated.saturating_sub(sub_sum);
-                    let fee_chunk = fee.saturating_sub(sub_fee);
+
+                    // in XOR for dex_id = 0
+                    // in XSTUSD for dex_id = 1
+                    let fee_chunk =
+                        OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
+
                     sub_sum = calculated;
                     sub_fee = fee;
                     quotation
                         .chunks
-                        .push_back(SwapChunk::new(input, step, fee_chunk));
+                        .push_back(SwapChunk::new(input, step, fee_chunk.into()));
                 }
             }
         }

@@ -49,7 +49,7 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, Fixed, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
@@ -1106,8 +1106,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // in XST
         let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
-        // todo fix (m.tagirov)
-        let mut monolith = SwapChunk::new(input_amount, output_amount, Fee::xst(fee.get_xst()));
+        let mut monolith = SwapChunk::new(input_amount, output_amount, fee.into());
 
         // Get max amount for the limit
         let limit = T::GetSyntheticBaseBuySellLimit::get();

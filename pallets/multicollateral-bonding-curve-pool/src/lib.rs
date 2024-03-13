@@ -46,7 +46,7 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, OutcomeFee,
@@ -1639,7 +1639,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let mut sub_in = Balance::zero();
         let mut sub_out = Balance::zero();
-        let mut sub_fee = Fee::zero();
+        let mut sub_fee = Balance::zero();
 
         for volume in volumes {
             let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
@@ -1648,19 +1648,22 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 Self::decide_buy_amounts(&output_asset_id, &input_asset_id, volume, deduce_fee)?
             };
 
-            let fee = Fee::xor(fee_amount);
-
             let input_chunk = input_amount.saturating_sub(sub_in);
             let output_chunk = output_amount.saturating_sub(sub_out);
-            let fee_chunk = fee.saturating_sub(sub_fee);
+
+            // in XOR
+            let fee_chunk = OutcomeFee::from_asset(
+                T::GetBaseAssetId::get(),
+                fee_amount.saturating_sub(sub_fee),
+            );
 
             sub_in = input_amount;
             sub_out = output_amount;
-            sub_fee = fee;
+            sub_fee = fee_amount;
 
             quotation
                 .chunks
-                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk.into()));
         }
 
         if input_asset_id == base_asset_id {
