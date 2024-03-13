@@ -1004,8 +1004,7 @@ pub mod pallet {
                     ValidTransaction::with_tag_prefix("Apollo::liquidate")
                             .priority(T::UnsignedPriority::get())
                             .longevity(T::UnsignedLongevity::get())
-                            .and_provides([user])
-                            .and_provides([asset_id])
+                            .and_provides((user, asset_id)) // Is this the correct approach???
                             .propagate(true)
                             .build()
                     //let cdp = Self::cdp(cdp_id)
