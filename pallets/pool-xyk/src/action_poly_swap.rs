@@ -34,7 +34,7 @@ use frame_support::weights::Weight;
 
 use common::SwapRulesValidation;
 
-use crate::aliases::{AccountIdOf, AssetIdOf, PolySwapActionStructOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, PolySwapActionStructOf, TechAccountIdOf};
 use crate::Config;
 
 use crate::operations::*;
@@ -42,7 +42,7 @@ use crate::operations::*;
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
-    PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
+    PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
@@ -81,7 +81,7 @@ where
 impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
-    PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
+    PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,

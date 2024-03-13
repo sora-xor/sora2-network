@@ -190,7 +190,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _amount: common::prelude::QuoteAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         // Implement if needed
         unimplemented!()
     }
@@ -206,7 +206,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         let amount = amount.amount();
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
@@ -223,7 +223,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             amount,
         )?;
 
-        Ok(SwapOutcome::new(amount, 0))
+        Ok(SwapOutcome::new(amount, Default::default()))
     }
 }
 
