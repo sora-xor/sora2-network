@@ -76,7 +76,7 @@ fn should_xyk_initialize_pool() {
             )
             .unwrap();
             // `deduce_fee` was set to false
-            assert_eq!(result.fee, 0);
+            assert_eq!(result.fee, Default::default());
             let price = result.amount;
             assert_eq!(actual_pair.price, price);
             assert_approx_eq!(actual_pair.price, expected_pair.price, 10, 0);

@@ -1124,7 +1124,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(271.00535), 0)
+            SwapOutcome::new(balance!(271.00535), Default::default())
         );
 
         assert_eq!(
@@ -1137,7 +1137,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -1150,7 +1150,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1993.7), 0)
+            SwapOutcome::new(balance!(1993.7), Default::default())
         );
 
         assert_eq!(
@@ -1163,7 +1163,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(251.66326), 0)
+            SwapOutcome::new(balance!(251.66326), Default::default())
         );
 
         // with fee
@@ -1177,7 +1177,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(271.00535), 0)
+            SwapOutcome::new(balance!(271.00535), Default::default())
         );
 
         assert_eq!(
@@ -1190,7 +1190,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -1203,7 +1203,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1993.7), 0)
+            SwapOutcome::new(balance!(1993.7), Default::default())
         );
 
         assert_eq!(
@@ -1216,7 +1216,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(251.66326), 0)
+            SwapOutcome::new(balance!(251.66326), Default::default())
         );
     });
 }
@@ -1396,7 +1396,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(272.72727), 0)
+            SwapOutcome::new(balance!(272.72727), Default::default())
         );
 
         assert_eq!(
@@ -1408,7 +1408,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2200), 0)
+            SwapOutcome::new(balance!(2200), Default::default())
         );
 
         assert_eq!(
@@ -1420,7 +1420,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2000), 0)
+            SwapOutcome::new(balance!(2000), Default::default())
         );
 
         assert_eq!(
@@ -1432,7 +1432,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(250), 0)
+            SwapOutcome::new(balance!(250), Default::default())
         );
 
         // with fee
@@ -1445,7 +1445,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(272.72727), 0)
+            SwapOutcome::new(balance!(272.72727), Default::default())
         );
 
         assert_eq!(
@@ -1457,7 +1457,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2200), 0)
+            SwapOutcome::new(balance!(2200), Default::default())
         );
 
         assert_eq!(
@@ -1469,7 +1469,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2000), 0)
+            SwapOutcome::new(balance!(2000), Default::default())
         );
 
         assert_eq!(
@@ -1481,7 +1481,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(250), 0)
+            SwapOutcome::new(balance!(250), Default::default())
         );
     });
 }
@@ -2008,7 +2008,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -2037,7 +2037,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(177.95391), 0)
+            SwapOutcome::new(balance!(177.95391), Default::default())
         );
 
         assert_eq!(
@@ -2066,7 +2066,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(200.64285), 0)
+            SwapOutcome::new(balance!(200.64285), Default::default())
         );
 
         assert_eq!(
@@ -2095,7 +2095,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1932.327145), 0)
+            SwapOutcome::new(balance!(1932.327145), Default::default())
         );
 
         assert_eq!(
@@ -2143,7 +2143,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -2186,7 +2186,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(177.95391), 0)
+            SwapOutcome::new(balance!(177.95391), Default::default())
         );
 
         assert_eq!(
@@ -2229,7 +2229,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(200.64285), 0)
+            SwapOutcome::new(balance!(200.64285), Default::default())
         );
 
         assert_eq!(
@@ -2272,7 +2272,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1932.327145), 0)
+            SwapOutcome::new(balance!(1932.327145), Default::default())
         );
 
         assert_eq!(

@@ -289,7 +289,7 @@ fn test_synthetic_price_set<T: qa_tools::Config>(
     )
     .unwrap();
     assert_eq!(quote_result.amount, init_result[0].quote_achieved.result);
-    assert_eq!(quote_result.fee, 0);
+    assert_eq!(quote_result.fee, Default::default());
     init_result
 }
 
@@ -344,7 +344,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
         )
         .unwrap();
         assert_eq!(quote_result.amount, balance!(1));
-        assert_eq!(quote_result.fee, 0);
+        assert_eq!(quote_result.fee, Default::default());
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &euro_init.asset_id,
@@ -356,7 +356,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
         )
         .unwrap();
         assert_eq!(quote_result.amount, balance!(1));
-        assert_eq!(quote_result.fee, 0);
+        assert_eq!(quote_result.fee, Default::default());
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
             &DEXId::Polkaswap.into(),
             &euro_init.asset_id,
@@ -368,7 +368,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
         )
         .unwrap();
         assert_eq!(quote_result.amount, balance!(1));
-        assert_eq!(quote_result.fee, 0);
+        assert_eq!(quote_result.fee, Default::default());
     })
 }
 
@@ -568,7 +568,7 @@ fn should_update_xst_synthetic_price() {
         )
         .unwrap();
         assert_ne!(quote_result.amount, init_result[0].quote_achieved.result);
-        assert_eq!(quote_result.fee, 0);
+        assert_eq!(quote_result.fee, Default::default());
 
         // Synthetic prices are updated correctly after changes in base assets prices.
         test_synthetic_price_set::<Runtime>(euro_init, None, alice());
