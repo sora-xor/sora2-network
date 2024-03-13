@@ -65,6 +65,7 @@ pub mod pallet {
     use hex_literal::hex;
     use sp_runtime::traits::{UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
+    use sp_std::if_std;
 
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
 
@@ -80,6 +81,14 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsPallet<Self::AssetId>;
         type LiquidityProxyPallet: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+
+        /// A configuration for base priority of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedPriority: Get<TransactionPriority>;
+
+        /// A configuration for longevity of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedLongevity: Get<u64>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -376,7 +385,9 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             ensure!(lending_amount > 0, Error::<T>::InvalidLendingAmount);
-
+            if_std! {
+				println!("lend");
+			}
             let mut pool_info =
                 <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
 
@@ -905,6 +916,9 @@ pub mod pallet {
             user: AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
+            if_std! {
+				println!("liquidate");
+			}
             let user_infos = UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap();
             let mut sum_of_thresholds: Balance = 0;
             let mut total_borrowed: Balance = 0;
@@ -972,6 +986,42 @@ pub mod pallet {
         }
     }
 
+    /// Validate unsigned call to this pallet.
+    #[pallet::validate_unsigned]
+    impl<T: Config> ValidateUnsigned for Pallet<T> {
+        type Call = Call<T>;
+
+        /// It is allowed to call only liquidate() and only if it fulfills conditions.
+        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if_std! {
+				println!("validate");
+			}
+            match call {
+                Call::liquidate {
+                    user,
+                    asset_id
+                } => {
+                    ValidTransaction::with_tag_prefix("Apollo::liquidate")
+                            .priority(T::UnsignedPriority::get())
+                            .longevity(T::UnsignedLongevity::get())
+                            .and_provides([user])
+                            .and_provides([asset_id])
+                            .propagate(true)
+                            .build()
+                    //let cdp = Self::cdp(cdp_id)
+                    //    .ok_or(InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
+                    /*else {
+                        InvalidTransaction::Custom(VALIDATION_ERROR_CDP_SAFE).into()
+                    }*/
+                }
+                _ => {
+                    warn!("Unknown unsigned call {:?}", call);
+                    InvalidTransaction::Call.into()
+                }
+            }
+        }
+    }
+
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
@@ -994,6 +1044,9 @@ pub mod pallet {
 
         /// Off-chain worker procedure - calls liquidations
         fn offchain_worker(block_number: T::BlockNumber) {
+            if_std! {
+				println!("offchain");
+			}
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number

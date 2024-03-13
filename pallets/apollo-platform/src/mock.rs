@@ -14,7 +14,7 @@ use {
         construct_runtime,
         pallet_prelude::Weight,
         parameter_types,
-        traits::{Everything, GenesisBuild, Hooks},
+        traits::{Everything, GenesisBuild, Hooks, ConstU64},
     },
     frame_system::offchain::SendTransactionTypes,
     frame_system::{self, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin},
@@ -469,6 +469,8 @@ impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PriceTools = MockPriceTools;
     type LiquidityProxyPallet = MockLiquidityProxy;
+    type UnsignedPriority = ConstU64<100>;
+    type UnsignedLongevity = ConstU64<100>;
 }
 
 pub struct ExtBuilder {
