@@ -151,7 +151,7 @@ impl frame_system::Config for Runtime {
 // We need non-zero weight for testing weight calculation
 pub struct WeightedEmptyLiquiditySource;
 
-impl<DEXId, AccountId, AssetId: Ord>
+impl<DEXId, AccountId, AssetId: Ord + Clone>
     LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
     for WeightedEmptyLiquiditySource
 {
@@ -190,7 +190,7 @@ impl<DEXId, AccountId, AssetId: Ord>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<AssetId, Balance>, Weight), DispatchError> {
         <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::step_quote(
             target_id,
             input_asset_id,
