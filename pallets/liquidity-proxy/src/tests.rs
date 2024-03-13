@@ -34,7 +34,7 @@ use crate::weights::WeightInfo;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{
-    AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapVariant,
+    AssetName, AssetSymbol, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapVariant,
 };
 use common::{
     assert_approx_eq_abs, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler,
@@ -82,7 +82,10 @@ fn test_quote_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(537.643138033120596204));
-        assert_eq!(quotes.fee, balance!(1.1125));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(1.1125))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -141,7 +144,10 @@ fn test_quote_exact_input_target_should_pass() {
 
         assert_eq!(rewards, Vec::new());
         assert_eq!(quotes.amount, balance!(363.569067258883248761));
-        assert_eq!(quotes.fee, balance!(0.551491116751269035));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.551491116751269035))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -211,7 +217,10 @@ fn test_quote_exact_output_target_should_pass() {
                     .unwrap()
                     < tolerance)
         );
-        assert_eq!(quotes.fee, balance!(0.531316943052148668));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.531316943052148668))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -280,7 +289,10 @@ fn test_quote_exact_output_base_should_pass() {
                     .unwrap()
                     < tolerance)
         );
-        assert_eq!(quotes.fee, balance!(0.338264379900812242));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.338264379900812242))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -348,7 +360,10 @@ fn test_poly_quote_exact_input_1_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(934.572151021276260545));
-        assert_eq!(quotes.fee, balance!(2.318181818181818181));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.318181818181818181))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -397,7 +412,10 @@ fn test_poly_quote_exact_output_1_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(100.0));
-        assert_eq!(quotes.fee, balance!(2.318181818181818181));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.318181818181818181))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -446,7 +464,10 @@ fn test_poly_quote_exact_input_2_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(555.083861089846196673));
-        assert_eq!(quotes.fee, balance!(2.666666666666666666));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.666666666666666666))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -495,7 +516,10 @@ fn test_poly_quote_exact_output_2_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(500.000000000000000000));
-        assert_eq!(quotes.fee, balance!(2.666666666666666666));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.666666666666666666))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -1221,7 +1245,10 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_eq!(quotes.fee, balance!(0.630925033164008153));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.630925033164008153))
+        );
     });
 }
 
@@ -1255,7 +1282,7 @@ fn test_quote_single_source_should_pass() {
         let dist = quotes.distribution;
 
         assert_eq!(quotes.amount, balance!(269.607843137254901960));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -1301,7 +1328,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         // The "smart" split produces the outcome which is worse than purely XYK pool swap
         // Hence the latter result use used resulting in the dist == [0.0, 1.0]
         assert_eq!(quotes.amount, balance!(18181.818181818181818181));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1326,7 +1353,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(174.276240737227906075));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1360,7 +1387,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(1516.342527519604340858));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1413,7 +1440,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
         // The "smart" split produces the outcome which is worse than purely XYK pool swap
         // Hence the latter result use used resulting in the dist == [0.0, 1.0]
         assert_eq!(quotes.amount, balance!(111.111111111111111112));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1438,7 +1465,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(230.897068686326074201));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1472,7 +1499,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(125.000000000000000000));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1522,7 +1549,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             )]
         );
         assert_eq!(quotes.amount, balance!(22081.292525857240241897));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1556,7 +1583,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(208.138107215848656553));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1590,7 +1617,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(934.530528433224671738));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1649,7 +1676,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             )]
         );
         assert_eq!(quotes.amount, balance!(91.129562076735353496));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1683,7 +1710,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(182.802146328804827615));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1717,7 +1744,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(53.662213070708617870));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1774,7 +1801,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
 
         assert_eq!(rewards, Vec::new());
         assert_eq!(quotes.amount, balance!(111.111111111111111112));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1799,7 +1826,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(250.0));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1824,7 +1851,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(125.0));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -2704,7 +2731,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 false,
                 true,
             );
-            assert_noop!(result, crate::Error::<Runtime>::InsufficientLiquidity);
+            assert_noop!(result, Error::<Runtime>::InsufficientLiquidity);
         });
     }
 
@@ -3056,7 +3083,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
         assert_approx_eq_abs!(quotes.amount, amount_xor_intermediate, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -3109,7 +3136,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
         assert_approx_eq_abs!(quotes.amount, amount_ksm_out, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -3201,7 +3228,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
         assert_approx_eq_abs!(quotes.amount, amount_val_in, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -3258,7 +3285,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
         assert_approx_eq_abs!(quotes.amount, amount_xor_intermediate, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [

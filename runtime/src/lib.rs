@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 72,
+    spec_version: 73,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 72,
+    transaction_version: 73,
     state_version: 0,
 };
 
@@ -986,7 +986,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 parameter_types! {
@@ -1006,12 +1006,12 @@ parameter_type_with_key! {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
@@ -2645,7 +2645,7 @@ impl_runtime_apis! {
             output_asset_id: AssetId,
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
+        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
             #[cfg(feature = "private-net")]
             {
                 DEXAPI::quote(
@@ -2654,7 +2654,7 @@ impl_runtime_apis! {
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     true,
-                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance, AssetId> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
             {

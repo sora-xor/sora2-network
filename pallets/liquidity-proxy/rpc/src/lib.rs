@@ -41,7 +41,7 @@ use jsonrpsee::{
 use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
-use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
+use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr, Zero};
 use std::sync::Arc;
 
 // Custom imports
@@ -132,8 +132,12 @@ where
         FilterMode,
     >,
     DEXId: Codec,
-    AssetId: Codec + MaybeFromStr + MaybeDisplay,
-    Balance: Codec + MaybeFromStr + MaybeDisplay + Default,
+    AssetId: Codec
+        + MaybeFromStr
+        + MaybeDisplay
+        + Ord
+        + From<common::AssetId32<common::PredefinedAssetId>>,
+    Balance: Codec + MaybeFromStr + MaybeDisplay + Default + Copy + Zero,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
     FilterMode: Codec,
@@ -184,6 +188,22 @@ where
                 .map(Into::into)
             }
         } else if version == Some(2) {
+            #[allow(deprecated)]
+            {
+                api.quote_before_version_3(
+                    &at,
+                    dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    swap_variant,
+                    selected_source_types,
+                    filter_mode,
+                )
+                .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+                .map(Into::into)
+            }
+        } else if version == Some(3) {
             api.quote(
                 &at,
                 dex_id,
