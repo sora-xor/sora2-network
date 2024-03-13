@@ -1171,6 +1171,14 @@
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
 <a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1215,7 +1223,7 @@
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="kw">use </span>common::prelude::{
-    Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
+    Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::{
     fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
@@ -1553,7 +1561,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="comment">// Get pool account.
         </span><span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
@@ -1582,30 +1590,34 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate quote.
-        </span><span class="kw">match </span>amount {
+        </span><span class="kw">let </span>(calculated, fee_amount) = <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
-                <span class="kw">let </span>(calculated, fee) = Pallet::&lt;T&gt;::calc_output_for_exact_input(
+                Pallet::&lt;T&gt;::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     <span class="kw-2">&amp;</span>reserve_input,
                     <span class="kw-2">&amp;</span>reserve_output,
                     <span class="kw-2">&amp;</span>desired_amount_in,
                     deduce_fee,
-                )<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((SwapOutcome::new(calculated, fee), <span class="self">Self</span>::quote_weight()))
-            }
+                )<span class="question-mark">?
+            </span>}
             QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
-                <span class="kw">let </span>(calculated, fee) = Pallet::&lt;T&gt;::calc_input_for_exact_output(
+                Pallet::&lt;T&gt;::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     <span class="kw-2">&amp;</span>reserve_input,
                     <span class="kw-2">&amp;</span>reserve_output,
                     <span class="kw-2">&amp;</span>desired_amount_out,
                     deduce_fee,
-                )<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((SwapOutcome::new(calculated, fee), <span class="self">Self</span>::quote_weight()))
-            }
-        }
+                )<span class="question-mark">?
+            </span>}
+        };
+
+        <span class="comment">// in XOR for dex_id = 0
+        // in XSTUSD for dex_id = 1
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
+
+        <span class="prelude-val">Ok</span>((SwapOutcome::new(calculated, fee), <span class="self">Self</span>::quote_weight()))
     }
 
     <span class="kw">fn </span>step_quote(
@@ -1724,7 +1736,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         swap_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
             <span class="kw-2">*</span>dex_id,
@@ -1745,9 +1757,10 @@
                 asset: <span class="kw-2">*</span>output_asset_id,
                 amount: destination_amount,
             },
-            fee: <span class="prelude-val">None</span>,
+            fee: Default::default(),
             fee_account: <span class="prelude-val">None</span>,
             get_fee_from_destination: <span class="prelude-val">None</span>,
+            dex_id: <span class="kw-2">*</span>dex_id,
         });
         common::SwapRulesValidation::&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;::prepare_and_validate(
             <span class="kw-2">&amp;mut </span>action,
@@ -1760,12 +1773,8 @@
         </span><span class="kw">let </span>retval = <span class="kw">match </span>action.clone() {
             PolySwapAction::PairSwap(a) =&gt; {
                 <span class="kw">let </span>(fee, amount) = <span class="kw">match </span>swap_amount {
-                    SwapAmount::WithDesiredInput { .. } =&gt; {
-                        (a.fee.unwrap(), a.destination.amount.unwrap())
-                    }
-                    SwapAmount::WithDesiredOutput { .. } =&gt; {
-                        (a.fee.unwrap(), a.source.amount.unwrap())
-                    }
+                    SwapAmount::WithDesiredInput { .. } =&gt; (a.fee, a.destination.amount.unwrap()),
+                    SwapAmount::WithDesiredOutput { .. } =&gt; (a.fee, a.source.amount.unwrap()),
                 };
                 <span class="prelude-val">Ok</span>((
                     common::prelude::SwapOutcome::new(amount, fee),
@@ -1803,7 +1812,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="comment">// Get pool account.
         </span><span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
@@ -1837,7 +1846,7 @@
         } <span class="kw">else </span>{
             common::Fixed::default()
         };
-        <span class="prelude-val">Ok</span>(<span class="kw">match </span>amount {
+        <span class="kw">let </span>(calculated, fee_amount) = <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
                 <span class="kw">let </span>(output, fee_amount) = <span class="kw">if </span>get_fee_from_destination {
                     <span class="comment">// output token is xor, user indicates desired input amount
@@ -1859,14 +1868,15 @@
                     <span class="kw">let </span>fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
                     (output, fee_amount)
                 };
-                SwapOutcome::new(
-                    output
-                        .try_into_balance()
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>,
-                    fee_amount
-                        .try_into_balance()
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>,
-                )
+
+                <span class="kw">let </span>calculated = output
+                    .try_into_balance()
+                    .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
+                <span class="kw">let </span>fee_amount = fee_amount
+                    .try_into_balance()
+                    .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
+
+                (calculated, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
                 <span class="kw">let </span>(input, fee_amount) = <span class="kw">if </span>get_fee_from_destination {
@@ -1888,16 +1898,22 @@
                     <span class="kw">let </span>fee_amount = input.clone() - input_without_fee;
                     (input, fee_amount)
                 };
-                SwapOutcome::new(
-                    input
-                        .try_into_balance()
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>,
-                    fee_amount
-                        .try_into_balance()
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>,
-                )
+
+                <span class="kw">let </span>calculated = input
+                    .try_into_balance()
+                    .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
+                <span class="kw">let </span>fee_amount = fee_amount
+                    .try_into_balance()
+                    .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
+
+                (calculated, fee_amount)
             }
-        })
+        };
+
+        <span class="comment">// in XOR for dex_id = 0
+        // in XSTUSD for dex_id = 1
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(calculated, fee))
     }
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {

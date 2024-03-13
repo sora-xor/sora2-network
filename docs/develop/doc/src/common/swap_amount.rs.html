@@ -700,6 +700,19 @@
 <a href="#685" id="685">685</a>
 <a href="#686" id="686">686</a>
 <a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -744,6 +757,7 @@
 <span class="kw">use </span>sp_std::mem;
 <span class="kw">use </span>sp_std::ops::{Add, Sub};
 
+<span class="kw">use </span><span class="kw">crate</span>::outcome_fee::OutcomeFee;
 <span class="kw">use </span><span class="kw">crate</span>::primitives::Balance;
 <span class="kw">use </span><span class="kw">crate</span>::Fixed;
 
@@ -799,7 +813,7 @@
     }
 
     <span class="doccomment">/// Position desired amount with outcome such that input and output values are aligned.
-    </span><span class="kw">pub fn </span>place_input_and_output(<span class="self">self</span>, outcome: SwapOutcome&lt;T&gt;) -&gt; (T, T) {
+    </span><span class="kw">pub fn </span>place_input_and_output&lt;AssetId: Ord&gt;(<span class="self">self</span>, outcome: SwapOutcome&lt;T, AssetId&gt;) -&gt; (T, T) {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::WithDesiredInput { .. } =&gt; (<span class="self">self</span>.amount(), outcome.amount),
             <span class="self">Self</span>::WithDesiredOutput { .. } =&gt; (outcome.amount, <span class="self">self</span>.amount()),
@@ -1078,7 +1092,7 @@
     }
 
     <span class="comment">// Position desired amount with outcome such that input and output values are aligned.
-    </span><span class="kw">pub fn </span>place_input_and_output(<span class="self">self</span>, outcome: SwapOutcome&lt;T&gt;) -&gt; (T, T) {
+    </span><span class="kw">pub fn </span>place_input_and_output&lt;AssetId: Ord&gt;(<span class="self">self</span>, outcome: SwapOutcome&lt;T, AssetId&gt;) -&gt; (T, T) {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::WithDesiredInput { .. } =&gt; (<span class="self">self</span>.amount(), outcome.amount),
             <span class="self">Self</span>::WithDesiredOutput { .. } =&gt; (outcome.amount, <span class="self">self</span>.amount()),
@@ -1311,15 +1325,15 @@
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize))]
-</span><span class="kw">pub struct </span>SwapOutcome&lt;AmountType&gt; {
+</span><span class="kw">pub struct </span>SwapOutcome&lt;AmountType, AssetId: Ord&gt; {
     <span class="doccomment">/// Actual swap output/input amount including deduced fee.
     </span><span class="kw">pub </span>amount: AmountType,
-    <span class="doccomment">/// Accumulated fee amount, assumed to be in XOR.
-    </span><span class="kw">pub </span>fee: AmountType,
+    <span class="doccomment">/// Accumulated fee amount.
+    </span><span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, AmountType&gt;,
 }
 
-<span class="kw">impl</span>&lt;AmountType&gt; SwapOutcome&lt;AmountType&gt; {
-    <span class="kw">pub fn </span>new(amount: AmountType, fee: AmountType) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;AmountType, AssetId: Ord&gt; SwapOutcome&lt;AmountType, AssetId&gt; {
+    <span class="kw">pub fn </span>new(amount: AmountType, fee: OutcomeFee&lt;AssetId, AmountType&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ amount, fee }
     }
 }
@@ -1328,35 +1342,47 @@
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
 </span><span class="kw">pub struct </span>TryFromSwapOutcomeError;
 
-<span class="kw">impl </span>TryFrom&lt;SwapOutcome&lt;Balance&gt;&gt; <span class="kw">for </span>SwapOutcome&lt;Fixed&gt; {
+<span class="kw">impl</span>&lt;AssetId: Ord&gt; TryFrom&lt;SwapOutcome&lt;Balance, AssetId&gt;&gt; <span class="kw">for </span>SwapOutcome&lt;Fixed, AssetId&gt; {
     <span class="kw">type </span>Error = TryFromSwapOutcomeError;
 
-    <span class="kw">fn </span>try_from(value: SwapOutcome&lt;Balance&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+    <span class="kw">fn </span>try_from(value: SwapOutcome&lt;Balance, AssetId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="kw">let </span>amount = Fixed::from_bits(
             value
                 .amount
                 .try_into()
                 .map_err(|<span class="kw">_</span>| TryFromSwapOutcomeError)<span class="question-mark">?</span>,
         );
-        <span class="kw">let </span>fee = Fixed::from_bits(value.fee.try_into().map_err(|<span class="kw">_</span>| TryFromSwapOutcomeError)<span class="question-mark">?</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>fee = OutcomeFee::new();
+        <span class="kw">for </span>(asset, fee_amount) <span class="kw">in </span>value.fee.<span class="number">0 </span>{
+            <span class="kw">let </span>fee_fixed =
+                Fixed::from_bits(fee_amount.try_into().map_err(|<span class="kw">_</span>| TryFromSwapOutcomeError)<span class="question-mark">?</span>);
+            fee.<span class="number">0</span>.insert(asset, fee_fixed);
+        }
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ amount, fee })
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;SwapOutcome&lt;Fixed&gt;&gt; <span class="kw">for </span>SwapOutcome&lt;Balance&gt; {
+<span class="kw">impl</span>&lt;AssetId: Ord&gt; TryFrom&lt;SwapOutcome&lt;Fixed, AssetId&gt;&gt; <span class="kw">for </span>SwapOutcome&lt;Balance, AssetId&gt; {
     <span class="kw">type </span>Error = TryFromSwapOutcomeError;
 
-    <span class="kw">fn </span>try_from(value: SwapOutcome&lt;Fixed&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+    <span class="kw">fn </span>try_from(value: SwapOutcome&lt;Fixed, AssetId&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="kw">let </span>amount = value
             .amount
             .into_bits()
             .try_into()
             .map_err(|<span class="kw">_</span>| TryFromSwapOutcomeError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>fee = value
-            .fee
-            .into_bits()
-            .try_into()
-            .map_err(|<span class="kw">_</span>| TryFromSwapOutcomeError)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>fee = OutcomeFee::new();
+        <span class="kw">for </span>(asset, fee_amount) <span class="kw">in </span>value.fee.<span class="number">0 </span>{
+            <span class="kw">let </span>fee_balance = fee_amount
+                .into_bits()
+                .try_into()
+                .map_err(|<span class="kw">_</span>| TryFromSwapOutcomeError)<span class="question-mark">?</span>;
+            fee.<span class="number">0</span>.insert(asset, fee_balance);
+        }
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ amount, fee })
     }
 }

@@ -1547,6 +1547,7 @@
 <a href="#1532" id="1532">1532</a>
 <a href="#1533" id="1533">1533</a>
 <a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1584,7 +1585,8 @@
 
 </span><span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>common::prelude::{
-    EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
+    EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
+    TradingPair,
 };
 <span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
@@ -2795,7 +2797,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
@@ -2809,7 +2811,7 @@
         <span class="macro">ensure!</span>(deal_info.is_valid(), Error::&lt;T&gt;::PriceCalculationFailed);
 
         <span class="comment">// order-book doesn&#39;t take fee
-        </span><span class="kw">let </span>fee = Balance::zero();
+        </span><span class="kw">let </span>fee = OutcomeFee::new();
 
         <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { .. } =&gt; <span class="prelude-val">Ok</span>((
@@ -2894,7 +2896,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
@@ -2942,7 +2944,7 @@
             order_book.execute_market_order(market_order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
 
         <span class="comment">// order-book doesn&#39;t take fee
-        </span><span class="kw">let </span>fee = Balance::zero();
+        </span><span class="kw">let </span>fee = OutcomeFee::new();
 
         <span class="kw">let </span>result = <span class="kw">match </span>desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
@@ -2984,7 +2986,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
@@ -3058,7 +3060,7 @@
         );
 
         <span class="comment">// order-book doesn&#39;t take fee
-        </span><span class="kw">let </span>fee = Balance::zero();
+        </span><span class="kw">let </span>fee = OutcomeFee::new();
 
         <span class="prelude-val">Ok</span>(SwapOutcome::new(<span class="kw-2">*</span>target_amount.balance(), fee))
     }

@@ -1894,6 +1894,19 @@
 <a href="#1879" id="1879">1879</a>
 <a href="#1880" id="1880">1880</a>
 <a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1944,8 +1957,8 @@
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
 <span class="kw">use </span>common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
-    QuoteAmount, SwapAmount, SwapOutcome,
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, OutcomeFee,
+    PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::BuyBackHandler;
 <span class="kw">use </span>common::{
@@ -2604,7 +2617,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>swap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    <span class="kw">fn </span>swap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         common::with_transaction(|| {
             <span class="kw">let </span>(input_amount, output_amount, fee_amount) = Pallet::&lt;T&gt;::decide_buy_amounts(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.main_asset_id,
@@ -2612,20 +2625,24 @@
                 <span class="self">self</span>.amount.into(),
                 <span class="bool-val">true</span>,
             )<span class="question-mark">?</span>;
+
+            <span class="comment">// in XOR
+            </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
             <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self</span>.amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         output_amount &gt;= min_amount_out,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(output_amount, fee_amount)
+                    SwapOutcome::new(output_amount, fee)
                 }
                 SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         input_amount &lt;= max_amount_in,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(input_amount, fee_amount)
+                    SwapOutcome::new(input_amount, fee)
                 }
             };
 
@@ -3235,7 +3252,7 @@
         amount: SwapAmount&lt;Balance&gt;,
         from_account_id: <span class="kw-2">&amp;</span>T::AccountId,
         to_account_id: <span class="kw-2">&amp;</span>T::AccountId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         common::with_transaction(|| {
             <span class="kw">let </span>reserves_tech_account_id = <span class="self">Self</span>::reserves_account_id();
             <span class="kw">let </span>reserves_account_id =
@@ -3248,20 +3265,24 @@
                 reserves_amount &gt;= output_amount,
                 Error::&lt;T&gt;::NotEnoughReserves
             );
+
+            <span class="comment">// in XOR
+            </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
             <span class="kw">let </span>result = <span class="kw">match </span>amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         output_amount &gt;= min_amount_out,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(output_amount, fee_amount)
+                    SwapOutcome::new(output_amount, fee)
                 }
                 SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         input_amount &lt;= max_amount_in,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(input_amount, fee_amount)
+                    SwapOutcome::new(input_amount, fee)
                 }
             };
             technical::Pallet::&lt;T&gt;::transfer_out(
@@ -3461,7 +3482,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -3471,15 +3492,17 @@
         </span>} <span class="kw">else </span>{
             <span class="self">Self</span>::decide_buy_amounts(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>input_asset_id, amount, deduce_fee)<span class="question-mark">?
         </span>};
+
+        <span class="comment">// in XOR
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
         <span class="kw">match </span>amount {
-            QuoteAmount::WithDesiredInput { .. } =&gt; <span class="prelude-val">Ok</span>((
-                SwapOutcome::new(output_amount, fee_amount),
-                <span class="self">Self</span>::quote_weight(),
-            )),
-            QuoteAmount::WithDesiredOutput { .. } =&gt; <span class="prelude-val">Ok</span>((
-                SwapOutcome::new(input_amount, fee_amount),
-                <span class="self">Self</span>::quote_weight(),
-            )),
+            QuoteAmount::WithDesiredInput { .. } =&gt; {
+                <span class="prelude-val">Ok</span>((SwapOutcome::new(output_amount, fee), <span class="self">Self</span>::quote_weight()))
+            }
+            QuoteAmount::WithDesiredOutput { .. } =&gt; {
+                <span class="prelude-val">Ok</span>((SwapOutcome::new(input_amount, fee), <span class="self">Self</span>::quote_weight()))
+            }
         }
     }
 
@@ -3554,7 +3577,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -3639,12 +3662,12 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
         <span class="kw">let </span>base_asset_id = <span class="kw-2">&amp;</span>T::GetBaseAssetId::get();
-        <span class="kw">let </span>outcome = <span class="kw">if </span>input_asset_id == base_asset_id {
+        <span class="kw">let </span>(amount, fee) = <span class="kw">if </span>input_asset_id == base_asset_id {
             <span class="kw">let </span>base_price_wrt_collateral: FixedWrapper = &lt;Pallet&lt;T&gt; <span class="kw">as </span>GetMarketInfo&lt;
                 T::AssetId,
             &gt;&gt;::sell_price(
@@ -3667,7 +3690,7 @@
                             * base_price_wrt_collateral)
                             .try_into_balance()
                             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
-                    SwapOutcome::new(collateral_out, fee_amount)
+                    (collateral_out, fee_amount)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
                     <span class="kw">let </span>base_in =
@@ -3680,7 +3703,7 @@
                     </span>} <span class="kw">else </span>{
                         <span class="number">0
                     </span>};
-                    SwapOutcome::new(
+                    (
                         input_amount_with_fee
                             .try_into_balance()
                             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>,
@@ -3706,7 +3729,7 @@
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
                     base_out_unwrapped = base_out_unwrapped.saturating_sub(fee_amount);
-                    SwapOutcome::new(base_out_unwrapped, fee_amount)
+                    (base_out_unwrapped, fee_amount)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
                     <span class="kw">let </span>desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
@@ -3718,11 +3741,14 @@
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
                     <span class="kw">let </span>fee_amount = desired_amount_out_with_fee.saturating_sub(desired_amount_out);
-                    SwapOutcome::new(collateral_in, fee_amount)
+                    (collateral_in, fee_amount)
                 }
             }
         };
-        <span class="prelude-val">Ok</span>(outcome)
+
+        <span class="comment">// in XOR
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee);
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, fee))
     }
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {

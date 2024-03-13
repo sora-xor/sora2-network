@@ -250,6 +250,26 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -293,7 +313,7 @@
 <span class="kw">use </span>sp_api::{ApiExt, ProvideRuntimeApi};
 <span class="kw">use </span>sp_blockchain::HeaderBackend;
 <span class="kw">use </span>sp_runtime::generic::BlockId;
-<span class="kw">use </span>sp_runtime::traits::{Block <span class="kw">as </span>BlockT, MaybeDisplay, MaybeFromStr};
+<span class="kw">use </span>sp_runtime::traits::{Block <span class="kw">as </span>BlockT, MaybeDisplay, MaybeFromStr, Zero};
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="comment">// Custom imports
@@ -384,8 +404,12 @@
         FilterMode,
     &gt;,
     DEXId: Codec,
-    AssetId: Codec + MaybeFromStr + MaybeDisplay,
-    Balance: Codec + MaybeFromStr + MaybeDisplay + Default,
+    AssetId: Codec
+        + MaybeFromStr
+        + MaybeDisplay
+        + Ord
+        + From&lt;common::AssetId32&lt;common::PredefinedAssetId&gt;&gt;,
+    Balance: Codec + MaybeFromStr + MaybeDisplay + Default + Copy + Zero,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
     FilterMode: Codec,
@@ -436,6 +460,22 @@
                 </span>.map(Into::into)
             }
         } <span class="kw">else if </span>version == <span class="prelude-val">Some</span>(<span class="number">2</span>) {
+            <span class="attr">#[allow(deprecated)]
+            </span>{
+                api.quote_before_version_3(
+                    <span class="kw-2">&amp;</span>at,
+                    dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    swap_variant,
+                    selected_source_types,
+                    filter_mode,
+                )
+                .map_err(|e| RpcError::Call(CallError::Failed(e.into())))<span class="question-mark">?
+                </span>.map(Into::into)
+            }
+        } <span class="kw">else if </span>version == <span class="prelude-val">Some</span>(<span class="number">3</span>) {
             api.quote(
                 <span class="kw-2">&amp;</span>at,
                 dex_id,

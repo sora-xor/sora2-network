@@ -1377,6 +1377,13 @@
 <a href="#1362" id="1362">1362</a>
 <a href="#1363" id="1363">1363</a>
 <a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1408,7 +1415,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::prelude::QuoteAmount;
+<span class="kw">use </span>common::prelude::{OutcomeFee, QuoteAmount};
 <span class="kw">use </span>frame_support::RuntimeDebug;
 <span class="kw">use </span>sp_std::vec::Vec;
 
@@ -1431,20 +1438,22 @@
 </span><span class="attr">#[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
-</span><span class="kw">pub struct </span>AggregatedSwapOutcome&lt;LiquiditySourceType, AmountType&gt; {
+</span><span class="kw">pub struct </span>AggregatedSwapOutcome&lt;AssetId: Ord, LiquiditySourceType, AmountType&gt; {
     <span class="doccomment">/// A distribution of amounts each liquidity sources gets to swap in the entire trade
     </span><span class="kw">pub </span>distribution: Vec&lt;(LiquiditySourceType, QuoteAmount&lt;AmountType&gt;)&gt;,
     <span class="doccomment">/// The best possible output/input amount for a given trade and a set of liquidity sources
     </span><span class="kw">pub </span>amount: AmountType,
     <span class="doccomment">/// Total fee amount, nominated in XOR
-    </span><span class="kw">pub </span>fee: AmountType,
+    </span><span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, AmountType&gt;,
 }
 
-<span class="kw">impl</span>&lt;LiquiditySourceIdType, AmountType&gt; AggregatedSwapOutcome&lt;LiquiditySourceIdType, AmountType&gt; {
+<span class="kw">impl</span>&lt;AssetId: Ord, LiquiditySourceIdType, AmountType&gt;
+    AggregatedSwapOutcome&lt;AssetId, LiquiditySourceIdType, AmountType&gt;
+{
     <span class="kw">pub fn </span>new(
         distribution: Vec&lt;(LiquiditySourceIdType, QuoteAmount&lt;AmountType&gt;)&gt;,
         amount: AmountType,
-        fee: AmountType,
+        fee: OutcomeFee&lt;AssetId, AmountType&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             distribution,
@@ -1483,13 +1492,16 @@
         <span class="self">self</span>.liquidity_chunks.insert(source, sorted_chunks);
     }
 
-    <span class="kw">pub fn </span>aggregate_swap_outcome(
+    <span class="kw">pub fn </span>aggregate_swap_outcome&lt;AssetId&gt;(
         <span class="kw-2">mut </span><span class="self">self</span>,
         amount: Balance,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(
         SwapInfo&lt;LiquiditySourceType, Balance&gt;,
-        AggregatedSwapOutcome&lt;LiquiditySourceType, Balance&gt;,
-    )&gt; {
+        AggregatedSwapOutcome&lt;AssetId, LiquiditySourceType, Balance&gt;,
+    )&gt;
+    <span class="kw">where
+        </span>AssetId: Ord + From&lt;common::AssetId32&lt;common::PredefinedAssetId&gt;&gt;,
+    {
         <span class="kw">if </span><span class="self">self</span>.liquidity_chunks.is_empty() {
             <span class="kw">return </span><span class="prelude-val">None</span>;
         }
@@ -1559,8 +1571,8 @@
                     })
                     .collect(),
                 amount: result_amount,
-                fee,
-            },
+                fee: OutcomeFee::&lt;AssetId, Balance&gt;::xor(fee), <span class="comment">// todo fix (m.tagirov)
+            </span>},
         ))
     }
 
@@ -1594,9 +1606,11 @@
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::liquidity_aggregator::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::prelude::{QuoteAmount, SwapVariant};
+    <span class="kw">use </span>common::prelude::{OutcomeFee, QuoteAmount, SwapVariant};
     <span class="kw">use </span>common::{balance, LiquiditySourceType, SwapChunk};
     <span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
+
+    <span class="kw">type </span>AssetId = common::AssetId32&lt;common::PredefinedAssetId&gt;;
 
     <span class="kw">fn </span>get_liquidity_aggregator_with_desired_input_and_equal_chunks(
     ) -&gt; LiquidityAggregator&lt;LiquiditySourceType&gt; {
@@ -1916,8 +1930,8 @@
                         QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">120</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -1935,8 +1949,8 @@
                         QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">220</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -1963,7 +1977,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">320</span>),
-                    <span class="macro">balance!</span>(<span class="number">1</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">1</span>))
                 )
             )
         );
@@ -1991,7 +2005,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">410</span>),
-                    <span class="macro">balance!</span>(<span class="number">1.9</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">1.9</span>))
                 )
             )
         );
@@ -2024,7 +2038,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">495</span>),
-                    <span class="macro">balance!</span>(<span class="number">2.75</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">2.75</span>))
                 )
             )
         );
@@ -2057,7 +2071,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">580</span>),
-                    <span class="macro">balance!</span>(<span class="number">3.6</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">3.6</span>))
                 )
             )
         );
@@ -2076,8 +2090,8 @@
                         QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">8</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2095,8 +2109,8 @@
                         QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">18</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2123,7 +2137,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">28</span>),
-                    <span class="macro">balance!</span>(<span class="number">1</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">1</span>))
                 )
             )
         );
@@ -2151,7 +2165,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">39</span>),
-                    <span class="macro">balance!</span>(<span class="number">2</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">2</span>))
                 )
             )
         );
@@ -2179,7 +2193,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">51</span>),
-                    <span class="macro">balance!</span>(<span class="number">3</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">3</span>))
                 )
             )
         );
@@ -2215,7 +2229,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">63.5</span>),
-                    <span class="macro">balance!</span>(<span class="number">4</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">4</span>))
                 )
             )
         );
@@ -2248,7 +2262,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">76</span>),
-                    <span class="macro">balance!</span>(<span class="number">5</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">5</span>))
                 )
             )
         );
@@ -2422,8 +2436,8 @@
                         QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">120</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2441,8 +2455,8 @@
                         QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">224</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2469,7 +2483,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">324</span>),
-                    <span class="macro">balance!</span>(<span class="number">0.8</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">0.8</span>))
                 )
             )
         );
@@ -2497,7 +2511,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">416</span>),
-                    <span class="macro">balance!</span>(<span class="number">1.719999999999999999</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">1.719999999999999999</span>))
                 )
             )
         );
@@ -2530,7 +2544,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">503</span>),
-                    <span class="macro">balance!</span>(<span class="number">2.59</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">2.59</span>))
                 )
             )
         );
@@ -2563,7 +2577,7 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">588</span>),
-                    <span class="macro">balance!</span>(<span class="number">3.439999999999999999</span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::xor(<span class="macro">balance!</span>(<span class="number">3.439999999999999999</span>))
                 )
             )
         );
@@ -2582,8 +2596,8 @@
                         QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">8</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2601,8 +2615,8 @@
                         QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">13</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2629,8 +2643,8 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">23</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2660,8 +2674,8 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">32.5</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2696,8 +2710,8 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">40.5</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
 
@@ -2735,8 +2749,8 @@
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">53</span>),
-                    <span class="number">0
-                </span>)
+                    OutcomeFee::&lt;AssetId, Balance&gt;::new()
+                )
             )
         );
     }

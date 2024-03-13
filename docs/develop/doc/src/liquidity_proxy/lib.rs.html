@@ -2782,6 +2782,27 @@
 <a href="#2767" id="2767">2767</a>
 <a href="#2768" id="2768">2768</a>
 <a href="#2769" id="2769">2769</a>
+<a href="#2770" id="2770">2770</a>
+<a href="#2771" id="2771">2771</a>
+<a href="#2772" id="2772">2772</a>
+<a href="#2773" id="2773">2773</a>
+<a href="#2774" id="2774">2774</a>
+<a href="#2775" id="2775">2775</a>
+<a href="#2776" id="2776">2776</a>
+<a href="#2777" id="2777">2777</a>
+<a href="#2778" id="2778">2778</a>
+<a href="#2779" id="2779">2779</a>
+<a href="#2780" id="2780">2780</a>
+<a href="#2781" id="2781">2781</a>
+<a href="#2782" id="2782">2782</a>
+<a href="#2783" id="2783">2783</a>
+<a href="#2784" id="2784">2784</a>
+<a href="#2785" id="2785">2785</a>
+<a href="#2786" id="2786">2786</a>
+<a href="#2787" id="2787">2787</a>
+<a href="#2788" id="2788">2788</a>
+<a href="#2789" id="2789">2789</a>
+<a href="#2790" id="2790">2790</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2830,7 +2851,9 @@
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>assets::WeightInfo <span class="kw">as _</span>;
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
+<span class="kw">use </span>common::prelude::{
+    Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
+};
 <span class="kw">use </span>common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
@@ -2989,8 +3012,8 @@
 }
 
 <span class="attr">#[derive(Eq, PartialEq, Encode, Decode)]
-</span><span class="kw">pub struct </span>QuoteInfo&lt;AssetId, LiquiditySource&gt; {
-    <span class="kw">pub </span>outcome: SwapOutcome&lt;Balance&gt;,
+</span><span class="kw">pub struct </span>QuoteInfo&lt;AssetId: Ord, LiquiditySource&gt; {
+    <span class="kw">pub </span>outcome: SwapOutcome&lt;Balance, AssetId&gt;,
     <span class="kw">pub </span>amount_without_impact: <span class="prelude-ty">Option</span>&lt;Balance&gt;,
     <span class="kw">pub </span>rewards: Rewards&lt;AssetId&gt;,
     <span class="kw">pub </span>liquidity_sources: Vec&lt;LiquiditySource&gt;,
@@ -3084,7 +3107,7 @@
         )<span class="question-mark">?</span>;
         total_weight = total_weight.saturating_add(weight);
 
-        <span class="kw">let </span>(input_amount, output_amount, fee_amount) = <span class="kw">match </span>swap_amount {
+        <span class="kw">let </span>(input_amount, output_amount, fee) = <span class="kw">match </span>swap_amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
             } =&gt; (desired_amount_in, outcome.amount, outcome.fee),
@@ -3099,7 +3122,7 @@
             output_asset_id,
             input_amount,
             output_amount,
-            fee_amount,
+            fee,
             sources,
         ));
 
@@ -3118,7 +3141,14 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
         <span class="macro">ensure!</span>(
             input_asset_id != output_asset_id,
             Error::&lt;T&gt;::UnavailableExchangePath
@@ -3148,7 +3178,14 @@
         asset_paths: Vec&lt;ExchangePath&lt;T&gt;&gt;,
         amount: SwapAmount&lt;Balance&gt;,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
         <span class="kw">match </span>amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
@@ -3228,7 +3265,14 @@
         assets: <span class="kw-2">&amp;</span>[T::AssetId],
         input_amount: Balance,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
         <span class="kw">use </span>itertools::EitherOrBoth::<span class="kw-2">*</span>;
 
         <span class="kw">let </span>transit_account = T::GetTechnicalAccountId::get();
@@ -3281,17 +3325,14 @@
         <span class="comment">// Exchange aggregation
         </span>.fold(
             (
-                SwapOutcome::new(<span class="macro">balance!</span>(<span class="number">0</span>), <span class="macro">balance!</span>(<span class="number">0</span>)),
+                SwapOutcome::new(<span class="macro">balance!</span>(<span class="number">0</span>), OutcomeFee::new()),
                 Vec::new(),
                 Weight::zero(),
             ),
             |(<span class="kw-2">mut </span>outcome, <span class="kw-2">mut </span>sources, <span class="kw-2">mut </span>total_weight),
              (swap_outcome, swap_sources, swap_weight)| {
                 outcome.amount = swap_outcome.amount;
-                outcome.fee = swap_outcome
-                    .fee
-                    .checked_add(swap_outcome.fee)
-                    .ok_or(Error::&lt;T&gt;::CalculationError)<span class="question-mark">?</span>;
+                outcome.fee = outcome.fee.merge(swap_outcome.fee);
                 merge_two_vectors_unique(<span class="kw-2">&amp;mut </span>sources, swap_sources);
                 total_weight = total_weight.saturating_add(swap_weight);
                 <span class="prelude-val">Ok</span>((outcome, sources, total_weight))
@@ -3341,7 +3382,14 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
         common::with_transaction(|| {
             <span class="kw">let </span><span class="kw-2">mut </span>total_weight = Weight::zero();
             <span class="kw">let </span>(outcome, <span class="kw">_</span>, sources, weight) = <span class="self">Self</span>::quote_single(
@@ -3378,24 +3426,20 @@
                         outcome
                     })
                 })
-                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;SwapOutcome&lt;Balance&gt;&gt;, DispatchError&gt;&gt;()<span class="question-mark">?</span>;
+                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;SwapOutcome&lt;Balance, T::AssetId&gt;&gt;, DispatchError&gt;&gt;()<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>(amount, fee): (FixedWrapper, FixedWrapper) = res.into_iter().fold(
-                (<span class="macro">fixed_wrapper!</span>(<span class="number">0</span>), <span class="macro">fixed_wrapper!</span>(<span class="number">0</span>)),
+            <span class="kw">let </span>(amount, fee) = res.into_iter().fold(
+                (<span class="macro">fixed_wrapper!</span>(<span class="number">0</span>), OutcomeFee::new()),
                 |(amount_acc, fee_acc), x| {
                     (
                         amount_acc + FixedWrapper::from(x.amount),
-                        fee_acc + FixedWrapper::from(x.fee),
+                        fee_acc.merge(x.fee),
                     )
                 },
             );
             <span class="kw">let </span>amount = amount
                 .try_into_balance()
                 .map_err(|<span class="kw">_</span>| Error::CalculationError::&lt;T&gt;)<span class="question-mark">?</span>;
-            <span class="kw">let </span>fee = fee
-                .try_into_balance()
-                .map_err(|<span class="kw">_</span>| Error::CalculationError::&lt;T&gt;)<span class="question-mark">?</span>;
-
             <span class="prelude-val">Ok</span>((SwapOutcome::new(amount, fee), sources, total_weight))
         })
     }
@@ -3546,7 +3590,7 @@
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            SwapOutcome&lt;Balance&gt;,
+            SwapOutcome&lt;Balance, T::AssetId&gt;,
             <span class="prelude-ty">Option</span>&lt;Balance&gt;,
             Rewards&lt;T::AssetId&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
@@ -3577,7 +3621,7 @@
         }))
         .fold(
             (
-                SwapOutcome::new(<span class="macro">balance!</span>(<span class="number">0</span>), <span class="macro">balance!</span>(<span class="number">0</span>)),
+                SwapOutcome::new(<span class="macro">balance!</span>(<span class="number">0</span>), OutcomeFee::new()),
                 init_outcome_without_impact,
                 Rewards::new(),
                 Vec::new(),
@@ -3610,10 +3654,7 @@
                     })
                     .transpose()<span class="question-mark">?</span>;
                 outcome.amount = quote.amount;
-                outcome.fee = outcome
-                    .fee
-                    .checked_add(quote.fee)
-                    .ok_or(Error::&lt;T&gt;::CalculationError)<span class="question-mark">?</span>;
+                outcome.fee = outcome.fee.merge(quote.fee);
                 rewards.append(<span class="kw-2">&amp;mut </span>quote_rewards);
                 weight = weight.saturating_add(quote_weight);
                 merge_two_vectors_unique(<span class="kw-2">&amp;mut </span>liquidity_sources, quote_liquidity_sources);
@@ -3746,7 +3787,7 @@
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            AggregatedSwapOutcome&lt;LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
             Rewards&lt;T::AssetId&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
             Weight,
@@ -4257,7 +4298,7 @@
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            AggregatedSwapOutcome&lt;LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
             Rewards&lt;T::AssetId&gt;,
             Weight,
         ),
@@ -4340,7 +4381,7 @@
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            AggregatedSwapOutcome&lt;LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
             Rewards&lt;T::AssetId&gt;,
             Weight,
         ),
@@ -4411,7 +4452,7 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>best: Balance = extremum;
-        <span class="kw">let </span><span class="kw-2">mut </span>total_fee: Balance = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>total_fee = OutcomeFee::new();
         <span class="kw">let </span><span class="kw-2">mut </span>rewards = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>distr = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>maybe_error: <span class="prelude-ty">Option</span>&lt;DispatchError&gt; = <span class="prelude-val">None</span>;
@@ -4466,7 +4507,7 @@
                             }
                         };
                         best = outcome_primary.amount + outcome_secondary.amount;
-                        total_fee = outcome_primary.fee + outcome_secondary.fee;
+                        total_fee = outcome_primary.fee.merge(outcome_secondary.fee);
                         distr = <span class="macro">vec!</span>[
                             (primary_source_id.clone(), amount_primary),
                             (secondary_source_id.clone(), amount_secondary),
@@ -4498,7 +4539,7 @@
             total_weight = total_weight.saturating_add(weight);
             <span class="kw">if </span>is_better(outcome.amount, best) {
                 best = outcome.amount;
-                total_fee = outcome.fee;
+                total_fee = outcome.fee.clone();
                 distr = <span class="macro">vec!</span>[(secondary_source_id.clone(), amount.clone())];
                 <span class="kw">if </span>!skip_info {
                     <span class="kw">let </span>(input_amount, output_amount) =
@@ -4773,7 +4814,7 @@
         <span class="kw">let </span>(
             SwapOutcome {
                 amount: executed_input_amount,
-                fee: fee_amount,
+                fee,
             },
             sources,
             weights,
@@ -4798,7 +4839,7 @@
             output_asset_id.clone(),
             executed_input_amount,
             out_amount,
-            fee_amount,
+            fee,
             sources,
         ));
 
@@ -4997,7 +5038,7 @@
         amount: QuoteAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         Pallet::&lt;T&gt;::inner_quote(
             dex_id,
             input_asset_id,
@@ -5022,7 +5063,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>(outcome, <span class="kw">_</span>, <span class="kw">_</span>) = Pallet::&lt;T&gt;::inner_exchange(
             dex_id,
             sender,
@@ -5145,6 +5186,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::prelude::OutcomeFee;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::EnsureOrigin;
     <span class="kw">use </span>frame_support::{traits::StorageVersion, transactional};
@@ -5470,7 +5512,7 @@
             AssetIdOf&lt;T&gt;,
             Balance,
             Balance,
-            Balance,
+            OutcomeFee&lt;AssetIdOf&lt;T&gt;, Balance&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
         ),
         <span class="doccomment">/// Liquidity source was enabled

@@ -216,6 +216,8 @@
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -269,6 +271,7 @@
 <span class="kw">mod </span>fixed_wrapper;
 <span class="kw">pub mod </span>macros;
 <span class="kw">pub mod </span>migrations;
+<span class="kw">mod </span>outcome_fee;
 <span class="kw">mod </span>primitives;
 <span class="kw">pub mod </span>serialization;
 <span class="kw">pub mod </span>storage;
@@ -286,6 +289,7 @@
 <span class="kw">pub mod </span>prelude {
     <span class="kw">pub use </span><span class="kw">super</span>::balance_unit::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::fixed_wrapper::<span class="kw-2">*</span>;
+    <span class="kw">pub use </span><span class="kw">super</span>::outcome_fee::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::primitives::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::serialization::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">super</span>::swap_amount::<span class="kw-2">*</span>;

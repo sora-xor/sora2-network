@@ -65,6 +65,9 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -95,7 +98,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::operations::<span class="kw-2">*</span>;
+</span><span class="kw">use </span>common::DexIdOf;
+
+<span class="kw">use </span><span class="kw">crate</span>::operations::<span class="kw-2">*</span>;
 
 <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 
@@ -108,9 +113,10 @@
 <span class="kw">pub type </span>DEXIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>common::Config&gt;::DEXId;
 
 <span class="kw">pub type </span>PolySwapActionStructOf&lt;T&gt; =
-    PolySwapAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;;
+    PolySwapAction&lt;DexIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;;
 
-<span class="kw">pub type </span>PairSwapActionOf&lt;T&gt; = PairSwapAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;;
+<span class="kw">pub type </span>PairSwapActionOf&lt;T&gt; =
+    PairSwapAction&lt;DexIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;;
 
 <span class="kw">pub type </span>WithdrawLiquidityActionOf&lt;T&gt; =
     WithdrawLiquidityAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;;

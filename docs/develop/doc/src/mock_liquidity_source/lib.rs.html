@@ -718,6 +718,14 @@
 <a href="#703" id="703">703</a>
 <a href="#704" id="704">704</a>
 <a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -753,7 +761,7 @@
 </span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>common::fixnum::ops::One;
-<span class="kw">use </span>common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+<span class="kw">use </span>common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 <span class="kw">use </span>common::{
     balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource,
     RewardReason, SwapChunk,
@@ -790,7 +798,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             target_amount_in &gt; zero,
@@ -813,15 +821,18 @@
         } <span class="kw">else </span>{
             <span class="number">0</span>.into()
         };
+
         <span class="kw">let </span>fee_amount = amount_out_without_fee * fee_fraction;
-        <span class="prelude-val">Ok</span>(SwapOutcome::new(
-            (amount_out_without_fee - fee_amount.clone())
-                .get()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-            fee_amount
-                .get()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-        ))
+
+        <span class="kw">let </span>amount = (amount_out_without_fee - fee_amount.clone())
+            .get()
+            .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>fee_amount = fee_amount
+            .get()
+            .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, OutcomeFee::xor_fixed(fee_amount)))
     }
 
     <span class="kw">fn </span>get_target_amount_out(
@@ -829,7 +840,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             base_amount_in &gt; zero,
@@ -856,7 +867,10 @@
             .get()
             .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount_out, fee_amount))
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(
+            amount_out,
+            OutcomeFee::xor_fixed(fee_amount),
+        ))
     }
 
     <span class="kw">fn </span>get_base_amount_in(
@@ -864,7 +878,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             target_amount_out &gt; zero,
@@ -909,9 +923,11 @@
             amount_in
                 .get()
                 .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-            (base_amount_in_with_fee - base_amount_in_without_fee)
-                .get()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
+            OutcomeFee::xor_fixed(
+                (base_amount_in_with_fee - base_amount_in_without_fee)
+                    .get()
+                    .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
+            ),
         ))
     }
 
@@ -920,7 +936,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             base_amount_out &gt; zero,
@@ -957,7 +973,7 @@
         <span class="kw">let </span>fee = (base_amount_out_with_fee - base_amount_out)
             .get()
             .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount_in, fee))
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount_in, OutcomeFee::xor_fixed(fee)))
     }
 }
 
@@ -1012,7 +1028,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = amount
             .try_into()
@@ -1076,20 +1092,20 @@
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } =&gt; {
-                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_base_amount_out(
+                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_base_amount_out(
                         desired_amount_in,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_target_amount_out(
+                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_target_amount_out(
                         outcome_a.amount,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.into();
-                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     <span class="kw">let </span>amount = outcome_b
                         .amount
                         .into_bits()
@@ -1098,25 +1114,25 @@
                     <span class="kw">let </span>fee = (outcome_a_fee + outcome_b_fee)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, fee))
+                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, OutcomeFee::xor(fee)))
                 }
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } =&gt; {
-                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_base_amount_in(
+                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_base_amount_in(
                         desired_amount_out,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_target_amount_in(
+                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_target_amount_in(
                         outcome_b.amount,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.into();
-                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     <span class="kw">let </span>amount = outcome_a
                         .amount
                         .into_bits()
@@ -1125,7 +1141,7 @@
                     <span class="kw">let </span>fee = (outcome_b_fee + outcome_a_fee)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, fee))
+                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, OutcomeFee::xor(fee)))
                 }
             }
         };
@@ -1163,11 +1179,11 @@
 
             <span class="kw">let </span>(input, output, fee) = <span class="kw">match </span>volume {
                 QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
-                    (desired_amount_in, outcome.amount, outcome.fee)
-                }
+                    (desired_amount_in, outcome.amount, outcome.fee.get_xor()) <span class="comment">// todo fix (m.tagirov)
+                </span>}
                 QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
-                    (outcome.amount, desired_amount_out, outcome.fee)
-                }
+                    (outcome.amount, desired_amount_out, outcome.fee.get_xor()) <span class="comment">// todo fix (m.tagirov)
+                </span>}
             };
 
             <span class="kw">let </span>input_chunk = input - sub_in;
@@ -1191,7 +1207,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="comment">// actual exchange does not happen
         </span><span class="self">Self</span>::quote(
             dex_id,
@@ -1218,7 +1234,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="kw">if </span>input_asset_id == <span class="kw-2">&amp;</span>dex_info.base_asset_id {
             <span class="kw">let </span>(base_reserve, target_reserve) = &lt;Reserves&lt;T, I&gt;&gt;::get(dex_id, output_asset_id);
@@ -1230,7 +1246,7 @@
                     (FixedWrapper::from(base_amount_in) * base_price_wrt_target)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
@@ -1238,7 +1254,7 @@
                     (FixedWrapper::from(target_amount_out) / base_price_wrt_target)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
             })
         } <span class="kw">else </span>{
@@ -1251,7 +1267,7 @@
                     (FixedWrapper::from(target_amount_in) * target_price_wrt_base)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
@@ -1259,7 +1275,7 @@
                     (FixedWrapper::from(base_amount_out) / target_price_wrt_base)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
             })
         }

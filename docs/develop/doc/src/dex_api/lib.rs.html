@@ -641,7 +641,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>quote {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -655,7 +655,7 @@
             };
         }
         <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool =&gt; <span class="macro">quote!</span>(XYKPool),
+            XYKPool =&gt; <span class="macro">quote!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; <span class="macro">quote!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">quote!</span>(XSTPool),
             OrderBook =&gt; <span class="macro">quote!</span>(OrderBook),
@@ -708,7 +708,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         swap_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>exchange {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -773,7 +773,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>quote_without_impact {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {

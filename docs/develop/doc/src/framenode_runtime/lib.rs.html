@@ -3659,10 +3659,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">72</span>,
+    spec_version: <span class="number">73</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">72</span>,
+    transaction_version: <span class="number">73</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4376,7 +4376,7 @@
     <span class="kw">type </span>TechAccountId = TechAccountId;
     <span class="kw">type </span>Trigger = ();
     <span class="kw">type </span>Condition = ();
-    <span class="kw">type </span>SwapAction = pool_xyk::PolySwapAction&lt;AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>SwapAction = pool_xyk::PolySwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -4396,12 +4396,12 @@
 <span class="kw">impl </span>pool_xyk::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>MIN_XOR: Balance = <span class="macro">balance!</span>(<span class="number">0.0007</span>);
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>PairSwapAction = pool_xyk::PairSwapAction&lt;AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>PairSwapAction = pool_xyk::PairSwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
     <span class="kw">type </span>DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction&lt;AssetId, AccountId, TechAccountId&gt;;
     <span class="kw">type </span>WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction&lt;AssetId, AccountId, TechAccountId&gt;;
-    <span class="kw">type </span>PolySwapAction = pool_xyk::PolySwapAction&lt;AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>PolySwapAction = pool_xyk::PolySwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
     <span class="kw">type </span>EnsureDEXManager = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
@@ -6035,7 +6035,7 @@
             output_asset_id: AssetId,
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -&gt; <span class="prelude-ty">Option</span>&lt;dex_runtime_api::SwapOutcomeInfo&lt;Balance&gt;&gt; {
+        ) -&gt; <span class="prelude-ty">Option</span>&lt;dex_runtime_api::SwapOutcomeInfo&lt;Balance, AssetId&gt;&gt; {
             <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
             </span>{
                 DEXAPI::quote(
@@ -6044,7 +6044,7 @@
                     <span class="kw-2">&amp;</span>output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     <span class="bool-val">true</span>,
-                ).ok().map(|(sa, <span class="kw">_</span>)| dex_runtime_api::SwapOutcomeInfo::&lt;Balance&gt; { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, <span class="kw">_</span>)| dex_runtime_api::SwapOutcomeInfo::&lt;Balance, AssetId&gt; { amount: sa.amount, fee: sa.fee})
             }
             <span class="attr">#[cfg(not(feature = <span class="string">&quot;private-net&quot;</span>))]
             </span>{

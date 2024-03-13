@@ -1364,7 +1364,7 @@
 }
 
 <span class="doccomment">/// Indicates that particular object can be used to perform exchanges.
-</span><span class="kw">pub trait </span>LiquiditySource&lt;TargetId, AccountId, AssetId, Amount, Error&gt; {
+</span><span class="kw">pub trait </span>LiquiditySource&lt;TargetId, AccountId, AssetId: Ord, Amount, Error&gt; {
     <span class="doccomment">/// Check if liquidity source provides an exchange from given input asset to output asset.
     </span><span class="kw">fn </span>can_exchange(
         target_id: <span class="kw-2">&amp;</span>TargetId,
@@ -1379,7 +1379,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         amount: QuoteAmount&lt;Amount&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Amount&gt;, Weight), Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Amount, AssetId&gt;, Weight), Error&gt;;
 
     <span class="doccomment">/// Get the input/output liquidity divided into steps based on the desired amount.
     /// The count of steps may differ from the `recommended_samples_count`
@@ -1400,7 +1400,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         swap_amount: SwapAmount&lt;Amount&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Amount&gt;, Weight), Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Amount, AssetId&gt;, Weight), Error&gt;;
 
     <span class="doccomment">/// Get rewards that are given for perfoming given exchange.
     </span><span class="kw">fn </span>check_rewards(
@@ -1419,7 +1419,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         amount: QuoteAmount&lt;Amount&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Amount&gt;, Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Amount, AssetId&gt;, Error&gt;;
 
     <span class="doccomment">/// Get weight of quote
     </span><span class="kw">fn </span>quote_weight() -&gt; Weight;
@@ -1510,8 +1510,8 @@
     <span class="kw">fn </span>disable_symbol(_symbol: <span class="kw-2">&amp;</span>Symbol) {}
 }
 
-<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId&gt; LiquiditySource&lt;DEXId, AccountId, AssetId, Fixed, DispatchError&gt;
-    <span class="kw">for </span>()
+<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId: Ord&gt;
+    LiquiditySource&lt;DEXId, AccountId, AssetId, Fixed, DispatchError&gt; <span class="kw">for </span>()
 {
     <span class="kw">fn </span>can_exchange(
         _target_id: <span class="kw-2">&amp;</span>DEXId,
@@ -1527,7 +1527,7 @@
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _amount: QuoteAmount&lt;Fixed&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Fixed&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Fixed, AssetId&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1549,7 +1549,7 @@
         _input_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _swap_amount: SwapAmount&lt;Fixed&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Fixed&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Fixed, AssetId&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1569,7 +1569,7 @@
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _amount: QuoteAmount&lt;Fixed&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, AssetId&gt;, DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1590,8 +1590,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId&gt; LiquiditySource&lt;DEXId, AccountId, AssetId, Balance, DispatchError&gt;
-    <span class="kw">for </span>()
+<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId: Ord&gt;
+    LiquiditySource&lt;DEXId, AccountId, AssetId, Balance, DispatchError&gt; <span class="kw">for </span>()
 {
     <span class="kw">fn </span>can_exchange(
         _target_id: <span class="kw-2">&amp;</span>DEXId,
@@ -1607,7 +1607,7 @@
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetId&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1629,7 +1629,7 @@
         _input_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _swap_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetId&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1649,7 +1649,7 @@
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetId&gt;, DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1670,7 +1670,7 @@
     }
 }
 
-<span class="kw">pub trait </span>LiquidityRegistry&lt;DEXId, AccountId, AssetId, LiquiditySourceIndex, Amount, Error&gt;:
+<span class="kw">pub trait </span>LiquidityRegistry&lt;DEXId, AccountId, AssetId: Ord, LiquiditySourceIndex, Amount, Error&gt;:
     LiquiditySource&lt;LiquiditySourceId&lt;DEXId, LiquiditySourceIndex&gt;, AccountId, AssetId, Amount, Error&gt;
 <span class="kw">where
     </span>DEXId: PartialEq + Clone + Copy,
@@ -2066,7 +2066,7 @@
 }
 
 <span class="doccomment">/// Indicates that particular object can be used to perform exchanges with aggregation capability.
-</span><span class="kw">pub trait </span>LiquidityProxyTrait&lt;DEXId: PartialEq + Copy, AccountId, AssetId&gt; {
+</span><span class="kw">pub trait </span>LiquidityProxyTrait&lt;DEXId: PartialEq + Copy, AccountId, AssetId: Ord&gt; {
     <span class="doccomment">/// Get spot price of tokens based on desired amount, None returned if liquidity source
     /// does not have available exchange methods for indicated path.
     </span><span class="kw">fn </span>quote(
@@ -2076,7 +2076,7 @@
         amount: QuoteAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;DEXId, LiquiditySourceType&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetId&gt;, DispatchError&gt;;
 
     <span class="doccomment">/// Perform exchange based on desired amount.
     </span><span class="kw">fn </span>exchange(
@@ -2087,11 +2087,11 @@
         output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetId&gt;, DispatchError&gt;;
 }
 
-<span class="kw">impl</span>&lt;DEXId: PartialEq + Copy, AccountId, AssetId&gt; LiquidityProxyTrait&lt;DEXId, AccountId, AssetId&gt;
-    <span class="kw">for </span>()
+<span class="kw">impl</span>&lt;DEXId: PartialEq + Copy, AccountId, AssetId: Ord&gt;
+    LiquidityProxyTrait&lt;DEXId, AccountId, AssetId&gt; <span class="kw">for </span>()
 {
     <span class="kw">fn </span>quote(
         _dex_id: DEXId,
@@ -2100,7 +2100,7 @@
         _amount: QuoteAmount&lt;Balance&gt;,
         _filter: LiquiditySourceFilter&lt;DEXId, LiquiditySourceType&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetId&gt;, DispatchError&gt; {
         <span class="macro">unimplemented!</span>()
     }
 
@@ -2112,7 +2112,7 @@
         _output_asset_id: <span class="kw-2">&amp;</span>AssetId,
         _amount: SwapAmount&lt;Balance&gt;,
         _filter: LiquiditySourceFilter&lt;DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetId&gt;, DispatchError&gt; {
         <span class="macro">unimplemented!</span>()
     }
 }

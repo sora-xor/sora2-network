@@ -160,7 +160,7 @@
 
 <span class="kw">use </span>common::SwapRulesValidation;
 
-<span class="kw">use </span><span class="kw">crate</span>::aliases::{AccountIdOf, AssetIdOf, PolySwapActionStructOf, TechAccountIdOf};
+<span class="kw">use </span><span class="kw">crate</span>::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, PolySwapActionStructOf, TechAccountIdOf};
 <span class="kw">use </span><span class="kw">crate</span>::Config;
 
 <span class="kw">use </span><span class="kw">crate</span>::operations::<span class="kw-2">*</span>;
@@ -168,7 +168,7 @@
 <span class="kw">impl</span>&lt;T: Config&gt; common::SwapRulesValidation&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;
     <span class="kw">for </span>PolySwapActionStructOf&lt;T&gt;
 <span class="kw">where
-    </span>PairSwapAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;:
+    </span>PairSwapAction&lt;DEXIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;:
         SwapRulesValidation&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;,
     DepositLiquidityAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;:
         SwapRulesValidation&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;,
@@ -207,7 +207,7 @@
 <span class="kw">impl</span>&lt;T: Config&gt; common::SwapAction&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;
     <span class="kw">for </span>PolySwapActionStructOf&lt;T&gt;
 <span class="kw">where
-    </span>PairSwapAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;:
+    </span>PairSwapAction&lt;DEXIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;:
         common::SwapAction&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;,
     DepositLiquidityAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;:
         common::SwapAction&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;,
