@@ -51,6 +51,7 @@ pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
 pub mod migrations;
+mod outcome_fee;
 mod primitives;
 pub mod serialization;
 pub mod storage;
@@ -68,6 +69,7 @@ pub use traits::Config;
 pub mod prelude {
     pub use super::balance_unit::*;
     pub use super::fixed_wrapper::*;
+    pub use super::outcome_fee::*;
     pub use super::primitives::*;
     pub use super::serialization::*;
     pub use super::swap_amount::*;

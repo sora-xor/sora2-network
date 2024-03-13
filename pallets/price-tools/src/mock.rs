@@ -230,7 +230,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -330,12 +330,12 @@ impl common::TradingPairSourceManager<DEXId, AssetId> for TradingPair {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = TradingPair;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
@@ -376,7 +376,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         _output_asset_id: &AssetId,
         _amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -387,7 +387,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         let assets = vec![ETH, DAI, VAL, PSWAP, XOR, USDT];
         if assets.contains(output_asset_id) {
             // return error if output asset is predefined asset
@@ -396,7 +396,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         } else {
             // return some price for any custom asset
             // it is necessary for benchmark tests
-            Ok(SwapOutcome::new(balance!(2), 0))
+            Ok(SwapOutcome::new(balance!(2), Default::default()))
         }
     }
 }

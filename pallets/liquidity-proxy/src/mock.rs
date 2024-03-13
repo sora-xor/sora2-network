@@ -44,7 +44,7 @@ use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
-use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
 use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
@@ -313,7 +313,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl permissions::Config for Runtime {
@@ -374,12 +374,12 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
@@ -634,7 +634,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -733,11 +733,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
-                SwapOutcome::new(output_amount, fee_amount),
+                SwapOutcome::new(output_amount, OutcomeFee::xor(fee_amount)),
                 Self::quote_weight(),
             )),
             QuoteAmount::WithDesiredOutput { .. } => Ok((
-                SwapOutcome::new(input_amount, fee_amount),
+                SwapOutcome::new(input_amount, OutcomeFee::xor(fee_amount)),
                 Self::quote_weight(),
             )),
         }
@@ -783,11 +783,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
-            let fee_chunk = fee - sub_fee;
+            let fee_chunk = fee.get_xor() - sub_fee;
 
             sub_in = input;
             sub_out = output;
-            sub_fee = fee;
+            sub_fee = fee.get_xor();
 
             chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
@@ -802,7 +802,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         unimplemented!()
     }
 
@@ -834,7 +834,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         // TODO: implement if needed
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
             .map(|(outcome, _)| outcome)
@@ -1131,7 +1131,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -1147,14 +1147,14 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let output_amount = desired_amount_in * input_asset_price / output_asset_price;
                 Ok((
-                    SwapOutcome::new(output_amount.try_into_balance().unwrap(), 0),
+                    SwapOutcome::new(output_amount.try_into_balance().unwrap(), OutcomeFee::new()),
                     Self::quote_weight(),
                 ))
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let input_amount = desired_amount_out * output_asset_price / input_asset_price;
                 Ok((
-                    SwapOutcome::new(input_amount.try_into_balance().unwrap(), 0),
+                    SwapOutcome::new(input_amount.try_into_balance().unwrap(), OutcomeFee::new()),
                     Self::quote_weight(),
                 ))
             }
@@ -1192,7 +1192,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         let chunk = SwapChunk::new(
             input / recommended_samples_count as Balance,
             output / recommended_samples_count as Balance,
-            fee / recommended_samples_count as Balance,
+            fee.get_xor() / recommended_samples_count as Balance,
         );
 
         Ok((
@@ -1208,7 +1208,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         unimplemented!()
     }
 
@@ -1228,7 +1228,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         // TODO: implement if needed
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
             .map(|(outcome, _)| outcome)
