@@ -450,20 +450,12 @@ impl<T: Config<I>, I: 'static>
             let (outcome, _weight) =
                 Self::quote(dex_id, input_asset_id, output_asset_id, volume, deduce_fee)?;
 
-            let (input, output, fee) = match volume {
+            let (input, output, fee): (_, _, Fee<Balance>) = match volume {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    (
-                        desired_amount_in,
-                        outcome.amount,
-                        Fee::xor(outcome.fee.get_xor()),
-                    ) // todo fix (m.tagirov))
+                    (desired_amount_in, outcome.amount, outcome.fee.into())
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    (
-                        outcome.amount,
-                        desired_amount_out,
-                        Fee::xor(outcome.fee.get_xor()),
-                    ) // todo fix (m.tagirov))
+                    (outcome.amount, desired_amount_out, outcome.fee.into())
                 }
             };
 

@@ -773,24 +773,22 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             let (outcome, _weight) =
                 Self::quote(dex_id, input_asset_id, output_asset_id, volume, deduce_fee)?;
 
-            let (input, output, fee) = match volume {
+            let (input, output, fee): (_, _, Fee<Balance>) = match volume {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    (desired_amount_in, outcome.amount, outcome.fee)
+                    (desired_amount_in, outcome.amount, outcome.fee.into())
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    (outcome.amount, desired_amount_out, outcome.fee)
+                    (outcome.amount, desired_amount_out, outcome.fee.into())
                 }
             };
 
-            let fee = Fee::xor(fee.get_xor()); // todo fix (m.tagirov)
-
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
-            let fee_chunk = fee.saturating_sub(sub_fee); // todo fix (m.tagirov)
+            let fee_chunk = fee.saturating_sub(sub_fee);
 
             sub_in = input;
             sub_out = output;
-            sub_fee = fee; // todo fix (m.tagirov)
+            sub_fee = fee;
 
             quotation
                 .chunks
@@ -1187,30 +1185,37 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             return Ok((quotation, Weight::zero()));
         }
 
+        let samples_count = if recommended_samples_count < 1 {
+            1
+        } else {
+            recommended_samples_count
+        };
+
         let (outcome, _weight) =
             Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)?;
 
-        let (input, output, fee) = match amount {
+        let (input, output, fee): (_, _, Fee<Balance>) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                (desired_amount_in, outcome.amount, outcome.fee)
+                (desired_amount_in, outcome.amount, outcome.fee.into())
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                (outcome.amount, desired_amount_out, outcome.fee)
+                (outcome.amount, desired_amount_out, outcome.fee.into())
             }
         };
 
+        let chunk_fee = fee
+            .rescale_by_ratio((fixed_wrapper!(1) / FixedWrapper::from(samples_count)))
+            .unwrap();
+
         let chunk = SwapChunk::new(
-            input / recommended_samples_count as Balance,
-            output / recommended_samples_count as Balance,
-            Fee::xor(fee.get_xor() / recommended_samples_count as Balance), // todo fix (m.tagirov)
+            input / samples_count as Balance,
+            output / samples_count as Balance,
+            chunk_fee,
         );
 
-        quotation.chunks = vec![chunk; recommended_samples_count].into();
+        quotation.chunks = vec![chunk; samples_count].into();
 
-        Ok((
-            quotation,
-            Self::step_quote_weight(recommended_samples_count),
-        ))
+        Ok((quotation, Self::step_quote_weight(samples_count)))
     }
 
     fn exchange(
