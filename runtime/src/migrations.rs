@@ -70,4 +70,5 @@ pub type Migrations = (
         HashiBridgeLockedAssets,
         HashiBridgeNetworkId,
     >,
+    kensetsu::migrations::init::InitializeKensetsu<Runtime>,
 );

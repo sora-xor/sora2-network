@@ -31,14 +31,15 @@
 /// Initializes Kensetsu pallet.
 use crate::Pallet;
 use common::{FromGenericPair, KEN, XOR};
+use core::marker::PhantomData;
 use frame_support::{
     log::error,
-    pallet_prelude::StorageVersion,
-    traits::{Get, OnRuntimeUpgrade},
+    traits::{OnRuntimeUpgrade, StorageVersion},
 };
+use sp_core::Get;
 use sp_runtime::traits::Zero;
 
-pub struct InitializeKensetsu<T>(core::marker::PhantomData<T>);
+pub struct InitializeKensetsu<T>(PhantomData<T>);
 
 /// Initializes Kensetsu pallet.
 /// - Registers KEN token
@@ -116,7 +117,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade() -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
         assets::Pallet::<T>::ensure_asset_exists(KEN.into())?;
         frame_support::ensure!(Pallet::<T>::on_chain_storage_version() == 1, "not upgraded");
         Ok(())

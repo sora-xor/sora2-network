@@ -59,7 +59,7 @@ mod tests;
 mod test_utils;
 
 mod compounding;
-mod migrations;
+pub mod migrations;
 pub mod weights;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
@@ -150,8 +150,12 @@ pub mod pallet {
     /// CDP id type
     pub type CdpId = u128;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
