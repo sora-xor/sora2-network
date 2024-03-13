@@ -376,7 +376,7 @@ impl MockLiquidityProxy {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         let input_price = Self::mock_price(input_asset_id);
         let output_price = Self::mock_price(output_asset_id);
         let price = FixedWrapper::from(output_price) / FixedWrapper::from(input_price);
@@ -405,9 +405,9 @@ impl MockLiquidityProxy {
             Currencies::deposit(*output_asset_id, receiver, output_amount)?;
         }
         if is_reversed {
-            Ok(SwapOutcome::new(input_amount, 0))
+            Ok(SwapOutcome::new(input_amount, Default::default()))
         } else {
-            Ok(SwapOutcome::new(output_amount, 0))
+            Ok(SwapOutcome::new(output_amount, Default::default()))
         }
     }
 }
@@ -421,7 +421,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::exchange_inner(
             Some(sender),
             Some(receiver),
@@ -438,7 +438,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::exchange_inner(None, None, input_asset_id, output_asset_id, amount)
     }
 }
