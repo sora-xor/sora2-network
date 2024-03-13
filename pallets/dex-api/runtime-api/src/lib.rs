@@ -33,17 +33,48 @@
 #![allow(clippy::unnecessary_mut_passed)]
 
 use codec::{Codec, Decode, Encode};
+use common::prelude::OutcomeFee;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::BalanceWrapper;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
+use sp_runtime::traits::{MaybeDisplay, MaybeFromStr, Zero};
 use sp_std::prelude::*;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct SwapOutcomeInfo<Balance> {
+pub struct SwapOutcomeInfo<Balance, AssetId: Ord> {
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub amount: Balance,
+    pub fee: OutcomeFee<AssetId, Balance>,
+}
+
+impl<Balance, AssetId> From<SwapOutcomeInfoV1<Balance>> for SwapOutcomeInfo<Balance, AssetId>
+where
+    Balance: Copy + Zero,
+    AssetId: Ord + From<common::AssetId32<common::PredefinedAssetId>>,
+{
+    fn from(value: SwapOutcomeInfoV1<Balance>) -> Self {
+        Self {
+            amount: value.amount,
+            fee: OutcomeFee::xor(value.fee),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct SwapOutcomeInfoV1<Balance> {
     #[cfg_attr(
         feature = "std",
         serde(
@@ -69,8 +100,9 @@ pub struct SwapOutcomeInfo<Balance> {
 }
 
 sp_api::decl_runtime_apis! {
+    #[api_version(2)]
     pub trait DEXAPI<AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant> where
-        AssetId: Codec,
+        AssetId: Codec + Ord,
         DEXId: Codec,
         LiquiditySourceType: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
@@ -83,7 +115,17 @@ sp_api::decl_runtime_apis! {
             output_asset_id: AssetId,
             amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -> Option<SwapOutcomeInfo<Balance>>;
+        ) -> Option<SwapOutcomeInfo<Balance, AssetId>>;
+
+        #[changed_in(2)]
+        fn quote(
+            dex_id: DEXId,
+            liquidity_source_type: LiquiditySourceType,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+            amount: BalanceWrapper,
+            swap_variant: SwapVariant,
+        ) -> Option<SwapOutcomeInfoV1<Balance>>;
 
         fn can_exchange(
             dex_id: DEXId,

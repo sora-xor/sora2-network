@@ -52,8 +52,8 @@ use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsProvider, QuoteAmount, SwapAmount,
-    SwapOutcome, DEFAULT_BALANCE_PRECISION,
+    Balance, EnsureDEXManager, Fixed, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
+    SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
@@ -123,9 +123,9 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 #[derive(RuntimeDebug, Clone, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct SyntheticInfo<Symbol> {
-    reference_symbol: Symbol,
+    pub reference_symbol: Symbol,
     /// Fee ratio. 1 = 100%
-    fee_ratio: Fixed,
+    pub fee_ratio: Fixed,
 }
 
 #[frame_support::pallet]
@@ -456,7 +456,6 @@ pub mod pallet {
     }
 }
 
-#[allow(non_snake_case)]
 impl<T: Config> Pallet<T> {
     fn enable_synthetic_asset_unchecked(
         synthetic_asset_id: T::AssetId,
@@ -797,7 +796,7 @@ impl<T: Config> Pallet<T> {
         swap_amount: SwapAmount<Balance>,
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         common::with_transaction(|| {
             let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
             let permissioned_account_id =
@@ -823,20 +822,23 @@ impl<T: Config> Pallet<T> {
                     )?
                 };
 
+            // in XST
+            let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
             let result = match swap_amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                     ensure!(
                         output_amount >= min_amount_out,
                         Error::<T>::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(output_amount, fee_amount)
+                    SwapOutcome::new(output_amount, fee)
                 }
                 SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                     ensure!(
                         input_amount <= max_amount_in,
                         Error::<T>::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(input_amount, fee_amount)
+                    SwapOutcome::new(input_amount, fee)
                 }
             };
 
@@ -878,23 +880,6 @@ impl<T: Config> Pallet<T> {
         return Ok(resulting_fee_ratio);
     }
 
-    /// Used for converting XST fee to XOR
-    fn convert_fee(fee_amount: Balance) -> Result<Balance, DispatchError> {
-        let output_to_base: FixedWrapper = <T as Config>::PriceToolsPallet::get_average_price(
-            &T::GetSyntheticBaseAssetId::get(),
-            &T::GetBaseAssetId::get(),
-            // Since `Buy` is more expensive in case if we are buying XOR
-            // (x XST -> y XOR; y XOR -> x' XST, x' < x),
-            // it seems logical to show this amount in order
-            // to not accidentally lie about the price.
-            PriceVariant::Buy,
-        )?
-        .into();
-        Ok((fee_amount * output_to_base)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?)
-    }
-
     fn ensure_base_asset_amount_within_limit(
         amount: Balance,
         check_limits: bool,
@@ -927,7 +912,7 @@ impl<T: Config> Pallet<T> {
     /// Therefore the price is calculated as REF_sell_price_tools_price / MAIN_buy_price_tools_price
     ///
     /// Refer to price-tools pallet documentation for clarification.
-    fn reference_price(
+    pub fn reference_price(
         asset_id: &T::AssetId,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
@@ -995,7 +980,7 @@ impl<T: Config> Pallet<T> {
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
         check_limits: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1018,20 +1003,17 @@ impl<T: Config> Pallet<T> {
                 check_limits,
             )?
         };
-        let fee_amount = if deduce_fee {
-            Self::convert_fee(fee_amount)?
-        } else {
-            fee_amount
-        };
+
+        // in XST
+        let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok((
-                SwapOutcome::new(output_amount, fee_amount),
-                Self::quote_weight(),
-            )),
-            QuoteAmount::WithDesiredOutput { .. } => Ok((
-                SwapOutcome::new(input_amount, fee_amount),
-                Self::quote_weight(),
-            )),
+            QuoteAmount::WithDesiredInput { .. } => {
+                Ok((SwapOutcome::new(output_amount, fee), Self::quote_weight()))
+            }
+            QuoteAmount::WithDesiredOutput { .. } => {
+                Ok((SwapOutcome::new(input_amount, fee), Self::quote_weight()))
+            }
         }
     }
 
@@ -1075,7 +1057,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         Self::inner_quote(
             dex_id,
             input_asset_id,
@@ -1121,13 +1103,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee, false)?
         };
 
-        let fee_amount = if deduce_fee {
-            Self::convert_fee(fee_amount)?
-        } else {
-            fee_amount
-        };
+        // in XST
+        let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
-        let mut monolith = SwapChunk::new(input_amount, output_amount, Fee::xst(fee_amount));
+        // todo fix (m.tagirov)
+        let mut monolith = SwapChunk::new(input_amount, output_amount, Fee::xst(fee.get_xst()));
 
         // Get max amount for the limit
         let limit = T::GetSyntheticBaseBuySellLimit::get();
@@ -1212,7 +1192,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1224,12 +1204,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             desired_amount,
             sender,
             receiver,
-        );
-        outcome.and_then(|mut res| {
-            let fee = Self::convert_fee(res.fee)?;
-            res.fee = fee;
-            Ok((res, Self::exchange_weight()))
-        })
+        )?;
+        Ok((outcome, Self::exchange_weight()))
     }
 
     fn check_rewards(
@@ -1248,7 +1224,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         // no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
         Self::inner_quote(

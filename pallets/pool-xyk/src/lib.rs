@@ -42,7 +42,7 @@ use sp_std::vec::Vec;
 
 use common::alt::{DiscreteQuotation, Fee, SwapChunk};
 use common::prelude::{
-    Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
+    Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
     fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
@@ -380,7 +380,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -409,30 +409,34 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // Calculate quote.
-        match amount {
+        let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
+                Pallet::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_in,
                     deduce_fee,
-                )?;
-                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
+                )?
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
+                Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_out,
                     deduce_fee,
-                )?;
-                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
+                )?
             }
-        }
+        };
+
+        // in XOR for dex_id = 0
+        // in XSTUSD for dex_id = 1
+        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
+
+        Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
     }
 
     fn step_quote(
@@ -568,7 +572,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -589,9 +593,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 asset: *output_asset_id,
                 amount: destination_amount,
             },
-            fee: None,
+            fee: Default::default(),
             fee_account: None,
             get_fee_from_destination: None,
+            dex_id: *dex_id,
         });
         common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::prepare_and_validate(
             &mut action,
@@ -604,12 +609,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
-                    SwapAmount::WithDesiredInput { .. } => {
-                        (a.fee.unwrap(), a.destination.amount.unwrap())
-                    }
-                    SwapAmount::WithDesiredOutput { .. } => {
-                        (a.fee.unwrap(), a.source.amount.unwrap())
-                    }
+                    SwapAmount::WithDesiredInput { .. } => (a.fee, a.destination.amount.unwrap()),
+                    SwapAmount::WithDesiredOutput { .. } => (a.fee, a.source.amount.unwrap()),
                 };
                 Ok((
                     common::prelude::SwapOutcome::new(amount, fee),
@@ -647,7 +648,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -681,7 +682,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         } else {
             common::Fixed::default()
         };
-        Ok(match amount {
+        let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {
                     // output token is xor, user indicates desired input amount
@@ -703,14 +704,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
                     (output, fee_amount)
                 };
-                SwapOutcome::new(
-                    output
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                    fee_amount
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                )
+
+                let calculated = output
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                let fee_amount = fee_amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+
+                (calculated, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (input, fee_amount) = if get_fee_from_destination {
@@ -732,16 +734,22 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let fee_amount = input.clone() - input_without_fee;
                     (input, fee_amount)
                 };
-                SwapOutcome::new(
-                    input
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                    fee_amount
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                )
+
+                let calculated = input
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                let fee_amount = fee_amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+
+                (calculated, fee_amount)
             }
-        })
+        };
+
+        // in XOR for dex_id = 0
+        // in XSTUSD for dex_id = 1
+        let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
+        Ok(SwapOutcome::new(calculated, fee))
     }
 
     fn quote_weight() -> Weight {

@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
+#![feature(int_roundings)]
 
 #[macro_use]
 extern crate alloc;
@@ -51,6 +52,7 @@ pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
 pub mod migrations;
+mod outcome_fee;
 mod primitives;
 pub mod serialization;
 pub mod storage;
@@ -68,6 +70,7 @@ pub use traits::Config;
 pub mod prelude {
     pub use super::balance_unit::*;
     pub use super::fixed_wrapper::*;
+    pub use super::outcome_fee::*;
     pub use super::primitives::*;
     pub use super::serialization::*;
     pub use super::swap_amount::*;

@@ -30,8 +30,8 @@
 
 use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, SwapOutcome};
-use common::{AssetId32, DEXId, PSWAP, VAL, XOR, XST};
+use common::prelude::{Balance, SwapAmount, SwapOutcome};
+use common::{AssetId32, DEXId, LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -39,6 +39,7 @@ use frame_support::{construct_runtime, parameter_types};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::DispatchError;
 use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -181,7 +182,7 @@ impl pallet_balances::Config for Runtime {
 
 pub struct MockLiquidityProxy;
 
-impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn quote(
         _dex_id: DEXId,
         _input_asset_id: &AssetId,
@@ -189,7 +190,7 @@ impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityPro
         _amount: common::prelude::QuoteAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         // Implement if needed
         unimplemented!()
     }
@@ -203,9 +204,9 @@ impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityPro
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        amount: common::prelude::SwapAmount<Balance>,
-        _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
-    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+        amount: SwapAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         let amount = amount.amount();
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
@@ -222,7 +223,7 @@ impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityPro
             amount,
         )?;
 
-        Ok(SwapOutcome::new(amount, 0))
+        Ok(SwapOutcome::new(amount, Default::default()))
     }
 }
 

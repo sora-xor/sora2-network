@@ -34,18 +34,19 @@ use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, AssetInfoProvider};
+use common::{balance, AssetInfoProvider, DexInfoProvider};
+use sp_runtime::traits::Zero;
 
 use crate::to_fixed_wrapper;
 
 use crate::bounds::*;
 
-use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, TechAccountIdOf};
 use crate::operations::*;
 use crate::{Config, Error, Pallet};
 
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
-    for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
+    for PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.amount == Bounds::Dummy || self.destination.amount == Bounds::Dummy
@@ -136,7 +137,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
 
         // Recommended fee, will be used if fee is not specified or for checking if specified.
-        let mut recom_fee: Option<Balance> = None;
+        let mut recom_fee = Balance::zero();
 
         if abstract_checking_for_quote || !abstract_checking {
             match (self.source.amount, self.destination.amount) {
@@ -163,7 +164,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     if y_out_pair.0 != ta || x_in_pair.0 != sa || y_out_pair.1 != x_in_pair.1 {
                         Err(Error::<T>::PoolPairRatioAndPairSwapRatioIsDifferent)?;
                     }
-                    recom_fee = Some(y_out_pair.1);
+                    recom_fee = y_out_pair.1;
                 }
                 // Case then source amount is specified but destination is not, it`s possible to decide it.
                 (Bounds::Desired(sa), ta_bnd) => {
@@ -184,7 +185,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                                 Error::<T>::CalculatedValueIsOutOfDesiredBounds
                             );
                             self.destination.amount = Bounds::Calculated(calculated);
-                            recom_fee = Some(fee);
+                            recom_fee = fee;
                         }
                         _ => {
                             Err(Error::<T>::ImpossibleToDecideAssetPairAmounts)?;
@@ -210,7 +211,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                                 Error::<T>::CalculatedValueIsOutOfDesiredBounds
                             );
                             self.source.amount = Bounds::Calculated(calculated);
-                            recom_fee = Some(fee);
+                            recom_fee = fee;
                         }
                         _ => {
                             Err(Error::<T>::ImpossibleToDecideAssetPairAmounts)?;
@@ -240,21 +241,20 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             let source_amount = self.source.amount.unwrap();
             let destination_amount = self.destination.amount.unwrap();
 
+            let dex_info = T::DexInfoProvider::get_dex_info(&self.dex_id)?;
+
+            // in XOR for dex_id = 0
+            // in XSTUSD for dex_id = 1
+            let fee = self.fee.get_by_asset(&dex_info.base_asset_id);
+
             // Set recommended or check that fee is correct.
-            match self.fee {
-                // Just set it here if it not specified, this is usual case.
-                None => {
-                    self.fee = recom_fee;
-                }
-                // Case with source user fee is set, checking that it is not smaller.
-                Some(fee) => {
-                    if fee < recom_fee.unwrap() {
-                        Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?
-                    }
+            if fee.is_zero() {
+                self.fee.add_by_asset(dex_info.base_asset_id, recom_fee);
+            } else {
+                if fee < recom_fee {
+                    Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?;
                 }
             }
-            // Get required values, now it is always Some, it is safe to unwrap().
-            let _fee = self.fee.unwrap();
 
             if !abstract_checking {
                 // Checking that balances if correct and large enouth for amounts.
@@ -328,7 +328,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 }
 
 impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
-    for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
+    for PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.
@@ -350,6 +350,12 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 self.fee_account.as_ref().unwrap(),
             )?;
 
+            let dex_info = T::DexInfoProvider::get_dex_info(&self.dex_id)?;
+
+            // in XOR for dex_id = 0
+            // in XSTUSD for dex_id = 1
+            let fee = self.fee.get_by_asset(&dex_info.base_asset_id);
+
             if self.get_fee_from_destination.unwrap() {
                 technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
@@ -361,7 +367,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                     &self.destination.asset,
                     &self.pool_account,
                     &fee_account_repr_sys,
-                    self.fee.unwrap(),
+                    fee,
                 )?;
                 technical::Pallet::<T>::transfer_out(
                     &self.destination.asset,
@@ -374,13 +380,13 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                     &self.source.asset,
                     &source,
                     &self.pool_account,
-                    self.source.amount.unwrap() - self.fee.unwrap(),
+                    self.source.amount.unwrap() - fee,
                 )?;
                 technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
                     &source,
                     self.fee_account.as_ref().unwrap(),
-                    self.fee.unwrap(),
+                    fee,
                 )?;
                 technical::Pallet::<T>::transfer_out(
                     &self.destination.asset,

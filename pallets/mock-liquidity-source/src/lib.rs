@@ -34,7 +34,7 @@
 
 use common::alt::{DiscreteQuotation, Fee, SwapChunk};
 use common::fixnum::ops::One;
-use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
 };
@@ -70,7 +70,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<SwapOutcome<Fixed, T::AssetId>, DispatchError> {
         let zero = fixed!(0);
         ensure!(
             target_amount_in > zero,
@@ -93,15 +93,18 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         } else {
             0.into()
         };
+
         let fee_amount = amount_out_without_fee * fee_fraction;
-        Ok(SwapOutcome::new(
-            (amount_out_without_fee - fee_amount.clone())
-                .get()
-                .map_err(|_| Error::<T, I>::CalculationError)?,
-            fee_amount
-                .get()
-                .map_err(|_| Error::<T, I>::CalculationError)?,
-        ))
+
+        let amount = (amount_out_without_fee - fee_amount.clone())
+            .get()
+            .map_err(|_| Error::<T, I>::CalculationError)?;
+
+        let fee_amount = fee_amount
+            .get()
+            .map_err(|_| Error::<T, I>::CalculationError)?;
+
+        Ok(SwapOutcome::new(amount, OutcomeFee::xor_fixed(fee_amount)))
     }
 
     fn get_target_amount_out(
@@ -109,7 +112,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<SwapOutcome<Fixed, T::AssetId>, DispatchError> {
         let zero = fixed!(0);
         ensure!(
             base_amount_in > zero,
@@ -136,7 +139,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             .get()
             .map_err(|_| Error::<T, I>::CalculationError)?;
 
-        Ok(SwapOutcome::new(amount_out, fee_amount))
+        Ok(SwapOutcome::new(
+            amount_out,
+            OutcomeFee::xor_fixed(fee_amount),
+        ))
     }
 
     fn get_base_amount_in(
@@ -144,7 +150,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<SwapOutcome<Fixed, T::AssetId>, DispatchError> {
         let zero = fixed!(0);
         ensure!(
             target_amount_out > zero,
@@ -189,9 +195,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             amount_in
                 .get()
                 .map_err(|_| Error::<T, I>::CalculationError)?,
-            (base_amount_in_with_fee - base_amount_in_without_fee)
-                .get()
-                .map_err(|_| Error::<T, I>::CalculationError)?,
+            OutcomeFee::xor_fixed(
+                (base_amount_in_with_fee - base_amount_in_without_fee)
+                    .get()
+                    .map_err(|_| Error::<T, I>::CalculationError)?,
+            ),
         ))
     }
 
@@ -200,7 +208,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<SwapOutcome<Fixed, T::AssetId>, DispatchError> {
         let zero = fixed!(0);
         ensure!(
             base_amount_out > zero,
@@ -237,7 +245,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         let fee = (base_amount_out_with_fee - base_amount_out)
             .get()
             .map_err(|_| Error::<T, I>::CalculationError)?;
-        Ok(SwapOutcome::new(amount_in, fee))
+        Ok(SwapOutcome::new(amount_in, OutcomeFee::xor_fixed(fee)))
     }
 }
 
@@ -292,7 +300,7 @@ impl<T: Config<I>, I: 'static>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         let amount = amount
             .try_into()
@@ -356,20 +364,20 @@ impl<T: Config<I>, I: 'static>
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
-                    let outcome_a: SwapOutcome<Fixed> = Self::get_base_amount_out(
+                    let outcome_a: SwapOutcome<Fixed, T::AssetId> = Self::get_base_amount_out(
                         desired_amount_in,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )?;
-                    let outcome_b: SwapOutcome<Fixed> = Self::get_target_amount_out(
+                    let outcome_b: SwapOutcome<Fixed, T::AssetId> = Self::get_target_amount_out(
                         outcome_a.amount,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )?;
-                    let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
-                    let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    let outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    let outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     let amount = outcome_b
                         .amount
                         .into_bits()
@@ -378,25 +386,25 @@ impl<T: Config<I>, I: 'static>
                     let fee = (outcome_a_fee + outcome_b_fee)
                         .try_into_balance()
                         .map_err(|_| Error::<T, I>::CalculationError)?;
-                    Ok(SwapOutcome::new(amount, fee))
+                    Ok(SwapOutcome::new(amount, OutcomeFee::xor(fee)))
                 }
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
-                    let outcome_b: SwapOutcome<Fixed> = Self::get_base_amount_in(
+                    let outcome_b: SwapOutcome<Fixed, T::AssetId> = Self::get_base_amount_in(
                         desired_amount_out,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )?;
-                    let outcome_a: SwapOutcome<Fixed> = Self::get_target_amount_in(
+                    let outcome_a: SwapOutcome<Fixed, T::AssetId> = Self::get_target_amount_in(
                         outcome_b.amount,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )?;
-                    let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
-                    let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    let outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    let outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     let amount = outcome_a
                         .amount
                         .into_bits()
@@ -405,7 +413,7 @@ impl<T: Config<I>, I: 'static>
                     let fee = (outcome_b_fee + outcome_a_fee)
                         .try_into_balance()
                         .map_err(|_| Error::<T, I>::CalculationError)?;
-                    Ok(SwapOutcome::new(amount, fee))
+                    Ok(SwapOutcome::new(amount, OutcomeFee::xor(fee)))
                 }
             }
         };
@@ -444,10 +452,18 @@ impl<T: Config<I>, I: 'static>
 
             let (input, output, fee) = match volume {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    (desired_amount_in, outcome.amount, Fee::xor(outcome.fee))
+                    (
+                        desired_amount_in,
+                        outcome.amount,
+                        Fee::xor(outcome.fee.get_xor()),
+                    ) // todo fix (m.tagirov))
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    (outcome.amount, desired_amount_out, Fee::xor(outcome.fee))
+                    (
+                        outcome.amount,
+                        desired_amount_out,
+                        Fee::xor(outcome.fee.get_xor()),
+                    ) // todo fix (m.tagirov))
                 }
             };
 
@@ -477,7 +493,7 @@ impl<T: Config<I>, I: 'static>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         // actual exchange does not happen
         Self::quote(
             dex_id,
@@ -504,7 +520,7 @@ impl<T: Config<I>, I: 'static>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         if input_asset_id == &dex_info.base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
@@ -516,7 +532,7 @@ impl<T: Config<I>, I: 'static>
                     (FixedWrapper::from(base_amount_in) * base_price_wrt_target)
                         .try_into_balance()
                         .map_err(|_| Error::<T, I>::CalculationError)?,
-                    0,
+                    OutcomeFee::new(),
                 ),
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
@@ -524,7 +540,7 @@ impl<T: Config<I>, I: 'static>
                     (FixedWrapper::from(target_amount_out) / base_price_wrt_target)
                         .try_into_balance()
                         .map_err(|_| Error::<T, I>::CalculationError)?,
-                    0,
+                    OutcomeFee::new(),
                 ),
             })
         } else {
@@ -537,7 +553,7 @@ impl<T: Config<I>, I: 'static>
                     (FixedWrapper::from(target_amount_in) * target_price_wrt_base)
                         .try_into_balance()
                         .map_err(|_| Error::<T, I>::CalculationError)?,
-                    0,
+                    OutcomeFee::new(),
                 ),
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
@@ -545,7 +561,7 @@ impl<T: Config<I>, I: 'static>
                     (FixedWrapper::from(base_amount_out) / target_price_wrt_base)
                         .try_into_balance()
                         .map_err(|_| Error::<T, I>::CalculationError)?,
-                    0,
+                    OutcomeFee::new(),
                 ),
             })
         }
