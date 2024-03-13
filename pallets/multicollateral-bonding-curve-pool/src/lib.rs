@@ -1603,7 +1603,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1663,7 +1663,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
             quotation
                 .chunks
-                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk.into()));
+                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
         if input_asset_id == base_asset_id {

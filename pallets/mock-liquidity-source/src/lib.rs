@@ -32,7 +32,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::alt::{DiscreteQuotation, Fee, SwapChunk};
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
@@ -41,7 +41,6 @@ use common::{
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
-use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
@@ -427,7 +426,7 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -442,7 +441,7 @@ impl<T: Config<I>, I: 'static>
 
         let mut sub_in = 0;
         let mut sub_out = 0;
-        let mut sub_fee = Fee::zero();
+        let mut sub_fee = Default::default();
 
         for i in 1..=recommended_samples_count {
             let volume = amount.copy_direction(step * i as Balance);
@@ -450,18 +449,18 @@ impl<T: Config<I>, I: 'static>
             let (outcome, _weight) =
                 Self::quote(dex_id, input_asset_id, output_asset_id, volume, deduce_fee)?;
 
-            let (input, output, fee): (_, _, Fee<Balance>) = match volume {
+            let (input, output, fee) = match volume {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    (desired_amount_in, outcome.amount, outcome.fee.into())
+                    (desired_amount_in, outcome.amount, outcome.fee)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    (outcome.amount, desired_amount_out, outcome.fee.into())
+                    (outcome.amount, desired_amount_out, outcome.fee)
                 }
             };
 
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
-            let fee_chunk = fee.saturating_sub(sub_fee);
+            let fee_chunk = fee.clone().reduce(sub_fee);
 
             sub_in = input;
             sub_out = output;

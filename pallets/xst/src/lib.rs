@@ -1075,7 +1075,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1106,7 +1106,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // in XST
         let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
-        let mut monolith = SwapChunk::new(input_amount, output_amount, fee.into());
+        let mut monolith = SwapChunk::new(input_amount, output_amount, fee);
 
         // Get max amount for the limit
         let limit = T::GetSyntheticBaseBuySellLimit::get();
@@ -1154,10 +1154,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
         let chunk = monolith
+            .clone()
             .rescale_by_ratio(ratio)
             .ok_or(Error::<T>::PriceCalculationFailed)?;
 
-        quotation.chunks = vec![chunk; samples_count - 1].into();
+        quotation.chunks = vec![chunk.clone(); samples_count - 1].into();
 
         // add remaining values as the last chunk to not loss the liquidity on the rounding
         quotation.chunks.push_back(SwapChunk::new(
@@ -1173,12 +1174,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     .checked_mul(samples_count as Balance - 1)
                     .ok_or(Error::<T>::PriceCalculationFailed)?,
             ),
-            monolith.fee.saturating_sub(
-                chunk
-                    .fee
-                    .mul_n(samples_count - 1)
-                    .ok_or(Error::<T>::PriceCalculationFailed)?,
-            ),
+            monolith.fee.reduce(chunk.fee.mul_n(samples_count - 1)),
         ));
 
         Ok((quotation, Self::step_quote_weight(samples_count)))

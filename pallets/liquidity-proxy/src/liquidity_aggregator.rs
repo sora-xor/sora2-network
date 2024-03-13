@@ -35,7 +35,7 @@ use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
-    common::alt::{DiscreteQuotation, Fee, SideAmount, SwapChunk},
+    common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::{fixed, Balance},
     itertools::Itertools,
@@ -83,15 +83,16 @@ impl<AssetId: Ord, LiquiditySourceIdType, AmountType>
 /// Liquidity sources provide discretized liquidity curve by chunks and then Liquidity Aggregator selects the best chunks from different sources to gain the best swap amount.
 #[cfg(feature = "wip")] // ALT
 #[derive(Clone)]
-pub struct LiquidityAggregator<LiquiditySourceType> {
-    liquidity_quotations: BTreeMap<LiquiditySourceType, DiscreteQuotation<Balance>>,
+pub struct LiquidityAggregator<AssetId: Ord + Clone, LiquiditySourceType> {
+    liquidity_quotations: BTreeMap<LiquiditySourceType, DiscreteQuotation<AssetId, Balance>>,
     variant: SwapVariant,
 }
 
 #[cfg(feature = "wip")] // ALT
-impl<LiquiditySourceType> LiquidityAggregator<LiquiditySourceType>
+impl<AssetId, LiquiditySourceType> LiquidityAggregator<AssetId, LiquiditySourceType>
 where
-    LiquiditySourceType: Clone + Ord,
+    AssetId: Ord + Clone + From<common::AssetId32<common::PredefinedAssetId>>,
+    LiquiditySourceType: Ord + Clone,
 {
     pub fn new(variant: SwapVariant) -> Self {
         Self {
@@ -103,21 +104,18 @@ where
     pub fn add_source(
         &mut self,
         source: LiquiditySourceType,
-        discrete_quotation: DiscreteQuotation<Balance>,
+        discrete_quotation: DiscreteQuotation<AssetId, Balance>,
     ) {
         self.liquidity_quotations.insert(source, discrete_quotation);
     }
 
-    pub fn aggregate_swap_outcome<AssetId>(
+    pub fn aggregate_swap_outcome(
         mut self,
         amount: Balance,
     ) -> Option<(
         SwapInfo<LiquiditySourceType, Balance>,
         AggregatedSwapOutcome<AssetId, LiquiditySourceType, Balance>,
-    )>
-    where
-        AssetId: Ord + From<common::AssetId32<common::PredefinedAssetId>>,
-    {
+    )> {
         if self.liquidity_quotations.is_empty() {
             return None;
         }
@@ -147,13 +145,13 @@ where
             let total = Self::sum_chunks(selected.entry(source.clone()).or_default());
             let (max_chunk, remainder) = discrete_quotation
                 .limits
-                .align_chunk_max(total.saturating_add(chunk))?;
+                .align_chunk_max(total.clone().saturating_add(chunk.clone()))?;
             if !remainder.is_zero() {
                 // max amount exceeded
                 let diff = max_chunk.saturating_sub(total);
                 if diff.is_zero() {
                     // it means the total volume of the source is already equal with max amount
-                    payback = chunk;
+                    payback = chunk.clone();
                     chunk.set_zero();
                 } else {
                     chunk =
@@ -165,8 +163,10 @@ where
 
             let remaining_side_amount = SideAmount::new(remaining_amount, self.variant);
             if chunk > remaining_side_amount {
-                let rescaled = chunk.rescale_by_side_amount(remaining_side_amount)?;
-                payback = payback.saturating_add(chunk.saturating_sub(rescaled));
+                let rescaled = chunk
+                    .clone()
+                    .rescale_by_side_amount(remaining_side_amount)?;
+                payback = payback.saturating_add(chunk.clone().saturating_sub(rescaled.clone()));
                 chunk = rescaled;
             }
 
@@ -183,8 +183,10 @@ where
 
             selected
                 .entry(source.clone())
-                .and_modify(|chunks: &mut VecDeque<SwapChunk<Balance>>| chunks.push_back(chunk))
-                .or_insert(vec![chunk].into());
+                .and_modify(|chunks: &mut VecDeque<SwapChunk<AssetId, Balance>>| {
+                    chunks.push_back(chunk.clone())
+                })
+                .or_insert(vec![chunk.clone()].into());
             remaining_amount = remaining_amount.checked_sub(remaining_delta)?;
 
             if remaining_amount.is_zero() {
@@ -204,7 +206,7 @@ where
                             to_delete.push(source.clone());
 
                             for chunk in chunks.iter().rev() {
-                                discrete_quotation.chunks.push_front(*chunk);
+                                discrete_quotation.chunks.push_front(chunk.clone());
                             }
                         } else {
                             let mut remainder = remainder.get_associated_field(self.variant);
@@ -221,8 +223,8 @@ where
                                     discrete_quotation.chunks.push_front(chunk);
                                 } else {
                                     let remainder_chunk =
-                                        chunk.rescale_by_side_amount(remainder)?;
-                                    let chunk = chunk.saturating_sub(remainder_chunk);
+                                        chunk.clone().rescale_by_side_amount(remainder)?;
+                                    let chunk = chunk.saturating_sub(remainder_chunk.clone());
                                     chunks.push_back(chunk);
                                     discrete_quotation.chunks.push_front(remainder_chunk);
                                     remainder.set_amount(Balance::zero());
@@ -238,7 +240,7 @@ where
         let mut distribution = Vec::new();
         let mut swap_info: SwapInfo<LiquiditySourceType, Balance> = SwapInfo::new();
         let mut result_amount = Balance::zero();
-        let mut fee = Fee::zero();
+        let mut fee = OutcomeFee::default();
 
         for (source, chunks) in &selected {
             let total = Self::sum_chunks(chunks);
@@ -254,7 +256,7 @@ where
                 QuoteAmount::with_variant(self.variant, desired_part),
             ));
             result_amount = result_amount.checked_add(result_part)?;
-            fee = fee.saturating_add(total.fee);
+            fee = fee.merge(total.fee);
         }
 
         Some((
@@ -262,7 +264,7 @@ where
             AggregatedSwapOutcome {
                 distribution,
                 amount: result_amount,
-                fee: OutcomeFee::<AssetId, Balance>::xor(fee.xor), // todo fix (m.tagirov)
+                fee,
             },
         ))
     }
@@ -300,11 +302,11 @@ where
         candidates
     }
 
-    fn sum_chunks(chunks: &VecDeque<SwapChunk<Balance>>) -> SwapChunk<Balance> {
+    fn sum_chunks(chunks: &VecDeque<SwapChunk<AssetId, Balance>>) -> SwapChunk<AssetId, Balance> {
         chunks
             .iter()
-            .fold(SwapChunk::<Balance>::zero(), |acc, &next| {
-                acc.saturating_add(next)
+            .fold(SwapChunk::<AssetId, Balance>::zero(), |acc, next| {
+                acc.saturating_add(next.clone())
             })
     }
 }

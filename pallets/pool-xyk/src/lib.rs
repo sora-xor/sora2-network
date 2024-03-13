@@ -446,7 +446,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         let mut quotation = DiscreteQuotation::new();
 
         if amount.amount().is_zero() {
@@ -530,7 +530,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     sub_fee = fee;
                     quotation
                         .chunks
-                        .push_back(SwapChunk::new(step, output, fee_chunk.into()));
+                        .push_back(SwapChunk::new(step, output, fee_chunk));
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } => {
@@ -555,7 +555,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     sub_fee = fee;
                     quotation
                         .chunks
-                        .push_back(SwapChunk::new(input, step, fee_chunk.into()));
+                        .push_back(SwapChunk::new(input, step, fee_chunk));
                 }
             }
         }

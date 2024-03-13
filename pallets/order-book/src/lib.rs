@@ -1284,7 +1284,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1395,12 +1395,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 PriceVariant::Buy => quotation.chunks.push_back(SwapChunk::new(
                     *quote_volume.balance(),
                     *base_volume.balance(),
-                    Zero::zero(),
+                    Default::default(),
                 )),
                 PriceVariant::Sell => quotation.chunks.push_back(SwapChunk::new(
                     *base_volume.balance(),
                     *quote_volume.balance(),
-                    Zero::zero(),
+                    Default::default(),
                 )),
             }
 

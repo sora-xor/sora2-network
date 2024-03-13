@@ -129,7 +129,7 @@ impl<T: Config>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! step_quote {
             ($source_type:ident) => {
