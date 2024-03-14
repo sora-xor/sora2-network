@@ -30,6 +30,9 @@
 
 use crate::*;
 use bridge_types::GenericNetworkId;
+use common::KEN;
+use core::marker::PhantomData;
+use frame_support::{log::error, traits::OnRuntimeUpgrade};
 use sp_runtime::traits::Zero;
 
 pub struct HashiBridgeLockedAssets;
@@ -37,11 +40,11 @@ pub struct HashiBridgeLockedAssets;
 impl Get<Vec<(AssetId, Balance)>> for HashiBridgeLockedAssets {
     fn get() -> Vec<(AssetId, Balance)> {
         let Ok(assets) = EthBridge::get_registered_assets(Some(GetEthNetworkId::get())) else {
-            frame_support::log::warn!("Failed to get registered assets, skipping migration");
+            log::warn!("Failed to get registered assets, skipping migration");
             return vec![];
         };
         let Some(bridge_account) = eth_bridge::BridgeAccount::<Runtime>::get(GetEthNetworkId::get()) else {
-            frame_support::log::warn!("Failed to get Hashi bridge account, skipping migration");
+            log::warn!("Failed to get Hashi bridge account, skipping migration");
             return vec![];
         };
         let mut result = vec![];
@@ -60,6 +63,46 @@ impl Get<Vec<(AssetId, Balance)>> for HashiBridgeLockedAssets {
     }
 }
 
+pub struct RegisterKenToken<T>(PhantomData<T>);
+
+/// Initializes Kensetsu pallet.
+impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKenToken<T> {
+    fn on_runtime_upgrade() -> Weight {
+        let assets_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
+            b"SYSTEM_ACCOUNT".to_vec(),
+            b"ASSETS_PERMISSIONS".to_vec(),
+        );
+        let assets_permissions_account_id =
+            match technical::Pallet::<T>::tech_account_id_to_account_id(
+                &assets_permissions_tech_account_id,
+            ) {
+                Ok(account) => account,
+                Err(err) => {
+                    error!(
+                            "Failed to get account id for assets permissions technical account id: {:?}, error: {:?}",
+                            assets_permissions_tech_account_id, err
+                        );
+                    return <T as frame_system::Config>::DbWeight::get().reads(1);
+                }
+            };
+        if let Err(err) = assets::Pallet::<T>::register_asset_id(
+            assets_permissions_account_id.clone(),
+            KEN.into(),
+            AssetSymbol(b"KEN".to_vec()),
+            AssetName(b"Kensetsu token.".to_vec()),
+            common::DEFAULT_BALANCE_PRECISION,
+            common::Balance::zero(),
+            true,
+            None,
+            None,
+        ) {
+            error!("Failed to register KEN asset, error: {:?}", err);
+            return <T as frame_system::Config>::DbWeight::get().reads(1);
+        }
+        <T as frame_system::Config>::BlockWeights::get().max_block
+    }
+}
+
 parameter_types! {
     pub const HashiBridgeNetworkId: GenericNetworkId = GenericNetworkId::EVMLegacy(GetEthNetworkId::get());
 }
@@ -70,5 +113,5 @@ pub type Migrations = (
         HashiBridgeLockedAssets,
         HashiBridgeNetworkId,
     >,
-    kensetsu::migrations::init::InitializeKensetsu<Runtime>,
+    RegisterKenToken<Runtime>,
 );

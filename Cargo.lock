@@ -5994,7 +5994,6 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "permissions",
- "pool-xyk",
  "scale-info",
  "sp-arithmetic",
  "sp-core",
@@ -6002,7 +6001,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
- "trading-pair",
 ]
 
 [[package]]
