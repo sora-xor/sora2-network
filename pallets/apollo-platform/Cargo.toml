@@ -31,8 +31,8 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.4.1"
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-price-tools = { path = "../price-tools" }
-liquidity-proxy = { path = "../liquidity-proxy" }
+price-tools = { path = "../price-tools", default-features = false }
+liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 
 [dev-dependencies]
@@ -70,7 +70,6 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
-    "frame-benchmarking/std",
 ]
 
 runtime-benchmarks = [
@@ -78,3 +77,5 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]
+
+try-runtime = ["frame-support/try-runtime"]

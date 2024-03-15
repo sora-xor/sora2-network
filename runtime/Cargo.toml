@@ -333,6 +333,7 @@ ready-to-test = [
 ]
 
 runtime-benchmarks = [
+    "apollo-platform/runtime-benchmarks",
     "assets/runtime-benchmarks",
     "band/runtime-benchmarks",
     "ceres-governance-platform/runtime-benchmarks",
@@ -401,6 +402,7 @@ build-wasm-binary = []
 
 try-runtime = [
     "frame-try-runtime",
+    "apollo-platform/try-runtime",
     "assets/try-runtime",
     "band/try-runtime",
     "bridge-multisig/try-runtime",

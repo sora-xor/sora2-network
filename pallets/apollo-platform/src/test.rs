@@ -4206,7 +4206,7 @@ mod test {
                 balance!(1000)
             );
 
-            run_to_block(2);
+            run_to_block(1);
 
             let (treasury_reserve_dot, _, developer_amount_dot) =
                 calculate_reserve_amounts(DOT, balance!(100));

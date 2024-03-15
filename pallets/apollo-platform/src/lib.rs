@@ -3,6 +3,14 @@
 use codec::{Decode, Encode};
 use common::Balance;
 
+mod benchmarking;
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod test;
+
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct LendingPosition<BlockNumberFor> {
@@ -42,12 +50,6 @@ pub struct PoolInfo {
 }
 
 pub use pallet::*;
-
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod test;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -1088,17 +1090,29 @@ pub mod pallet {
                 if health_factor < balance!(1) {
                     // Liquidate
                     debug!("Liquidation of user {:?}", user);
+                    if_std! {
+                        println!("pre likvidacije");
+                    }
                     let call = Call::<T>::liquidate {
                         user: user.clone(),
                         asset_id,
                     };
+                    if_std! {
+                        println!("pre poziva likvidacije");
+                    }
                     if let Err(err) =
                         SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
                     {
+                        if_std! {
+                            println!("error");
+                        }
                         warn!(
                             "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
                             user, err
                         );
+                    }
+                    if_std! {
+                        println!("posle poziva likvidacije");
                     }
                 }
             }
@@ -1300,7 +1314,7 @@ pub mod pallet {
             let pool_index = block_number % T::BLOCKS_PER_FIFTEEN_MINUTES;
             let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
             if pool_index >= num_of_pools.into() {
-                return counter.into();
+                return T::DbWeight::get().reads(counter);
             }
             let pool_asset = <PoolsByBlock<T>>::get(pool_index).unwrap_or_default();
 
