@@ -6016,6 +6016,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "pool-xyk",
+ "price-tools",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
