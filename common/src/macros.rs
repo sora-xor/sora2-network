@@ -137,19 +137,96 @@ macro_rules! our_include_bytes {
     }};
 }
 
-// Assertion that two values are approximately equale (up to some tolerance)
+/// Assertion that two values are approximately equal up to some absolute tolerance (constant value)
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
 #[macro_export]
-macro_rules! assert_approx_eq {
-    ($left:expr, $right:expr, $tol:expr) => {{
-        let tolerance = $crate::prelude::FixedWrapper::from($tol);
-        let left = $crate::prelude::FixedWrapper::from($left);
-        let right = $crate::prelude::FixedWrapper::from($right);
+macro_rules! assert_approx_eq_abs {
+    ($left:expr, $right:expr, $tolerance:expr $(,)?) => {{
+        // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
+        let left = $crate::prelude::FixedWrapper::from($left)
+            .get()
+            .expect("cannot approx compare errors");
+        let right = $crate::prelude::FixedWrapper::from($right)
+            .get()
+            .expect("cannot approx compare errors");
+        let tolerance = $crate::prelude::FixedWrapper::from($tolerance)
+            .get()
+            .expect("cannot approx compare errors");
         assert!(
-            left.clone() < right.clone() + tolerance.clone() && right < left + tolerance,
-            "{:?} != {:?} with tolerance {:?}",
+            $crate::test_utils::are_approx_eq_abs(left, right, tolerance).unwrap(),
+            "{:?} != {:?} with absolute tolerance {:?}",
             $left,
             $right,
-            $tol
+            $tolerance
+        );
+    }};
+}
+
+/// Assertion that two values are approximately equal
+/// up to some relative tolerance (percentage of their magnitude `a.abs() + b.abs()`)
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
+#[macro_export]
+macro_rules! assert_approx_eq_rel {
+    ($left:expr, $right:expr, $tolerance_percentage:expr $(,)?) => {{
+        // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
+        let left = $crate::prelude::FixedWrapper::from($left)
+            .get()
+            .expect("cannot approx compare errors");
+        let right = $crate::prelude::FixedWrapper::from($right)
+            .get()
+            .expect("cannot approx compare errors");
+        let tolerance = $crate::prelude::FixedWrapper::from($tolerance_percentage)
+            .get()
+            .expect("cannot approx compare errors");
+        assert!(
+            $crate::test_utils::are_approx_eq_rel(left, right, tolerance).unwrap(),
+            "{:?} != {:?} with relative tolerance (%) {:?}",
+            $left,
+            $right,
+            $tolerance_percentage
+        );
+    }};
+}
+
+/// Assertion if two numbers `left` and `right` are equal up to some tolerance.
+///
+/// See details in [crate::test_utils::are_approx_eq].
+///
+/// **NOTE**: It is preferred to utilize to exact equalities even in tests. Fixed point arithmetic
+/// allows predictable behaviour of inner arithmetics, so it should be considered everywhere where
+/// possible. Use approximate equalities only when you know what you're doing and such inaccurate
+/// behavior is expected.
+#[macro_export]
+macro_rules! assert_approx_eq {
+    ($left:expr, $right:expr, $abs_tolerance:expr, $rel_percentage:expr $(,)?) => {{
+        // using `FixedWrapper` allows to work with `Fixed`, `f64`, and int types.
+        let left = $crate::prelude::FixedWrapper::from($left)
+            .get()
+            .expect("cannot approx compare errors");
+        let right = $crate::prelude::FixedWrapper::from($right)
+            .get()
+            .expect("cannot approx compare errors");
+        let abs_tolerance = $crate::prelude::FixedWrapper::from($abs_tolerance)
+            .get()
+            .expect("cannot approx compare errors");
+        let rel_percentage = $crate::prelude::FixedWrapper::from($rel_percentage)
+            .get()
+            .expect("cannot approx compare errors");
+        assert!(
+            $crate::test_utils::are_approx_eq(left, right, abs_tolerance, rel_percentage).unwrap(),
+            "{:?} != {:?} with absolute tolerance {:?} and relative tolerance (%) {:?}",
+            $left,
+            $right,
+            $abs_tolerance,
+            $rel_percentage,
         );
     }};
 }
@@ -184,15 +261,76 @@ mod tests {
 
     #[test]
     fn assert_approx_eq_works() {
+        use crate::{Fixed, FixedInner};
+
+        assert_approx_eq!(
+            balance!(0.99),
+            balance!(1.01),
+            balance!(0.02),
+            balance!(0.01)
+        );
+        assert_approx_eq!(
+            Fixed::from_bits(100000000000000),
+            Fixed::from_bits(100000000000002),
+            Fixed::from_bits(2),
+            Fixed::from_bits(balance!(0.0000000000001) as FixedInner),
+        );
+        assert_approx_eq!(49f64, 51f64, 2.01f64, 0.02f64);
+    }
+
+    #[test]
+    #[should_panic]
+    fn assert_approx_eq_fails_u128() {
+        assert_approx_eq!(
+            balance!(0.99),
+            balance!(1.01001),
+            balance!(0.02),
+            balance!(0.01)
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn assert_approx_eq_fails_fixed() {
+        use crate::{Fixed, FixedInner};
+        assert_approx_eq!(
+            Fixed::from_bits(100000000000000),
+            Fixed::from_bits(100000000000003),
+            Fixed::from_bits(2),
+            Fixed::from_bits(balance!(0.000000000000005) as FixedInner),
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn assert_approx_eq_fails_f64() {
+        // both fail
+        assert_approx_eq!(49f64, 51.1f64, 2f64, 0.02f64);
+    }
+
+    #[test]
+    fn assert_approx_eq_abs_works() {
         use crate::Fixed;
 
-        let tol: Fixed = fixed!(0.000000001);
-        assert_approx_eq!(balance!(1.11111111111111), balance!(1.11111111111112), tol);
-        assert_approx_eq!(
-            Fixed::from_bits(111111111111111),
-            Fixed::from_bits(111111111111110),
-            tol
+        assert_approx_eq_abs!(balance!(0.99), balance!(1.01), balance!(0.02));
+        assert_approx_eq_abs!(
+            Fixed::from_bits(100000000000000),
+            Fixed::from_bits(100000000000002),
+            Fixed::from_bits(2),
         );
-        assert_approx_eq!(100, 99, 2);
+        assert_approx_eq_abs!(49f64, 51f64, 2.01f64);
+    }
+
+    #[test]
+    fn assert_approx_eq_rel_works() {
+        use crate::{Fixed, FixedInner};
+
+        assert_approx_eq_rel!(balance!(0.99), balance!(1.01), balance!(0.01));
+        assert_approx_eq_rel!(
+            Fixed::from_bits(100000000000000),
+            Fixed::from_bits(100000000000002),
+            Fixed::from_bits(balance!(0.0000000000001) as FixedInner),
+        );
+        assert_approx_eq_rel!(49f64, 51f64, 0.02f64);
     }
 }

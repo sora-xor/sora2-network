@@ -111,7 +111,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _amount: QuoteAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id != KUSD {
             Err(DispatchError::Other(
                 "Wrong asset id for MockLiquidityProxy, KUSD only supported",
@@ -122,7 +122,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                     .expect("must succeed");
             Ok(SwapOutcome {
                 amount,
-                fee: balance!(0),
+                fee: Default::default(),
             })
         }
     }
@@ -140,7 +140,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         output_asset_id: &AssetId,
         amount: SwapAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id != KUSD {
             Err(DispatchError::Other(
                 "Wrong asset id for MockLiquidityProxy, KUSD only supported",
@@ -172,7 +172,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                         receiver,
                         out_amount,
                     )?;
-                    Ok(SwapOutcome::new(out_amount, 0))
+                    Ok(SwapOutcome::new(out_amount, Default::default()))
                 }
             }
         }
