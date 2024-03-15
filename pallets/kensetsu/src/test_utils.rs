@@ -36,7 +36,7 @@ use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use sp_arithmetic::Perbill;
-use sp_runtime::traits::One;
+use sp_runtime::traits::{One, Zero};
 use sp_runtime::AccountId32;
 
 type AccountId = AccountId32;
@@ -132,6 +132,20 @@ pub fn set_xor_as_collateral_type(
         }),
     );
     KusdHardCap::<TestRuntime>::set(hard_cap);
+}
+
+/// Makes CDPs unsafe by changing liquidation ratio.
+pub fn make_cdp_unsafe() {
+    CollateralInfos::<TestRuntime>::mutate(XOR, |info| {
+        if let Some(info) = info.as_mut() {
+            info.risk_parameters = CollateralRiskParameters {
+                hard_cap: Balance::MAX,
+                max_liquidation_lot: balance!(1000),
+                liquidation_ratio: Perbill::from_percent(1),
+                stability_fee_rate: FixedU128::zero(),
+            }
+        }
+    });
 }
 
 /// Creates CDP with XOR as collateral asset id
