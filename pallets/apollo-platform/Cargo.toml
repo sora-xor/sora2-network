@@ -70,6 +70,7 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "frame-benchmarking/std",
 ]
 
 runtime-benchmarks = [

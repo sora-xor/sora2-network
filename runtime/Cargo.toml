@@ -50,7 +50,7 @@ bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/ru
 parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
-apollo-platform = {path = "../pallets/apollo-platform", default-features = false}
+apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 band = { path = "../pallets/band", default-features = false }
