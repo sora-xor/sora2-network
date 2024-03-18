@@ -136,14 +136,15 @@ pub mod pallet {
         PriceVariant, DAI,
     };
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::Randomness;
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedMul, Saturating};
+    use sp_arithmetic::traits::{CheckedMul, Saturating, Zero};
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
     use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One};
-    use sp_std::collections::btree_set::BTreeSet;
+    use sp_std::collections::{btree_set::BTreeSet, vec_deque::VecDeque};
     use sp_std::vec::Vec;
 
     /// CDP id type
@@ -171,6 +172,7 @@ pub mod pallet {
                     collaterals_to_update.insert(collateral_asset_id);
                 }
             }
+            let mut unsafe_cdp_ids = VecDeque::<CdpId>::new();
             // TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
                 // Debt recalculation with interest
@@ -193,27 +195,44 @@ pub mod pallet {
                     cdp.collateral_amount,
                     cdp.collateral_asset_id,
                 ) {
-                    Ok(cdp_is_safe) => {
-                        if !cdp_is_safe {
-                            debug!("Liquidation of CDP {:?}", cdp_id);
-                            let call = Call::<T>::liquidate { cdp_id };
-                            if let Err(err) =
-                                SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
-                                    call.into(),
-                                )
-                            {
-                                warn!(
-                                    "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
-                                    cdp_id, err
-                                );
-                            }
-                        }
+                    Ok(true) => {
+                        debug!("CDP {:?} unsafe", cdp_id);
+                        unsafe_cdp_ids.push_back(cdp_id);
                     }
+                    Ok(false) => {}
                     Err(err) => {
                         warn!(
                             "Failed in offchain_worker check cdp {:?} safety: {:?}",
                             cdp_id, err
                         );
+                    }
+                }
+            }
+            if !unsafe_cdp_ids.is_empty() {
+                // Randomly choose one of CDPs to liquidate.
+                // This CDP id can be predicted and manipulated in front-running attack. It is a
+                // known problem. The purpose of the code is not to protect from the attack but to
+                // make choosing of CDP to liquidate more 'fair' then incremental order.
+                let (randomness, _) = T::Randomness::random(&block_number.encode());
+                match CdpId::decode(&mut randomness.as_ref()) {
+                    Ok(random_number) => {
+                        // Random bias by modulus operation is acceptable here
+                        let cdp_id = random_number % unsafe_cdp_ids.len() as u128;
+                        debug!("Liquidation of CDP {:?}", cdp_id);
+                        let call = Call::<T>::liquidate { cdp_id };
+                        if let Err(err) =
+                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
+                                call.into(),
+                            )
+                        {
+                            warn!(
+                                "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
+                                cdp_id, err
+                            );
+                        }
+                    }
+                    Err(error) => {
+                        warn!("Failed to get randomness during liquidation: {}", error);
                     }
                 }
             }
@@ -229,6 +248,7 @@ pub mod pallet {
         + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -877,25 +897,29 @@ pub mod pallet {
             collateral: Balance,
             collateral_asset_id: AssetIdOf<T>,
         ) -> Result<bool, DispatchError> {
-            let liquidation_ratio = Self::collateral_infos(collateral_asset_id)
-                .ok_or(Error::<T>::CollateralInfoNotFound)?
-                .risk_parameters
-                .liquidation_ratio;
-            // DAI is assumed as $1
-            let collateral_reference_price =
-                FixedU128::from_inner(T::PriceTools::get_average_price(
-                    &collateral_asset_id,
-                    &DAI.into(),
-                    PriceVariant::Sell,
-                )?);
-            let collateral_volume = collateral_reference_price
-                .checked_mul(&FixedU128::from_inner(collateral))
-                .ok_or(Error::<T>::ArithmeticError)?;
-            let max_safe_debt = FixedU128::from_perbill(liquidation_ratio)
-                .checked_mul(&collateral_volume)
-                .ok_or(Error::<T>::ArithmeticError)?;
-            let debt = FixedU128::from_inner(debt);
-            Ok(debt <= max_safe_debt)
+            if debt == Balance::zero() {
+                Ok(true)
+            } else {
+                let liquidation_ratio = Self::collateral_infos(collateral_asset_id)
+                    .ok_or(Error::<T>::CollateralInfoNotFound)?
+                    .risk_parameters
+                    .liquidation_ratio;
+                // DAI is assumed as $1
+                let collateral_reference_price =
+                    FixedU128::from_inner(T::PriceTools::get_average_price(
+                        &collateral_asset_id,
+                        &DAI.into(),
+                        PriceVariant::Sell,
+                    )?);
+                let collateral_volume = collateral_reference_price
+                    .checked_mul(&FixedU128::from_inner(collateral))
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                let max_safe_debt = FixedU128::from_perbill(liquidation_ratio)
+                    .checked_mul(&collateral_volume)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                let debt = FixedU128::from_inner(debt);
+                Ok(debt <= max_safe_debt)
+            }
         }
 
         /// Ensures that new emission will not exceed collateral hard cap

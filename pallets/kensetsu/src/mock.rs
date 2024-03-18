@@ -42,7 +42,7 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
-use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
+use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild, Randomness};
 use frame_support::{ensure, parameter_types};
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
@@ -59,15 +59,25 @@ type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
 type Balance = u128;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
+type BlockNumber = u64;
+type Hash = H256;
 type Moment = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
-pub struct PriceToolsMock;
+pub struct MockRandomness;
 
-impl PriceToolsProvider<AssetId> for PriceToolsMock {
+impl Randomness<Hash, BlockNumber> for MockRandomness {
+    fn random(_subject: &[u8]) -> (Hash, BlockNumber) {
+        unimplemented!()
+    }
+}
+
+pub struct MockPriceTools;
+
+impl PriceToolsProvider<AssetId> for MockPriceTools {
     /// Returns `asset_id` price is $1
     fn get_average_price(
         _input_asset_id: &AssetId,
@@ -237,10 +247,11 @@ mock_pallet_timestamp_config!(TestRuntime);
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
+    type Randomness = MockRandomness;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
-    type PriceTools = PriceToolsMock;
+    type PriceTools = MockPriceTools;
     type LiquidityProxy = MockLiquidityProxy;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
