@@ -69,6 +69,8 @@ const VALIDATION_ERROR_ACCRUE: u8 = 1;
 const VALIDATION_ERROR_ACCRUE_NO_DEBT: u8 = 2;
 const VALIDATION_ERROR_CHECK_SAFE: u8 = 3;
 const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
+/// Liquidation limit reached
+const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
 /// Risk management parameters for the specific collateral type.
 #[derive(
@@ -156,6 +158,12 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        /// Resets liquidation flag.
+        fn on_initialize(_now: T::BlockNumber) -> Weight {
+            LiquidatedThisBlock::<T>::put(false);
+            T::DbWeight::get().writes(1)
+        }
+
         /// Main off-chain worker procedure.
         ///
         /// Accrues fees and calls liquidations
@@ -167,14 +175,14 @@ pub mod pallet {
             let now = Timestamp::<T>::get();
             let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
             let mut collaterals_to_update = BTreeSet::new();
-            for (collateral_asset_id, collateral_info) in <CollateralInfos<T>>::iter() {
+            for (collateral_asset_id, collateral_info) in CollateralInfos::<T>::iter() {
                 if collateral_info.last_fee_update_time <= outdated_timestamp {
                     collaterals_to_update.insert(collateral_asset_id);
                 }
             }
             let mut unsafe_cdp_ids = VecDeque::<CdpId>::new();
             // TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
-            for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
+            for (cdp_id, cdp) in CDPDepository::<T>::iter() {
                 // Debt recalculation with interest
                 if collaterals_to_update.contains(&cdp.collateral_asset_id) {
                     debug!("Accrue for CDP {:?}", cdp_id);
@@ -288,6 +296,12 @@ pub mod pallet {
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
+
+    /// Flag indicates that liquidation took place in this block. Only one liquidation per block is
+    /// allowed, th flag is dropped every block.
+    #[pallet::storage]
+    #[pallet::getter(fn liquidated_this_block)]
+    pub type LiquidatedThisBlock<T> = StorageValue<_, bool, ValueQuery>;
 
     /// System bad debt, the amount of KUSD not secured with collateral.
     #[pallet::storage]
@@ -417,6 +431,8 @@ pub mod pallet {
         AccrueWrongTime,
         /// Liquidation lot set in risk parameters is zero, cannot liquidate
         ZeroLiquidationLot,
+        /// Liquidation limit reached
+        LiquidationLimit,
     }
 
     #[pallet::call]
@@ -566,6 +582,10 @@ pub mod pallet {
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+            ensure!(
+                Self::check_liquidation_available()?,
+                Error::<T>::LiquidationLimit
+            );
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(
                 !Self::check_cdp_is_safe(cdp.debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
@@ -619,6 +639,7 @@ pub mod pallet {
                 )?;
             };
             Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, kusd_supply_change)?;
+            LiquidatedThisBlock::<T>::put(true);
             Self::deposit_event(Event::Liquidated {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
@@ -815,6 +836,11 @@ pub mod pallet {
         /// It is allowed to call only accrue() and liquidate() and only if
         /// it fulfills conditions.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if !Self::check_liquidation_available()
+                .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT))?
+            {
+                return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT).into();
+            }
             match call {
                 // TODO spamming with accrue calls, add some filter to not call too often
                 // https://github.com/sora-xor/sora2-network/issues/878
@@ -881,6 +907,13 @@ pub mod pallet {
             }
 
             Ok(())
+        }
+
+        /// Checks if liquidation is available now.
+        /// Returns `false` if liquidation took place this block since only one liquidation per
+        /// block is allowed.
+        fn check_liquidation_available() -> Result<bool, DispatchError> {
+            Ok(!LiquidatedThisBlock::<T>::get())
         }
 
         /// Checks whether a Collateralized Debt Position (CDP) is currently considered safe based on its debt and collateral.
@@ -1016,7 +1049,7 @@ pub mod pallet {
             Self::ensure_protocol_cap(will_to_borrow_amount)?;
             Self::mint_to(who, will_to_borrow_amount)?;
             Self::update_cdp_debt(cdp_id, new_debt)?;
-            <CollateralInfos<T>>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+            CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
                 let collateral_info = collateral_info
                     .as_mut()
                     .ok_or(Error::<T>::CollateralInfoNotFound)?;
@@ -1045,7 +1078,7 @@ pub mod pallet {
         /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
         fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
-            let bad_debt = <BadDebt<T>>::get();
+            let bad_debt = BadDebt::<T>::get();
             let to_cover_debt = if kusd_amount <= bad_debt {
                 kusd_amount
             } else {
@@ -1060,7 +1093,7 @@ pub mod pallet {
                 bad_debt
             };
             Self::burn_from(from, to_cover_debt)?;
-            <BadDebt<T>>::try_mutate(|bad_debt| {
+            BadDebt::<T>::try_mutate(|bad_debt| {
                 *bad_debt = bad_debt
                     .checked_sub(to_cover_debt)
                     .ok_or(Error::<T>::ArithmeticError)?;
@@ -1081,7 +1114,7 @@ pub mod pallet {
             collateral_asset_id: &AssetIdOf<T>,
         ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
             let collateral_info =
-                <CollateralInfos<T>>::try_mutate(collateral_asset_id, |collateral_info| {
+                CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
                     let collateral_info = collateral_info
                         .as_mut()
                         .ok_or(Error::<T>::CollateralInfoNotFound)?;
@@ -1140,7 +1173,7 @@ pub mod pallet {
                 .checked_add(stability_fee)
                 .ok_or(Error::<T>::ArithmeticError)?;
             Self::increase_collateral_kusd_supply(&cdp.collateral_asset_id, stability_fee)?;
-            cdp = <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+            cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = new_debt;
                 cdp.interest_coefficient = new_coefficient;
@@ -1148,7 +1181,7 @@ pub mod pallet {
                     cdp.clone(),
                 )
             })?;
-            let mut new_bad_debt = <BadDebt<T>>::get();
+            let mut new_bad_debt = BadDebt::<T>::get();
             if new_bad_debt > 0 {
                 if stability_fee <= new_bad_debt {
                     new_bad_debt = new_bad_debt
@@ -1161,7 +1194,7 @@ pub mod pallet {
                         .ok_or(Error::<T>::ArithmeticError)?;
                     new_bad_debt = balance!(0);
                 };
-                <BadDebt<T>>::try_mutate(|bad_debt| {
+                BadDebt::<T>::try_mutate(|bad_debt| {
                     *bad_debt = new_bad_debt;
                     DispatchResult::Ok(())
                 })?;
@@ -1359,11 +1392,11 @@ pub mod pallet {
 
         /// Removes CDP entry from the storage
         fn delete_cdp(cdp_id: CdpId) -> DispatchResult {
-            let cdp = <CDPDepository<T>>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(&cdp.owner) {
+            let cdp = CDPDepository::<T>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            if let Some(mut cdp_ids) = CdpOwnerIndex::<T>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
-                    <CdpOwnerIndex<T>>::insert(&cdp.owner, cdp_ids);
+                    CdpOwnerIndex::<T>::insert(&cdp.owner, cdp_ids);
                 }
             }
             Self::deposit_event(Event::CDPClosed {
@@ -1415,7 +1448,7 @@ pub mod pallet {
             collateral_asset_id: &AssetIdOf<T>,
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
-            <CollateralInfos<T>>::try_mutate(collateral_asset_id, |option_collateral_info| {
+            CollateralInfos::<T>::try_mutate(collateral_asset_id, |option_collateral_info| {
                 match option_collateral_info {
                     Some(collateral_info) => {
                         let mut new_info =
@@ -1440,7 +1473,7 @@ pub mod pallet {
         pub fn get_account_cdp_ids(
             account_id: &AccountIdOf<T>,
         ) -> Result<Vec<CdpId>, DispatchError> {
-            Ok(<CDPDepository<T>>::iter()
+            Ok(CDPDepository::<T>::iter()
                 .filter(|(_, cdp)| cdp.owner == *account_id)
                 .map(|(cdp_id, _)| cdp_id)
                 .collect())
