@@ -67,7 +67,6 @@ pub mod pallet {
     use hex_literal::hex;
     use sp_runtime::traits::{UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
-    use sp_std::if_std;
 
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
 
@@ -387,9 +386,6 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             ensure!(lending_amount > 0, Error::<T>::InvalidLendingAmount);
-            if_std! {
-                println!("lend");
-            }
             let mut pool_info =
                 <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
 
@@ -918,9 +914,6 @@ pub mod pallet {
             user: AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
-            if_std! {
-                println!("liquidate");
-            }
             let user_infos = UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap();
             let mut sum_of_thresholds: Balance = 0;
             let mut total_borrowed: Balance = 0;
@@ -995,9 +988,6 @@ pub mod pallet {
 
         /// It is allowed to call only liquidate() and only if it fulfills conditions.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            if_std! {
-                println!("validate");
-            }
             match call {
                 Call::liquidate { user, asset_id } => {
                     ValidTransaction::with_tag_prefix("Apollo::liquidate")
@@ -1042,9 +1032,6 @@ pub mod pallet {
 
         /// Off-chain worker procedure - calls liquidations
         fn offchain_worker(block_number: T::BlockNumber) {
-            if_std! {
-                println!("offchain");
-            }
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -1090,29 +1077,17 @@ pub mod pallet {
                 if health_factor < balance!(1) {
                     // Liquidate
                     debug!("Liquidation of user {:?}", user);
-                    if_std! {
-                        println!("pre likvidacije");
-                    }
                     let call = Call::<T>::liquidate {
                         user: user.clone(),
                         asset_id,
                     };
-                    if_std! {
-                        println!("pre poziva likvidacije");
-                    }
                     if let Err(err) =
                         SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
                     {
-                        if_std! {
-                            println!("error");
-                        }
                         warn!(
                             "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
                             user, err
                         );
-                    }
-                    if_std! {
-                        println!("posle poziva likvidacije");
                     }
                 }
             }

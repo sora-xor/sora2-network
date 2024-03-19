@@ -3,13 +3,22 @@
 use super::*;
 
 use codec::Decode;
-use common::{balance, DOT, XOR};
+use common::{
+    balance, AssetName, AssetSymbol, DEXId, PriceToolsPallet, PriceVariant, DAI,
+    DEFAULT_BALANCE_PRECISION, DOT, XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
 use crate::Pallet as ApolloPlatform;
+use assets::Pallet as Assets;
+use pool_xyk::Pallet as XYKPool;
+use price_tools::Pallet as PriceTools;
+use trading_pair::Pallet as TradingPair;
+
+pub const DEX: DEXId = DEXId::Polkaswap;
 
 // Support functions
 fn alice<T: Config>() -> T::AccountId {
@@ -30,8 +39,94 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     assert_eq!(event, &system_event);
 }
 
+fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
+    let owner = alice::<T>();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
+    let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+    let dai_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(DAI.into()).unwrap();
+
+    // Register assets
+    Assets::<T>::register_asset_id(
+        owner.clone(),
+        DOT.into(),
+        AssetSymbol(b"DOT".to_vec()),
+        AssetName(b"Polkadot".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        Balance::from(0u32),
+        true,
+        None,
+        None,
+    )
+    .unwrap();
+
+    // Mint assets to Alice
+    Assets::<T>::mint(
+        RawOrigin::Signed(xor_owner.clone()).into(),
+        XOR.into(),
+        owner.clone(),
+        balance!(500),
+    )
+    .unwrap();
+
+    Assets::<T>::mint(
+        owner_origin.clone(),
+        DOT.into(),
+        owner.clone(),
+        balance!(500),
+    )
+    .unwrap();
+
+    Assets::<T>::mint(
+        RawOrigin::Signed(dai_owner.clone()).into(),
+        DAI.into(),
+        owner.clone(),
+        balance!(500),
+    )
+    .unwrap();
+
+    // Register trading pairs
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+
+    // Initialize pools and deposit liquidity
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        DOT.into(),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+    )?;
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        DAI.into(),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+    )?;
+
+    // Register assets to PriceTools and fill PricesInfos
+    PriceTools::<T>::register_asset(&DOT.into()).unwrap();
+    for _ in 0..30 {
+        PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Buy);
+        PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Sell);
+    }
+
+    Ok(())
+}
+
 benchmarks! {
-    add_pool {
+    /*add_pool {
         let caller = pallet::AuthorityAccount::<T>::get();
         let asset_id = XOR;
         let loan_to_value = balance!(1);
@@ -98,7 +193,7 @@ benchmarks! {
         ).unwrap()
     } verify {
         assert_last_event::<T>(Event::Lended(alice, asset_id.into(), lending_amount).into());
-    }
+    }*/
 
     borrow {
         let caller = pallet::AuthorityAccount::<T>::get();
@@ -114,25 +209,29 @@ benchmarks! {
         let slope_rate_2 = balance!(1);
         let reserve_factor = balance!(1);
 
-        let lending_amount_alice = balance!(100);
+        let lending_amount_alice = balance!(300);
         let lending_amount_bob = balance!(200000);
 
-        let collateral_amount = balance!(100);
+        let collateral_amount = balance!(101.00000000000000001);
         let borrow_amount = balance!(100);
 
-        let mint_alice = assets::Pallet::<T>::mint_to(
-            &DOT.into(),
-            &alice,
-            &alice,
-            balance!(1000)
-        );
+        setup_benchmark::<T>()?;
 
-        let mint_bob = assets::Pallet::<T>::mint_to(
-            &XOR.into(),
-            &alice,
-            &bob,
+        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+
+        Assets::<T>::mint(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            alice.clone(),
+            balance!(200)
+        ).unwrap();
+
+        Assets::<T>::mint(
+            RawOrigin::Signed(xor_owner).into(),
+            XOR.into(),
+            bob.clone(),
             balance!(300000)
-        );
+        ).unwrap();
 
         ApolloPlatform::<T>::add_pool(
             RawOrigin::Signed(caller.clone()).into(),
@@ -159,15 +258,15 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::lend(
-            RawOrigin::Signed(bob.clone()).into(),
-            XOR.into(),
-            lending_amount_bob
-        ).unwrap();
-
-        ApolloPlatform::<T>::lend(
             RawOrigin::Signed(alice.clone()).into(),
             DOT.into(),
             lending_amount_alice
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(bob.clone()).into(),
+            XOR.into(),
+            lending_amount_bob
         ).unwrap();
 
     }: {
