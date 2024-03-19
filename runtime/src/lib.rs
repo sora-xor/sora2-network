@@ -2324,7 +2324,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AssetIdConverter = impls::LiberlandAssetIdConverter;
     type BalancePrecisionConverter = impls::GenericBalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = ();
+    type WeightInfo = crate::weights::substrate_bridge_app::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -3255,6 +3255,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
+            #[cfg(feature = "wip")] // Liberland bridge
+            list_benchmark!(list, extra, substrate_bridge_app, LiberlandBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
@@ -3357,6 +3359,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
+            #[cfg(feature = "wip")] // Liberland bridge
+            add_benchmark!(params, batches, substrate_bridge_app, LiberlandBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 

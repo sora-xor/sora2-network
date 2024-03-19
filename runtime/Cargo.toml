@@ -352,6 +352,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
+    "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
