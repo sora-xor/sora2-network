@@ -1933,6 +1933,13 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
 
+    // TODO set Demeter farming AccountId
+    pub DemeterFarmingAccountId: AccountId = {
+        let tech_account_id = KensetsuTreasuryTechAccountId::get();
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
+
     pub const KenAssetId: AssetId = common::KEN;
     pub const KusdAssetId: AssetId = common::KUSD;
 
@@ -1954,6 +1961,7 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type DemeterFarmingAccount = DemeterFarmingAccountId;
     type KenAssetId = KenAssetId;
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;

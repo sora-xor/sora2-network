@@ -33,12 +33,12 @@ use super::*;
 use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     alice, alice_account_id, assert_bad_debt, assert_balance, bob, create_cdp_for_xor,
-    deposit_xor_to_cdp, get_total_supply, protocol_owner, protocol_owner_account_id, risk_manager,
-    risk_manager_account_id, set_bad_debt, set_balance, set_borrow_tax, set_up_risk_manager,
-    set_xor_as_collateral_type, tech_account_id,
+    demeter_farming_account_id, deposit_xor_to_cdp, get_total_supply, protocol_owner,
+    protocol_owner_account_id, risk_manager, risk_manager_account_id, set_bad_debt, set_balance,
+    set_borrow_tax, set_up_risk_manager, set_xor_as_collateral_type, tech_account_id,
 };
 
-use common::{balance, AssetId32, Balance, KEN, KUSD, XOR};
+use common::{balance, пщ, AssetId32, Balance, KUSD, XOR};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
@@ -767,7 +767,8 @@ fn borrow_with_ken_incentivization() {
         let borrow_tax = balance!(1);
         let initial_total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(initial_total_kusd_supply, balance!(0));
-        MockLiquidityProxy::set_output_amount_for_the_next_exchange(KEN, balance!(23));
+        let buyback_amount = balance!(100);
+        MockLiquidityProxy::set_output_amount_for_the_next_exchange(KEN, buyback_amount);
 
         assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, to_borrow));
 
@@ -791,7 +792,8 @@ fn borrow_with_ken_incentivization() {
             total_kusd_supply,
             initial_total_kusd_supply + to_borrow + borrow_tax
         );
-        // TODO check KEN token balance
+        let demeter_farming_amount = INCENTIVE_REMINT_PERCENT * buyback_amount;
+        assert_balance(&demeter_farming_account_id(), &KEN, demeter_farming_amount);
     });
 }
 

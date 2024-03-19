@@ -46,8 +46,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
-use sp_arithmetic::FixedU128;
 use sp_arithmetic::Perbill;
+use sp_arithmetic::{FixedU128, Percent};
 
 #[cfg(test)]
 mod mock;
@@ -63,6 +63,9 @@ pub mod weights;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
+
+/// Percent of bought KEN token that goes to Demeter farming
+pub const INCENTIVE_REMINT_PERCENT: Percent = Percent::from_percent(80);
 
 /// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
 const VALIDATION_ERROR_ACCRUE: u8 = 1;
@@ -239,6 +242,7 @@ pub mod pallet {
             Description,
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
+        type DemeterFarmingAccount: Get<Self::AccountId>;
         type KenAssetId: Get<Self::AssetId>;
         type KusdAssetId: Get<Self::AssetId>;
         type PriceTools: PriceToolsProvider<Self::AssetId>;
@@ -1367,15 +1371,13 @@ pub mod pallet {
                     &technical_account_id,
                     swap_outcome.amount,
                 )?;
-                let to_remint = Percent::from_percent(80) * swap_outcome.amount;
+                let to_remint = INCENTIVE_REMINT_PERCENT * swap_outcome.amount;
                 assets::Pallet::<T>::mint_to(
                     &T::KenAssetId::get(),
                     &technical_account_id,
-                    &technical_account_id,
+                    &T::DemeterFarmingAccount::get(),
                     to_remint,
                 )?;
-
-                // TODO send to demeter XOR/KUSD ???
             }
 
             Ok(())
