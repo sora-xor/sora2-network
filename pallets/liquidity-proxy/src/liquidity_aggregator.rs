@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::prelude::QuoteAmount;
+use common::prelude::{OutcomeFee, QuoteAmount};
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
 
@@ -52,20 +52,22 @@ type SwapInfo<LiquiditySourceType, AmountType> =
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
-pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
+pub struct AggregatedSwapOutcome<AssetId: Ord, LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
     pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
     /// The best possible output/input amount for a given trade and a set of liquidity sources
     pub amount: AmountType,
     /// Total fee amount, nominated in XOR
-    pub fee: AmountType,
+    pub fee: OutcomeFee<AssetId, AmountType>,
 }
 
-impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdType, AmountType> {
+impl<AssetId: Ord, LiquiditySourceIdType, AmountType>
+    AggregatedSwapOutcome<AssetId, LiquiditySourceIdType, AmountType>
+{
     pub fn new(
         distribution: Vec<(LiquiditySourceIdType, QuoteAmount<AmountType>)>,
         amount: AmountType,
-        fee: AmountType,
+        fee: OutcomeFee<AssetId, AmountType>,
     ) -> Self {
         Self {
             distribution,
@@ -104,13 +106,16 @@ where
         self.liquidity_chunks.insert(source, sorted_chunks);
     }
 
-    pub fn aggregate_swap_outcome(
+    pub fn aggregate_swap_outcome<AssetId>(
         mut self,
         amount: Balance,
     ) -> Option<(
         SwapInfo<LiquiditySourceType, Balance>,
-        AggregatedSwapOutcome<LiquiditySourceType, Balance>,
-    )> {
+        AggregatedSwapOutcome<AssetId, LiquiditySourceType, Balance>,
+    )>
+    where
+        AssetId: Ord + From<common::AssetId32<common::PredefinedAssetId>>,
+    {
         if self.liquidity_chunks.is_empty() {
             return None;
         }
@@ -180,7 +185,7 @@ where
                     })
                     .collect(),
                 amount: result_amount,
-                fee,
+                fee: OutcomeFee::<AssetId, Balance>::xor(fee), // todo fix (m.tagirov)
             },
         ))
     }
@@ -215,9 +220,11 @@ where
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;
-    use common::prelude::{QuoteAmount, SwapVariant};
+    use common::prelude::{OutcomeFee, QuoteAmount, SwapVariant};
     use common::{balance, LiquiditySourceType, SwapChunk};
     use sp_std::collections::vec_deque::VecDeque;
+
+    type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
     fn get_liquidity_aggregator_with_desired_input_and_equal_chunks(
     ) -> LiquidityAggregator<LiquiditySourceType> {
@@ -537,7 +544,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(10))
                     )],
                     balance!(120),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -556,7 +563,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(20))
                     )],
                     balance!(220),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -584,7 +591,7 @@ mod tests {
                         )
                     ],
                     balance!(320),
-                    balance!(1)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1))
                 )
             )
         );
@@ -612,7 +619,7 @@ mod tests {
                         )
                     ],
                     balance!(410),
-                    balance!(1.9)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.9))
                 )
             )
         );
@@ -645,7 +652,7 @@ mod tests {
                         )
                     ],
                     balance!(495),
-                    balance!(2.75)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.75))
                 )
             )
         );
@@ -678,7 +685,7 @@ mod tests {
                         )
                     ],
                     balance!(580),
-                    balance!(3.6)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3.6))
                 )
             )
         );
@@ -697,7 +704,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(100))
                     )],
                     balance!(8),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -716,7 +723,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(200))
                     )],
                     balance!(18),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -744,7 +751,7 @@ mod tests {
                         )
                     ],
                     balance!(28),
-                    balance!(1)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1))
                 )
             )
         );
@@ -772,7 +779,7 @@ mod tests {
                         )
                     ],
                     balance!(39),
-                    balance!(2)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2))
                 )
             )
         );
@@ -800,7 +807,7 @@ mod tests {
                         )
                     ],
                     balance!(51),
-                    balance!(3)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3))
                 )
             )
         );
@@ -836,7 +843,7 @@ mod tests {
                         )
                     ],
                     balance!(63.5),
-                    balance!(4)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(4))
                 )
             )
         );
@@ -869,7 +876,7 @@ mod tests {
                         )
                     ],
                     balance!(76),
-                    balance!(5)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(5))
                 )
             )
         );
@@ -1043,7 +1050,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(10))
                     )],
                     balance!(120),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1062,7 +1069,7 @@ mod tests {
                         QuoteAmount::with_desired_input(balance!(20))
                     )],
                     balance!(224),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1090,7 +1097,7 @@ mod tests {
                         )
                     ],
                     balance!(324),
-                    balance!(0.8)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(0.8))
                 )
             )
         );
@@ -1118,7 +1125,7 @@ mod tests {
                         )
                     ],
                     balance!(416),
-                    balance!(1.719999999999999999)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(1.719999999999999999))
                 )
             )
         );
@@ -1151,7 +1158,7 @@ mod tests {
                         )
                     ],
                     balance!(503),
-                    balance!(2.59)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(2.59))
                 )
             )
         );
@@ -1184,7 +1191,7 @@ mod tests {
                         )
                     ],
                     balance!(588),
-                    balance!(3.439999999999999999)
+                    OutcomeFee::<AssetId, Balance>::xor(balance!(3.439999999999999999))
                 )
             )
         );
@@ -1203,7 +1210,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(100))
                     )],
                     balance!(8),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1222,7 +1229,7 @@ mod tests {
                         QuoteAmount::with_desired_output(balance!(150))
                     )],
                     balance!(13),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1250,7 +1257,7 @@ mod tests {
                         )
                     ],
                     balance!(23),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1281,7 +1288,7 @@ mod tests {
                         )
                     ],
                     balance!(32.5),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1317,7 +1324,7 @@ mod tests {
                         )
                     ],
                     balance!(40.5),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );
@@ -1356,7 +1363,7 @@ mod tests {
                         )
                     ],
                     balance!(53),
-                    0
+                    OutcomeFee::<AssetId, Balance>::new()
                 )
             )
         );

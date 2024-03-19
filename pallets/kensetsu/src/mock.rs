@@ -114,23 +114,17 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _amount: QuoteAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id == KUSD {
             let amount =
                 assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
                     .expect("must succeed");
-            Ok(SwapOutcome {
-                amount,
-                fee: balance!(0),
-            })
+            Ok(SwapOutcome::new(amount, Default::default()))
         } else if *output_asset_id == KEN {
             let amount =
                 assets::Pallet::<TestRuntime>::free_balance(&KEN, &Self::EXCHANGE_TECH_ACCOUNT)
                     .expect("must succeed");
-            Ok(SwapOutcome {
-                amount,
-                fee: balance!(0),
-            })
+            Ok(SwapOutcome::new(amount, Default::default()))
         } else {
             Err(DispatchError::Other(
                 "Wrong asset id for MockLiquidityProxy, KUSD and KEN only supported",
@@ -151,7 +145,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         output_asset_id: &AssetId,
         amount: SwapAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<common::Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id == KUSD || *output_asset_id == KEN {
             match amount {
                 SwapAmount::WithDesiredInput {
@@ -178,7 +172,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                         receiver,
                         out_amount,
                     )?;
-                    Ok(SwapOutcome::new(out_amount, 0))
+                    Ok(SwapOutcome::new(out_amount, Default::default()))
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out,
@@ -204,7 +198,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                         receiver,
                         out_amount,
                     )?;
-                    Ok(SwapOutcome::new(out_amount, 0))
+                    Ok(SwapOutcome::new(out_amount, Default::default()))
                 }
             }
         } else {

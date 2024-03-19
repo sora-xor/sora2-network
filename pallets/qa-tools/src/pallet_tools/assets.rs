@@ -28,28 +28,45 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::DexIdOf;
+use crate::Config;
+use assets::AssetIdOf;
+use common::{AccountIdOf, FixedInner};
+use frame_support::dispatch::DispatchError;
+use sp_std::cmp::Ordering;
 
-use crate::operations::*;
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    UnknownAsset,
+    Other(DispatchError),
+}
 
-pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+impl<T: Into<DispatchError>> From<T> for Error {
+    fn from(value: T) -> Self {
+        Self::Other(value.into())
+    }
+}
 
-pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
-
-pub type TechAssetIdOf<T> = <T as technical::Config>::TechAssetId;
-
-pub type TechAccountIdOf<T> = <T as technical::Config>::TechAccountId;
-
-pub type DEXIdOf<T> = <T as common::Config>::DEXId;
-
-pub type PolySwapActionStructOf<T> =
-    PolySwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
-
-pub type PairSwapActionOf<T> =
-    PairSwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
-
-pub type WithdrawLiquidityActionOf<T> =
-    WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
-
-pub type DepositLiquidityActionOf<T> =
-    DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
+pub fn change_balance_by<T: Config>(
+    account: &AccountIdOf<T>,
+    asset: &AssetIdOf<T>,
+    balance_delta: FixedInner,
+) -> Result<(), Error> {
+    let owner = assets::Pallet::<T>::asset_owner(asset).ok_or(Error::UnknownAsset)?;
+    match balance_delta.cmp(&0) {
+        Ordering::Greater => {
+            let mint_amount = balance_delta
+                .try_into()
+                .map_err(|_| crate::Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::mint_to(asset, &owner, account, mint_amount)?;
+        }
+        Ordering::Less => {
+            let burn_amount = balance_delta
+                .abs()
+                .try_into()
+                .map_err(|_| crate::Error::<T>::ArithmeticError)?;
+            assets::Pallet::<T>::burn_from(asset, &owner, account, burn_amount)?;
+        }
+        Ordering::Equal => (),
+    }
+    Ok(())
+}

@@ -169,7 +169,7 @@ benchmarks! {
             pool_asset.into(),
             reward_asset.into(),
             is_farm,
-            ,
+            multiplier,
             deposit_fee,
             is_core,
         );

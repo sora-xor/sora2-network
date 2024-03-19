@@ -35,7 +35,8 @@
 
 use assets::AssetIdOf;
 use common::prelude::{
-    EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
+    EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
+    TradingPair,
 };
 use common::LiquiditySourceType;
 use common::{
@@ -1246,7 +1247,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1260,7 +1261,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
         // order-book doesn't take fee
-        let fee = Balance::zero();
+        let fee = OutcomeFee::new();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
@@ -1345,7 +1346,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1393,7 +1394,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             order_book.execute_market_order(market_order, &mut data)?;
 
         // order-book doesn't take fee
-        let fee = Balance::zero();
+        let fee = OutcomeFee::new();
 
         let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -1435,7 +1436,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1509,7 +1510,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         );
 
         // order-book doesn't take fee
-        let fee = Balance::zero();
+        let fee = OutcomeFee::new();
 
         Ok(SwapOutcome::new(*target_amount.balance(), fee))
     }
