@@ -62,6 +62,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::MainnetAccountId;
     use bridge_types::{
         substrate::ParachainAccountId,
         traits::BridgeApp,
@@ -74,8 +75,6 @@ pub mod pallet {
     };
     use frame_system::pallet_prelude::{BlockNumberFor, *};
     use traits::MultiCurrency;
-    // use sp_runtime::traits::Convert;
-    use bridge_types::MainnetAccountId;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;

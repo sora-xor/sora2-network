@@ -293,7 +293,10 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 call.dispatch(origin)
             }
             bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
-                todo!("not inplemented")
+                Err(DispatchErrorWithPostInfo {
+                    post_info: Default::default(),
+                    error: DispatchError::Other("Unavailable"),
+                })
             }
         }
     }
@@ -358,7 +361,7 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 call.get_dispatch_info()
             }
             bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
-                todo!("not implemented")
+                DispatchError::Other("Unavailable")
             }
         }
     }
