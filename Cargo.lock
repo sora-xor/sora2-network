@@ -2001,7 +2001,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
- "env_logger 0.9.3",
+ "env_logger",
  "fixnum",
  "frame-support",
  "frame-system",
@@ -3164,32 +3164,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
@@ -3315,7 +3289,7 @@ dependencies = [
  "async-std",
  "bridge-types",
  "common",
- "env_logger 0.8.4",
+ "env_logger",
  "ethabi 17.2.0",
  "ethabi-contract",
  "ethabi-derive",
@@ -3943,7 +3917,7 @@ dependencies = [
  "common",
  "demeter-farming-platform",
  "dex-manager",
- "env_logger 0.9.3",
+ "env_logger",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4069,7 +4043,7 @@ version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84f2e425d9790201ba4af4630191feac6dcc98765b118d4d18e91d23c2353866"
 dependencies = [
- "env_logger 0.10.2",
+ "env_logger",
  "log",
 ]
 
@@ -4644,7 +4618,7 @@ dependencies = [
  "dex-manager-runtime-api",
  "dex-runtime-api",
  "dispatch",
- "env_logger 0.9.3",
+ "env_logger",
  "erc20-app",
  "eth-app",
  "eth-bridge",
@@ -10078,7 +10052,7 @@ dependencies = [
  "ckb-merkle-mountain-range",
  "clap 3.2.22",
  "common",
- "env_logger 0.9.3",
+ "env_logger",
  "eth-bridge",
  "eth_trie",
  "ethash",
@@ -10128,7 +10102,7 @@ dependencies = [
  "clap 4.3.17",
  "common",
  "dex-manager",
- "env_logger 0.9.3",
+ "env_logger",
  "frame-election-provider-support",
  "frame-remote-externalities",
  "frame-support",
