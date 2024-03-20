@@ -40,8 +40,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KUSD, PSWAP, TBCD, USDT,
-    VAL, XOR, XST, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KUSD, PSWAP, TBCD,
+    USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1411,6 +1411,18 @@ fn testnet_genesis(
                 ),
                 #[cfg(feature = "wip")] // kensetsu
                 (
+                    KEN.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KEN".to_vec()),
+                    AssetName(b"Kensetsu incentive token".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                #[cfg(feature = "wip")] // kensetsu
+                (
                     KUSD.into(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"KUSD".to_vec()),
@@ -2065,6 +2077,18 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"TBCD".to_vec()),
             AssetName(b"SORA TBC Dollar".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        #[cfg(feature = "wip")] // kensetsu
+        (
+            KEN.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KEN".to_vec()),
+            AssetName(b"Kensetsu incentive token".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
