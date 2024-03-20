@@ -137,7 +137,7 @@ impl<AssetId: Ord> OutcomeFee<AssetId, Balance> {
     }
 
     // Multiply all values by `n`
-    pub fn mul_n(self, n: usize) -> Self
+    pub fn saturating_mul_usize(self, n: usize) -> Self
     where
         AssetId: Copy,
     {

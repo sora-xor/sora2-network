@@ -1175,7 +1175,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     .checked_mul(samples_count as Balance - 1)
                     .ok_or(Error::<T>::PriceCalculationFailed)?,
             ),
-            monolith.fee.reduce(chunk.fee.mul_n(samples_count - 1)),
+            monolith
+                .fee
+                .reduce(chunk.fee.saturating_mul_usize(samples_count - 1)),
         ));
 
         Ok((quotation, Self::step_quote_weight(samples_count)))
