@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CDPClosed","CDPCreated","CollateralDeposit","CollateralRiskParametersUpdated","CollateralWithdrawn","DebtIncreased","DebtPayment","Donation","KusdHardCapUpdated","Liquidated","LiquidationPenaltyUpdated","ProfitWithdrawn"]};
+window.SIDEBAR_ITEMS = {"struct":["CDPClosed","CDPCreated","CollateralDeposit","CollateralRiskParametersUpdated","DebtIncreased","DebtPayment","Donation","KusdHardCapUpdated","Liquidated","LiquidationPenaltyUpdated","ProfitWithdrawn"]};

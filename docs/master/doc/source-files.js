@@ -14,7 +14,7 @@ var sourcesIndex = JSON.parse('{\
 "ceres_liquidity_locker_benchmarking":["",[],["lib.rs"]],\
 "ceres_staking":["",[],["lib.rs","weights.rs"]],\
 "ceres_token_locker":["",[],["lib.rs","migrations.rs","weights.rs"]],\
-"common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","primitives.rs","serialization.rs","storage.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
+"common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","outcome_fee.rs","primitives.rs","serialization.rs","storage.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
 "demeter_farming_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "demeter_farming_platform_benchmarking":["",[],["lib.rs"]],\
 "dex_api":["",[],["lib.rs","weights.rs"]],\
@@ -44,7 +44,7 @@ var sourcesIndex = JSON.parse('{\
 "iroha_migration_runtime_api":["",[],["lib.rs"]],\
 "kensetsu":["",[],["compounding.rs","lib.rs","weights.rs"]],\
 "kensetsu_benchmarking":["",[],["lib.rs"]],\
-"liquidity_proxy":["",[],["lib.rs","weights.rs"]],\
+"liquidity_proxy":["",[],["lib.rs","liquidity_aggregator.rs","weights.rs"]],\
 "liquidity_proxy_benchmarking":["",[],["lib.rs"]],\
 "liquidity_proxy_rpc":["",[],["lib.rs"]],\
 "liquidity_proxy_runtime_api":["",[],["lib.rs"]],\
@@ -66,7 +66,7 @@ var sourcesIndex = JSON.parse('{\
 "pswap_distribution_benchmarking":["",[],["lib.rs"]],\
 "pswap_distribution_rpc":["",[],["lib.rs"]],\
 "pswap_distribution_runtime_api":["",[],["lib.rs"]],\
-"qa_tools":["",[["pallet_tools",[],["liquidity_proxy.rs","mod.rs","order_book.rs"]]],["lib.rs","weights.rs"]],\
+"qa_tools":["",[["pallet_tools",[],["assets.rs","liquidity_proxy.rs","mcbc.rs","mod.rs","order_book.rs","pool_xyk.rs","price_tools.rs","xst.rs"]]],["lib.rs","weights.rs"]],\
 "referrals":["",[],["lib.rs","weights.rs"]],\
 "remote_ext":["",[],["main.rs"]],\
 "rewards":["",[],["lib.rs","weights.rs"]],\

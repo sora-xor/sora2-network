@@ -1825,6 +1825,88 @@
 <a href="#1810" id="1810">1810</a>
 <a href="#1811" id="1811">1811</a>
 <a href="#1812" id="1812">1812</a>
+<a href="#1813" id="1813">1813</a>
+<a href="#1814" id="1814">1814</a>
+<a href="#1815" id="1815">1815</a>
+<a href="#1816" id="1816">1816</a>
+<a href="#1817" id="1817">1817</a>
+<a href="#1818" id="1818">1818</a>
+<a href="#1819" id="1819">1819</a>
+<a href="#1820" id="1820">1820</a>
+<a href="#1821" id="1821">1821</a>
+<a href="#1822" id="1822">1822</a>
+<a href="#1823" id="1823">1823</a>
+<a href="#1824" id="1824">1824</a>
+<a href="#1825" id="1825">1825</a>
+<a href="#1826" id="1826">1826</a>
+<a href="#1827" id="1827">1827</a>
+<a href="#1828" id="1828">1828</a>
+<a href="#1829" id="1829">1829</a>
+<a href="#1830" id="1830">1830</a>
+<a href="#1831" id="1831">1831</a>
+<a href="#1832" id="1832">1832</a>
+<a href="#1833" id="1833">1833</a>
+<a href="#1834" id="1834">1834</a>
+<a href="#1835" id="1835">1835</a>
+<a href="#1836" id="1836">1836</a>
+<a href="#1837" id="1837">1837</a>
+<a href="#1838" id="1838">1838</a>
+<a href="#1839" id="1839">1839</a>
+<a href="#1840" id="1840">1840</a>
+<a href="#1841" id="1841">1841</a>
+<a href="#1842" id="1842">1842</a>
+<a href="#1843" id="1843">1843</a>
+<a href="#1844" id="1844">1844</a>
+<a href="#1845" id="1845">1845</a>
+<a href="#1846" id="1846">1846</a>
+<a href="#1847" id="1847">1847</a>
+<a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
+<a href="#1858" id="1858">1858</a>
+<a href="#1859" id="1859">1859</a>
+<a href="#1860" id="1860">1860</a>
+<a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
+<a href="#1866" id="1866">1866</a>
+<a href="#1867" id="1867">1867</a>
+<a href="#1868" id="1868">1868</a>
+<a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1875,15 +1957,15 @@
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
 <span class="kw">use </span>common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsProvider,
-    QuoteAmount, SwapAmount, SwapOutcome,
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, OutcomeFee,
+    PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::BuyBackHandler;
 <span class="kw">use </span>common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD,
-    VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager, Vesting,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::weights::Weight;
@@ -1892,6 +1974,7 @@
 <span class="kw">use </span>sp_arithmetic::traits::Zero;
 <span class="kw">use </span>sp_runtime::{DispatchError, DispatchResult};
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
+<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 <span class="kw">pub use </span>weights::WeightInfo;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
@@ -2250,7 +2333,7 @@
         <span class="macro">fixed!</span>(<span class="number">1337</span>)
     }
 
-    <span class="doccomment">/// Cofficients in buy price function.
+    <span class="doccomment">/// Coefficients in buy price function.
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>price_change_step)]
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>PriceChangeStep&lt;T: Config&gt; =
@@ -2534,7 +2617,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>swap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    <span class="kw">fn </span>swap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         common::with_transaction(|| {
             <span class="kw">let </span>(input_amount, output_amount, fee_amount) = Pallet::&lt;T&gt;::decide_buy_amounts(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.main_asset_id,
@@ -2542,20 +2625,24 @@
                 <span class="self">self</span>.amount.into(),
                 <span class="bool-val">true</span>,
             )<span class="question-mark">?</span>;
+
+            <span class="comment">// in XOR
+            </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
             <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self</span>.amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         output_amount &gt;= min_amount_out,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(output_amount, fee_amount)
+                    SwapOutcome::new(output_amount, fee)
                 }
                 SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         input_amount &lt;= max_amount_in,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(input_amount, fee_amount)
+                    SwapOutcome::new(input_amount, fee)
                 }
             };
 
@@ -2689,7 +2776,7 @@
         )
     }
 
-    <span class="kw">fn </span>initialize_pool_unchecked(
+    <span class="kw">pub fn </span>initialize_pool_unchecked(
         collateral_asset_id: T::AssetId,
         transactional: bool,
     ) -&gt; DispatchResult {
@@ -3165,7 +3252,7 @@
         amount: SwapAmount&lt;Balance&gt;,
         from_account_id: <span class="kw-2">&amp;</span>T::AccountId,
         to_account_id: <span class="kw-2">&amp;</span>T::AccountId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         common::with_transaction(|| {
             <span class="kw">let </span>reserves_tech_account_id = <span class="self">Self</span>::reserves_account_id();
             <span class="kw">let </span>reserves_account_id =
@@ -3178,20 +3265,24 @@
                 reserves_amount &gt;= output_amount,
                 Error::&lt;T&gt;::NotEnoughReserves
             );
+
+            <span class="comment">// in XOR
+            </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
             <span class="kw">let </span>result = <span class="kw">match </span>amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         output_amount &gt;= min_amount_out,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(output_amount, fee_amount)
+                    SwapOutcome::new(output_amount, fee)
                 }
                 SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         input_amount &lt;= max_amount_in,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(input_amount, fee_amount)
+                    SwapOutcome::new(input_amount, fee)
                 }
             };
             technical::Pallet::&lt;T&gt;::transfer_out(
@@ -3391,7 +3482,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -3401,16 +3492,82 @@
         </span>} <span class="kw">else </span>{
             <span class="self">Self</span>::decide_buy_amounts(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>input_asset_id, amount, deduce_fee)<span class="question-mark">?
         </span>};
+
+        <span class="comment">// in XOR
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee_amount);
+
         <span class="kw">match </span>amount {
-            QuoteAmount::WithDesiredInput { .. } =&gt; <span class="prelude-val">Ok</span>((
-                SwapOutcome::new(output_amount, fee_amount),
-                <span class="self">Self</span>::quote_weight(),
-            )),
-            QuoteAmount::WithDesiredOutput { .. } =&gt; <span class="prelude-val">Ok</span>((
-                SwapOutcome::new(input_amount, fee_amount),
-                <span class="self">Self</span>::quote_weight(),
-            )),
+            QuoteAmount::WithDesiredInput { .. } =&gt; {
+                <span class="prelude-val">Ok</span>((SwapOutcome::new(output_amount, fee), <span class="self">Self</span>::quote_weight()))
+            }
+            QuoteAmount::WithDesiredOutput { .. } =&gt; {
+                <span class="prelude-val">Ok</span>((SwapOutcome::new(input_amount, fee), <span class="self">Self</span>::quote_weight()))
+            }
         }
+    }
+
+    <span class="kw">fn </span>step_quote(
+        dex_id: <span class="kw-2">&amp;</span>T::DEXId,
+        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        amount: QuoteAmount&lt;Balance&gt;,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+        <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
+        }
+        <span class="kw">if </span>amount.amount().is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((VecDeque::new(), Weight::zero()));
+        }
+
+        <span class="kw">let </span>samples_count = <span class="kw">if </span>recommended_samples_count &lt; <span class="number">1 </span>{
+            <span class="number">1
+        </span>} <span class="kw">else </span>{
+            recommended_samples_count
+        };
+
+        <span class="kw">let </span>base_asset_id = <span class="kw-2">&amp;</span>T::GetBaseAssetId::get();
+
+        <span class="kw">let </span>step = amount
+            .amount()
+            .checked_div(samples_count <span class="kw">as </span>Balance)
+            .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>volumes = Vec::new();
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=samples_count - <span class="number">1 </span>{
+            <span class="kw">let </span>volume = amount.copy_direction(
+                step.checked_mul(i <span class="kw">as </span>Balance)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
+            );
+            volumes.push(volume);
+        }
+        volumes.push(amount);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = VecDeque::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>sub_in = Balance::zero();
+        <span class="kw">let </span><span class="kw-2">mut </span>sub_out = Balance::zero();
+        <span class="kw">let </span><span class="kw-2">mut </span>sub_fee = Balance::zero();
+
+        <span class="kw">for </span>volume <span class="kw">in </span>volumes {
+            <span class="kw">let </span>(input_amount, output_amount, fee_amount) = <span class="kw">if </span>input_asset_id == base_asset_id {
+                <span class="self">Self</span>::decide_sell_amounts(<span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, volume, deduce_fee)<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                <span class="self">Self</span>::decide_buy_amounts(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>input_asset_id, volume, deduce_fee)<span class="question-mark">?
+            </span>};
+
+            <span class="kw">let </span>input_chunk = input_amount.saturating_sub(sub_in);
+            <span class="kw">let </span>output_chunk = output_amount.saturating_sub(sub_out);
+            <span class="kw">let </span>fee_chunk = fee_amount.saturating_sub(sub_fee);
+
+            sub_in = input_amount;
+            sub_out = output_amount;
+            sub_fee = fee_amount;
+
+            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+        }
+
+        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(samples_count)))
     }
 
     <span class="kw">fn </span>exchange(
@@ -3420,7 +3577,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -3505,12 +3662,12 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
         <span class="kw">let </span>base_asset_id = <span class="kw-2">&amp;</span>T::GetBaseAssetId::get();
-        <span class="kw">let </span>outcome = <span class="kw">if </span>input_asset_id == base_asset_id {
+        <span class="kw">let </span>(amount, fee) = <span class="kw">if </span>input_asset_id == base_asset_id {
             <span class="kw">let </span>base_price_wrt_collateral: FixedWrapper = &lt;Pallet&lt;T&gt; <span class="kw">as </span>GetMarketInfo&lt;
                 T::AssetId,
             &gt;&gt;::sell_price(
@@ -3533,7 +3690,7 @@
                             * base_price_wrt_collateral)
                             .try_into_balance()
                             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
-                    SwapOutcome::new(collateral_out, fee_amount)
+                    (collateral_out, fee_amount)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
                     <span class="kw">let </span>base_in =
@@ -3546,7 +3703,7 @@
                     </span>} <span class="kw">else </span>{
                         <span class="number">0
                     </span>};
-                    SwapOutcome::new(
+                    (
                         input_amount_with_fee
                             .try_into_balance()
                             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>,
@@ -3572,7 +3729,7 @@
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
                     base_out_unwrapped = base_out_unwrapped.saturating_sub(fee_amount);
-                    SwapOutcome::new(base_out_unwrapped, fee_amount)
+                    (base_out_unwrapped, fee_amount)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
                     <span class="kw">let </span>desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
@@ -3584,15 +3741,22 @@
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToCalculatePriceWithoutImpact)<span class="question-mark">?</span>;
                     <span class="kw">let </span>fee_amount = desired_amount_out_with_fee.saturating_sub(desired_amount_out);
-                    SwapOutcome::new(collateral_in, fee_amount)
+                    (collateral_in, fee_amount)
                 }
             }
         };
-        <span class="prelude-val">Ok</span>(outcome)
+
+        <span class="comment">// in XOR
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetBaseAssetId::get(), fee);
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, fee))
     }
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {
         &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::quote()
+    }
+
+    <span class="kw">fn </span>step_quote_weight(samples_count: usize) -&gt; Weight {
+        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::step_quote(samples_count <span class="kw">as </span>u32)
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {

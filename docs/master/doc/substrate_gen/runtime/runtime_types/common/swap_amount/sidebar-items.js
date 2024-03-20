@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["SwapAmount"]};
+window.SIDEBAR_ITEMS = {"enum":["QuoteAmount","SwapAmount"]};

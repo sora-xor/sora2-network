@@ -1228,6 +1228,81 @@
 <a href="#1213" id="1213">1213</a>
 <a href="#1214" id="1214">1214</a>
 <a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1281,13 +1356,13 @@
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
 <span class="kw">use </span>common::prelude::{
-    Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsProvider, QuoteAmount, SwapAmount,
-    SwapOutcome, DEFAULT_BALANCE_PRECISION,
+    Balance, EnsureDEXManager, Fixed, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
+    SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 <span class="kw">use </span>common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 <span class="kw">use </span>frame_support::pallet_prelude::DispatchResult;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -1295,8 +1370,11 @@
 <span class="kw">use </span>frame_support::{ensure, fail, RuntimeDebug};
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>sp_runtime::traits::Zero;
 <span class="kw">use </span>sp_runtime::DispatchError;
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
+<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
+<span class="kw">use </span>sp_std::vec;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="kw">pub use </span>weights::WeightInfo;
@@ -1350,9 +1428,9 @@
 <span class="attr">#[derive(RuntimeDebug, Clone, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(serde::Serialize, serde::Deserialize))]
 </span><span class="kw">pub struct </span>SyntheticInfo&lt;Symbol&gt; {
-    reference_symbol: Symbol,
+    <span class="kw">pub </span>reference_symbol: Symbol,
     <span class="doccomment">/// Fee ratio. 1 = 100%
-    </span>fee_ratio: Fixed,
+    </span><span class="kw">pub </span>fee_ratio: Fixed,
 }
 
 <span class="attr">#[frame_support::pallet]
@@ -1683,8 +1761,7 @@
     }
 }
 
-<span class="attr">#[allow(non_snake_case)]
-</span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="kw">fn </span>enable_synthetic_asset_unchecked(
         synthetic_asset_id: T::AssetId,
         reference_symbol: T::Symbol,
@@ -2024,7 +2101,7 @@
         swap_amount: SwapAmount&lt;Balance&gt;,
         from_account_id: <span class="kw-2">&amp;</span>T::AccountId,
         to_account_id: <span class="kw-2">&amp;</span>T::AccountId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         common::with_transaction(|| {
             <span class="kw">let </span>permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
             <span class="kw">let </span>permissioned_account_id =
@@ -2050,20 +2127,23 @@
                     )<span class="question-mark">?
                 </span>};
 
+            <span class="comment">// in XST
+            </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
             <span class="kw">let </span>result = <span class="kw">match </span>swap_amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         output_amount &gt;= min_amount_out,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(output_amount, fee_amount)
+                    SwapOutcome::new(output_amount, fee)
                 }
                 SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; {
                     <span class="macro">ensure!</span>(
                         input_amount &lt;= max_amount_in,
                         Error::&lt;T&gt;::SlippageLimitExceeded
                     );
-                    SwapOutcome::new(input_amount, fee_amount)
+                    SwapOutcome::new(input_amount, fee)
                 }
             };
 
@@ -2105,23 +2185,6 @@
         <span class="kw">return </span><span class="prelude-val">Ok</span>(resulting_fee_ratio);
     }
 
-    <span class="doccomment">/// Used for converting XST fee to XOR
-    </span><span class="kw">fn </span>convert_fee(fee_amount: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>output_to_base: FixedWrapper = &lt;T <span class="kw">as </span>Config&gt;::PriceToolsPallet::get_average_price(
-            <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
-            <span class="kw-2">&amp;</span>T::GetBaseAssetId::get(),
-            <span class="comment">// Since `Buy` is more expensive in case if we are buying XOR
-            // (x XST -&gt; y XOR; y XOR -&gt; x&#39; XST, x&#39; &lt; x),
-            // it seems logical to show this amount in order
-            // to not accidentally lie about the price.
-            </span>PriceVariant::Buy,
-        )<span class="question-mark">?
-        </span>.into();
-        <span class="prelude-val">Ok</span>((fee_amount * output_to_base)
-            .try_into_balance()
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>)
-    }
-
     <span class="kw">fn </span>ensure_base_asset_amount_within_limit(
         amount: Balance,
         check_limits: bool,
@@ -2154,7 +2217,7 @@
     /// Therefore the price is calculated as REF_sell_price_tools_price / MAIN_buy_price_tools_price
     ///
     /// Refer to price-tools pallet documentation for clarification.
-    </span><span class="kw">fn </span>reference_price(
+    </span><span class="kw">pub fn </span>reference_price(
         asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
@@ -2222,7 +2285,7 @@
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
         check_limits: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -2245,20 +2308,17 @@
                 check_limits,
             )<span class="question-mark">?
         </span>};
-        <span class="kw">let </span>fee_amount = <span class="kw">if </span>deduce_fee {
-            <span class="self">Self</span>::convert_fee(fee_amount)<span class="question-mark">?
-        </span>} <span class="kw">else </span>{
-            fee_amount
-        };
+
+        <span class="comment">// in XST
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
         <span class="kw">match </span>amount {
-            QuoteAmount::WithDesiredInput { .. } =&gt; <span class="prelude-val">Ok</span>((
-                SwapOutcome::new(output_amount, fee_amount),
-                <span class="self">Self</span>::quote_weight(),
-            )),
-            QuoteAmount::WithDesiredOutput { .. } =&gt; <span class="prelude-val">Ok</span>((
-                SwapOutcome::new(input_amount, fee_amount),
-                <span class="self">Self</span>::quote_weight(),
-            )),
+            QuoteAmount::WithDesiredInput { .. } =&gt; {
+                <span class="prelude-val">Ok</span>((SwapOutcome::new(output_amount, fee), <span class="self">Self</span>::quote_weight()))
+            }
+            QuoteAmount::WithDesiredOutput { .. } =&gt; {
+                <span class="prelude-val">Ok</span>((SwapOutcome::new(input_amount, fee), <span class="self">Self</span>::quote_weight()))
+            }
         }
     }
 
@@ -2302,7 +2362,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="self">Self</span>::inner_quote(
             dex_id,
             input_asset_id,
@@ -2313,6 +2373,96 @@
         )
     }
 
+    <span class="kw">fn </span>step_quote(
+        dex_id: <span class="kw-2">&amp;</span>T::DEXId,
+        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        amount: QuoteAmount&lt;Balance&gt;,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+        <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
+        }
+        <span class="kw">if </span>amount.amount().is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((VecDeque::new(), Weight::zero()));
+        }
+
+        <span class="kw">let </span>samples_count = <span class="kw">if </span>recommended_samples_count &lt; <span class="number">1 </span>{
+            <span class="number">1
+        </span>} <span class="kw">else </span>{
+            recommended_samples_count
+        };
+
+        <span class="kw">let </span>synthetic_base_asset_id = <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get();
+
+        <span class="comment">// Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
+        // It is necessary to use as much liquidity from the source as we can.
+        </span><span class="kw">let </span>(input_amount, output_amount, fee_amount) = <span class="kw">if </span>input_asset_id == synthetic_base_asset_id
+        {
+            <span class="self">Self</span>::decide_sell_amounts(<span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, amount, deduce_fee, <span class="bool-val">false</span>)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="self">Self</span>::decide_buy_amounts(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>input_asset_id, amount, deduce_fee, <span class="bool-val">false</span>)<span class="question-mark">?
+        </span>};
+
+        <span class="comment">// in XST
+        </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
+
+        <span class="comment">// todo fix (m.tagirov)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>monolith = SwapChunk::new(input_amount, output_amount, fee.get_xst());
+
+        <span class="kw">let </span>limit = T::GetSyntheticBaseBuySellLimit::get();
+
+        <span class="comment">// If amount exceeds the limit, it is necessary to round the amount to the limit.
+        </span><span class="kw">if </span>input_asset_id == synthetic_base_asset_id {
+            <span class="kw">if </span>input_amount &gt; limit {
+                monolith = monolith
+                    .rescale_by_input(limit)
+                    .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">if </span>output_amount &gt; limit {
+                monolith = monolith
+                    .rescale_by_output(limit)
+                    .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
+            }
+        }
+
+        <span class="kw">let </span>ratio = (FixedWrapper::from(<span class="number">1</span>) / FixedWrapper::from(samples_count))
+            .get()
+            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>chunk = monolith
+            .rescale_by_ratio(ratio)
+            .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks: VecDeque&lt;SwapChunk&lt;Balance&gt;&gt; = <span class="macro">vec!</span>[chunk; samples_count - <span class="number">1</span>].into();
+
+        <span class="comment">// add remaining values as the last chunk to not loss the liquidity on the rounding
+        </span>chunks.push_back(SwapChunk::new(
+            monolith.input.saturating_sub(
+                chunk
+                    .input
+                    .checked_mul(samples_count <span class="kw">as </span>Balance - <span class="number">1</span>)
+                    .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+            ),
+            monolith.output.saturating_sub(
+                chunk
+                    .output
+                    .checked_mul(samples_count <span class="kw">as </span>Balance - <span class="number">1</span>)
+                    .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+            ),
+            monolith.fee.saturating_sub(
+                chunk
+                    .fee
+                    .checked_mul(samples_count <span class="kw">as </span>Balance - <span class="number">1</span>)
+                    .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+            ),
+        ));
+
+        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(samples_count)))
+    }
+
     <span class="kw">fn </span>exchange(
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
@@ -2320,7 +2470,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -2332,12 +2482,8 @@
             desired_amount,
             sender,
             receiver,
-        );
-        outcome.and_then(|<span class="kw-2">mut </span>res| {
-            <span class="kw">let </span>fee = <span class="self">Self</span>::convert_fee(res.fee)<span class="question-mark">?</span>;
-            res.fee = fee;
-            <span class="prelude-val">Ok</span>((res, <span class="self">Self</span>::exchange_weight()))
-        })
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((outcome, <span class="self">Self</span>::exchange_weight()))
     }
 
     <span class="kw">fn </span>check_rewards(
@@ -2356,7 +2502,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="comment">// no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
         </span><span class="self">Self</span>::inner_quote(
@@ -2372,6 +2518,10 @@
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {
         &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::quote()
+    }
+
+    <span class="kw">fn </span>step_quote_weight(_samples_count: usize) -&gt; Weight {
+        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::step_quote()
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {

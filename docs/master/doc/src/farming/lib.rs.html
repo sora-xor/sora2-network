@@ -622,7 +622,7 @@
 
         <span class="kw">let </span>pool_doubles_reward = T::RewardDoublingAssets::get()
             .iter()
-            .any(|asset_id| trading_pair.consists_of(asset_id));
+            .any(|asset_id| trading_pair.contains(asset_id));
 
         <span class="kw">if </span>pool_doubles_reward {
             base_asset_amt * <span class="number">2

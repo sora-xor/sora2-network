@@ -101,6 +101,7 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -132,7 +133,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::Balance;
+<span class="kw">use </span>common::prelude::{Balance, OutcomeFee};
 <span class="kw">use </span>sp_runtime::RuntimeDebug;
 
 <span class="kw">use </span><span class="kw">crate</span>::bounds::<span class="kw-2">*</span>;
@@ -152,15 +153,16 @@
 );
 
 <span class="attr">#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
-</span><span class="kw">pub struct </span>PairSwapAction&lt;AssetId, AccountId, TechAccountId&gt; {
+</span><span class="kw">pub struct </span>PairSwapAction&lt;DEXId, AssetId: Ord, AccountId, TechAccountId&gt; {
     <span class="kw">pub </span>client_account: <span class="prelude-ty">Option</span>&lt;AccountId&gt;,
     <span class="kw">pub </span>receiver_account: <span class="prelude-ty">Option</span>&lt;AccountId&gt;,
     <span class="kw">pub </span>pool_account: TechAccountId,
     <span class="kw">pub </span>source: Resource&lt;AssetId, Balance&gt;,
     <span class="kw">pub </span>destination: Resource&lt;AssetId, Balance&gt;,
-    <span class="kw">pub </span>fee: <span class="prelude-ty">Option</span>&lt;Balance&gt;,
+    <span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, Balance&gt;,
     <span class="kw">pub </span>fee_account: <span class="prelude-ty">Option</span>&lt;TechAccountId&gt;,
     <span class="kw">pub </span>get_fee_from_destination: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="kw">pub </span>dex_id: DEXId,
 }
 
 <span class="attr">#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
@@ -184,8 +186,8 @@
 }
 
 <span class="attr">#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
-</span><span class="kw">pub enum </span>PolySwapAction&lt;AssetId, AccountId, TechAccountId&gt; {
-    PairSwap(PairSwapAction&lt;AssetId, AccountId, TechAccountId&gt;),
+</span><span class="kw">pub enum </span>PolySwapAction&lt;DEXId, AssetId: Ord, AccountId, TechAccountId&gt; {
+    PairSwap(PairSwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;),
     DepositLiquidity(DepositLiquidityAction&lt;AssetId, AccountId, TechAccountId&gt;),
     WithdrawLiquidity(WithdrawLiquidityAction&lt;AssetId, AccountId, TechAccountId&gt;),
 }

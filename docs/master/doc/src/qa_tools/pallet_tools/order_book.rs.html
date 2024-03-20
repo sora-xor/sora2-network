@@ -420,16 +420,6 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -460,125 +450,115 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::settings::{RandomAmount, SideFill};
-<span class="kw">use </span><span class="kw">crate</span>::Config;
-<span class="kw">use </span>common::{Balance, PriceVariant, TradingPairSourceManager};
+</span><span class="kw">use </span><span class="kw">crate</span>::Config;
+<span class="kw">use </span>codec::{Decode, Encode};
+<span class="kw">use </span>common::{balance, Balance, PriceVariant, TradingPairSourceManager};
 <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>order_book::DataLayer;
-<span class="kw">use </span>order_book::{MomentOf, OrderBook, OrderBookId};
-<span class="kw">use </span>order_book::{OrderPrice, OrderVolume};
+<span class="kw">use </span>order_book::{MomentOf, OrderBook, OrderBookId, OrderPrice, OrderVolume};
 <span class="kw">use </span>rand::{Rng, RngCore, SeedableRng};
 <span class="kw">use </span>rand_chacha::ChaCha8Rng;
 <span class="kw">use </span>sp_std::iter::repeat;
-<span class="kw">use </span>sp_std::ops::RangeInclusive;
+<span class="kw">use </span>sp_std::ops::{Range, RangeInclusive};
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">pub mod </span>settings {
-    <span class="kw">use </span>codec::{Decode, Encode};
-    <span class="kw">use </span>common::{balance, Balance};
-    <span class="kw">use </span>sp_std::ops::{Range, RangeInclusive};
+<span class="doccomment">/// Parameters for filling one order book side
+</span><span class="attr">#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+</span><span class="kw">pub struct </span>SideFillInput&lt;Moment&gt; {
+    <span class="doccomment">/// the best price for bids; the worst for asks
+    </span><span class="kw">pub </span>highest_price: Balance,
+    <span class="doccomment">/// the worst price for bids; the best for asks
+    </span><span class="kw">pub </span>lowest_price: Balance,
+    <span class="kw">pub </span>price_step: Balance,
+    <span class="kw">pub </span>orders_per_price: u32,
+    <span class="doccomment">/// Lifespan of inserted orders, max by default.
+    </span><span class="kw">pub </span>lifespan: <span class="prelude-ty">Option</span>&lt;Moment&gt;,
+    <span class="doccomment">/// Default: `min_lot_size..=max_lot_size`
+    </span><span class="kw">pub </span>amount_range_inclusive: <span class="prelude-ty">Option</span>&lt;RandomAmount&gt;,
+}
 
-    <span class="doccomment">/// Parameters for filling one order book side
-    </span><span class="attr">#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
-    </span><span class="kw">pub struct </span>SideFill&lt;Moment&gt; {
-        <span class="doccomment">/// the best price for bids; the worst for asks
-        </span><span class="kw">pub </span>highest_price: Balance,
-        <span class="doccomment">/// the worst price for bids; the best for asks
-        </span><span class="kw">pub </span>lowest_price: Balance,
-        <span class="kw">pub </span>price_step: Balance,
-        <span class="kw">pub </span>orders_per_price: u32,
-        <span class="doccomment">/// Lifespan of inserted orders, max by default.
-        </span><span class="kw">pub </span>lifespan: <span class="prelude-ty">Option</span>&lt;Moment&gt;,
-        <span class="doccomment">/// Default: `min_lot_size..=max_lot_size`
-        </span><span class="kw">pub </span>amount_range_inclusive: <span class="prelude-ty">Option</span>&lt;RandomAmount&gt;,
-    }
+<span class="attr">#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
+</span><span class="kw">pub struct </span>OrderBookAttributes {
+    <span class="kw">pub </span>tick_size: Balance,
+    <span class="kw">pub </span>step_lot_size: Balance,
+    <span class="kw">pub </span>min_lot_size: Balance,
+    <span class="kw">pub </span>max_lot_size: Balance,
+}
 
-    <span class="attr">#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
-    #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
-    </span><span class="kw">pub struct </span>OrderBookAttributes {
-        <span class="kw">pub </span>tick_size: Balance,
-        <span class="kw">pub </span>step_lot_size: Balance,
-        <span class="kw">pub </span>min_lot_size: Balance,
-        <span class="kw">pub </span>max_lot_size: Balance,
-    }
-
-    <span class="comment">// default attributes for regular assets (not NFT)
-    </span><span class="kw">impl </span>Default <span class="kw">for </span>OrderBookAttributes {
-        <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-            <span class="self">Self </span>{
-                tick_size: <span class="macro">balance!</span>(<span class="number">0.00001</span>),
-                step_lot_size: <span class="macro">balance!</span>(<span class="number">0.00001</span>),
-                min_lot_size: <span class="macro">balance!</span>(<span class="number">1</span>),
-                max_lot_size: <span class="macro">balance!</span>(<span class="number">1000</span>),
-            }
+<span class="comment">// default attributes for regular assets (not NFT)
+</span><span class="kw">impl </span>Default <span class="kw">for </span>OrderBookAttributes {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            tick_size: <span class="macro">balance!</span>(<span class="number">0.00001</span>),
+            step_lot_size: <span class="macro">balance!</span>(<span class="number">0.00001</span>),
+            min_lot_size: <span class="macro">balance!</span>(<span class="number">1</span>),
+            max_lot_size: <span class="macro">balance!</span>(<span class="number">1000</span>),
         }
     }
+}
 
-    <span class="doccomment">/// Parameters for orders amount generation
-    </span><span class="attr">#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo)]
-    </span><span class="kw">pub struct </span>RandomAmount {
-        min: Balance,
-        max: Balance,
+<span class="doccomment">/// Parameters for orders amount generation
+</span><span class="attr">#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+</span><span class="kw">pub struct </span>RandomAmount {
+    min: Balance,
+    max: Balance,
+}
+
+<span class="kw">impl </span>RandomAmount {
+    <span class="kw">pub fn </span>new(min: Balance, max: Balance) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ max, min }
     }
 
-    <span class="kw">impl </span>RandomAmount {
-        <span class="kw">pub fn </span>new(min: Balance, max: Balance) -&gt; <span class="self">Self </span>{
-            <span class="self">Self </span>{ max, min }
-        }
-
-        <span class="kw">pub fn </span>as_non_empty_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Range&lt;Balance&gt;&gt; {
-            <span class="kw">if </span><span class="self">self</span>.min &lt; <span class="self">self</span>.max {
-                <span class="prelude-val">Some</span>(<span class="self">self</span>.min..<span class="self">self</span>.max)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        }
-
-        <span class="kw">pub fn </span>as_non_empty_inclusive_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;RangeInclusive&lt;Balance&gt;&gt; {
-            <span class="kw">if </span><span class="self">self</span>.min &lt;= <span class="self">self</span>.max {
-                <span class="prelude-val">Some</span>(<span class="self">self</span>.min..=<span class="self">self</span>.max)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        }
+    <span class="kw">pub fn </span>as_non_empty_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Range&lt;Balance&gt;&gt; {
+        <span class="kw">if </span><span class="self">self</span>.min &lt; <span class="self">self</span>.max {
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.min..<span class="self">self</span>.max)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="attr">#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-    #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
-    </span><span class="kw">pub struct </span>OrderBookFill&lt;Moment, BlockNumber&gt; {
-        <span class="doccomment">/// Best price = lowest, worst = highest.
-        </span><span class="kw">pub </span>asks: <span class="prelude-ty">Option</span>&lt;SideFill&lt;Moment&gt;&gt;,
-        <span class="doccomment">/// Best price = highest, worst = lowest.
-        </span><span class="kw">pub </span>bids: <span class="prelude-ty">Option</span>&lt;SideFill&lt;Moment&gt;&gt;,
-        <span class="doccomment">/// Seed for producing random values during the fill process. If `None`,
-        /// current block is chosen
-        </span><span class="kw">pub </span>random_seed: <span class="prelude-ty">Option</span>&lt;BlockNumber&gt;,
+    <span class="kw">pub fn </span>as_non_empty_inclusive_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;RangeInclusive&lt;Balance&gt;&gt; {
+        <span class="kw">if </span><span class="self">self</span>.min &lt;= <span class="self">self</span>.max {
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.min..=<span class="self">self</span>.max)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
+}
+
+<span class="attr">#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug))]
+</span><span class="kw">pub struct </span>FillInput&lt;Moment, BlockNumber&gt; {
+    <span class="doccomment">/// Best price = lowest, worst = highest.
+    </span><span class="kw">pub </span>asks: <span class="prelude-ty">Option</span>&lt;SideFillInput&lt;Moment&gt;&gt;,
+    <span class="doccomment">/// Best price = highest, worst = lowest.
+    </span><span class="kw">pub </span>bids: <span class="prelude-ty">Option</span>&lt;SideFillInput&lt;Moment&gt;&gt;,
+    <span class="doccomment">/// Seed for producing random values during the fill process. If `None`,
+    /// current block is chosen
+    </span><span class="kw">pub </span>random_seed: <span class="prelude-ty">Option</span>&lt;BlockNumber&gt;,
 }
 
 <span class="doccomment">/// Does not create order books that already exist
 ///
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
-</span><span class="kw">pub fn </span>create_multiple_empty_unchecked&lt;T: Config&gt;(
-    order_book_settings: Vec&lt;(
-        OrderBookId&lt;T::AssetId, T::DEXId&gt;,
-        settings::OrderBookAttributes,
-    )&gt;,
+</span><span class="kw">pub fn </span>create_empty_batch_unchecked&lt;T: Config&gt;(
+    order_book_settings: Vec&lt;(OrderBookId&lt;T::AssetId, T::DEXId&gt;, OrderBookAttributes)&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
     <span class="kw">let </span>to_create_ids: Vec&lt;<span class="kw">_</span>&gt; = order_book_settings
         .into_iter()
         .filter(|(id, <span class="kw">_</span>)| !&lt;order_book::OrderBooks&lt;T&gt;&gt;::contains_key(id))
         .collect();
     <span class="kw">for </span>(order_book_id, <span class="kw">_</span>) <span class="kw">in </span><span class="kw-2">&amp;</span>to_create_ids {
-        <span class="kw">if </span>!T::TradingPairSourceManager::is_trading_pair_enabled(
+        <span class="kw">if </span>!&lt;T <span class="kw">as </span>Config&gt;::TradingPairSourceManager::is_trading_pair_enabled(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
             <span class="kw-2">&amp;</span>order_book_id.quote,
             <span class="kw-2">&amp;</span>order_book_id.base,
         )<span class="question-mark">? </span>{
-            T::TradingPairSourceManager::register_pair(
+            &lt;T <span class="kw">as </span>Config&gt;::TradingPairSourceManager::register_pair(
                 order_book_id.dex_id,
                 order_book_id.quote,
                 order_book_id.base,
@@ -606,12 +586,12 @@
 }
 
 <span class="doccomment">/// Place orders into the order books.
-</span><span class="kw">pub fn </span>fill_multiple_empty_unchecked&lt;T: Config&gt;(
+</span><span class="kw">pub fn </span>fill_batch_unchecked&lt;T: Config&gt;(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
     settings: Vec&lt;(
         OrderBookId&lt;T::AssetId, T::DEXId&gt;,
-        settings::OrderBookFill&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
+        FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
     )&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
     <span class="kw">let </span>now = &lt;T <span class="kw">as </span>order_book::Config&gt;::Time::now();
@@ -634,7 +614,7 @@
 }
 
 <span class="kw">fn </span>verify_fill_side_price_params&lt;T: Config&gt;(
-    params: <span class="kw-2">&amp;</span>SideFill&lt;MomentOf&lt;T&gt;&gt;,
+    params: <span class="kw-2">&amp;</span>SideFillInput&lt;MomentOf&lt;T&gt;&gt;,
     tick_size: OrderPrice,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
     <span class="kw">let </span>tick = tick_size.balance();
@@ -697,7 +677,7 @@
     book_id: OrderBookId&lt;T::AssetId, T::DEXId&gt;,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
-    settings: settings::OrderBookFill&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
+    settings: FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
     now: MomentOf&lt;T&gt;,
     current_block: BlockNumberFor&lt;T&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {

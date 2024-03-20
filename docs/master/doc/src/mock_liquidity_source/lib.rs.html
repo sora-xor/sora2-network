@@ -660,6 +660,72 @@
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -695,9 +761,10 @@
 </span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>common::fixnum::ops::One;
-<span class="kw">use </span>common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+<span class="kw">use </span>common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 <span class="kw">use </span>common::{
-    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
+    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource,
+    RewardReason, SwapChunk,
 };
 <span class="kw">use </span>core::convert::TryInto;
 <span class="kw">use </span>frame_support::dispatch::DispatchError;
@@ -706,6 +773,7 @@
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_system::ensure_signed;
 <span class="kw">use </span>permissions::{Scope, BURN, MINT};
+<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="attr">#[cfg(test)]
@@ -730,7 +798,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             target_amount_in &gt; zero,
@@ -753,15 +821,18 @@
         } <span class="kw">else </span>{
             <span class="number">0</span>.into()
         };
+
         <span class="kw">let </span>fee_amount = amount_out_without_fee * fee_fraction;
-        <span class="prelude-val">Ok</span>(SwapOutcome::new(
-            (amount_out_without_fee - fee_amount.clone())
-                .get()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-            fee_amount
-                .get()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-        ))
+
+        <span class="kw">let </span>amount = (amount_out_without_fee - fee_amount.clone())
+            .get()
+            .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>fee_amount = fee_amount
+            .get()
+            .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, OutcomeFee::xor_fixed(fee_amount)))
     }
 
     <span class="kw">fn </span>get_target_amount_out(
@@ -769,7 +840,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             base_amount_in &gt; zero,
@@ -796,7 +867,10 @@
             .get()
             .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount_out, fee_amount))
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(
+            amount_out,
+            OutcomeFee::xor_fixed(fee_amount),
+        ))
     }
 
     <span class="kw">fn </span>get_base_amount_in(
@@ -804,7 +878,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             target_amount_out &gt; zero,
@@ -849,9 +923,11 @@
             amount_in
                 .get()
                 .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-            (base_amount_in_with_fee - base_amount_in_without_fee)
-                .get()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
+            OutcomeFee::xor_fixed(
+                (base_amount_in_with_fee - base_amount_in_without_fee)
+                    .get()
+                    .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
+            ),
         ))
     }
 
@@ -860,7 +936,7 @@
         base_reserve: Fixed,
         target_reserve: Fixed,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Fixed, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>zero = <span class="macro">fixed!</span>(<span class="number">0</span>);
         <span class="macro">ensure!</span>(
             base_amount_out &gt; zero,
@@ -897,7 +973,7 @@
         <span class="kw">let </span>fee = (base_amount_out_with_fee - base_amount_out)
             .get()
             .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount_in, fee))
+        <span class="prelude-val">Ok</span>(SwapOutcome::new(amount_in, OutcomeFee::xor_fixed(fee)))
     }
 }
 
@@ -952,7 +1028,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = amount
             .try_into()
@@ -1016,20 +1092,20 @@
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } =&gt; {
-                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_base_amount_out(
+                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_base_amount_out(
                         desired_amount_in,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_target_amount_out(
+                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_target_amount_out(
                         outcome_a.amount,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.into();
-                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     <span class="kw">let </span>amount = outcome_b
                         .amount
                         .into_bits()
@@ -1038,25 +1114,25 @@
                     <span class="kw">let </span>fee = (outcome_a_fee + outcome_b_fee)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, fee))
+                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, OutcomeFee::xor(fee)))
                 }
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } =&gt; {
-                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_base_amount_in(
+                    <span class="kw">let </span>outcome_b: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_base_amount_in(
                         desired_amount_out,
                         base_reserve_b,
                         target_reserve_b,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed&gt; = <span class="self">Self</span>::get_target_amount_in(
+                    <span class="kw">let </span>outcome_a: SwapOutcome&lt;Fixed, T::AssetId&gt; = <span class="self">Self</span>::get_target_amount_in(
                         outcome_b.amount,
                         base_reserve_a,
                         target_reserve_a,
                         deduce_fee,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.into();
-                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    <span class="kw">let </span>outcome_a_fee: FixedWrapper = outcome_a.fee.get_xor_fixed().into();
+                    <span class="kw">let </span>outcome_b_fee: FixedWrapper = outcome_b.fee.get_xor_fixed().into();
                     <span class="kw">let </span>amount = outcome_a
                         .amount
                         .into_bits()
@@ -1065,11 +1141,63 @@
                     <span class="kw">let </span>fee = (outcome_b_fee + outcome_a_fee)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, fee))
+                    <span class="prelude-val">Ok</span>(SwapOutcome::new(amount, OutcomeFee::xor(fee)))
                 }
             }
         };
         res.map(|outcome| (outcome, <span class="self">Self</span>::quote_weight()))
+    }
+
+    <span class="kw">fn </span>step_quote(
+        dex_id: <span class="kw-2">&amp;</span>T::DEXId,
+        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        amount: QuoteAmount&lt;Balance&gt;,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+        <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            <span class="macro">panic!</span>(<span class="string">&quot;Can&#39;t exchange&quot;</span>);
+        }
+
+        <span class="kw">if </span>amount.amount() == <span class="number">0 </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((VecDeque::new(), Weight::zero()));
+        }
+
+        <span class="kw">let </span>step = amount.amount() / recommended_samples_count <span class="kw">as </span>Balance;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>chunks = VecDeque::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>sub_in = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>sub_out = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>sub_fee = <span class="number">0</span>;
+
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=recommended_samples_count {
+            <span class="kw">let </span>volume = amount.copy_direction(step * i <span class="kw">as </span>Balance);
+
+            <span class="kw">let </span>(outcome, _weight) =
+                <span class="self">Self</span>::quote(dex_id, input_asset_id, output_asset_id, volume, deduce_fee)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>(input, output, fee) = <span class="kw">match </span>volume {
+                QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
+                    (desired_amount_in, outcome.amount, outcome.fee.get_xor()) <span class="comment">// todo fix (m.tagirov)
+                </span>}
+                QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
+                    (outcome.amount, desired_amount_out, outcome.fee.get_xor()) <span class="comment">// todo fix (m.tagirov)
+                </span>}
+            };
+
+            <span class="kw">let </span>input_chunk = input - sub_in;
+            <span class="kw">let </span>output_chunk = output - sub_out;
+            <span class="kw">let </span>fee_chunk = fee - sub_fee;
+
+            sub_in = input;
+            sub_out = output;
+            sub_fee = fee;
+
+            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+        }
+
+        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(recommended_samples_count)))
     }
 
     <span class="kw">fn </span>exchange(
@@ -1079,7 +1207,7 @@
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
         <span class="comment">// actual exchange does not happen
         </span><span class="self">Self</span>::quote(
             dex_id,
@@ -1106,7 +1234,7 @@
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="kw">if </span>input_asset_id == <span class="kw-2">&amp;</span>dex_info.base_asset_id {
             <span class="kw">let </span>(base_reserve, target_reserve) = &lt;Reserves&lt;T, I&gt;&gt;::get(dex_id, output_asset_id);
@@ -1118,7 +1246,7 @@
                     (FixedWrapper::from(base_amount_in) * base_price_wrt_target)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
@@ -1126,7 +1254,7 @@
                     (FixedWrapper::from(target_amount_out) / base_price_wrt_target)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
             })
         } <span class="kw">else </span>{
@@ -1139,7 +1267,7 @@
                     (FixedWrapper::from(target_amount_in) * target_price_wrt_base)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
@@ -1147,13 +1275,17 @@
                     (FixedWrapper::from(base_amount_out) / target_price_wrt_base)
                         .try_into_balance()
                         .map_err(|<span class="kw">_</span>| Error::&lt;T, I&gt;::CalculationError)<span class="question-mark">?</span>,
-                    <span class="number">0</span>,
+                    OutcomeFee::new(),
                 ),
             })
         }
     }
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {
+        Weight::zero()
+    }
+
+    <span class="kw">fn </span>step_quote_weight(_samples_count: usize) -&gt; Weight {
         Weight::zero()
     }
 

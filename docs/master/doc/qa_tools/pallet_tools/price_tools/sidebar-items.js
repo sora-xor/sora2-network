@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["calculate_xor_prices","relative_prices","set_xor_prices","setup_reference_prices"],"struct":["AssetPrices","CalculatedXorPrices"]};

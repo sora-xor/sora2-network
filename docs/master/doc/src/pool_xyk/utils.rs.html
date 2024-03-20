@@ -322,8 +322,8 @@
         tech_acc: <span class="kw-2">&amp;</span>TechAccountIdOf&lt;T&gt;,
     ) -&gt; DispatchResult {
         technical::Pallet::&lt;T&gt;::ensure_tech_account_registered(tech_acc)<span class="question-mark">?</span>;
-        <span class="comment">//TODO: Maybe checking that asset and dex is exist, it is not really needed if
-        //registration of technical account is a garanty that pair and dex exist.
+        <span class="comment">// TODO: Maybe checking that asset and dex is exist, it is not really needed if
+        // registration of technical account is a guarantee that pair and dex exist.
         </span><span class="prelude-val">Ok</span>(())
     }
 

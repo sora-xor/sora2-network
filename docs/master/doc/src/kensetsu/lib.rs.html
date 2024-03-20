@@ -1442,38 +1442,6 @@
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
-<a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
-<a href="#1433" id="1433">1433</a>
-<a href="#1434" id="1434">1434</a>
-<a href="#1435" id="1435">1435</a>
-<a href="#1436" id="1436">1436</a>
-<a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
-<a href="#1448" id="1448">1448</a>
-<a href="#1449" id="1449">1449</a>
-<a href="#1450" id="1450">1450</a>
-<a href="#1451" id="1451">1451</a>
-<a href="#1452" id="1452">1452</a>
-<a href="#1453" id="1453">1453</a>
-<a href="#1454" id="1454">1454</a>
-<a href="#1455" id="1455">1455</a>
-<a href="#1456" id="1456">1456</a>
-<a href="#1457" id="1457">1457</a>
-<a href="#1458" id="1458">1458</a>
-<a href="#1459" id="1459">1459</a>
-<a href="#1460" id="1460">1460</a>
-<a href="#1461" id="1461">1461</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1625,8 +1593,12 @@
     <span class="doccomment">/// CDP id type
     </span><span class="kw">pub type </span>CdpId = u128;
 
+    <span class="doccomment">/// The current storage version.
+    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">1</span>);
+
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     </span><span class="kw">pub struct </span>Pallet&lt;T&gt;(PhantomData&lt;T&gt;);
 
     <span class="attr">#[pallet::hooks]
@@ -1809,12 +1781,6 @@
             collateral_asset_id: AssetIdOf&lt;T&gt;,
             amount: Balance,
         },
-        CollateralWithdrawn {
-            cdp_id: CdpId,
-            owner: AccountIdOf&lt;T&gt;,
-            collateral_asset_id: AssetIdOf&lt;T&gt;,
-            amount: Balance,
-        },
         DebtIncreased {
             cdp_id: CdpId,
             owner: AccountIdOf&lt;T&gt;,
@@ -1869,7 +1835,6 @@
         </span>CDPLimitPerUser,
         <span class="comment">// Risk management team size exceeded
         </span>TooManyManagers,
-        NotEnoughCollateral,
         OperationNotPermitted,
         OutstandingDebt,
         NoDebt,
@@ -1970,48 +1935,6 @@
             <span class="self">Self</span>::deposit_internal(<span class="kw-2">&amp;</span>who, cdp_id, collateral_amount)
         }
 
-        <span class="doccomment">/// Withdraws collateral from a Collateralized Debt Position (CDP).
-        ///
-        /// ## Parameters
-        ///
-        /// - `origin`: The origin of the transaction.
-        /// - `cdp_id`: The ID of the CDP to withdraw collateral from.
-        /// - `collateral_amount`: The amount of collateral to withdraw.
-        </span><span class="attr">#[pallet::call_index(<span class="number">3</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::withdraw_collateral())]
-        </span><span class="kw">pub fn </span>withdraw_collateral(
-            origin: OriginFor&lt;T&gt;,
-            cdp_id: CdpId,
-            collateral_amount: Balance,
-        ) -&gt; DispatchResult {
-            <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="kw">let </span>cdp = <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
-            <span class="macro">ensure!</span>(who == cdp.owner, Error::&lt;T&gt;::OperationNotPermitted);
-            <span class="kw">let </span>new_collateral_amount = cdp
-                .collateral_amount
-                .checked_sub(collateral_amount)
-                .ok_or(Error::&lt;T&gt;::NotEnoughCollateral)<span class="question-mark">?</span>;
-            <span class="macro">ensure!</span>(
-                <span class="self">Self</span>::check_cdp_is_safe(cdp.debt, new_collateral_amount, cdp.collateral_asset_id,)<span class="question-mark">?</span>,
-                Error::&lt;T&gt;::CDPUnsafe
-            );
-            technical::Pallet::&lt;T&gt;::transfer_out(
-                <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
-                <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
-                <span class="kw-2">&amp;</span>who,
-                collateral_amount,
-            )<span class="question-mark">?</span>;
-            <span class="self">Self</span>::update_cdp_collateral(cdp_id, new_collateral_amount)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::deposit_event(Event::CollateralWithdrawn {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: collateral_amount,
-            });
-
-            <span class="prelude-val">Ok</span>(())
-        }
-
         <span class="doccomment">/// Borrows funds against a Collateralized Debt Position (CDP).
         ///
         /// ## Parameters
@@ -2019,7 +1942,7 @@
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to borrow against.
         /// - `will_to_borrow_amount`: The amount the user intends to borrow.
-        </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">3</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::borrow())]
         </span><span class="kw">pub fn </span>borrow(
             origin: OriginFor&lt;T&gt;,
@@ -2037,7 +1960,7 @@
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to repay debt for.
         /// - `amount`: The amount to repay against the CDP&#39;s debt.
-        </span><span class="attr">#[pallet::call_index(<span class="number">5</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::repay_debt())]
         </span><span class="kw">pub fn </span>repay_debt(origin: OriginFor&lt;T&gt;, cdp_id: CdpId, amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
@@ -2068,7 +1991,7 @@
         ///
         /// - `_origin`: The origin of the transaction (unused).
         /// - `cdp_id`: The ID of the CDP to be liquidated.
-        </span><span class="attr">#[pallet::call_index(<span class="number">6</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">5</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::liquidate())]
         </span><span class="kw">pub fn </span>liquidate(_origin: OriginFor&lt;T&gt;, cdp_id: CdpId) -&gt; DispatchResult {
             <span class="kw">let </span>cdp = <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
@@ -2141,7 +2064,7 @@
         ///
         /// - `_origin`: The origin of the transaction (unused).
         /// - `cdp_id`: The ID of the CDP to accrue interest on.
-        </span><span class="attr">#[pallet::call_index(<span class="number">7</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">6</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::accrue())]
         </span><span class="kw">pub fn </span>accrue(_origin: OriginFor&lt;T&gt;, cdp_id: CdpId) -&gt; DispatchResult {
             <span class="macro">ensure!</span>(<span class="self">Self</span>::is_accruable(<span class="kw-2">&amp;</span>cdp_id)<span class="question-mark">?</span>, Error::&lt;T&gt;::NoDebt);
@@ -2156,7 +2079,7 @@
         /// - `origin`: The origin of the transaction.
         /// - `collateral_asset_id`: The identifier of the collateral asset.
         /// - `new_risk_parameters`: The new risk parameters to be set for the collateral asset.
-        </span><span class="attr">#[pallet::call_index(<span class="number">8</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">7</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::update_collateral_risk_parameters())]
         </span><span class="kw">pub fn </span>update_collateral_risk_parameters(
             origin: OriginFor&lt;T&gt;,
@@ -2184,7 +2107,7 @@
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_hard_cap`: The new hard cap value to be set for the total supply.
-        </span><span class="attr">#[pallet::call_index(<span class="number">9</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">8</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::update_hard_cap_total_supply())]
         </span><span class="kw">pub fn </span>update_hard_cap_total_supply(
             origin: OriginFor&lt;T&gt;,
@@ -2209,7 +2132,7 @@
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_liquidation_penalty`: The new liquidation penalty percentage to be set.
-        </span><span class="attr">#[pallet::call_index(<span class="number">10</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">9</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::update_liquidation_penalty())]
         </span><span class="kw">pub fn </span>update_liquidation_penalty(
             origin: OriginFor&lt;T&gt;,
@@ -2232,7 +2155,7 @@
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
-        </span><span class="attr">#[pallet::call_index(<span class="number">11</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">10</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::withdraw_profit())]
         </span><span class="kw">pub fn </span>withdraw_profit(origin: OriginFor&lt;T&gt;, kusd_amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
@@ -2256,7 +2179,7 @@
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to donate to cover bad debt.
-        </span><span class="attr">#[pallet::call_index(<span class="number">12</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">11</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::donate())]
         </span><span class="kw">pub fn </span>donate(origin: OriginFor&lt;T&gt;, kusd_amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
@@ -2274,7 +2197,7 @@
         ///
         /// - `origin`: The origin of the transaction.
         /// - `account_id`: The account ID to be added as a risk manager.
-        </span><span class="attr">#[pallet::call_index(<span class="number">13</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">12</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::add_risk_manager())]
         </span><span class="kw">pub fn </span>add_risk_manager(origin: OriginFor&lt;T&gt;, account_id: T::AccountId) -&gt; DispatchResult {
             ensure_root(origin)<span class="question-mark">?</span>;
@@ -2294,7 +2217,7 @@
         ///
         /// - `origin`: The origin of the transaction.
         /// - `account_id`: The account ID to be removed from the set of risk managers.
-        </span><span class="attr">#[pallet::call_index(<span class="number">14</span>)]
+        </span><span class="attr">#[pallet::call_index(<span class="number">13</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::remove_risk_manager())]
         </span><span class="kw">pub fn </span>remove_risk_manager(
             origin: OriginFor&lt;T&gt;,
@@ -2762,6 +2685,11 @@
                 <span class="bool-val">true</span>,
             )<span class="question-mark">?</span>;
             desired_kusd_amount = desired_kusd_amount.min(amount);
+            <span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
+                <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>kusd_balance_before =
+                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
             <span class="kw">let </span>swap_outcome = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 technical_account_id,
@@ -2771,10 +2699,18 @@
                 SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )<span class="question-mark">?</span>;
+            <span class="kw">let </span>kusd_balance_after =
+                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
+            <span class="comment">// This value may differ from `desired_kusd_amount`, so this is calculation of actual
+            // amount swapped.
+            </span><span class="kw">let </span>kusd_swapped = kusd_balance_after
+                .checked_sub(kusd_balance_before)
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+            <span class="kw">let </span>collateral_liquidated = swap_outcome.amount;
             <span class="comment">// penalty is a protocol profit which stays on treasury tech account
-            </span><span class="kw">let </span>penalty = <span class="self">Self</span>::liquidation_penalty() * swap_outcome.amount.min(cdp.debt);
-            <span class="kw">let </span>proceeds = swap_outcome.amount - penalty;
-            <span class="prelude-val">Ok</span>((collateral_to_liquidate, proceeds, penalty))
+            </span><span class="kw">let </span>penalty = <span class="self">Self</span>::liquidation_penalty() * kusd_swapped.min(cdp.debt);
+            <span class="kw">let </span>proceeds = kusd_swapped - penalty;
+            <span class="prelude-val">Ok</span>((collateral_liquidated, proceeds, penalty))
         }
 
         <span class="doccomment">/// Cover CDP debt with protocol balance

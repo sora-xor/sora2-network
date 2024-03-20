@@ -359,6 +359,17 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -424,6 +435,7 @@
 	<span class="kw">fn </span>swap_pair() -&gt; Weight;
 	<span class="kw">fn </span>can_exchange() -&gt; Weight;
 	<span class="kw">fn </span>quote() -&gt; Weight;
+	<span class="kw">fn </span>step_quote(a: u32, ) -&gt; Weight;
 	<span class="kw">fn </span>deposit_liquidity() -&gt; Weight;
 	<span class="kw">fn </span>withdraw_liquidity() -&gt; Weight;
 	<span class="kw">fn </span>initialize_pool() -&gt; Weight;
@@ -479,6 +491,11 @@
 		</span>Weight::from_parts(<span class="number">32_076_000</span>, <span class="number">8718</span>)
 			.saturating_add(T::DbWeight::get().reads(<span class="number">3_u64</span>))
 	}
+
+	<span class="kw">fn </span>step_quote(_a: u32, ) -&gt; Weight {
+		Weight::zero()
+	}
+
 	<span class="doccomment">/// Storage: Assets AssetInfos (r:2 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: DEXManager DEXInfos (r:1 w:0)
@@ -617,6 +634,11 @@
 		</span>Weight::from_parts(<span class="number">32_076_000</span>, <span class="number">8718</span>)
 			.saturating_add(RocksDbWeight::get().reads(<span class="number">3_u64</span>))
 	}
+
+	<span class="kw">fn </span>step_quote(_a: u32, ) -&gt; Weight {
+		Weight::zero()
+	}
+
 	<span class="doccomment">/// Storage: Assets AssetInfos (r:2 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: DEXManager DEXInfos (r:1 w:0)

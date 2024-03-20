@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SwapOutcomeInfo"],"trait":["DEXAPI"]};
+window.SIDEBAR_ITEMS = {"struct":["SwapOutcomeInfo","SwapOutcomeInfoV1"],"trait":["DEXAPI"]};

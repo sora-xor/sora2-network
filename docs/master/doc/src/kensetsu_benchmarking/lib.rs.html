@@ -429,6 +429,12 @@
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -464,19 +470,27 @@
 
 </span><span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::Decode;
-<span class="kw">use </span>common::{balance, AssetId32, Balance, DEXId, PredefinedAssetId, DAI, KUSD, XOR};
+<span class="kw">use </span>common::{
+    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
+    KUSD, XOR,
+};
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::RawOrigin;
 <span class="kw">use </span>hex_literal::hex;
-<span class="kw">use </span>kensetsu::CdpId;
+<span class="kw">use </span>kensetsu::{CdpId, CollateralInfos, CollateralRiskParameters};
+<span class="kw">use </span>price_tools::AVG_BLOCK_SPAN;
 <span class="kw">use </span>sp_arithmetic::{Perbill, Percent};
 <span class="kw">use </span>sp_core::Get;
-<span class="kw">use </span>sp_runtime::traits::One;
+<span class="kw">use </span>sp_runtime::traits::{One, Zero};
 <span class="kw">use </span>sp_runtime::FixedU128;
 
 <span class="kw">pub struct </span>Pallet&lt;T: Config&gt;(kensetsu::Pallet&lt;T&gt;);
 <span class="kw">pub trait </span>Config:
-    kensetsu::Config + pool_xyk::Config + trading_pair::Config + pallet_timestamp::Config
+    kensetsu::Config
+    + pool_xyk::Config
+    + trading_pair::Config
+    + pallet_timestamp::Config
+    + price_tools::Config
 {
 }
 
@@ -494,10 +508,10 @@
 
 <span class="doccomment">/// Sets XOR as collateral type with default risk parameters
 </span><span class="kw">fn </span>set_xor_as_collateral_type&lt;T: Config&gt;() {
-    kensetsu::CollateralInfos::&lt;T&gt;::set::&lt;AssetIdOf&lt;T&gt;&gt;(
+    CollateralInfos::&lt;T&gt;::set::&lt;AssetIdOf&lt;T&gt;&gt;(
         XOR.into(),
         <span class="prelude-val">Some</span>(kensetsu::CollateralInfo {
-            risk_parameters: kensetsu::CollateralRiskParameters {
+            risk_parameters: CollateralRiskParameters {
                 hard_cap: Balance::MAX,
                 liquidation_ratio: Perbill::from_percent(<span class="number">50</span>),
                 max_liquidation_lot: <span class="macro">balance!</span>(<span class="number">100</span>),
@@ -541,24 +555,20 @@
 
 <span class="doccomment">/// Sets liquidation ratio too low, making CDPs unsafe
 </span><span class="kw">fn </span>make_cdps_unsafe&lt;T: Config&gt;() {
-    kensetsu::CollateralInfos::&lt;T&gt;::set::&lt;AssetIdOf&lt;T&gt;&gt;(
-        XOR.into(),
-        <span class="prelude-val">Some</span>(kensetsu::CollateralInfo {
-            risk_parameters: kensetsu::CollateralRiskParameters {
+    CollateralInfos::&lt;T&gt;::mutate::&lt;AssetIdOf&lt;T&gt;, <span class="kw">_</span>, <span class="kw">_</span>&gt;(XOR.into(), |info| {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = info.as_mut() {
+            info.risk_parameters = CollateralRiskParameters {
                 hard_cap: Balance::MAX,
-                liquidation_ratio: Perbill::from_percent(<span class="number">10</span>),
                 max_liquidation_lot: <span class="macro">balance!</span>(<span class="number">100</span>),
-                stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(<span class="number">10</span>)),
-            },
-            kusd_supply: <span class="macro">balance!</span>(<span class="number">0</span>),
-            last_fee_update_time: Default::default(),
-            interest_coefficient: FixedU128::one(),
-        }),
-    );
+                liquidation_ratio: Perbill::from_percent(<span class="number">1</span>),
+                stability_fee_rate: FixedU128::zero(),
+            }
+        }
+    });
 }
 
 <span class="doccomment">/// Initializes and adds liquidity to XYK pool XOR/asset_id.
-</span><span class="kw">fn </span>intialize_xyk_pool&lt;T: Config&gt;(asset_id: AssetIdOf&lt;T&gt;) {
+</span><span class="kw">fn </span>initialize_xyk_pool&lt;T: Config&gt;(asset_id: AssetIdOf&lt;T&gt;) {
     <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">1000000</span>);
     assets::Pallet::&lt;T&gt;::update_balance(
         RawOrigin::Root.into(),
@@ -597,8 +607,9 @@
 <span class="doccomment">/// Initializes pools with:
 /// - XOR/DAI for collateral assessment
 /// - XOR/KUSD for liquidation
+/// - initializes PriceTools
 </span><span class="kw">fn </span>initialize_liquidity_sources&lt;T: Config&gt;() {
-    intialize_xyk_pool::&lt;T&gt;(DAI.into());
+    initialize_xyk_pool::&lt;T&gt;(DAI.into());
     trading_pair::Pallet::&lt;T&gt;::register(
         RawOrigin::Signed(caller::&lt;T&gt;()).into(),
         DEXId::Polkaswap.into(),
@@ -606,7 +617,22 @@
         KUSD.into(),
     )
     .expect(<span class="string">&quot;Must register trading pair&quot;</span>);
-    intialize_xyk_pool::&lt;T&gt;(KUSD.into());
+    initialize_xyk_pool::&lt;T&gt;(KUSD.into());
+    price_tools::Pallet::&lt;T&gt;::register_asset(<span class="kw-2">&amp;</span>KUSD.into()).unwrap();
+    <span class="kw">for _ in </span><span class="number">1</span>..=AVG_BLOCK_SPAN {
+        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(<span class="kw-2">&amp;</span>DAI.into(), <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Buy)
+            .unwrap();
+        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(<span class="kw-2">&amp;</span>DAI.into(), <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Sell)
+            .unwrap();
+        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(<span class="kw-2">&amp;</span>KUSD.into(), <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Buy)
+            .unwrap();
+        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(
+            <span class="kw-2">&amp;</span>KUSD.into(),
+            <span class="macro">balance!</span>(<span class="number">1</span>),
+            PriceVariant::Sell,
+        )
+        .unwrap();
+    }
 }
 
 <span class="macro">benchmarks! </span>{
@@ -666,20 +692,6 @@
         ).unwrap();
     }
 
-    withdraw_collateral {
-        initialize_liquidity_sources::&lt;T&gt;();
-        set_xor_as_collateral_type::&lt;T&gt;();
-        <span class="kw">let </span>cdp_id = create_cdp_with_xor::&lt;T&gt;();
-        <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">10</span>);
-        deposit_xor_collateral::&lt;T&gt;(cdp_id, amount);
-    }: {
-        kensetsu::Pallet::&lt;T&gt;::withdraw_collateral(
-            RawOrigin::Signed(caller::&lt;T&gt;()).into(),
-            cdp_id,
-            amount
-        ).unwrap();
-    }
-
     borrow {
         kensetsu::Pallet::&lt;T&gt;::add_risk_manager(RawOrigin::Root.into(), risk_manager::&lt;T&gt;())
             .expect(<span class="string">&quot;Must set risk manager&quot;</span>);
@@ -732,7 +744,7 @@
         <span class="kw">let </span>cdp_id = create_cdp_with_xor::&lt;T&gt;();
         <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">100</span>);
         deposit_xor_collateral::&lt;T&gt;(cdp_id, amount);
-        <span class="kw">let </span>debt = <span class="macro">balance!</span>(<span class="number">10</span>);
+        <span class="kw">let </span>debt = <span class="macro">balance!</span>(<span class="number">50</span>);
         kensetsu::Pallet::&lt;T&gt;::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             Balance::MAX,
@@ -773,7 +785,7 @@
         kensetsu::Pallet::&lt;T&gt;::update_collateral_risk_parameters(
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             XOR.into(),
-            kensetsu::CollateralRiskParameters {
+            CollateralRiskParameters {
                 hard_cap: <span class="macro">balance!</span>(<span class="number">1000</span>),
                 liquidation_ratio: Perbill::from_percent(<span class="number">50</span>),
                 max_liquidation_lot: <span class="macro">balance!</span>(<span class="number">100</span>),

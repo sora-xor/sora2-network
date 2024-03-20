@@ -1199,6 +1199,61 @@
 <a href="#1184" id="1184">1184</a>
 <a href="#1185" id="1185">1185</a>
 <a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2295,13 +2350,13 @@
         DispatchError,
     &gt; {
         <span class="kw">let </span>(<span class="kw-2">mut </span>market_amount, <span class="kw-2">mut </span>limit_amount) = <span class="kw">match </span>limit_order.side {
-            PriceVariant::Buy =&gt; <span class="self">Self</span>::calculate_market_depth_to_price(
+            PriceVariant::Buy =&gt; <span class="self">Self</span>::calculate_market_depth_volume_to_price(
                 limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
                 data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter(),
             ),
-            PriceVariant::Sell =&gt; <span class="self">Self</span>::calculate_market_depth_to_price(
+            PriceVariant::Sell =&gt; <span class="self">Self</span>::calculate_market_depth_volume_to_price(
                 limit_order.side.switched(),
                 limit_order.price,
                 limit_order.amount,
@@ -2351,7 +2406,7 @@
 
     <span class="doccomment">/// Calculates and returns the sum of limit orders up to the `price` or until the `amount` is reached
     /// and remaining `amount` if it is greater than the market volume.
-    </span><span class="kw">pub fn </span>calculate_market_depth_to_price&lt;<span class="lifetime">&#39;a</span>&gt;(
+    </span><span class="kw">pub fn </span>calculate_market_depth_volume_to_price&lt;<span class="lifetime">&#39;a</span>&gt;(
         side: PriceVariant,
         price: OrderPrice,
         <span class="kw-2">mut </span>amount: OrderVolume,
@@ -2383,6 +2438,61 @@
         }
 
         (market_amount, amount)
+    }
+
+    <span class="kw">pub fn </span>market_depth(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        side: PriceVariant,
+        volume_limit: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;,
+        data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
+    ) -&gt; Vec&lt;(OrderPrice, OrderVolume)&gt; {
+        <span class="kw">match </span>side {
+            PriceVariant::Buy =&gt; <span class="self">Self</span>::get_market_depth(
+                volume_limit,
+                data.get_aggregated_bids(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter().rev(),
+            ),
+            PriceVariant::Sell =&gt; <span class="self">Self</span>::get_market_depth(
+                volume_limit,
+                data.get_aggregated_asks(<span class="kw-2">&amp;</span><span class="self">self</span>.order_book_id).iter(),
+            ),
+        }
+    }
+
+    <span class="kw">fn </span>get_market_depth&lt;<span class="lifetime">&#39;a</span>&gt;(
+        volume_limit: <span class="prelude-ty">Option</span>&lt;OrderAmount&gt;,
+        market_data: <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OrderPrice, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OrderVolume)&gt;,
+    ) -&gt; Vec&lt;(OrderPrice, OrderVolume)&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(volume_limit) = volume_limit {
+            <span class="kw">let </span><span class="kw-2">mut </span>market_depth = Vec::new();
+
+            <span class="kw">let </span><span class="kw-2">mut </span>limit = <span class="kw-2">*</span>volume_limit.value();
+
+            <span class="kw">if </span>limit.is_zero() {
+                <span class="kw">return </span>market_depth;
+            }
+
+            <span class="kw">for </span>(price, volume) <span class="kw">in </span>market_data {
+                market_depth.push((<span class="kw-2">*</span>price, <span class="kw-2">*</span>volume));
+
+                <span class="kw">match </span>volume_limit {
+                    OrderAmount::Base(..) =&gt; {
+                        limit = limit.saturating_sub(<span class="kw-2">*</span>volume);
+                    }
+                    OrderAmount::Quote(..) =&gt; {
+                        limit = limit.saturating_sub(volume.saturating_mul(<span class="kw-2">*</span>price));
+                    }
+                }
+
+                <span class="kw">if </span>limit.is_zero() {
+                    <span class="kw">break</span>;
+                }
+            }
+            market_depth
+        } <span class="kw">else </span>{
+            market_data
+                .map(|(price, volume)| (<span class="kw-2">*</span>price, <span class="kw-2">*</span>volume))
+                .collect()
+        }
     }
 }
 </code></pre></div>

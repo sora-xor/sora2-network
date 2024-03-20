@@ -3398,7 +3398,6 @@
 <a href="#3383" id="3383">3383</a>
 <a href="#3384" id="3384">3384</a>
 <a href="#3385" id="3385">3385</a>
-<a href="#3386" id="3386">3386</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3466,7 +3465,7 @@
 <span class="kw">use </span>common::prelude::constants::{BIG_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
 <span class="kw">use </span>common::{AssetId32, Description, PredefinedAssetId};
-<span class="kw">use </span>common::{XOR, XSTUSD};
+<span class="kw">use </span>common::{DOT, XOR, XSTUSD};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::EitherOf;
@@ -3660,10 +3659,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">72</span>,
+    spec_version: <span class="number">73</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">72</span>,
+    transaction_version: <span class="number">73</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -3759,7 +3758,7 @@
     <span class="kw">pub const </span>ElectionsModuleId: LockIdentifier = <span class="kw-2">*</span><span class="string">b&quot;phrelect&quot;</span>;
     <span class="kw">pub </span>FarmingRewardDoublingAssets: Vec&lt;AssetId&gt; = <span class="macro">vec!</span>[
         GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(),
-        GetXstAssetId::get(), GetTbcdAssetId::get(), GetDotAssetId::get()
+        GetXstAssetId::get(), GetTbcdAssetId::get(), DOT
     ];
     <span class="kw">pub const </span>MaxAuthorities: u32 = <span class="number">100_000</span>;
     <span class="kw">pub const </span>NoPreimagePostponement: <span class="prelude-ty">Option</span>&lt;u32&gt; = <span class="prelude-val">Some</span>(<span class="number">10</span>);
@@ -4299,9 +4298,6 @@
 <span class="macro">parameter_types! </span>{
     <span class="comment">// This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
     </span><span class="kw">pub const </span>GetXorAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    <span class="kw">pub const </span>GetDotAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DOT);
-    <span class="kw">pub const </span>GetKsmAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KSM);
-    <span class="kw">pub const </span>GetUsdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::USDT);
     <span class="kw">pub const </span>GetValAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::VAL);
     <span class="kw">pub const </span>GetPswapAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
     <span class="kw">pub const </span>GetDaiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DAI);
@@ -4380,7 +4376,7 @@
     <span class="kw">type </span>TechAccountId = TechAccountId;
     <span class="kw">type </span>Trigger = ();
     <span class="kw">type </span>Condition = ();
-    <span class="kw">type </span>SwapAction = pool_xyk::PolySwapAction&lt;AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>SwapAction = pool_xyk::PolySwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -4400,12 +4396,12 @@
 <span class="kw">impl </span>pool_xyk::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>MIN_XOR: Balance = <span class="macro">balance!</span>(<span class="number">0.0007</span>);
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>PairSwapAction = pool_xyk::PairSwapAction&lt;AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>PairSwapAction = pool_xyk::PairSwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
     <span class="kw">type </span>DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction&lt;AssetId, AccountId, TechAccountId&gt;;
     <span class="kw">type </span>WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction&lt;AssetId, AccountId, TechAccountId&gt;;
-    <span class="kw">type </span>PolySwapAction = pool_xyk::PolySwapAction&lt;AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>PolySwapAction = pool_xyk::PolySwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
     <span class="kw">type </span>EnsureDEXManager = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
@@ -4435,14 +4431,15 @@
                 .expect(<span class="string">&quot;Failed to get ordinary account id for technical account id.&quot;</span>);
         account_id
     };
-    <span class="kw">pub const </span>GetNumSamples: usize = <span class="number">5</span>;
+    <span class="kw">pub const </span>GetNumSamples: usize = <span class="number">10</span>;
     <span class="kw">pub const </span>BasicDeposit: Balance = <span class="macro">balance!</span>(<span class="number">0.01</span>);
     <span class="kw">pub const </span>FieldDeposit: Balance = <span class="macro">balance!</span>(<span class="number">0.01</span>);
     <span class="kw">pub const </span>SubAccountDeposit: Balance = <span class="macro">balance!</span>(<span class="number">0.01</span>);
     <span class="kw">pub const </span>MaxSubAccounts: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>MaxAdditionalFields: u32 = <span class="number">100</span>;
     <span class="kw">pub const </span>MaxRegistrars: u32 = <span class="number">20</span>;
-    <span class="kw">pub const </span>MaxAdditionalDataLength: u32 = <span class="number">128</span>;
+    <span class="kw">pub const </span>MaxAdditionalDataLengthXorlessTransfer: u32 = <span class="number">128</span>;
+    <span class="kw">pub const </span>MaxAdditionalDataLengthSwapTransferBatch: u32 = <span class="number">2000</span>;
     <span class="kw">pub </span>ReferralsReservesAcc: AccountId = {
         <span class="kw">let </span>tech_account_id = TechAccountId::from_generic_pair(
             <span class="string">b&quot;referrals&quot;</span>.to_vec(),
@@ -4473,7 +4470,8 @@
         pallet_collective::EnsureProportionMoreThan&lt;AccountId, TechnicalCollective, <span class="number">1</span>, <span class="number">2</span>&gt;,
         EnsureRoot&lt;AccountId&gt;,
     &gt;;
-    <span class="kw">type </span>MaxAdditionalDataLength = MaxAdditionalDataLength;
+    <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
+    <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
 }
 
 <span class="kw">impl </span>mock_liquidity_source::Config&lt;mock_liquidity_source::Instance1&gt; <span class="kw">for </span>Runtime {
@@ -4863,15 +4861,15 @@
     <span class="kw">type </span>WeightInfo = faucet::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="macro">parameter_types! </span>{
-    <span class="kw">pub </span>QaToolsWhitelistCapacity: u32 = <span class="number">512</span>;
-}
-
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">impl </span>qa_tools::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>AssetInfoProvider = Assets;
-    <span class="kw">type </span>QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
+    <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>SyntheticInfoProvider = XSTPool;
+    <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>WeightInfo = qa_tools::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>Symbol = &lt;Runtime <span class="kw">as </span>band::Config&gt;::Symbol;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -5862,7 +5860,7 @@
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
         </span>Faucet: faucet::{Pallet, Call, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">80</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
-        </span>QATools: qa_tools::{Pallet, Call} = <span class="number">112</span>,
+        </span>QaTools: qa_tools::{Pallet, Call, Event&lt;T&gt;} = <span class="number">112</span>,
     }
 }
 
@@ -6037,7 +6035,7 @@
             output_asset_id: AssetId,
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -&gt; <span class="prelude-ty">Option</span>&lt;dex_runtime_api::SwapOutcomeInfo&lt;Balance&gt;&gt; {
+        ) -&gt; <span class="prelude-ty">Option</span>&lt;dex_runtime_api::SwapOutcomeInfo&lt;Balance, AssetId&gt;&gt; {
             <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
             </span>{
                 DEXAPI::quote(
@@ -6046,7 +6044,7 @@
                     <span class="kw-2">&amp;</span>output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     <span class="bool-val">true</span>,
-                ).ok().map(|(sa, <span class="kw">_</span>)| dex_runtime_api::SwapOutcomeInfo::&lt;Balance&gt; { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, <span class="kw">_</span>)| dex_runtime_api::SwapOutcomeInfo::&lt;Balance, AssetId&gt; { amount: sa.amount, fee: sa.fee})
             }
             <span class="attr">#[cfg(not(feature = <span class="string">&quot;private-net&quot;</span>))]
             </span>{

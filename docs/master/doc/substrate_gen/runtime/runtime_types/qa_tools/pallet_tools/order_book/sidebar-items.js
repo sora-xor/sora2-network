@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["settings"]};
+window.SIDEBAR_ITEMS = {"struct":["FillInput","OrderBookAttributes","RandomAmount","SideFillInput"]};

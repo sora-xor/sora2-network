@@ -430,6 +430,12 @@
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -466,18 +472,19 @@
 <span class="kw">use </span>frame_support::{dispatch, ensure};
 
 <span class="kw">use </span>common::prelude::{Balance, FixedWrapper};
-<span class="kw">use </span>common::{balance, AssetInfoProvider};
+<span class="kw">use </span>common::{balance, AssetInfoProvider, DexInfoProvider};
+<span class="kw">use </span>sp_runtime::traits::Zero;
 
 <span class="kw">use </span><span class="kw">crate</span>::to_fixed_wrapper;
 
 <span class="kw">use </span><span class="kw">crate</span>::bounds::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">crate</span>::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
+<span class="kw">use </span><span class="kw">crate</span>::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, TechAccountIdOf};
 <span class="kw">use </span><span class="kw">crate</span>::operations::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{Config, Error, Pallet};
 
 <span class="kw">impl</span>&lt;T: Config&gt; common::SwapRulesValidation&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;
-    <span class="kw">for </span>PairSwapAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;
+    <span class="kw">for </span>PairSwapAction&lt;DEXIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;
 {
     <span class="kw">fn </span>is_abstract_checking(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.source.amount == Bounds::Dummy || <span class="self">self</span>.destination.amount == Bounds::Dummy
@@ -568,7 +575,7 @@
         }
 
         <span class="comment">// Recommended fee, will be used if fee is not specified or for checking if specified.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>recom_fee: <span class="prelude-ty">Option</span>&lt;Balance&gt; = <span class="prelude-val">None</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>recom_fee = Balance::zero();
 
         <span class="kw">if </span>abstract_checking_for_quote || !abstract_checking {
             <span class="kw">match </span>(<span class="self">self</span>.source.amount, <span class="self">self</span>.destination.amount) {
@@ -595,7 +602,7 @@
                     <span class="kw">if </span>y_out_pair.<span class="number">0 </span>!= ta || x_in_pair.<span class="number">0 </span>!= sa || y_out_pair.<span class="number">1 </span>!= x_in_pair.<span class="number">1 </span>{
                         <span class="prelude-val">Err</span>(Error::&lt;T&gt;::PoolPairRatioAndPairSwapRatioIsDifferent)<span class="question-mark">?</span>;
                     }
-                    recom_fee = <span class="prelude-val">Some</span>(y_out_pair.<span class="number">1</span>);
+                    recom_fee = y_out_pair.<span class="number">1</span>;
                 }
                 <span class="comment">// Case then source amount is specified but destination is not, it`s possible to decide it.
                 </span>(Bounds::Desired(sa), ta_bnd) =&gt; {
@@ -616,7 +623,7 @@
                                 Error::&lt;T&gt;::CalculatedValueIsOutOfDesiredBounds
                             );
                             <span class="self">self</span>.destination.amount = Bounds::Calculated(calculated);
-                            recom_fee = <span class="prelude-val">Some</span>(fee);
+                            recom_fee = fee;
                         }
                         <span class="kw">_ </span>=&gt; {
                             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::ImpossibleToDecideAssetPairAmounts)<span class="question-mark">?</span>;
@@ -642,7 +649,7 @@
                                 Error::&lt;T&gt;::CalculatedValueIsOutOfDesiredBounds
                             );
                             <span class="self">self</span>.source.amount = Bounds::Calculated(calculated);
-                            recom_fee = <span class="prelude-val">Some</span>(fee);
+                            recom_fee = fee;
                         }
                         <span class="kw">_ </span>=&gt; {
                             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::ImpossibleToDecideAssetPairAmounts)<span class="question-mark">?</span>;
@@ -672,21 +679,20 @@
             <span class="kw">let </span>source_amount = <span class="self">self</span>.source.amount.unwrap();
             <span class="kw">let </span>destination_amount = <span class="self">self</span>.destination.amount.unwrap();
 
+            <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span><span class="self">self</span>.dex_id)<span class="question-mark">?</span>;
+
+            <span class="comment">// in XOR for dex_id = 0
+            // in XSTUSD for dex_id = 1
+            </span><span class="kw">let </span>fee = <span class="self">self</span>.fee.get_by_asset(<span class="kw-2">&amp;</span>dex_info.base_asset_id);
+
             <span class="comment">// Set recommended or check that fee is correct.
-            </span><span class="kw">match </span><span class="self">self</span>.fee {
-                <span class="comment">// Just set it here if it not specified, this is usual case.
-                </span><span class="prelude-val">None </span>=&gt; {
-                    <span class="self">self</span>.fee = recom_fee;
-                }
-                <span class="comment">// Case with source user fee is set, checking that it is not smaller.
-                </span><span class="prelude-val">Some</span>(fee) =&gt; {
-                    <span class="kw">if </span>fee &lt; recom_fee.unwrap() {
-                        <span class="prelude-val">Err</span>(Error::&lt;T&gt;::PairSwapActionFeeIsSmallerThanRecommended)<span class="question-mark">?
-                    </span>}
+            </span><span class="kw">if </span>fee.is_zero() {
+                <span class="self">self</span>.fee.add_by_asset(dex_info.base_asset_id, recom_fee);
+            } <span class="kw">else </span>{
+                <span class="kw">if </span>fee &lt; recom_fee {
+                    <span class="prelude-val">Err</span>(Error::&lt;T&gt;::PairSwapActionFeeIsSmallerThanRecommended)<span class="question-mark">?</span>;
                 }
             }
-            <span class="comment">// Get required values, now it is always Some, it is safe to unwrap().
-            </span><span class="kw">let </span>_fee = <span class="self">self</span>.fee.unwrap();
 
             <span class="kw">if </span>!abstract_checking {
                 <span class="comment">// Checking that balances if correct and large enouth for amounts.
@@ -760,7 +766,7 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; common::SwapAction&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;
-    <span class="kw">for </span>PairSwapAction&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;
+    <span class="kw">for </span>PairSwapAction&lt;DEXIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;&gt;
 {
     <span class="doccomment">/// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.
@@ -782,6 +788,12 @@
                 <span class="self">self</span>.fee_account.as_ref().unwrap(),
             )<span class="question-mark">?</span>;
 
+            <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span><span class="self">self</span>.dex_id)<span class="question-mark">?</span>;
+
+            <span class="comment">// in XOR for dex_id = 0
+            // in XSTUSD for dex_id = 1
+            </span><span class="kw">let </span>fee = <span class="self">self</span>.fee.get_by_asset(<span class="kw-2">&amp;</span>dex_info.base_asset_id);
+
             <span class="kw">if </span><span class="self">self</span>.get_fee_from_destination.unwrap() {
                 technical::Pallet::&lt;T&gt;::transfer_in(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
@@ -793,7 +805,7 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.destination.asset,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.pool_account,
                     <span class="kw-2">&amp;</span>fee_account_repr_sys,
-                    <span class="self">self</span>.fee.unwrap(),
+                    fee,
                 )<span class="question-mark">?</span>;
                 technical::Pallet::&lt;T&gt;::transfer_out(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.destination.asset,
@@ -806,13 +818,13 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
                     <span class="kw-2">&amp;</span>source,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.pool_account,
-                    <span class="self">self</span>.source.amount.unwrap() - <span class="self">self</span>.fee.unwrap(),
+                    <span class="self">self</span>.source.amount.unwrap() - fee,
                 )<span class="question-mark">?</span>;
                 technical::Pallet::&lt;T&gt;::transfer_in(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
                     <span class="kw-2">&amp;</span>source,
                     <span class="self">self</span>.fee_account.as_ref().unwrap(),
-                    <span class="self">self</span>.fee.unwrap(),
+                    fee,
                 )<span class="question-mark">?</span>;
                 technical::Pallet::&lt;T&gt;::transfer_out(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.destination.asset,

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event","InputAssetId"]};

@@ -287,6 +287,27 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -481,6 +502,27 @@
             <span class="kw-2">&amp;</span>XOR.into(),
             <span class="kw-2">&amp;</span>DOT.into(),
             amount.into(),
+            <span class="bool-val">true</span>,
+        ).unwrap()
+    }
+    verify {
+        <span class="comment">// can&#39;t check, nothing is changed
+    </span>}
+
+    step_quote {
+        <span class="kw">let </span>a <span class="kw">in </span><span class="number">10</span>..<span class="number">1000</span>;
+        setup_benchmark::&lt;T&gt;()<span class="question-mark">?</span>;
+        <span class="kw">let </span>amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: <span class="macro">balance!</span>(<span class="number">10000</span>),
+            min_amount_out: <span class="macro">balance!</span>(<span class="number">0</span>),
+        };
+    }: {
+        XYKPool::&lt;T&gt;::step_quote(
+            <span class="kw-2">&amp;</span>DEX.into(),
+            <span class="kw-2">&amp;</span>XOR.into(),
+            <span class="kw-2">&amp;</span>DOT.into(),
+            amount.into(),
+            a <span class="kw">as </span>usize,
             <span class="bool-val">true</span>,
         ).unwrap()
     }

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RewardsInfo","SwapOutcomeInfo","SwapOutcomeInfoV1"],"trait":["LiquidityProxyAPI"]};
+window.SIDEBAR_ITEMS = {"struct":["RewardsInfo","SwapOutcomeInfo","SwapOutcomeInfoV1","SwapOutcomeInfoV2"],"trait":["LiquidityProxyAPI"]};
