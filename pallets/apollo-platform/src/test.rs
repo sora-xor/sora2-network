@@ -11,22 +11,7 @@ mod test {
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
-    use sp_core::offchain::testing::TestTransactionPoolExt;
-    use sp_core::offchain::TransactionPoolExt;
-    use sp_core::offchain::{testing::TestOffchainExt, OffchainDbExt, OffchainWorkerExt};
     use sp_runtime::traits::AccountIdConversion;
-
-    // pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
-    //     frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap().into()
-    //   }
-
-    fn register_offchain_ext(ext: &mut sp_io::TestExternalities) {
-        let (offchain, _offchain_state) = TestOffchainExt::with_offchain_db(ext.offchain_db());
-        let (pool, _pool_state) = TestTransactionPoolExt::new();
-        ext.register_extension(OffchainDbExt::new(offchain.clone()));
-        ext.register_extension(OffchainWorkerExt::new(offchain));
-        ext.register_extension(TransactionPoolExt::new(pool));
-    }
 
     fn get_pallet_account() -> AccountId {
         PalletId(*b"apollolb").into_account_truncating()

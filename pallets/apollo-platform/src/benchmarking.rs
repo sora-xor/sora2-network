@@ -60,6 +60,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         RawOrigin::Signed(owner.clone()).into();
     let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
     let dai_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(DAI.into()).unwrap();
+    let ceres_owner: T::AccountId =
+        assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.into()).unwrap();
 
     // Register assets
     Assets::<T>::register_asset_id(
@@ -80,19 +82,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         APOLLO_ASSET_ID.into(),
         AssetSymbol(b"APOLLO".to_vec()),
         AssetName(b"Apollo".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
-        Balance::from(0u32),
-        true,
-        None,
-        None,
-    )
-    .unwrap();
-
-    Assets::<T>::register_asset_id(
-        owner.clone(),
-        CERES_ASSET_ID.into(),
-        AssetSymbol(b"CERES".to_vec()),
-        AssetName(b"Ceres".to_vec()),
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
@@ -143,7 +132,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     Assets::<T>::mint(
-        owner_origin.clone(),
+        RawOrigin::Signed(ceres_owner.clone()).into(),
         CERES_ASSET_ID.into(),
         owner.clone(),
         balance!(500),
@@ -279,13 +268,6 @@ benchmarks! {
 
         let lending_amount = balance!(100);
 
-        let mint = assets::Pallet::<T>::mint_to(
-            &XOR.into(),
-            &alice,
-            &alice,
-            balance!(300000)
-        );
-
         ApolloPlatform::<T>::add_pool(
             RawOrigin::Signed(caller.clone()).into(),
             asset_id.into(),
@@ -404,14 +386,9 @@ benchmarks! {
         let slope_rate_2 = balance!(1);
         let reserve_factor = balance!(1);
 
-        let lending_amount = balance!(300);
+        let lending_amount = balance!(50);
 
-        Assets::<T>::mint(
-            RawOrigin::Signed(alice.clone()).into(),
-            XOR.into(),
-            alice.clone(),
-            balance!(500)
-        ).unwrap();
+        setup_benchmark::<T>()?;
 
         ApolloPlatform::<T>::add_pool(
             RawOrigin::Signed(caller.clone()).into(),
@@ -427,16 +404,289 @@ benchmarks! {
 
         ApolloPlatform::<T>::lend(
             RawOrigin::Signed(alice.clone()).into(),
-            XOR.into(),
+            asset_id.into(),
             lending_amount
         ).unwrap();
 
-        run_to_block::<T>(150);
+        run_to_block::<T>(151);
 
     }: {
-        ApolloPlatform::<T>::get_rewards(RawOrigin::Signed(alice.clone()).into(), APOLLO_ASSET_ID.into(), true)
+        ApolloPlatform::<T>::get_rewards(RawOrigin::Signed(alice.clone()).into(), asset_id.into(), true).unwrap()
     } verify {
-        assert_last_event::<T>(Event::ClaimedLendingRewards(alice, APOLLO_ASSET_ID.into(), balance!(20)).into());
+        assert_last_event::<T>(Event::ClaimedLendingRewards(alice, asset_id.into(), balance!(5.74581425)).into());
+    }
+
+    withdraw {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let alice = alice::<T>();
+        let bob = bob::<T>();
+        let asset_id_xor = XOR;
+        let loan_to_value = balance!(1);
+        let liquidation_threshold = balance!(0.1);
+        let optimal_utilization_rate = balance!(1);
+        let base_rate = balance!(1);
+        let slope_rate_1 = balance!(1);
+        let slope_rate_2 = balance!(1);
+        let reserve_factor = balance!(1);
+
+        let lending_amount_alice = balance!(50);
+        let lending_amount_bob = balance!(200000);
+
+        setup_benchmark::<T>()?;
+
+        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+
+        Assets::<T>::mint(
+            RawOrigin::Signed(xor_owner).into(),
+            XOR.into(),
+            bob.clone(),
+            balance!(300000)
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_xor.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(alice.clone()).into(),
+            asset_id_xor.into(),
+            lending_amount_alice
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(bob.clone()).into(),
+            asset_id_xor.into(),
+            lending_amount_bob
+        ).unwrap();
+
+        run_to_block::<T>(101);
+    }: {
+        ApolloPlatform::<T>::withdraw(
+            RawOrigin::Signed(alice.clone()).into(),
+            asset_id_xor.into(),
+            lending_amount_alice
+        ).unwrap()
+    } verify {
+        assert_last_event::<T>(Event::Withdrawn(alice, XOR.into(), lending_amount_alice).into());
+    }
+
+    repay {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let alice = alice::<T>();
+        let bob = bob::<T>();
+        let asset_id_xor = XOR;
+        let asset_id_dot = DOT;
+        let loan_to_value = balance!(1);
+        let liquidation_threshold = balance!(1);
+        let optimal_utilization_rate = balance!(1);
+        let base_rate = balance!(1);
+        let slope_rate_1 = balance!(1);
+        let slope_rate_2 = balance!(1);
+        let reserve_factor_0 = balance!(0.1);
+        let reserve_factor = balance!(1);
+
+        let lending_amount_alice = balance!(300);
+        let lending_amount_bob = balance!(200000);
+        let borrow_amount = balance!(100);
+        let amount_to_repay = balance!(500);
+
+        setup_benchmark::<T>()?;
+
+        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+
+        Assets::<T>::mint(
+            RawOrigin::Signed(xor_owner).into(),
+            XOR.into(),
+            bob.clone(),
+            balance!(300000)
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_xor.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor_0,
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_dot.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            lending_amount_alice
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(bob.clone()).into(),
+            XOR.into(),
+            lending_amount_bob
+        ).unwrap();
+
+        ApolloPlatform::<T>::borrow(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            XOR.into(),
+            borrow_amount
+        ).unwrap();
+
+        run_to_block::<T>(151);
+    }: {
+        ApolloPlatform::<T>::repay(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            XOR.into(),
+            amount_to_repay
+        ).unwrap()
+    } verify {
+        assert_last_event::<T>(Event::Repaid(alice, XOR.into(), amount_to_repay).into());
+    }
+
+    change_rewards_amount {
+        let caller = pallet::AuthorityAccount::<T>::get();
+    }: {
+        ApolloPlatform::<T>::change_rewards_amount(
+            RawOrigin::Signed(caller.clone()).into(),
+            true,
+            balance!(1)
+        ).unwrap()
+    } verify {
+        assert_last_event::<T>(Event::ChangedRewardsAmount(caller, true, balance!(1)).into());
+    }
+
+    change_rewards_per_block {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let asset_id_xor = XOR;
+        let loan_to_value = balance!(1);
+        let liquidation_threshold = balance!(0.1);
+        let optimal_utilization_rate = balance!(1);
+        let base_rate = balance!(1);
+        let slope_rate_1 = balance!(1);
+        let slope_rate_2 = balance!(1);
+        let reserve_factor = balance!(1);
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_xor.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+    }: {
+        ApolloPlatform::<T>::change_rewards_per_block(
+            RawOrigin::Signed(caller.clone()).into(),
+            true,
+            balance!(1)
+        ).unwrap()
+    } verify {
+        assert_last_event::<T>(Event::ChangedRewardsAmountPerBlock(caller, true, balance!(1)).into());
+    }
+
+    liquidate {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let alice = alice::<T>();
+        let bob = bob::<T>();
+        let asset_id_xor = XOR;
+        let asset_id_dot = DOT;
+        let loan_to_value = balance!(1);
+        let liquidation_threshold = balance!(0.1);
+        let optimal_utilization_rate = balance!(1);
+        let base_rate = balance!(1);
+        let slope_rate_1 = balance!(1);
+        let slope_rate_2 = balance!(1);
+        let reserve_factor = balance!(0.1);
+
+        let lending_amount_alice = balance!(300);
+        let lending_amount_bob = balance!(200000);
+        let borrow_amount = balance!(100);
+
+        setup_benchmark::<T>()?;
+
+        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+
+        Assets::<T>::mint(
+            RawOrigin::Signed(xor_owner).into(),
+            XOR.into(),
+            bob.clone(),
+            balance!(300000)
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_xor.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_dot.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            lending_amount_alice
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(bob.clone()).into(),
+            XOR.into(),
+            lending_amount_bob
+        ).unwrap();
+
+        ApolloPlatform::<T>::borrow(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            XOR.into(),
+            borrow_amount
+        ).unwrap();
+    }: {
+        ApolloPlatform::<T>::liquidate(
+            RawOrigin::Signed(caller.clone()).into(),
+            alice.clone(),
+            XOR.into()
+        ).unwrap()
+    } verify {
+        assert_last_event::<T>(Event::Liquidated(alice, XOR.into()).into());
     }
 
     impl_benchmark_test_suite!(

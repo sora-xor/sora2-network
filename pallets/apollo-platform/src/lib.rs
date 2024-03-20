@@ -394,7 +394,7 @@ pub mod pallet {
                 // Calculate interest in APOLLO token
                 let block_number = <frame_system::Pallet<T>>::block_number();
                 let interests =
-                    Self::calculate_lending_earnings(&user, lending_asset, block_number);
+                    Self::calculate_lending_earnings(&user_info, &pool_info, block_number);
                 user_info.lending_interest += interests.0 + interests.1;
                 user_info.lending_amount += lending_amount;
                 user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
@@ -472,9 +472,8 @@ pub mod pallet {
             if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
                 let block_number = <frame_system::Pallet<T>>::block_number();
                 let calculated_interest = Self::calculate_borrowing_interest_and_reward(
-                    &user,
-                    borrowing_asset,
-                    collateral_asset,
+                    &user_info,
+                    &borrow_pool_info,
                     block_number,
                 );
                 user_info.borrowing_interest += calculated_interest.0;
@@ -496,7 +495,11 @@ pub mod pallet {
 
             // Update user's lending info according to given collateral
             let block_number = <frame_system::Pallet<T>>::block_number();
-            let interests = Self::calculate_lending_earnings(&user, collateral_asset, block_number);
+            let interests = Self::calculate_lending_earnings(
+                &user_lending_info,
+                &collateral_pool_info,
+                block_number,
+            );
             user_lending_info.lending_interest += interests.0 + interests.1;
             user_lending_info.lending_amount = user_lending_info
                 .lending_amount
@@ -550,11 +553,14 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             let block_number = <frame_system::Pallet<T>>::block_number();
+            let pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
+
             // Check if user has lended or borrowed rewards
             if is_lending {
                 let mut lend_user_info = <UserLendingInfo<T>>::get(asset_id, user.clone())
                     .ok_or(Error::<T>::NothingLended)?;
-                let interests = Self::calculate_lending_earnings(&user, asset_id, block_number);
+                let interests =
+                    Self::calculate_lending_earnings(&lend_user_info, &pool_info, block_number);
                 lend_user_info.lending_interest += interests.0 + interests.1;
                 lend_user_info.last_lending_block = <frame_system::Pallet<T>>::block_number();
 
@@ -586,11 +592,10 @@ pub mod pallet {
                 let block_number = <frame_system::Pallet<T>>::block_number();
 
                 let mut borrowing_rewards = 0;
-                for (collateral_asset, mut user_info) in user_infos.iter_mut() {
+                for (_, mut user_info) in user_infos.iter_mut() {
                     let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
-                        &user,
-                        asset_id,
-                        *collateral_asset,
+                        &user_info,
+                        &pool_info,
                         block_number,
                     );
                     user_info.borrowing_interest += interest_and_reward.0;
@@ -658,7 +663,7 @@ pub mod pallet {
 
             let block_number = <frame_system::Pallet<T>>::block_number();
             let interests: (u128, u128) =
-                Self::calculate_lending_earnings(&user, withdrawn_asset, block_number);
+                Self::calculate_lending_earnings(&user_info, &pool_info, block_number);
             user_info.lending_amount = user_info
                 .lending_amount
                 .checked_sub(withdrawn_amount)
@@ -714,9 +719,8 @@ pub mod pallet {
 
             let block_number = <frame_system::Pallet<T>>::block_number();
             let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
-                &user,
-                borrowing_asset,
-                collateral_asset,
+                &user_info,
+                &borrow_pool_info,
                 block_number,
             );
             user_info.borrowing_interest += interest_and_reward.0;
@@ -751,7 +755,9 @@ pub mod pallet {
             {
                 // If user is repaying whole interest plus part of the borrowed amount
                 let repaid_amount = user_info.borrowing_interest;
-                let remaining_amount = amount_to_repay - user_info.borrowing_interest;
+                let remaining_amount = amount_to_repay
+                    .checked_sub(user_info.borrowing_interest)
+                    .unwrap_or(0);
                 user_info.borrowing_amount = user_info
                     .borrowing_amount
                     .checked_sub(remaining_amount)
@@ -1125,13 +1131,10 @@ pub mod pallet {
         }
 
         pub fn calculate_lending_earnings(
-            user: &AccountIdOf<T>,
-            asset_id: AssetIdOf<T>,
+            user_info: &LendingPosition<BlockNumberFor<T>>,
+            pool_info: &PoolInfo,
             block_number: BlockNumberFor<T>,
         ) -> (Balance, Balance) {
-            let user_info = UserLendingInfo::<T>::get(asset_id, user).unwrap();
-            let pool_info = PoolData::<T>::get(asset_id).unwrap();
-
             let total_lending_blocks: u128 =
                 (block_number - user_info.last_lending_block).unique_saturated_into();
 
@@ -1158,14 +1161,10 @@ pub mod pallet {
         }
 
         pub fn calculate_borrowing_interest_and_reward(
-            user: &AccountIdOf<T>,
-            asset_id: AssetIdOf<T>,
-            collateral_asset: AssetIdOf<T>,
+            user_info: &BorrowingPosition<BlockNumberFor<T>>,
+            pool_info: &PoolInfo,
             block_number: BlockNumberFor<T>,
         ) -> (Balance, Balance) {
-            let borrow_user_info = UserBorrowingInfo::<T>::get(asset_id, user).unwrap();
-            let user_info = borrow_user_info.get(&collateral_asset).unwrap();
-            let pool_info = PoolData::<T>::get(asset_id).unwrap();
             let total_borrowing_blocks: u128 =
                 (block_number - user_info.last_borrowing_block).unique_saturated_into();
 
@@ -1206,7 +1205,7 @@ pub mod pallet {
                 * FixedWrapper::from(amount))
             .try_into_balance()
             .unwrap_or(0);
-            let rewards_amount = amount - reserves_amount;
+            let rewards_amount = amount.checked_sub(reserves_amount).unwrap_or(0);
 
             let outcome = T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
@@ -1292,12 +1291,13 @@ pub mod pallet {
                 return T::DbWeight::get().reads(counter);
             }
             let pool_asset = <PoolsByBlock<T>>::get(pool_index).unwrap_or_default();
+            let mut pool_info = <PoolData<T>>::get(pool_asset).unwrap();
 
             // Update lending interests
             let mut rewards: Balance = 0;
             for (account_id, mut user_info) in UserLendingInfo::<T>::iter_prefix(pool_asset) {
                 let user_interests =
-                    Self::calculate_lending_earnings(&account_id, pool_asset, block_number);
+                    Self::calculate_lending_earnings(&user_info, &pool_info, block_number);
                 user_info.lending_interest += user_interests.0 + user_interests.1;
                 user_info.last_lending_block = block_number;
                 rewards += user_interests.1;
@@ -1307,18 +1307,16 @@ pub mod pallet {
             }
 
             // Update pool rewards
-            let mut pool_info = <PoolData<T>>::get(pool_asset).unwrap();
             pool_info.rewards = pool_info.rewards.checked_sub(rewards).unwrap_or(0);
-            <PoolData<T>>::insert(pool_asset, pool_info);
+            <PoolData<T>>::insert(pool_asset, &pool_info);
             counter += 1;
 
             // Update borrowing interests
             for (account_id, mut user_infos) in UserBorrowingInfo::<T>::iter_prefix(pool_asset) {
-                for (collateral_asset, mut user_info) in user_infos.iter_mut() {
+                for (_, mut user_info) in user_infos.iter_mut() {
                     let user_interests = Self::calculate_borrowing_interest_and_reward(
-                        &account_id,
-                        pool_asset,
-                        *collateral_asset,
+                        &user_info,
+                        &pool_info,
                         block_number,
                     );
                     user_info.borrowing_interest += user_interests.0;
