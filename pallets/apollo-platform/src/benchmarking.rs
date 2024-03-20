@@ -4,8 +4,8 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, PriceToolsPallet, PriceVariant, APOLLO_ASSET_ID, DAI,
-    DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetName, AssetSymbol, DEXId, PriceToolsPallet, PriceVariant, APOLLO_ASSET_ID,
+    CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Hooks;
@@ -60,8 +60,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         RawOrigin::Signed(owner.clone()).into();
     let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
     let dai_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(DAI.into()).unwrap();
-    let apollo_owner: T::AccountId =
-        assets::AssetOwners::<T>::get::<T::AssetId>(APOLLO_ASSET_ID.into()).unwrap();
 
     // Register assets
     Assets::<T>::register_asset_id(
@@ -77,25 +75,38 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    // Assets::<T>::register_asset_id(
-    //     owner.clone(),
-    //     APOLLO_ASSET_ID.into(),
-    //     AssetSymbol(b"APL".to_vec()),
-    //     AssetName(b"Apollo".to_vec()),
-    //     DEFAULT_BALANCE_PRECISION,
-    //     Balance::from(0u32),
-    //     true,
-    //     None,
-    //     None,
-    // )
-    // .unwrap();
+    Assets::<T>::register_asset_id(
+        owner.clone(),
+        APOLLO_ASSET_ID.into(),
+        AssetSymbol(b"APOLLO".to_vec()),
+        AssetName(b"Apollo".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        Balance::from(0u32),
+        true,
+        None,
+        None,
+    )
+    .unwrap();
+
+    Assets::<T>::register_asset_id(
+        owner.clone(),
+        CERES_ASSET_ID.into(),
+        AssetSymbol(b"CERES".to_vec()),
+        AssetName(b"Ceres".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        Balance::from(0u32),
+        true,
+        None,
+        None,
+    )
+    .unwrap();
 
     // Mint assets to Alice
     Assets::<T>::mint(
         RawOrigin::Signed(xor_owner.clone()).into(),
         XOR.into(),
         owner.clone(),
-        balance!(500),
+        balance!(1000),
     )
     .unwrap();
 
@@ -116,20 +127,61 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     Assets::<T>::mint(
-        RawOrigin::Signed(apollo_owner.clone()).into(),
+        owner_origin.clone(),
+        APOLLO_ASSET_ID.into(),
+        owner.clone(),
+        balance!(500),
+    )
+    .unwrap();
+
+    Assets::<T>::mint(
+        owner_origin.clone(),
         APOLLO_ASSET_ID.into(),
         pallet_account.clone(),
-        balance!(1000),
+        balance!(100000),
+    )
+    .unwrap();
+
+    Assets::<T>::mint(
+        owner_origin.clone(),
+        CERES_ASSET_ID.into(),
+        owner.clone(),
+        balance!(500),
     )
     .unwrap();
 
     // Register trading pairs
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    TradingPair::<T>::register(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        APOLLO_ASSET_ID.into(),
+    )
+    .unwrap();
+    TradingPair::<T>::register(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        CERES_ASSET_ID.into(),
+    )
+    .unwrap();
 
     // Initialize pools and deposit liquidity
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
-
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
+    XYKPool::<T>::initialize_pool(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        APOLLO_ASSET_ID.into(),
+    )?;
+    XYKPool::<T>::initialize_pool(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        CERES_ASSET_ID.into(),
+    )?;
 
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
@@ -147,6 +199,28 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DEX.into(),
         XOR.into(),
         DAI.into(),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+    )?;
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        APOLLO_ASSET_ID.into(),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+        balance!(100),
+    )?;
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        CERES_ASSET_ID.into(),
         balance!(100),
         balance!(100),
         balance!(100),
