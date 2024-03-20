@@ -1110,23 +1110,24 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         // Get max amount for the limit
         let limit = T::GetSyntheticBaseBuySellLimit::get();
-        let (max_input_amount, max_output_amount, _) = if input_asset_id == synthetic_base_asset_id
-        {
-            Self::decide_sell_amounts(
-                &input_asset_id,
-                &output_asset_id,
-                QuoteAmount::with_desired_input(limit),
-                deduce_fee,
-                false,
-            )?
+        let (max_input_amount, max_output_amount) = if input_asset_id == synthetic_base_asset_id {
+            let main_asset_price: FixedWrapper =
+                Self::reference_price(&input_asset_id, PriceVariant::Sell)?.into();
+            let synthetic_asset_price: FixedWrapper =
+                Self::reference_price(&output_asset_id, PriceVariant::Buy)?.into();
+            let max_output = (limit * main_asset_price / synthetic_asset_price)
+                .saturating_try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            (limit, max_output)
         } else {
-            Self::decide_buy_amounts(
-                &output_asset_id,
-                &input_asset_id,
-                QuoteAmount::with_desired_output(limit),
-                deduce_fee,
-                false,
-            )?
+            let main_asset_price: FixedWrapper =
+                Self::reference_price(&output_asset_id, PriceVariant::Buy)?.into();
+            let synthetic_asset_price: FixedWrapper =
+                Self::reference_price(&input_asset_id, PriceVariant::Sell)?.into();
+            let max_input = (limit * main_asset_price / synthetic_asset_price)
+                .saturating_try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            (max_input, limit)
         };
 
         quotation.limits.max_amount = match amount {
