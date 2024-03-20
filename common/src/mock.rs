@@ -73,6 +73,7 @@ pub enum ComicAssetId {
     BluePromise,
     Mango,
     MichaelJacksonCD,
+    JesterMarotte,
     CrackedBrassBell,
 }
 
@@ -105,6 +106,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::ETH => AcmeSpyKit,
             PredefinedAssetId::XSTUSD => Mango,
             PredefinedAssetId::XST => BatteryForMusicPlayer,
+            PredefinedAssetId::KEN => JesterMarotte,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
         }
