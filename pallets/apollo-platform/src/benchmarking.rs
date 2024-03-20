@@ -689,6 +689,38 @@ benchmarks! {
         assert_last_event::<T>(Event::Liquidated(alice, XOR.into()).into());
     }
 
+    remove_pool {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let asset_id = XOR;
+        let loan_to_value = balance!(1);
+        let liquidation_threshold = balance!(1);
+        let optimal_utilization_rate = balance!(1);
+        let base_rate = balance!(1);
+        let slope_rate_1 = balance!(1);
+        let slope_rate_2 = balance!(1);
+        let reserve_factor = balance!(1);
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+    }: {
+         ApolloPlatform::<T>::remove_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id.into()
+        ).unwrap()
+    }
+    verify {
+        assert_last_event::<T>(Event::PoolRemoved(caller, asset_id.into()).into());
+    }
+
     impl_benchmark_test_suite!(
         Pallet,
         crate::mock::ExtBuilder::default().build(),

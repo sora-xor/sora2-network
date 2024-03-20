@@ -47,6 +47,7 @@ pub struct PoolInfo {
     pub slope_rate_2: Balance,
     pub reserve_factor: Balance,
     pub rewards: Balance,
+    pub is_removed: bool,
 }
 
 pub use pallet::*;
@@ -226,6 +227,8 @@ pub mod pallet {
         ChangedRewardsAmountPerBlock(AccountIdOf<T>, bool, Balance),
         /// Liquidated [who, asset_id]
         Liquidated(AccountIdOf<T>, AssetIdOf<T>),
+        /// Pool removed [who, asset_id]
+        PoolRemoved(AccountIdOf<T>, AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -288,6 +291,8 @@ pub mod pallet {
         CanNotTransferAmountToDevelopers,
         /// User should not be liquidated
         InvalidLiquidation,
+        /// Pool is removed
+        PoolIsRemoved,
     }
 
     #[pallet::call]
@@ -312,10 +317,9 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            ensure!(
-                !<PoolData<T>>::contains_key(asset_id),
-                Error::<T>::AssetAlreadyListed
-            );
+            if let Some(pool_info) = <PoolData<T>>::get(asset_id) {
+                ensure!(pool_info.is_removed, Error::<T>::AssetAlreadyListed);
+            }
 
             // Check parameters
             if loan_to_value > balance!(1)
@@ -327,7 +331,9 @@ pub mod pallet {
             }
 
             // Recalculate basic lending rate and borrowing rewards rate
-            let mut num_of_pools = <PoolData<T>>::iter().count() as u32;
+            let mut num_of_pools = <PoolData<T>>::iter()
+                .filter(|(_, pool_info)| !pool_info.is_removed)
+                .count() as u32;
             num_of_pools += 1;
 
             let basic_lending_rate = (FixedWrapper::from(LendingRewardsPerBlock::<T>::get())
@@ -340,36 +346,54 @@ pub mod pallet {
             .unwrap_or(0);
 
             for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
+                if pool_info.is_removed {
+                    continue;
+                }
                 pool_info.basic_lending_rate = basic_lending_rate;
                 pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
                 <PoolData<T>>::insert(asset_id, pool_info);
             }
 
-            // Create a new pool
-            let pool_info = PoolInfo {
-                total_liquidity: 0,
-                total_borrowed: 0,
-                total_collateral: 0,
-                basic_lending_rate,
-                profit_lending_rate: 0,
-                borrowing_rate: 0,
-                borrowing_rewards_rate,
-                loan_to_value,
-                liquidation_threshold,
-                optimal_utilization_rate,
-                base_rate,
-                slope_rate_1,
-                slope_rate_2,
-                reserve_factor,
-                rewards: 0,
-            };
+            if let Some(mut pool_info) = <PoolData<T>>::get(asset_id) {
+                pool_info.basic_lending_rate = basic_lending_rate;
+                pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
+                pool_info.loan_to_value = loan_to_value;
+                pool_info.liquidation_threshold = liquidation_threshold;
+                pool_info.optimal_utilization_rate = optimal_utilization_rate;
+                pool_info.base_rate = base_rate;
+                pool_info.slope_rate_1 = slope_rate_1;
+                pool_info.slope_rate_2 = slope_rate_2;
+                pool_info.reserve_factor = reserve_factor;
+                pool_info.is_removed = false;
+                <PoolData<T>>::insert(asset_id, pool_info);
+            } else {
+                // Create a new pool
+                let new_pool_info = PoolInfo {
+                    total_liquidity: 0,
+                    total_borrowed: 0,
+                    total_collateral: 0,
+                    basic_lending_rate,
+                    profit_lending_rate: 0,
+                    borrowing_rate: 0,
+                    borrowing_rewards_rate,
+                    loan_to_value,
+                    liquidation_threshold,
+                    optimal_utilization_rate,
+                    base_rate,
+                    slope_rate_1,
+                    slope_rate_2,
+                    reserve_factor,
+                    rewards: 0,
+                    is_removed: false,
+                };
 
-            <PoolData<T>>::insert(asset_id, pool_info);
+                <PoolData<T>>::insert(asset_id, new_pool_info);
 
-            // Add pool to PoolsByBlock map
-            let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
-            let block_number: BlockNumberFor<T> = num_of_pools.into();
-            <PoolsByBlock<T>>::insert(block_number, asset_id);
+                // Add pool to PoolsByBlock map
+                let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
+                let block_number: BlockNumberFor<T> = num_of_pools.into();
+                <PoolsByBlock<T>>::insert(block_number, asset_id);
+            }
 
             Self::deposit_event(Event::PoolAdded(user, asset_id));
             Ok(().into())
@@ -388,6 +412,7 @@ pub mod pallet {
             ensure!(lending_amount > 0, Error::<T>::InvalidLendingAmount);
             let mut pool_info =
                 <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            ensure!(!pool_info.is_removed, Error::<T>::PoolIsRemoved);
 
             // Add lending amount and interest to user if exists, otherwise create new user
             if let Some(mut user_info) = <UserLendingInfo<T>>::get(lending_asset, user.clone()) {
@@ -418,6 +443,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Borrow token
         #[pallet::call_index(2)]
         #[pallet::weight(10_000)]
         pub fn borrow(
@@ -435,6 +461,7 @@ pub mod pallet {
 
             let mut borrow_pool_info =
                 <PoolData<T>>::get(borrowing_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            ensure!(!borrow_pool_info.is_removed, Error::<T>::PoolIsRemoved);
             ensure!(
                 borrowing_amount <= borrow_pool_info.total_liquidity,
                 Error::<T>::NoLiquidityForBorrowingAsset
@@ -442,6 +469,7 @@ pub mod pallet {
 
             let mut collateral_pool_info =
                 <PoolData<T>>::get(collateral_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
+            ensure!(!collateral_pool_info.is_removed, Error::<T>::PoolIsRemoved);
             let mut user_lending_info = <UserLendingInfo<T>>::get(collateral_asset, user.clone())
                 .ok_or(Error::<T>::NothingLended)?;
             let collateral_asset_price = Self::get_price(collateral_asset);
@@ -696,6 +724,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Repay
         #[pallet::call_index(5)]
         #[pallet::weight(10_000)]
         pub fn repay(
@@ -844,6 +873,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Change rewards amount
         #[pallet::call_index(6)]
         #[pallet::weight(10_000)]
         pub fn change_rewards_amount(
@@ -867,6 +897,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Change rewards per block
         #[pallet::call_index(7)]
         #[pallet::weight(10_000)]
         pub fn change_rewards_per_block(
@@ -913,6 +944,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Liquidate
         #[pallet::call_index(8)]
         #[pallet::weight(10_000)]
         pub fn liquidate(
@@ -954,6 +986,53 @@ pub mod pallet {
             Self::deposit_event(Event::Liquidated(user, asset_id));
 
             Ok(())
+        }
+
+        /// Remove pool
+        #[pallet::call_index(9)]
+        #[pallet::weight(10_000)]
+        pub fn remove_pool(
+            origin: OriginFor<T>,
+            asset_id_to_remove: AssetIdOf<T>,
+        ) -> DispatchResult {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let mut pool_info =
+                PoolData::<T>::get(asset_id_to_remove).ok_or(Error::<T>::PoolDoesNotExist)?;
+            pool_info.basic_lending_rate = 0;
+            pool_info.borrowing_rewards_rate = 0;
+            pool_info.is_removed = true;
+            <PoolData<T>>::insert(asset_id_to_remove, pool_info);
+
+            // Recalculate basic lending rate and borrowing rewards rate
+            let num_of_pools = <PoolData<T>>::iter()
+                .filter(|(_, pool_info)| !pool_info.is_removed)
+                .count() as u32;
+
+            let basic_lending_rate = (FixedWrapper::from(LendingRewardsPerBlock::<T>::get())
+                / FixedWrapper::from(balance!(num_of_pools)))
+            .try_into_balance()
+            .unwrap_or(0);
+            let borrowing_rewards_rate = (FixedWrapper::from(BorrowingRewardsPerBlock::<T>::get())
+                / FixedWrapper::from(balance!(num_of_pools)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            for (asset_id, mut pool_info) in <PoolData<T>>::iter() {
+                if pool_info.is_removed {
+                    continue;
+                }
+                pool_info.basic_lending_rate = basic_lending_rate;
+                pool_info.borrowing_rewards_rate = borrowing_rewards_rate;
+                <PoolData<T>>::insert(asset_id, pool_info);
+            }
+
+            Self::deposit_event(Event::PoolRemoved(user, asset_id_to_remove));
+            Ok(().into())
         }
     }
 
