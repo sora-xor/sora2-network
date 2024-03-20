@@ -1294,6 +1294,8 @@
 <a href="#1279" id="1279">1279</a>
 <a href="#1280" id="1280">1280</a>
 <a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1480,7 +1482,8 @@
         XSTUSD = <span class="number">8</span>,
         XST = <span class="number">9</span>,
         TBCD = <span class="number">10</span>,
-        KUSD = <span class="number">11</span>,
+        KEN = <span class="number">11</span>,
+        KUSD = <span class="number">12</span>,
     }
 }
 
@@ -1493,6 +1496,7 @@
     AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
 <span class="kw">pub const </span>XST: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_asset_id(PredefinedAssetId::XST);
 <span class="kw">pub const </span>TBCD: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+<span class="kw">pub const </span>KEN: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_asset_id(PredefinedAssetId::KEN);
 <span class="kw">pub const </span>KUSD: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
 <span class="kw">pub const </span>CERES_ASSET_ID: AssetId32&lt;PredefinedAssetId&gt; = AssetId32::from_bytes(<span class="macro">hex!</span>(
     <span class="string">&quot;008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440&quot;
