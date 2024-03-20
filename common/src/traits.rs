@@ -42,9 +42,10 @@ use frame_support::Parameter;
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
-use crate::primitives::Balance;
+use crate::primitives::{Balance, SwapChunk};
 use codec::{Decode, Encode, MaxEncodedLen};
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -188,7 +189,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
 }
 
 /// Indicates that particular object can be used to perform exchanges.
-pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
+pub trait LiquiditySource<TargetId, AccountId, AssetId: Ord, Amount, Error> {
     /// Check if liquidity source provides an exchange from given input asset to output asset.
     fn can_exchange(
         target_id: &TargetId,
@@ -203,7 +204,18 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
+    ) -> Result<(SwapOutcome<Amount, AssetId>, Weight), Error>;
+
+    /// Get the input/output liquidity divided into steps based on the desired amount.
+    /// The count of steps may differ from the `recommended_samples_count`
+    fn step_quote(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Amount>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Amount>>, Weight), Error>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -213,7 +225,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Amount>,
-    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
+    ) -> Result<(SwapOutcome<Amount, AssetId>, Weight), Error>;
 
     /// Get rewards that are given for perfoming given exchange.
     fn check_rewards(
@@ -222,7 +234,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         input_amount: Amount,
         output_amount: Amount,
-    ) -> Result<(Vec<(Amount, AssetId, RewardReason)>, Weight), DispatchError>;
+    ) -> Result<(Vec<(Amount, AssetId, RewardReason)>, Weight), Error>;
 
     /// Get spot price of tokens based on desired amount, ignoring non-linearity
     /// of underlying liquidity source.
@@ -232,10 +244,13 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+    ) -> Result<SwapOutcome<Amount, AssetId>, Error>;
 
     /// Get weight of quote
     fn quote_weight() -> Weight;
+
+    /// Get weight of step quote
+    fn step_quote_weight(samples_count: usize) -> Weight;
 
     /// Get weight of exchange
     fn exchange_weight() -> Weight;
@@ -320,8 +335,8 @@ impl<Symbol> OnSymbolDisabled<Symbol> for () {
     fn disable_symbol(_symbol: &Symbol) {}
 }
 
-impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
-    for ()
+impl<DEXId, AccountId, AssetId: Ord>
+    LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError> for ()
 {
     fn can_exchange(
         _target_id: &DEXId,
@@ -337,7 +352,18 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Fixed, AssetId>, Weight), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn step_quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Fixed>,
+        _recommended_samples_count: usize,
+        _deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Fixed>>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -348,7 +374,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Fixed>,
-    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Fixed, AssetId>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -368,11 +394,15 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<SwapOutcome<Fixed, AssetId>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
     fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::zero()
     }
 
@@ -385,8 +415,8 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     }
 }
 
-impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
-    for ()
+impl<DEXId, AccountId, AssetId: Ord>
+    LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for ()
 {
     fn can_exchange(
         _target_id: &DEXId,
@@ -402,7 +432,18 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn step_quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _recommended_samples_count: usize,
+        _deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -413,7 +454,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -433,11 +474,15 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
     fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::zero()
     }
 
@@ -450,7 +495,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
     }
 }
 
-pub trait LiquidityRegistry<DEXId, AccountId, AssetId, LiquiditySourceIndex, Amount, Error>:
+pub trait LiquidityRegistry<DEXId, AccountId, AssetId: Ord, LiquiditySourceIndex, Amount, Error>:
     LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error>
 where
     DEXId: PartialEq + Clone + Copy,
@@ -846,7 +891,7 @@ impl OnValBurned for () {
 }
 
 /// Indicates that particular object can be used to perform exchanges with aggregation capability.
-pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
+pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId: Ord> {
     /// Get spot price of tokens based on desired amount, None returned if liquidity source
     /// does not have available exchange methods for indicated path.
     fn quote(
@@ -856,7 +901,7 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -867,11 +912,11 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError>;
 }
 
-impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
-    for ()
+impl<DEXId: PartialEq + Copy, AccountId, AssetId: Ord>
+    LiquidityProxyTrait<DEXId, AccountId, AssetId> for ()
 {
     fn quote(
         _dex_id: DEXId,
@@ -880,7 +925,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         unimplemented!()
     }
 
@@ -892,7 +937,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         _output_asset_id: &AssetId,
         _amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         unimplemented!()
     }
 }

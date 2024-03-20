@@ -65,7 +65,7 @@ use bridge_types::{evm::AdditionalEVMInboundData, U256};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId};
-use common::{XOR, XSTUSD};
+use common::{DOT, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 72,
+    spec_version: 73,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 72,
+    transaction_version: 73,
     state_version: 0,
 };
 
@@ -358,7 +358,7 @@ parameter_types! {
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![
         GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(),
-        GetXstAssetId::get(), GetTbcdAssetId::get(), GetDotAssetId::get()
+        GetXstAssetId::get(), GetTbcdAssetId::get(), DOT
     ];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
@@ -898,9 +898,6 @@ impl tokens::Config for Runtime {
 parameter_types! {
     // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
     pub const GetXorAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    pub const GetDotAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DOT);
-    pub const GetKsmAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KSM);
-    pub const GetUsdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::USDT);
     pub const GetValAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::VAL);
     pub const GetPswapAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
     pub const GetDaiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::DAI);
@@ -979,7 +976,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 parameter_types! {
@@ -999,12 +996,12 @@ parameter_type_with_key! {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
@@ -1034,14 +1031,15 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 5;
+    pub const GetNumSamples: usize = 10;
     pub const BasicDeposit: Balance = balance!(0.01);
     pub const FieldDeposit: Balance = balance!(0.01);
     pub const SubAccountDeposit: Balance = balance!(0.01);
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
-    pub const MaxAdditionalDataLength: u32 = 128;
+    pub const MaxAdditionalDataLengthXorlessTransfer: u32 = 128;
+    pub const MaxAdditionalDataLengthSwapTransferBatch: u32 = 2000;
     pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"referrals".to_vec(),
@@ -1072,7 +1070,8 @@ impl liquidity_proxy::Config for Runtime {
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
-    type MaxAdditionalDataLength = MaxAdditionalDataLength;
+    type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
+    type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1462,15 +1461,15 @@ impl faucet::Config for Runtime {
     type WeightInfo = faucet::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-    pub QaToolsWhitelistCapacity: u32 = 512;
-}
-
 #[cfg(feature = "private-net")]
 impl qa_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
-    type QaToolsWhitelistCapacity = QaToolsWhitelistCapacity;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type SyntheticInfoProvider = XSTPool;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
+    type Symbol = <Runtime as band::Config>::Symbol;
 }
 
 parameter_types! {
@@ -2461,7 +2460,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
-        QATools: qa_tools::{Pallet, Call} = 112,
+        QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
     }
 }
 
@@ -2636,7 +2635,7 @@ impl_runtime_apis! {
             output_asset_id: AssetId,
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
-        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
+        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
             #[cfg(feature = "private-net")]
             {
                 DEXAPI::quote(
@@ -2645,7 +2644,7 @@ impl_runtime_apis! {
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     true,
-                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance, AssetId> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
             {

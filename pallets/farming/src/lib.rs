@@ -191,7 +191,7 @@ impl<T: Config> Pallet<T> {
 
         let pool_doubles_reward = T::RewardDoublingAssets::get()
             .iter()
-            .any(|asset_id| trading_pair.consists_of(asset_id));
+            .any(|asset_id| trading_pair.contains(asset_id));
 
         if pool_doubles_reward {
             base_asset_amt * 2

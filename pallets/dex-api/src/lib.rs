@@ -35,10 +35,11 @@
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason,
+    LiquiditySourceId, LiquiditySourceType, RewardReason, SwapChunk,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 mod benchmarking;
@@ -95,7 +96,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
             ($source_type:ident) => {
@@ -109,7 +110,7 @@ impl<T: Config>
             };
         }
         match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => quote!(XYKPool),
+            XYKPool => quote!(XYKPool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             XSTPool => quote!(XSTPool),
             OrderBook => quote!(OrderBook),
@@ -121,6 +122,40 @@ impl<T: Config>
         }
     }
 
+    fn step_quote(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! step_quote {
+            ($source_type:ident) => {
+                T::$source_type::step_quote(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    recommended_samples_count,
+                    deduce_fee,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            LiquiditySourceType::XYKPool => step_quote!(XYKPool),
+            MulticollateralBondingCurvePool => step_quote!(MulticollateralBondingCurvePool),
+            XSTPool => step_quote!(XSTPool),
+            OrderBook => step_quote!(OrderBook),
+            MockPool => step_quote!(MockLiquiditySource),
+            MockPool2 => step_quote!(MockLiquiditySource2),
+            MockPool3 => step_quote!(MockLiquiditySource3),
+            MockPool4 => step_quote!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
+        }
+    }
+
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -128,7 +163,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! exchange {
             ($source_type:ident) => {
@@ -193,7 +228,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote_without_impact {
             ($source_type:ident) => {
@@ -226,6 +261,15 @@ impl<T: Config>
             .max(T::XYKPool::quote_weight())
             .max(T::MulticollateralBondingCurvePool::quote_weight())
             .max(T::OrderBook::quote_weight())
+    }
+
+    fn step_quote_weight(samples_count: usize) -> Weight {
+        T::XSTPool::step_quote_weight(samples_count)
+            .max(T::XYKPool::step_quote_weight(samples_count))
+            .max(T::MulticollateralBondingCurvePool::step_quote_weight(
+                samples_count,
+            ))
+            .max(T::OrderBook::step_quote_weight(samples_count))
     }
 
     fn exchange_weight() -> Weight {

@@ -34,7 +34,8 @@ use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, SwapChunk, VAL, XOR,
+    XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
@@ -47,6 +48,7 @@ use framenode_runtime::order_book::{
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::vec_deque::VecDeque;
 
 #[test]
 fn should_register_technical_account() {
@@ -1122,7 +1124,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(271.00535), 0)
+            SwapOutcome::new(balance!(271.00535), Default::default())
         );
 
         assert_eq!(
@@ -1135,7 +1137,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -1148,7 +1150,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1993.7), 0)
+            SwapOutcome::new(balance!(1993.7), Default::default())
         );
 
         assert_eq!(
@@ -1161,7 +1163,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(251.66326), 0)
+            SwapOutcome::new(balance!(251.66326), Default::default())
         );
 
         // with fee
@@ -1175,7 +1177,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(271.00535), 0)
+            SwapOutcome::new(balance!(271.00535), Default::default())
         );
 
         assert_eq!(
@@ -1188,7 +1190,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -1201,7 +1203,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1993.7), 0)
+            SwapOutcome::new(balance!(1993.7), Default::default())
         );
 
         assert_eq!(
@@ -1214,7 +1216,7 @@ fn should_quote() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(251.66326), 0)
+            SwapOutcome::new(balance!(251.66326), Default::default())
         );
     });
 }
@@ -1394,7 +1396,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(272.72727), 0)
+            SwapOutcome::new(balance!(272.72727), Default::default())
         );
 
         assert_eq!(
@@ -1406,7 +1408,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2200), 0)
+            SwapOutcome::new(balance!(2200), Default::default())
         );
 
         assert_eq!(
@@ -1418,7 +1420,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2000), 0)
+            SwapOutcome::new(balance!(2000), Default::default())
         );
 
         assert_eq!(
@@ -1430,7 +1432,7 @@ fn should_quote_without_impact() {
                 false
             )
             .unwrap(),
-            SwapOutcome::new(balance!(250), 0)
+            SwapOutcome::new(balance!(250), Default::default())
         );
 
         // with fee
@@ -1443,7 +1445,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(272.72727), 0)
+            SwapOutcome::new(balance!(272.72727), Default::default())
         );
 
         assert_eq!(
@@ -1455,7 +1457,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2200), 0)
+            SwapOutcome::new(balance!(2200), Default::default())
         );
 
         assert_eq!(
@@ -1467,7 +1469,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(2000), 0)
+            SwapOutcome::new(balance!(2000), Default::default())
         );
 
         assert_eq!(
@@ -1479,7 +1481,7 @@ fn should_quote_without_impact() {
                 true
             )
             .unwrap(),
-            SwapOutcome::new(balance!(250), 0)
+            SwapOutcome::new(balance!(250), Default::default())
         );
     });
 }
@@ -1604,6 +1606,380 @@ fn should_not_quote_without_impact_with_small_amount() {
 }
 
 #[test]
+fn should_step_quote() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let _ = create_and_fill_order_book::<Runtime>(order_book_id);
+
+        // XOR -> VAL with desired input
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(0)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(1000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(2000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(5000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(10000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+            ])
+        );
+
+        // XOR -> VAL with desired output
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(0)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(100)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(1939.3), balance!(176.3), 0)])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0)
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(500)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(1000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(1939.3), balance!(176.3), 0),
+                SwapChunk::new(balance!(2000.32), balance!(178.6), 0),
+                SwapChunk::new(balance!(2941.7), balance!(255.8), 0),
+            ])
+        );
+
+        // VAL -> XOR with desired input
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(0)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(100)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(200)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(500)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(1000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+            ])
+        );
+
+        // VAL -> XOR with desired output
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(0)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::new()
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(1000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([SwapChunk::new(balance!(168.5), balance!(1685), 0)])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0)
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(5000)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+            ])
+        );
+
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(10000)),
+                10,
+                false
+            )
+            .unwrap()
+            .0,
+            VecDeque::from([
+                SwapChunk::new(balance!(168.5), balance!(1685), 0),
+                SwapChunk::new(balance!(139.9), balance!(1371.02), 0),
+                SwapChunk::new(balance!(261.3), balance!(2482.35), 0),
+            ])
+        );
+    });
+}
+
+#[test]
+fn should_not_step_quote_with_non_existed_order_book() {
+    ext().execute_with(|| {
+        assert_err!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(200)),
+                10,
+                true
+            ),
+            E::UnknownOrderBook
+        );
+
+        assert_err!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(2500)),
+                10,
+                false
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
 fn should_exchange_and_transfer_to_owner() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -1632,7 +2008,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -1661,7 +2037,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(177.95391), 0)
+            SwapOutcome::new(balance!(177.95391), Default::default())
         );
 
         assert_eq!(
@@ -1690,7 +2066,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(200.64285), 0)
+            SwapOutcome::new(balance!(200.64285), Default::default())
         );
 
         assert_eq!(
@@ -1719,7 +2095,7 @@ fn should_exchange_and_transfer_to_owner() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1932.327145), 0)
+            SwapOutcome::new(balance!(1932.327145), Default::default())
         );
 
         assert_eq!(
@@ -1767,7 +2143,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(2204.74), 0)
+            SwapOutcome::new(balance!(2204.74), Default::default())
         );
 
         assert_eq!(
@@ -1810,7 +2186,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(177.95391), 0)
+            SwapOutcome::new(balance!(177.95391), Default::default())
         );
 
         assert_eq!(
@@ -1853,7 +2229,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(200.64285), 0)
+            SwapOutcome::new(balance!(200.64285), Default::default())
         );
 
         assert_eq!(
@@ -1896,7 +2272,7 @@ fn should_exchange_and_transfer_to_another_account() {
             )
             .unwrap()
             .0,
-            SwapOutcome::new(balance!(1932.327145), 0)
+            SwapOutcome::new(balance!(1932.327145), Default::default())
         );
 
         assert_eq!(

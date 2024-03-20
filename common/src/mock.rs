@@ -73,6 +73,7 @@ pub enum ComicAssetId {
     BluePromise,
     Mango,
     MichaelJacksonCD,
+    JesterMarotte,
     CrackedBrassBell,
 }
 
@@ -92,6 +93,8 @@ impl From<PredefinedAssetId> for AssetId32<ComicAssetId> {
 impl From<PredefinedAssetId> for ComicAssetId {
     fn from(asset_id: PredefinedAssetId) -> Self {
         use ComicAssetId::*;
+        // only conversion; the `asset_id`'s place of construction must receive the warnings
+        #[allow(deprecated)]
         match asset_id {
             PredefinedAssetId::XOR => GoldenTicket,
             PredefinedAssetId::DOT => AppleTree,
@@ -103,6 +106,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::ETH => AcmeSpyKit,
             PredefinedAssetId::XSTUSD => Mango,
             PredefinedAssetId::XST => BatteryForMusicPlayer,
+            PredefinedAssetId::KEN => JesterMarotte,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
         }

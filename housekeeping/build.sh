@@ -55,9 +55,9 @@ build() {
     subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
     set +e
     subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-    if [[ $? -eq $sudoCheckStatus ]]; then 
+    if [[ $? -eq $sudoCheckStatus ]]; then
         echo "✅ sudo check is successful!"
-    else 
+    else
         echo "❌ sudo check is failed!"
         exit 1
     fi

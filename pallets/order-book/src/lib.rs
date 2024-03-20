@@ -35,12 +35,13 @@
 
 use assets::AssetIdOf;
 use common::prelude::{
-    EnsureTradingPairExists, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, TradingPair,
+    EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
+    TradingPair,
 };
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason, SwapChunk,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
@@ -53,6 +54,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
 use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -1245,7 +1247,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1259,7 +1261,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
         // order-book doesn't take fee
-        let fee = Balance::zero();
+        let fee = OutcomeFee::new();
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
@@ -1273,6 +1275,70 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
     }
 
+    fn step_quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        _deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+            return Err(Error::<T>::UnknownOrderBook.into());
+        };
+
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
+
+        let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
+
+        let limit = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
+                PriceVariant::Buy => {
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
+                }
+                PriceVariant::Sell => OrderAmount::Base(
+                    order_book
+                        .step_lot_size
+                        .copy_divisibility(desired_amount_in),
+                ),
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
+                PriceVariant::Buy => OrderAmount::Base(
+                    order_book
+                        .step_lot_size
+                        .copy_divisibility(desired_amount_out),
+                ),
+                PriceVariant::Sell => {
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
+                }
+            },
+        };
+
+        let market_depth = order_book.market_depth(direction.switched(), Some(limit), &mut data);
+
+        let mut chunks = VecDeque::new();
+        for (price, base_volume) in market_depth.iter() {
+            let quote_volume = price
+                .checked_mul(base_volume)
+                .ok_or(Error::<T>::AmountCalculationFailed)?;
+            match direction {
+                PriceVariant::Buy => chunks.push_back(SwapChunk::new(
+                    *quote_volume.balance(),
+                    *base_volume.balance(),
+                    Balance::zero(),
+                )),
+                PriceVariant::Sell => chunks.push_back(SwapChunk::new(
+                    *base_volume.balance(),
+                    *quote_volume.balance(),
+                    Balance::zero(),
+                )),
+            }
+        }
+
+        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+    }
+
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -1280,7 +1346,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1328,7 +1394,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             order_book.execute_market_order(market_order, &mut data)?;
 
         // order-book doesn't take fee
-        let fee = Balance::zero();
+        let fee = OutcomeFee::new();
 
         let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -1370,7 +1436,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1444,13 +1510,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         );
 
         // order-book doesn't take fee
-        let fee = Balance::zero();
+        let fee = OutcomeFee::new();
 
         Ok(SwapOutcome::new(*target_amount.balance(), fee))
     }
 
     fn quote_weight() -> Weight {
         <T as Config>::WeightInfo::quote()
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        <T as Config>::WeightInfo::step_quote()
     }
 
     fn exchange_weight() -> Weight {

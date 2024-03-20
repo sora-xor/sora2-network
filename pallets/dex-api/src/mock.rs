@@ -33,7 +33,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    LiquiditySource, LiquiditySourceType, RewardReason, SwapChunk, DOT, KSM, PSWAP, TBCD, VAL, XOR,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
@@ -48,6 +49,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::vec_deque::VecDeque;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -150,7 +152,8 @@ impl frame_system::Config for Runtime {
 // We need non-zero weight for testing weight calculation
 pub struct WeightedEmptyLiquiditySource;
 
-impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
+impl<DEXId, AccountId, AssetId: Ord>
+    LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
     for WeightedEmptyLiquiditySource
 {
     fn can_exchange(
@@ -171,12 +174,30 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote(
             target_id,
             input_asset_id,
             output_asset_id,
             amount,
+            deduce_fee,
+        )
+    }
+
+    fn step_quote(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::step_quote(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            recommended_samples_count,
             deduce_fee,
         )
     }
@@ -188,7 +209,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
         <()>::exchange(
             sender,
             receiver,
@@ -221,7 +242,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote_without_impact(
             target_id,
             input_asset_id,
@@ -232,6 +253,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
     }
 
     fn quote_weight() -> Weight {
+        Weight::from_all(1)
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
         Weight::from_all(1)
     }
 
@@ -367,7 +392,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -382,12 +407,12 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
