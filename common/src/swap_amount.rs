@@ -42,6 +42,7 @@ use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSatu
 use sp_std::mem;
 use sp_std::ops::{Add, Sub};
 
+use crate::outcome_fee::OutcomeFee;
 use crate::primitives::Balance;
 use crate::Fixed;
 
@@ -88,8 +89,16 @@ impl<T> QuoteAmount<T> {
         }
     }
 
+    /// Returns desired input/output variant of the value
+    pub fn variant(&self) -> SwapVariant {
+        match self {
+            QuoteAmount::WithDesiredInput { .. } => SwapVariant::WithDesiredInput,
+            QuoteAmount::WithDesiredOutput { .. } => SwapVariant::WithDesiredOutput,
+        }
+    }
+
     /// Position desired amount with outcome such that input and output values are aligned.
-    pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
+    pub fn place_input_and_output<AssetId: Ord>(self, outcome: SwapOutcome<T, AssetId>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
@@ -173,7 +182,7 @@ impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
                 Self::WithDesiredInput {
                     desired_amount_in: in_b,
                 },
-            ) => Some(Self::with_desired_input(in_a.checked_add(&in_b)?)),
+            ) => Some(Self::with_desired_input(in_a.checked_add(in_b)?)),
             (
                 Self::WithDesiredOutput {
                     desired_amount_out: out_a,
@@ -181,7 +190,7 @@ impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
                 Self::WithDesiredOutput {
                     desired_amount_out: out_b,
                 },
-            ) => Some(Self::with_desired_output(out_a.checked_add(&out_b)?)),
+            ) => Some(Self::with_desired_output(out_a.checked_add(out_b)?)),
             (_, _) => None,
         }
     }
@@ -368,7 +377,7 @@ impl<T> SwapAmount<T> {
     }
 
     // Position desired amount with outcome such that input and output values are aligned.
-    pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
+    pub fn place_input_and_output<AssetId: Ord>(self, outcome: SwapOutcome<T, AssetId>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
@@ -545,7 +554,7 @@ where
     T: Copy + Into<Fixed> + From<Fixed>,
 {
     fn mul_assign(&mut self, rhs: Fixed) {
-        match self.clone() {
+        match *self {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
@@ -601,15 +610,15 @@ where
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct SwapOutcome<AmountType> {
+pub struct SwapOutcome<AmountType, AssetId: Ord> {
     /// Actual swap output/input amount including deduced fee.
     pub amount: AmountType,
-    /// Accumulated fee amount, assumed to be in XOR.
-    pub fee: AmountType,
+    /// Accumulated fee amount.
+    pub fee: OutcomeFee<AssetId, AmountType>,
 }
 
-impl<AmountType> SwapOutcome<AmountType> {
-    pub fn new(amount: AmountType, fee: AmountType) -> Self {
+impl<AmountType, AssetId: Ord> SwapOutcome<AmountType, AssetId> {
+    pub fn new(amount: AmountType, fee: OutcomeFee<AssetId, AmountType>) -> Self {
         Self { amount, fee }
     }
 }
@@ -618,35 +627,47 @@ impl<AmountType> SwapOutcome<AmountType> {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TryFromSwapOutcomeError;
 
-impl TryFrom<SwapOutcome<Balance>> for SwapOutcome<Fixed> {
+impl<AssetId: Ord> TryFrom<SwapOutcome<Balance, AssetId>> for SwapOutcome<Fixed, AssetId> {
     type Error = TryFromSwapOutcomeError;
 
-    fn try_from(value: SwapOutcome<Balance>) -> Result<Self, Self::Error> {
+    fn try_from(value: SwapOutcome<Balance, AssetId>) -> Result<Self, Self::Error> {
         let amount = Fixed::from_bits(
             value
                 .amount
                 .try_into()
                 .map_err(|_| TryFromSwapOutcomeError)?,
         );
-        let fee = Fixed::from_bits(value.fee.try_into().map_err(|_| TryFromSwapOutcomeError)?);
+
+        let mut fee = OutcomeFee::new();
+        for (asset, fee_amount) in value.fee.0 {
+            let fee_fixed =
+                Fixed::from_bits(fee_amount.try_into().map_err(|_| TryFromSwapOutcomeError)?);
+            fee.0.insert(asset, fee_fixed);
+        }
+
         Ok(Self { amount, fee })
     }
 }
 
-impl TryFrom<SwapOutcome<Fixed>> for SwapOutcome<Balance> {
+impl<AssetId: Ord> TryFrom<SwapOutcome<Fixed, AssetId>> for SwapOutcome<Balance, AssetId> {
     type Error = TryFromSwapOutcomeError;
 
-    fn try_from(value: SwapOutcome<Fixed>) -> Result<Self, Self::Error> {
+    fn try_from(value: SwapOutcome<Fixed, AssetId>) -> Result<Self, Self::Error> {
         let amount = value
             .amount
             .into_bits()
             .try_into()
             .map_err(|_| TryFromSwapOutcomeError)?;
-        let fee = value
-            .fee
-            .into_bits()
-            .try_into()
-            .map_err(|_| TryFromSwapOutcomeError)?;
+
+        let mut fee = OutcomeFee::new();
+        for (asset, fee_amount) in value.fee.0 {
+            let fee_balance = fee_amount
+                .into_bits()
+                .try_into()
+                .map_err(|_| TryFromSwapOutcomeError)?;
+            fee.0.insert(asset, fee_balance);
+        }
+
         Ok(Self { amount, fee })
     }
 }

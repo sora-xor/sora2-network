@@ -16,17 +16,27 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 common = { path = "../../common", default-features = false }
+rand = { version = "0.8.5", default-features = false }
+rand_chacha = { version = "0.3.1", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets", default-features = false }
-order-book = { path = "../../pallets/order-book", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
+band = { path = "../band", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
+oracle-proxy = { path = "../oracle-proxy", default-features = false }
+order-book = { path = "../order-book", default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+price-tools = { path = "../price-tools", default-features = false }
+technical = { path = "../technical", default-features = false }
+xst = { path = "../xst", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
 framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -34,19 +44,22 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 [features]
 default = ["std"]
 std = [
+    "assets/std",
+    "band/std",
     "codec/std",
+    "common/std",
     "frame-support/std",
     "frame-system/std",
+    "oracle-proxy/std",
     "order-book/std",
+    "pool-xyk/std",
+    "price-tools/std",
     "scale-info/std",
-]
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
-    "common/ready-to-test",
-    "order-book/ready-to-test"
+    "sp-std/std",
+    "xst/std",
 ]
 private-net = [
     "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",
+    "order-book/private-net",
 ]

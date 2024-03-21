@@ -29,12 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::FixedWrapper;
-use crate::Balance;
+use crate::{Balance, FixedPrecision};
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use fixnum::ops::RoundMode;
+use fixnum::typenum::Unsigned as _;
 use fixnum::ArithmeticError;
-use num_traits::Unsigned;
+use num_traits::{One, Unsigned};
 use sp_arithmetic::traits::IntegerSquareRoot;
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero};
 
@@ -48,6 +50,30 @@ use {
 const RATIO: u128 = 1_000_000_000_000_000_000;
 
 /// BalanceUnit wraps Balance and provides proper math operations between divisible & non-divisible balances that have different precision.
+///
+/// # Equality inconsistency
+/// Note that, contrary to intuition and documentation of `Ord`, traits `Eq` (+ `PartialEq`),
+/// `Ord` (+ `PartialOrd`), and `Encode` (+ `Decode`) are not consistent with each other.
+///
+/// - `Ord` compares numbers by mathematical values. So `{1, indivisible}` and
+/// `{10^18, divisible}` will be `Ordering::Equal`.
+/// - `Eq` compares them field-by-field, making divisible never equal to indivisible numbers.
+/// So `{1, indivisible} != {10^18, divisible}`.
+/// - `Encode` behaves the same way as `Eq`, concentrating on the fields rather than mathematical
+/// value.
+///
+/// It was left this way because obtaining the following properties requires some major
+/// reconsiderations of implementation, possible migrations, and a lot of effort:
+/// - `Ord` should compare the numbers mathematically
+/// - encoding/decoding should preserve divisibility of the numbers
+/// - `Eq` should be consistent with `Encode`/`Decode`
+/// - `Ord` should be consistent with `Eq` (not satisfied)
+///
+/// For example, this has the following implications for `a = {1, indivisible}` and `b = {10^18, divisible}`:
+/// - counterintuitively, `a > b == false`,  `a < b == false`, and `(a == b) == false`
+/// (first two use `PartialOrd`, the last one uses `PartialEq`)
+/// - in `StorageMap` (that uses encoded values as keys) `a` and `b` are considered different
+/// keys, but in `BTreeMap` (that uses `Ord`) they are unified.
 #[derive(
     Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
 )]
@@ -74,7 +100,7 @@ impl Ord for BalanceUnit {
 
 impl PartialOrd for BalanceUnit {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -92,6 +118,19 @@ impl Zero for BalanceUnit {
 
     fn is_zero(&self) -> bool {
         self.inner.is_zero()
+    }
+}
+
+impl One for BalanceUnit {
+    fn one() -> Self {
+        Self::new(1, false)
+    }
+
+    fn is_one(&self) -> bool
+    where
+        Self: PartialEq,
+    {
+        self.cmp(&Self::one()).is_eq()
     }
 }
 
@@ -178,6 +217,27 @@ impl BalanceUnit {
             self.inner.integer_sqrt()
         };
         Ok(Self::new(balance, self.is_divisible))
+    }
+
+    pub fn into_indivisible(mut self, mode: RoundMode) -> Self {
+        if self.is_divisible {
+            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32);
+            self.inner = match mode {
+                RoundMode::Ceil => self.inner.div_ceil(div_coefficient),
+                RoundMode::Floor => self.inner.div_floor(div_coefficient),
+            };
+            self.is_divisible = false;
+        }
+        self
+    }
+
+    pub fn into_divisible(mut self) -> Option<Self> {
+        if !self.is_divisible {
+            let div_coefficient: u128 = 10u128.pow(FixedPrecision::U32);
+            self.inner = self.inner.checked_mul(div_coefficient)?;
+            self.is_divisible = true;
+        }
+        Some(self)
     }
 }
 
@@ -431,7 +491,7 @@ mod tests {
         );
 
         assert_eq!(
-            BalanceUnit::new(10, false),
+            BalanceUnit::indivisible(10),
             BalanceUnit {
                 inner: 10,
                 is_divisible: false
@@ -1228,5 +1288,53 @@ mod tests {
         assert_eq!(BalanceUnit::indivisible(100).to_string(), "100");
         assert_eq!(BalanceUnit::indivisible(123).to_string(), "123");
         assert_eq!(BalanceUnit::indivisible(0).to_string(), "0");
+    }
+
+    #[test]
+    fn check_into_divisible() {
+        let coefficient = 10u128.pow(FixedPrecision::U32);
+
+        for n in [0, 1, 100, u128::MAX / coefficient] {
+            assert_eq!(
+                BalanceUnit::divisible(n).into_divisible(),
+                Some(BalanceUnit::divisible(n))
+            );
+            assert_eq!(
+                BalanceUnit::indivisible(n).into_divisible(),
+                Some(BalanceUnit::divisible(n * coefficient))
+            );
+        }
+
+        // overflow
+        for n in [u128::MAX / coefficient + 1, u128::MAX] {
+            assert_eq!(
+                BalanceUnit::divisible(n).into_divisible(),
+                Some(BalanceUnit::divisible(n))
+            );
+            assert_eq!(BalanceUnit::indivisible(n).into_divisible(), None);
+        }
+    }
+
+    #[test]
+    fn check_into_indivisible() {
+        let coefficient = 10u128.pow(FixedPrecision::U32);
+
+        for n in [
+            0,
+            1,
+            100,
+            u128::MAX / coefficient,
+            u128::MAX / coefficient + 1,
+            u128::MAX,
+        ] {
+            assert_eq!(
+                BalanceUnit::divisible(n).into_indivisible(RoundMode::Ceil),
+                BalanceUnit::indivisible(n.div_ceil(coefficient))
+            );
+            assert_eq!(
+                BalanceUnit::divisible(n).into_indivisible(RoundMode::Floor),
+                BalanceUnit::indivisible(n.div_floor(coefficient))
+            );
+        }
     }
 }

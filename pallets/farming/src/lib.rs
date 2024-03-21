@@ -57,7 +57,10 @@ use sp_std::collections::btree_map::{BTreeMap, Entry};
 use sp_std::vec::Vec;
 
 use common::prelude::{FixedWrapper, QuoteAmount};
-use common::{balance, AccountIdOf, Balance, DexIdOf, LiquiditySource, OnPoolCreated};
+use common::{
+    balance, AccountIdOf, Balance, DexIdOf, LiquiditySource, OnPoolCreated,
+    TradingPairSourceManager,
+};
 
 pub type WeightInfoOf<T> = <T as Config>::WeightInfo;
 pub use weights::WeightInfo;
@@ -188,7 +191,7 @@ impl<T: Config> Pallet<T> {
 
         let pool_doubles_reward = T::RewardDoublingAssets::get()
             .iter()
-            .any(|asset_id| trading_pair.consists_of(asset_id));
+            .any(|asset_id| trading_pair.contains(asset_id));
 
         if pool_doubles_reward {
             base_asset_amt * 2
@@ -338,6 +341,7 @@ pub mod pallet {
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }

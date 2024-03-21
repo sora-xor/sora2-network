@@ -1,0 +1,55 @@
+[package]
+name = "kensetsu-benchmarking"
+version = "0.1.0"
+description = "Kensetsu pallet benchmarking"
+edition = "2021"
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+assets = { path = "../../assets", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+common = { path = "../../../common", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+kensetsu = { path = "..", default-features = false }
+pool-xyk = { path = "../../pool-xyk", default-features = false }
+price-tools = { path = "../../price-tools", default-features = false }
+technical = { path = "../../technical", default-features = false }
+trading-pair = { path = "../../trading-pair", default-features = false }
+hex-literal = { version = "0.4", optional = true }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", optional = true }
+
+[features]
+default = ["std"]
+std = [
+    "assets/std",
+    "codec/std",
+    "common/std",
+    "frame-benchmarking/std",
+    "frame-system/std",
+    "sp-arithmetic/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "technical/std",
+    "kensetsu/std",
+    "pallet-timestamp/std",
+    "pool-xyk/std",
+    "trading-pair/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-benchmarking/runtime-benchmarks",
+    "hex-literal",
+]

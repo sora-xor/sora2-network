@@ -30,18 +30,23 @@
 
 use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
+use crate::weights::WeightInfo;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
-use common::prelude::{AssetName, AssetSymbol, Balance, FixedWrapper, QuoteAmount, SwapAmount};
-use common::test_utils::assert_event;
+use common::prelude::{
+    AssetName, AssetSymbol, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapVariant,
+};
 use common::{
-    assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    ReferencePriceProvider, RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP,
-    USDT, VAL, XOR, XST, XSTUSD,
+    assert_approx_eq_abs, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler,
+    FilterMode, Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, ReferencePriceProvider, RewardReason,
+    TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use frame_support::{assert_noop, assert_ok};
+use sp_core::bounded::BoundedVec;
 use sp_runtime::DispatchError;
 use test_utils::mcbc_excluding_filter;
 
@@ -77,7 +82,10 @@ fn test_quote_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(537.643138033120596204));
-        assert_eq!(quotes.fee, balance!(1.1125));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(1.1125))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -136,7 +144,10 @@ fn test_quote_exact_input_target_should_pass() {
 
         assert_eq!(rewards, Vec::new());
         assert_eq!(quotes.amount, balance!(363.569067258883248761));
-        assert_eq!(quotes.fee, balance!(0.551491116751269035));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.551491116751269035))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -206,7 +217,10 @@ fn test_quote_exact_output_target_should_pass() {
                     .unwrap()
                     < tolerance)
         );
-        assert_eq!(quotes.fee, balance!(0.531316943052148668));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.531316943052148668))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -275,7 +289,10 @@ fn test_quote_exact_output_base_should_pass() {
                     .unwrap()
                     < tolerance)
         );
-        assert_eq!(quotes.fee, balance!(0.338264379900812242));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.338264379900812242))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -343,7 +360,10 @@ fn test_poly_quote_exact_input_1_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(934.572151021276260545));
-        assert_eq!(quotes.fee, balance!(2.318181818181818181));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.318181818181818181))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -392,7 +412,10 @@ fn test_poly_quote_exact_output_1_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(100.0));
-        assert_eq!(quotes.fee, balance!(2.318181818181818181));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.318181818181818181))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -441,7 +464,10 @@ fn test_poly_quote_exact_input_2_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(555.083861089846196673));
-        assert_eq!(quotes.fee, balance!(2.666666666666666666));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.666666666666666666))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -490,7 +516,10 @@ fn test_poly_quote_exact_output_2_should_pass() {
         .expect("Failed to swap via LiquiditySource trait");
 
         assert_eq!(quotes.amount, balance!(500.000000000000000000));
-        assert_eq!(quotes.fee, balance!(2.666666666666666666));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(2.666666666666666666))
+        );
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(ls_swap.amount, quotes.amount);
@@ -795,6 +824,313 @@ fn test_sell_however_big_amount_base_should_pass() {
 }
 
 #[test]
+fn test_swap_weight_considers_available_sources() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
+            .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
+
+        #[cfg(not(feature = "wip"))] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
+            )
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
+                    .saturating_mul(2),
+            );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
+        let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
+            .saturating_add(quote_single_weight); // once within a path
+        let multicollateral_weight =
+            <Runtime as dex_api::Config>::MulticollateralBondingCurvePool::exchange_weight();
+        let xst_weight = <Runtime as dex_api::Config>::XSTPool::exchange_weight();
+
+        // ETH -1-> XOR -2-> XST (DEX 0)
+        // 1) Multicollateral
+        // 2) MockPool
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::Disabled,
+            ),
+            swap_weight_without_path
+                .saturating_add(multicollateral_weight)
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+
+        // DOT -1-> XOR (DEX ID 1)
+        // 1) Multicollateral + MockPool(1-3)
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &DOT,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::Disabled,
+            ),
+            swap_weight_without_path.saturating_add(multicollateral_weight)
+        );
+
+        // DOT -1-> XOR (DEX ID 1)
+        // 1) Multicollateral + MockPool(1-3)
+        // (WithDesiredInput)
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(Weight::zero()); // WithDesiredInput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &DOT,
+                &XOR,
+                SwapVariant::WithDesiredInput,
+                &Vec::new(),
+                &FilterMode::Disabled,
+            ),
+            swap_weight_without_path.saturating_add(multicollateral_weight)
+        );
+
+        // Two paths (DEX ID 1):
+        //
+        // XSTUSD -1-> XST -2-> XOR
+        // 1) XSTPool
+        // 2) Multicollateral
+        //
+        // XSTUSD -1-> XOR
+        // 1) Multicollateral
+
+        // The first path is obviously more expensive (multicollateral + xst > multicollateral)
+
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(2)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::Disabled,
+            ),
+            swap_weight_without_path
+                .saturating_add(xst_weight)
+                .saturating_add(multicollateral_weight)
+        );
+    });
+}
+
+#[test]
+fn test_swap_weight_filters_sources() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let swap_base_weight = <Runtime as crate::Config>::WeightInfo::check_indivisible_assets()
+            .saturating_add(<Runtime as crate::Config>::WeightInfo::is_forbidden_filter());
+
+        #[cfg(not(feature = "wip"))] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::quote_weight().saturating_mul(4),
+            )
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight()
+                    .saturating_mul(2),
+            );
+
+        #[cfg(feature = "wip")] // ALT
+        let quote_single_weight = <Runtime as crate::Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(<Runtime as crate::Config>::LiquidityRegistry::check_rewards_weight())
+            .saturating_add(
+                <Runtime as crate::Config>::LiquidityRegistry::step_quote_weight(
+                    <Runtime as crate::Config>::GetNumSamples::get(),
+                )
+                .saturating_mul(4),
+            );
+
+        let exchange_base_weight = <Runtime as crate::Config>::WeightInfo::new_trivial()
+            .saturating_add(quote_single_weight); // once within a path
+        let multicollateral_weight =
+            <Runtime as dex_api::Config>::MulticollateralBondingCurvePool::exchange_weight();
+        let xst_weight = <Runtime as dex_api::Config>::XSTPool::exchange_weight();
+
+        // ETH -1-> XOR -2-> XST (DEX 0)
+        // 1) Multicollateral
+        // 2) MockPool
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([
+                    LiquiditySourceType::MockPool,
+                    LiquiditySourceType::MulticollateralBondingCurvePool
+                ]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+                .saturating_add(multicollateral_weight)
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MockPool]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+                // Multicollateral is filtered out
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
+                &FilterMode::ForbidSelected,
+            ),
+            swap_weight_without_path
+                // Multicollateral is filtered out
+                .saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_D_ID,
+                &ETH,
+                &XST,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+        );
+
+        // DOT -1-> XOR (DEX ID 1)
+        // 1) Multicollateral + MockPool(1-3)
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &DOT,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::ForbidSelected,
+            ),
+            // Multicollateral is the heaviest
+            swap_weight_without_path.saturating_add(multicollateral_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &DOT,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
+                &FilterMode::ForbidSelected,
+            ),
+            swap_weight_without_path.saturating_add(Weight::zero()) // `MockSource`s are not counted
+        );
+
+        // Two paths (DEX ID 1):
+        //
+        // XSTUSD -1-> XST -2-> XOR
+        // 1) XSTPool
+        // 2) Multicollateral
+        //
+        // XSTUSD -1-> XOR
+        // 1) Multicollateral
+        let swap_weight_without_path = swap_base_weight
+            .saturating_add(exchange_base_weight)
+            .saturating_add(quote_single_weight.saturating_mul(2)) // for each available path
+            .saturating_add(quote_single_weight); // WithDesiredOutput
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::ForbidSelected,
+            ),
+            swap_weight_without_path
+                .saturating_add(xst_weight)
+                .saturating_add(multicollateral_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::XSTPool]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path.saturating_add(xst_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path.saturating_add(multicollateral_weight)
+        );
+        assert_eq!(
+            LiquidityProxy::swap_weight(
+                &DEX_A_ID,
+                &XSTUSD,
+                &XOR,
+                SwapVariant::WithDesiredOutput,
+                &Vec::new(),
+                &FilterMode::AllowSelected,
+            ),
+            swap_weight_without_path
+        );
+    });
+}
+
+#[test]
 fn test_swap_should_fail_with_bad_origin() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -909,7 +1245,10 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_eq!(quotes.fee, balance!(0.630925033164008153));
+        assert_eq!(
+            quotes.fee,
+            OutcomeFee::from_asset(GetBaseAssetId::get(), balance!(0.630925033164008153))
+        );
     });
 }
 
@@ -943,7 +1282,7 @@ fn test_quote_single_source_should_pass() {
         let dist = quotes.distribution;
 
         assert_eq!(quotes.amount, balance!(269.607843137254901960));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(ls_quote.amount, quotes.amount);
         assert_eq!(ls_quote.fee, quotes.fee);
         assert_eq!(
@@ -956,6 +1295,7 @@ fn test_quote_single_source_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -988,7 +1328,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         // The "smart" split produces the outcome which is worse than purely XYK pool swap
         // Hence the latter result use used resulting in the dist == [0.0, 1.0]
         assert_eq!(quotes.amount, balance!(18181.818181818181818181));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1013,7 +1353,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(174.276240737227906075));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1047,7 +1387,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(1516.342527519604340858));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1067,6 +1407,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1099,7 +1440,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
         // The "smart" split produces the outcome which is worse than purely XYK pool swap
         // Hence the latter result use used resulting in the dist == [0.0, 1.0]
         assert_eq!(quotes.amount, balance!(111.111111111111111112));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1124,7 +1465,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(230.897068686326074201));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1158,7 +1499,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(125.000000000000000000));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1169,6 +1510,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1207,7 +1549,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             )]
         );
         assert_eq!(quotes.amount, balance!(22081.292525857240241897));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1241,7 +1583,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(208.138107215848656553));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1275,7 +1617,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(934.530528433224671738));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1295,6 +1637,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_fast_split_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
@@ -1333,7 +1676,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             )]
         );
         assert_eq!(quotes.amount, balance!(91.129562076735353496));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1367,7 +1710,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(182.802146328804827615));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1401,7 +1744,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(53.662213070708617870));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[
@@ -1458,7 +1801,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
 
         assert_eq!(rewards, Vec::new());
         assert_eq!(quotes.amount, balance!(111.111111111111111112));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1483,7 +1826,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(250.0));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1508,7 +1851,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, balance!(125.0));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert_eq!(
             &dist,
             &[(
@@ -1865,6 +2208,7 @@ fn test_is_path_available_should_pass_5() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_with_extreme_total_supply_works() {
     fn run_test(
@@ -2348,6 +2692,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_selling_xor_should_fail() {
     fn run_test(
@@ -2386,7 +2731,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 false,
                 true,
             );
-            assert_noop!(result, crate::Error::<Runtime>::InsufficientLiquidity);
+            assert_noop!(result, Error::<Runtime>::InsufficientLiquidity);
         });
     }
 
@@ -2438,6 +2783,7 @@ fn test_smart_split_selling_xor_should_fail() {
     }
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_smart_split_error_handling_works() {
     fn run_test(
@@ -2522,17 +2868,7 @@ fn selecting_xyk_only_filter_is_forbidden() {
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![XYKPool], &AllowSelected), false);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![XYKPool], &AllowSelected), false);
 
-        #[allow(unused_assignments)] // order-book
-        let mut sources_except_xyk = Vec::new();
-        
-        #[cfg(feature = "ready-to-test")] // order-book
-        {
-            sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
-        }
-        #[cfg(not(feature = "ready-to-test"))] // order-book
-        {
-            sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool];
-        }
+        let mut sources_except_xyk = vec![MulticollateralBondingCurvePool, XSTPool, OrderBook];
         
         // xyk only selection, base case
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &sources_except_xyk, &ForbidSelected), true);
@@ -2746,8 +3082,8 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         .expect("Failed to get a quote");
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_xor_intermediate, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_approx_eq_abs!(quotes.amount, amount_xor_intermediate, balance!(1));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -2783,7 +3119,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
+        assert_approx_eq_abs!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
         assert!(amount_without_impact.unwrap() > quotes.amount);
 
         // Buying KSM for XOR
@@ -2799,8 +3135,8 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         .expect("Failed to get a quote");
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_ksm_out, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_approx_eq_abs!(quotes.amount, amount_ksm_out, balance!(1));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -2836,7 +3172,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
+        assert_approx_eq_abs!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
         assert!(amount_without_impact.unwrap() > quotes.amount);
 
         // Buying KSM for VAL
@@ -2855,8 +3191,8 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_ksm_out, balance!(1));
-        assert_approx_eq!(amount_without_impact.unwrap(), amount_ksm_out, balance!(20));
+        assert_approx_eq_abs!(quotes.amount, amount_ksm_out, balance!(1));
+        assert_approx_eq_abs!(amount_without_impact.unwrap(), amount_ksm_out, balance!(20));
         assert!(amount_without_impact.unwrap() > quotes.amount);
     });
 }
@@ -2891,8 +3227,8 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         .expect("Failed to get a quote");
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_val_in, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_approx_eq_abs!(quotes.amount, amount_val_in, balance!(1));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -2928,7 +3264,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             quotes.amount,
             amount_without_impact.unwrap(),
             balance!(5000)
@@ -2948,8 +3284,8 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         .expect("Failed to get a quote");
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_approx_eq!(quotes.amount, amount_xor_intermediate, balance!(1));
-        assert_eq!(quotes.fee, balance!(0));
+        assert_approx_eq_abs!(quotes.amount, amount_xor_intermediate, balance!(1));
+        assert_eq!(quotes.fee, OutcomeFee::new());
         assert!(matches!(
             dist.as_slice(),
             [
@@ -2985,7 +3321,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             quotes.amount,
             amount_without_impact.unwrap(),
             balance!(5000)
@@ -3008,8 +3344,8 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote")
         .0;
-        assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
-        assert_approx_eq!(
+        assert_approx_eq_abs!(quotes.amount, amount_val_in, balance!(100));
+        assert_approx_eq_abs!(
             amount_without_impact.unwrap(),
             amount_val_in,
             balance!(5000)
@@ -3018,6 +3354,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_quote_does_not_overflow_with_desired_input() {
     let collateral_asset_id = VAL;
@@ -3044,6 +3381,7 @@ fn test_quote_does_not_overflow_with_desired_input() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // ALT
 #[test]
 fn test_inner_exchange_returns_correct_sources() {
     use LiquiditySourceType::*;
@@ -3342,6 +3680,7 @@ fn test_batch_swap_desired_input_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3349,8 +3688,12 @@ fn test_batch_swap_desired_input_successful() {
     });
 }
 
-#[test]
-fn test_batch_swap_emits_event() {
+fn test_batch_swap_event(
+    event_data: BoundedVec<
+        u8,
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch,
+    >,
+) {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         frame_system::Pallet::<Runtime>::set_block_number(1);
@@ -3381,12 +3724,27 @@ fn test_batch_swap_emits_event() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            Some(event_data.clone()),
         ));
 
-        common::test_utils::assert_last_event::<Runtime>(
-            crate::Event::BatchSwapExecuted(adar_fee, amount_in).into(),
+        frame_system::Pallet::<Runtime>::assert_last_event(
+            crate::Event::BatchSwapExecuted(adar_fee, amount_in, Some(event_data)).into(),
         );
     });
+}
+
+#[test]
+fn test_batch_swap_emits_event() {
+    test_batch_swap_event(BoundedVec::try_from(vec![1, 2, 3, 32, 2, 13, 37]).unwrap());
+}
+
+#[test]
+fn test_batch_swap_max_additional_data() {
+    let max_data_len: u32 =
+        <Runtime as crate::Config>::MaxAdditionalDataLengthSwapTransferBatch::get();
+    let max_additional_data =
+        BoundedVec::try_from(vec![255; max_data_len.try_into().unwrap()]).unwrap();
+    test_batch_swap_event(max_additional_data)
 }
 
 #[test]
@@ -3431,6 +3789,7 @@ fn test_batch_swap_duplicate_receivers_successful() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
@@ -3477,6 +3836,7 @@ fn test_batch_swap_desired_input_too_low() {
                 max_input_amount,
                 sources,
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::SlippageNotTolerated
         );
@@ -3523,6 +3883,7 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
+                None,
             ),
             Error::<Runtime>::AggregationError
         );
@@ -3677,7 +4038,7 @@ fn test_batch_swap_asset_reuse_works() {
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(12000)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356400),
             balance!(0.00001)
@@ -3714,27 +4075,28 @@ fn test_batch_swap_asset_reuse_works() {
             max_input_amount,
             sources.clone(),
             filter_mode,
+            None,
         ));
 
         test_utils::check_adar_commission(&swap_batches, sources);
         test_utils::check_swap_batch_executed_amount(swap_batches);
-        assert_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(KSM, balance!(0.025)).into(),
         );
-        assert_event::<Runtime>(
+        frame_system::Pallet::<Runtime>::assert_has_event(
             crate::Event::<Runtime>::ADARFeeWithdrawn(USDT, balance!(0.025)).into(),
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356394.934457262),
             balance!(0.00001)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&KSM, &alice()).unwrap(),
             balance!(1990),
             balance!(0.00001)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             balance!(11989.975),
             balance!(0.00001)
@@ -3775,6 +4137,7 @@ fn test_batch_swap_asset_reuse_fails() {
                 max_input_amount,
                 sources.clone(),
                 filter_mode,
+                None,
             ),
             Error::<Runtime>::InsufficientBalance
         );
@@ -3811,18 +4174,18 @@ fn test_xorless_transfer_works() {
             Default::default(),
         ));
 
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
             balance!(11998),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356401),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &bob()).unwrap(),
             balance!(1),
             balance!(0.01)
@@ -3860,18 +4223,18 @@ fn test_xorless_transfer_without_swap_works() {
             Default::default(),
         ));
 
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
             // 12000 USDT - 1 USDT for swap - 1 USDT for transfer
             balance!(11999),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
             balance!(356400),
             balance!(0.01)
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             Assets::free_balance(&USDT, &bob()).unwrap(),
             balance!(1),
             balance!(0.01)

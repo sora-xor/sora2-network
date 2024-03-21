@@ -40,7 +40,7 @@ use bridge_types::GenericTimepoint;
 use bridge_types::H160;
 use bridge_types::{GenericAccount, GenericNetworkId};
 use codec::Encode;
-use common::{balance, DAI, XOR};
+use common::{balance, FixedInner, DAI, XOR};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::traits::Hooks;
@@ -66,7 +66,7 @@ fn burn_successfull() {
             RawOrigin::Root.into(),
             caller.clone(),
             XOR,
-            balance!(1) as i128,
+            balance!(1) as FixedInner,
         )
         .unwrap();
         BridgeProxy::burn(
@@ -288,7 +288,7 @@ fn burn_no_enough_locked() {
             RawOrigin::Root.into(),
             caller.clone(),
             DAI,
-            balance!(1) as i128,
+            balance!(1) as FixedInner,
         )
         .unwrap();
         assert_noop!(

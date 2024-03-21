@@ -30,12 +30,14 @@
 
 use crate::{self as dex_api, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
-use common::prelude::Balance;
+use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySourceType, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    LiquiditySource, LiquiditySourceType, RewardReason, SwapChunk, DOT, KSM, PSWAP, TBCD, VAL, XOR,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
+use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
@@ -47,6 +49,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::vec_deque::VecDeque;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -112,7 +115,6 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
-        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -147,6 +149,126 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
+// We need non-zero weight for testing weight calculation
+pub struct WeightedEmptyLiquiditySource;
+
+impl<DEXId, AccountId, AssetId: Ord>
+    LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
+    for WeightedEmptyLiquiditySource
+{
+    fn can_exchange(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> bool {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::can_exchange(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+        )
+    }
+
+    fn quote(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
+    }
+
+    fn step_quote(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        recommended_samples_count: usize,
+        deduce_fee: bool,
+    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::step_quote(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            recommended_samples_count,
+            deduce_fee,
+        )
+    }
+
+    fn exchange(
+        sender: &AccountId,
+        receiver: &AccountId,
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<(SwapOutcome<Balance, AssetId>, Weight), DispatchError> {
+        <()>::exchange(
+            sender,
+            receiver,
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            swap_amount,
+        )
+    }
+
+    fn check_rewards(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        input_amount: Balance,
+        output_amount: Balance,
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::check_rewards(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            input_amount,
+            output_amount,
+        )
+    }
+
+    fn quote_without_impact(
+        target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
+        <() as LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>>::quote_without_impact(
+            target_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::from_all(1)
+    }
+
+    fn step_quote_weight(_samples_count: usize) -> Weight {
+        Weight::from_all(1)
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::from_all(10)
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::from_all(100)
+    }
+}
+
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource =
@@ -157,12 +279,11 @@ impl Config for Runtime {
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type MulticollateralBondingCurvePool = ();
+    type MulticollateralBondingCurvePool = WeightedEmptyLiquiditySource;
+    type XSTPool = WeightedEmptyLiquiditySource;
     type XYKPool = pool_xyk::Pallet<Runtime>;
-    type XSTPool = ();
-
-    #[cfg(feature = "ready-to-test")] // order-book
-    type OrderBook = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type OrderBook = WeightedEmptyLiquiditySource;
 
     type WeightInfo = ();
 }
@@ -240,28 +361,28 @@ impl pallet_balances::Config for Runtime {
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
@@ -271,17 +392,10 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-}
 
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -293,13 +407,17 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
+    type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

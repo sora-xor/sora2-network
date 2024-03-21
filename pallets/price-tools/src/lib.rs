@@ -51,7 +51,8 @@ pub mod migration;
 
 use codec::{Decode, Encode};
 use common::prelude::{
-    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
+    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
+    TradingPairSourceManager,
 };
 use common::{
     balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
@@ -140,10 +141,10 @@ pub mod pallet {
         + common::Config
         + technical::Config
         + pool_xyk::Config
-        + trading_pair::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type WeightInfo: WeightInfo;
     }
 
@@ -377,8 +378,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Get current spot price for
-    fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        <T as pallet::Config>::LiquidityProxy::quote(
+    pub fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        T::LiquidityProxy::quote(
             DEXId::Polkaswap.into(),
             &XOR.into(),
             &asset_id,
@@ -447,7 +448,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
+impl<T: Config> PriceToolsProvider<T::AssetId> for Pallet<T> {
     fn get_average_price(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
@@ -463,10 +464,6 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
         } else {
             fail!(Error::<T>::AssetAlreadyRegistered);
         }
-    }
-
-    fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        Pallet::<T>::spot_price(asset_id)
     }
 }
 

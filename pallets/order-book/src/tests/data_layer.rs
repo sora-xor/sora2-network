@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "ready-to-test")] // order-book
-
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::BalanceUnit;
@@ -73,8 +71,8 @@ fn should_work_as_cache() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -168,8 +166,8 @@ fn should_work_as_storage() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -253,8 +251,8 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_buy_id1 = 1;
@@ -313,7 +311,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
 
         let order_sell3 = LimitOrder::<Runtime>::new(
             order_sell_id3,
-            owner.clone(),
+            owner,
             PriceVariant::Sell,
             price2,
             amount,
@@ -363,8 +361,8 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_buy_id = 1;
@@ -516,8 +514,8 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let owner = accounts::alice::<Runtime>();
@@ -526,7 +524,7 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
 
         let mut order = LimitOrder::<Runtime>::new(
             0,
-            owner.clone(),
+            owner,
             PriceVariant::Sell,
             price,
             amount,
@@ -569,8 +567,8 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_buy_id1 = 1;
@@ -1060,8 +1058,8 @@ fn should_not_delete_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -1089,8 +1087,8 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -1230,8 +1228,8 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -1355,8 +1353,8 @@ fn should_not_update_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -1385,8 +1383,8 @@ fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -1431,8 +1429,8 @@ fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Ru
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let order_id = 1;
@@ -1475,8 +1473,8 @@ fn get_limit_orders_by_price(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         let buy_price = balance!(10).into();
@@ -1509,16 +1507,16 @@ fn get_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id);
 
         let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(empty_order_book_id);
@@ -1552,24 +1550,24 @@ fn get_all_user_limit_orders(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id1);
 
         let order_book_id2 = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: PSWAP.into(),
-            quote: XOR.into(),
+            base: PSWAP,
+            quote: XOR,
         };
 
         create_and_fill_order_book::<Runtime>(order_book_id2);
 
         let empty_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: ETH.into(),
-            quote: XOR.into(),
+            base: ETH,
+            quote: XOR,
         };
 
         create_empty_order_book::<Runtime>(empty_order_book_id);
@@ -1595,8 +1593,8 @@ fn best_bid_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
@@ -1633,7 +1631,7 @@ fn best_bid_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
         let new_best_price = BalanceUnit::divisible(balance!(10.7));
         let order2 = LimitOrder::<Runtime>::new(
             order_book.next_order_id(),
-            owner.clone(),
+            owner,
             PriceVariant::Buy,
             new_best_price,
             order_amount,
@@ -1669,8 +1667,8 @@ fn best_ask_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
         let mut order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
@@ -1707,7 +1705,7 @@ fn best_ask_should_work_multiple_prices(data: &mut impl DataLayer<Runtime>) {
         let new_best_price = BalanceUnit::divisible(balance!(10.3));
         let order2 = LimitOrder::<Runtime>::new(
             order_book.next_order_id(),
-            owner.clone(),
+            owner,
             PriceVariant::Sell,
             new_best_price,
             order_amount,
@@ -1776,12 +1774,14 @@ fn fill_single_price(
         amount,
         price,
         fill_settings.max_orders_per_user,
-    );
+    )
+    .peekable();
     let current_block = frame_system::Pallet::<Runtime>::block_number();
     let mut lifespans = fill_tools::lifespans_iterator::<Runtime>(
         fill_settings.max_expiring_orders_per_block,
         (current_block + 10).into(),
-    );
+    )
+    .peekable();
     fill_tools::fill_price(
         data,
         fill_settings,
@@ -1799,8 +1799,8 @@ fn is_bid_price_full_works(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
         let price = order_book.tick_size;
@@ -1818,8 +1818,8 @@ fn is_ask_price_full_works(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
         let order_book = create_empty_order_book::<Runtime>(order_book_id);
         let price = order_book.tick_size;
@@ -1861,8 +1861,8 @@ fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
-            base: VAL.into(),
-            quote: XOR.into(),
+            base: VAL,
+            quote: XOR,
         };
         let mut order_book = create_empty_order_book::<Runtime>(order_book_id);
         let user = accounts::alice::<Runtime>();
@@ -1871,7 +1871,8 @@ fn is_user_limit_orders_full_works(data: &mut impl DataLayer<Runtime>) {
         let mut lifespans = fill_tools::lifespans_iterator::<Runtime>(
             fill_settings.max_expiring_orders_per_block,
             (current_block + 10).into(),
-        );
+        )
+        .peekable();
         let amount = order_book.min_lot_size;
         assert!(data
             .is_user_limit_orders_full(&user, &order_book_id)

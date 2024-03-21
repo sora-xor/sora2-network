@@ -46,6 +46,12 @@ pub struct StorageDataLayer<T: Config> {
     _phantom: PhantomData<T>,
 }
 
+impl<T: Config> Default for StorageDataLayer<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Config> StorageDataLayer<T> {
     pub fn new() -> Self {
         Self {
@@ -93,7 +99,7 @@ impl<T: Config> StorageDataLayer<T> {
         <AggregatedBids<T>>::mutate(order_book_id, |bids| {
             let volume = bids
                 .get(price)
-                .map(|x| *x)
+                .copied()
                 .unwrap_or_default()
                 .checked_add(value)
                 .ok_or(())?;
@@ -110,7 +116,7 @@ impl<T: Config> StorageDataLayer<T> {
         <AggregatedBids<T>>::mutate(order_book_id, |agg_bids| {
             let volume = agg_bids
                 .get(price)
-                .map(|x| *x)
+                .copied()
                 .ok_or(())?
                 .checked_sub(value)
                 .ok_or(())?;
@@ -131,7 +137,7 @@ impl<T: Config> StorageDataLayer<T> {
         <AggregatedAsks<T>>::mutate(order_book_id, |asks| {
             let volume = asks
                 .get(price)
-                .map(|x| *x)
+                .copied()
                 .unwrap_or_default()
                 .checked_add(value)
                 .ok_or(())?;
@@ -148,7 +154,7 @@ impl<T: Config> StorageDataLayer<T> {
         <AggregatedAsks<T>>::mutate(order_book_id, |agg_asks| {
             let volume = agg_asks
                 .get(price)
-                .map(|x| *x)
+                .copied()
                 .ok_or(())?
                 .checked_sub(value)
                 .ok_or(())?;
