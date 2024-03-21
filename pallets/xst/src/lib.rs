@@ -1158,7 +1158,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             ),
             monolith
                 .fee
-                .reduce(chunk.fee.saturating_mul_usize(samples_count - 1)),
+                .subtract(chunk.fee.saturating_mul_usize(samples_count - 1)),
         ));
 
         Ok((quotation, Self::step_quote_weight(samples_count)))

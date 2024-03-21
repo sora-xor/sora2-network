@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file contains ALT types
+// This file contains ALT (Aggregated Liquidity Technology) types
 
 use crate::fixed_wrapper::FixedWrapper;
 use crate::outcome_fee::OutcomeFee;
@@ -64,13 +64,6 @@ impl<AmountType> SideAmount<AmountType> {
             Self::Input(..) => *self = Self::Input(amount),
             Self::Output(..) => *self = Self::Output(amount),
         }
-    }
-
-    pub fn is_same(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (Self::Input(..), Self::Input(..)) | (Self::Output(..), Self::Output(..))
-        )
     }
 }
 
@@ -241,7 +234,7 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
         Self::new(
             self.input.saturating_sub(rhs.input),
             self.output.saturating_sub(rhs.output),
-            self.fee.reduce(rhs.fee),
+            self.fee.subtract(rhs.fee),
         )
     }
 }
@@ -324,6 +317,36 @@ impl SwapLimits<Balance> {
         Some((chunk, Zero::zero()))
     }
 
+    /// Aligns the extra `chunk` regarding to the `max_amount` limit taking into account in calculations the accumulator `acc` values.
+    /// Returns the aligned chunk and the remainder
+    pub fn align_extra_chunk_max<AssetId: Ord + Clone>(
+        &self,
+        acc: SwapChunk<AssetId, Balance>,
+        chunk: SwapChunk<AssetId, Balance>,
+    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
+        if let Some(max) = self.max_amount {
+            match max {
+                SideAmount::Input(max_amount) => {
+                    if acc.input.saturating_add(chunk.input) > max_amount {
+                        let diff = max_amount.saturating_sub(acc.input);
+                        let rescaled = chunk.clone().rescale_by_input(diff)?;
+                        let remainder = chunk.saturating_sub(rescaled.clone());
+                        return Some((rescaled, remainder));
+                    }
+                }
+                SideAmount::Output(max_amount) => {
+                    if acc.output.saturating_add(chunk.output) > max_amount {
+                        let diff = max_amount.saturating_sub(acc.output);
+                        let rescaled = chunk.clone().rescale_by_output(diff)?;
+                        let remainder = chunk.saturating_sub(rescaled.clone());
+                        return Some((rescaled, remainder));
+                    }
+                }
+            }
+        }
+        Some((chunk, Zero::zero()))
+    }
+
     /// Aligns the `chunk` regarding to the `amount_precision` limit.
     /// Returns the aligned chunk and the remainder
     pub fn align_chunk_precision<AssetId: Ord + Clone>(
@@ -393,5 +416,620 @@ impl<AssetId: Ord + Clone, AmountType> DiscreteQuotation<AssetId, AmountType> {
             chunks: VecDeque::new(),
             limits: SwapLimits::new(None, None, None),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::balance;
+
+    #[test]
+    fn check_align_chunk_min() {
+        let mock_fee = OutcomeFee::from_asset(1, balance!(0.01));
+
+        let input_min_limit = SwapLimits::new(Some(SideAmount::Input(balance!(1))), None, None);
+        let output_min_limit = SwapLimits::new(Some(SideAmount::Output(balance!(1))), None, None);
+        let empty_min_limit = SwapLimits::new(None, None, None);
+
+        let chunk1 = SwapChunk::new(balance!(0.1), balance!(0.2), mock_fee.clone());
+        let chunk2 = SwapChunk::new(balance!(10), balance!(0.2), mock_fee.clone());
+        let chunk3 = SwapChunk::new(balance!(0.1), balance!(20), mock_fee.clone());
+        let chunk4 = SwapChunk::new(balance!(10), balance!(20), mock_fee.clone());
+        let chunk5 = SwapChunk::new(balance!(1), balance!(1), mock_fee);
+
+        assert_eq!(
+            input_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            (Zero::zero(), chunk1.clone())
+        );
+        assert_eq!(
+            input_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            (chunk2.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            (Zero::zero(), chunk3.clone())
+        );
+        assert_eq!(
+            input_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            (chunk4.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            (chunk5.clone(), Zero::zero())
+        );
+
+        assert_eq!(
+            output_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            (Zero::zero(), chunk1.clone())
+        );
+        assert_eq!(
+            output_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            (Zero::zero(), chunk2.clone())
+        );
+        assert_eq!(
+            output_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            (chunk3.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            (chunk4.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            (chunk5.clone(), Zero::zero())
+        );
+
+        assert_eq!(
+            empty_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            (chunk1, Zero::zero())
+        );
+        assert_eq!(
+            empty_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            (chunk2, Zero::zero())
+        );
+        assert_eq!(
+            empty_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            (chunk3, Zero::zero())
+        );
+        assert_eq!(
+            empty_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            (chunk4, Zero::zero())
+        );
+        assert_eq!(
+            empty_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            (chunk5, Zero::zero())
+        );
+    }
+
+    #[test]
+    fn check_align_chunk_max() {
+        let mock_fee = OutcomeFee::from_asset(1, balance!(10));
+
+        let input_max_limit = SwapLimits::new(None, Some(SideAmount::Input(balance!(100))), None);
+        let output_max_limit = SwapLimits::new(None, Some(SideAmount::Output(balance!(100))), None);
+        let empty_max_limit = SwapLimits::new(None, None, None);
+
+        let chunk1 = SwapChunk::new(balance!(80), balance!(90), mock_fee.clone());
+        let chunk2 = SwapChunk::new(balance!(160), balance!(90), mock_fee.clone());
+        let chunk3 = SwapChunk::new(balance!(80), balance!(160), mock_fee.clone());
+        let chunk4 = SwapChunk::new(balance!(160), balance!(250), mock_fee.clone());
+        let chunk5 = SwapChunk::new(balance!(100), balance!(100), mock_fee);
+
+        assert_eq!(
+            input_max_limit.align_chunk_max(chunk1.clone()).unwrap(),
+            (chunk1.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_max_limit.align_chunk_max(chunk2.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(100),
+                    balance!(56.25),
+                    OutcomeFee::from_asset(1, balance!(6.25))
+                ),
+                SwapChunk::new(
+                    balance!(60),
+                    balance!(33.75),
+                    OutcomeFee::from_asset(1, balance!(3.75))
+                )
+            )
+        );
+        assert_eq!(
+            input_max_limit.align_chunk_max(chunk3.clone()).unwrap(),
+            (chunk3.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_max_limit.align_chunk_max(chunk4.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(100),
+                    balance!(156.25),
+                    OutcomeFee::from_asset(1, balance!(6.25))
+                ),
+                SwapChunk::new(
+                    balance!(60),
+                    balance!(93.75),
+                    OutcomeFee::from_asset(1, balance!(3.75))
+                )
+            )
+        );
+        assert_eq!(
+            input_max_limit.align_chunk_max(chunk5.clone()).unwrap(),
+            (chunk5.clone(), Zero::zero())
+        );
+
+        assert_eq!(
+            output_max_limit.align_chunk_max(chunk1.clone()).unwrap(),
+            (chunk1.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_max_limit.align_chunk_max(chunk2.clone()).unwrap(),
+            (chunk2.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_max_limit.align_chunk_max(chunk3.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(50),
+                    balance!(100),
+                    OutcomeFee::from_asset(1, balance!(6.25))
+                ),
+                SwapChunk::new(
+                    balance!(30),
+                    balance!(60),
+                    OutcomeFee::from_asset(1, balance!(3.75))
+                )
+            )
+        );
+        assert_eq!(
+            output_max_limit.align_chunk_max(chunk4.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(64),
+                    balance!(100),
+                    OutcomeFee::from_asset(1, balance!(4))
+                ),
+                SwapChunk::new(
+                    balance!(96),
+                    balance!(150),
+                    OutcomeFee::from_asset(1, balance!(6))
+                )
+            )
+        );
+        assert_eq!(
+            output_max_limit.align_chunk_max(chunk5.clone()).unwrap(),
+            (chunk5.clone(), Zero::zero())
+        );
+
+        assert_eq!(
+            empty_max_limit.align_chunk_max(chunk1.clone()).unwrap(),
+            (chunk1, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit.align_chunk_max(chunk2.clone()).unwrap(),
+            (chunk2, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit.align_chunk_max(chunk3.clone()).unwrap(),
+            (chunk3, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit.align_chunk_max(chunk4.clone()).unwrap(),
+            (chunk4, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit.align_chunk_max(chunk5.clone()).unwrap(),
+            (chunk5, Zero::zero())
+        );
+    }
+
+    #[test]
+    fn check_align_extra_chunk_max() {
+        let mock_fee = OutcomeFee::from_asset(1, balance!(10));
+
+        let input_max_limit = SwapLimits::new(None, Some(SideAmount::Input(balance!(200))), None);
+        let output_max_limit = SwapLimits::new(None, Some(SideAmount::Output(balance!(200))), None);
+        let empty_max_limit = SwapLimits::new(None, None, None);
+
+        let acc = SwapChunk::new(balance!(100), balance!(100), mock_fee.clone());
+
+        let chunk1 = SwapChunk::new(balance!(80), balance!(90), mock_fee.clone());
+        let chunk2 = SwapChunk::new(balance!(160), balance!(90), mock_fee.clone());
+        let chunk3 = SwapChunk::new(balance!(80), balance!(160), mock_fee.clone());
+        let chunk4 = SwapChunk::new(balance!(160), balance!(250), mock_fee.clone());
+        let chunk5 = SwapChunk::new(balance!(100), balance!(100), mock_fee);
+
+        assert_eq!(
+            input_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk1.clone())
+                .unwrap(),
+            (chunk1.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk2.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(100),
+                    balance!(56.25),
+                    OutcomeFee::from_asset(1, balance!(6.25))
+                ),
+                SwapChunk::new(
+                    balance!(60),
+                    balance!(33.75),
+                    OutcomeFee::from_asset(1, balance!(3.75))
+                )
+            )
+        );
+        assert_eq!(
+            input_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk3.clone())
+                .unwrap(),
+            (chunk3.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk4.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(100),
+                    balance!(156.25),
+                    OutcomeFee::from_asset(1, balance!(6.25))
+                ),
+                SwapChunk::new(
+                    balance!(60),
+                    balance!(93.75),
+                    OutcomeFee::from_asset(1, balance!(3.75))
+                )
+            )
+        );
+        assert_eq!(
+            input_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk5.clone())
+                .unwrap(),
+            (chunk5.clone(), Zero::zero())
+        );
+
+        assert_eq!(
+            output_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk1.clone())
+                .unwrap(),
+            (chunk1.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk2.clone())
+                .unwrap(),
+            (chunk2.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk3.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(50),
+                    balance!(100),
+                    OutcomeFee::from_asset(1, balance!(6.25))
+                ),
+                SwapChunk::new(
+                    balance!(30),
+                    balance!(60),
+                    OutcomeFee::from_asset(1, balance!(3.75))
+                )
+            )
+        );
+        assert_eq!(
+            output_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk4.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(64),
+                    balance!(100),
+                    OutcomeFee::from_asset(1, balance!(4))
+                ),
+                SwapChunk::new(
+                    balance!(96),
+                    balance!(150),
+                    OutcomeFee::from_asset(1, balance!(6))
+                )
+            )
+        );
+        assert_eq!(
+            output_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk5.clone())
+                .unwrap(),
+            (chunk5.clone(), Zero::zero())
+        );
+
+        assert_eq!(
+            empty_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk1.clone())
+                .unwrap(),
+            (chunk1, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk2.clone())
+                .unwrap(),
+            (chunk2, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk3.clone())
+                .unwrap(),
+            (chunk3, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk4.clone())
+                .unwrap(),
+            (chunk4, Zero::zero())
+        );
+        assert_eq!(
+            empty_max_limit
+                .align_extra_chunk_max(acc.clone(), chunk5.clone())
+                .unwrap(),
+            (chunk5, Zero::zero())
+        );
+
+        // todo
+    }
+
+    #[test]
+    fn check_align_chunk_precision() {
+        let mock_fee = OutcomeFee::from_asset(1, balance!(0.1));
+
+        let input_precision_limit =
+            SwapLimits::new(None, None, Some(SideAmount::Input(balance!(1))));
+        let output_precision_limit =
+            SwapLimits::new(None, None, Some(SideAmount::Output(balance!(1))));
+        let empty_precision_limit = SwapLimits::new(None, None, None);
+
+        let chunk1 = SwapChunk::new(balance!(2), balance!(1), mock_fee.clone());
+        let chunk2 = SwapChunk::new(balance!(2.5), balance!(1), mock_fee.clone());
+        let chunk3 = SwapChunk::new(balance!(2), balance!(1.6), mock_fee.clone());
+        let chunk4 = SwapChunk::new(balance!(2.5), balance!(1.6), mock_fee.clone());
+
+        assert_eq!(
+            input_precision_limit
+                .align_chunk_precision(chunk1.clone())
+                .unwrap(),
+            (chunk1.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_precision_limit
+                .align_chunk_precision(chunk2.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(2),
+                    balance!(0.8),
+                    OutcomeFee::from_asset(1, balance!(0.08))
+                ),
+                SwapChunk::new(
+                    balance!(0.5),
+                    balance!(0.2),
+                    OutcomeFee::from_asset(1, balance!(0.02))
+                )
+            )
+        );
+        assert_eq!(
+            input_precision_limit
+                .align_chunk_precision(chunk3.clone())
+                .unwrap(),
+            (chunk3.clone(), Zero::zero())
+        );
+        assert_eq!(
+            input_precision_limit
+                .align_chunk_precision(chunk4.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(2),
+                    balance!(1.28),
+                    OutcomeFee::from_asset(1, balance!(0.08))
+                ),
+                SwapChunk::new(
+                    balance!(0.5),
+                    balance!(0.32),
+                    OutcomeFee::from_asset(1, balance!(0.02))
+                )
+            )
+        );
+
+        assert_eq!(
+            output_precision_limit
+                .align_chunk_precision(chunk1.clone())
+                .unwrap(),
+            (chunk1.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_precision_limit
+                .align_chunk_precision(chunk2.clone())
+                .unwrap(),
+            (chunk2.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_precision_limit
+                .align_chunk_precision(chunk3.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(1.25),
+                    balance!(1),
+                    OutcomeFee::from_asset(1, balance!(0.0625))
+                ),
+                SwapChunk::new(
+                    balance!(0.75),
+                    balance!(0.6),
+                    OutcomeFee::from_asset(1, balance!(0.0375))
+                )
+            )
+        );
+        assert_eq!(
+            output_precision_limit
+                .align_chunk_precision(chunk4.clone())
+                .unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(1.5625),
+                    balance!(1),
+                    OutcomeFee::from_asset(1, balance!(0.0625))
+                ),
+                SwapChunk::new(
+                    balance!(0.9375),
+                    balance!(0.6),
+                    OutcomeFee::from_asset(1, balance!(0.0375))
+                )
+            )
+        );
+
+        assert_eq!(
+            empty_precision_limit
+                .align_chunk_precision(chunk1.clone())
+                .unwrap(),
+            (chunk1, Zero::zero())
+        );
+        assert_eq!(
+            empty_precision_limit
+                .align_chunk_precision(chunk2.clone())
+                .unwrap(),
+            (chunk2, Zero::zero())
+        );
+        assert_eq!(
+            empty_precision_limit
+                .align_chunk_precision(chunk3.clone())
+                .unwrap(),
+            (chunk3, Zero::zero())
+        );
+        assert_eq!(
+            empty_precision_limit
+                .align_chunk_precision(chunk4.clone())
+                .unwrap(),
+            (chunk4, Zero::zero())
+        );
+    }
+
+    #[test]
+    fn check_align_chunk() {
+        let mock_fee = OutcomeFee::from_asset(1, balance!(1));
+
+        let input_limit = SwapLimits::new(
+            Some(SideAmount::Input(balance!(1))),
+            Some(SideAmount::Input(balance!(100))),
+            Some(SideAmount::Input(balance!(1))),
+        );
+        let output_limit = SwapLimits::new(
+            Some(SideAmount::Output(balance!(1))),
+            Some(SideAmount::Output(balance!(100))),
+            Some(SideAmount::Output(balance!(1))),
+        );
+        let empty_limit = SwapLimits::new(None, None, None);
+
+        let chunk_min = SwapChunk::new(balance!(0.1), balance!(0.2), mock_fee.clone());
+        let chunk_max = SwapChunk::new(balance!(160), balance!(250), mock_fee.clone());
+        let chunk_precision = SwapChunk::new(balance!(2.5), balance!(1.6), mock_fee.clone());
+        let chunk_ok = SwapChunk::new(balance!(80), balance!(50), mock_fee.clone());
+
+        assert_eq!(
+            input_limit.align_chunk(chunk_min.clone()).unwrap(),
+            (Zero::zero(), chunk_min.clone())
+        );
+        assert_eq!(
+            output_limit.align_chunk(chunk_min.clone()).unwrap(),
+            (Zero::zero(), chunk_min.clone())
+        );
+        assert_eq!(
+            empty_limit.align_chunk(chunk_min.clone()).unwrap(),
+            (chunk_min, Zero::zero())
+        );
+
+        assert_eq!(
+            input_limit.align_chunk(chunk_max.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(100),
+                    balance!(156.25),
+                    OutcomeFee::from_asset(1, balance!(0.625))
+                ),
+                SwapChunk::new(
+                    balance!(60),
+                    balance!(93.75),
+                    OutcomeFee::from_asset(1, balance!(0.375))
+                )
+            )
+        );
+        assert_eq!(
+            output_limit.align_chunk(chunk_max.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(64),
+                    balance!(100),
+                    OutcomeFee::from_asset(1, balance!(0.4))
+                ),
+                SwapChunk::new(
+                    balance!(96),
+                    balance!(150),
+                    OutcomeFee::from_asset(1, balance!(0.6))
+                )
+            )
+        );
+        assert_eq!(
+            empty_limit.align_chunk(chunk_max.clone()).unwrap(),
+            (chunk_max, Zero::zero())
+        );
+
+        assert_eq!(
+            input_limit.align_chunk(chunk_precision.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(2),
+                    balance!(1.28),
+                    OutcomeFee::from_asset(1, balance!(0.8))
+                ),
+                SwapChunk::new(
+                    balance!(0.5),
+                    balance!(0.32),
+                    OutcomeFee::from_asset(1, balance!(0.2))
+                )
+            )
+        );
+        assert_eq!(
+            output_limit.align_chunk(chunk_precision.clone()).unwrap(),
+            (
+                SwapChunk::new(
+                    balance!(1.5625),
+                    balance!(1),
+                    OutcomeFee::from_asset(1, balance!(0.625))
+                ),
+                SwapChunk::new(
+                    balance!(0.9375),
+                    balance!(0.6),
+                    OutcomeFee::from_asset(1, balance!(0.375))
+                )
+            )
+        );
+        assert_eq!(
+            empty_limit.align_chunk(chunk_precision.clone()).unwrap(),
+            (chunk_precision, Zero::zero())
+        );
+
+        assert_eq!(
+            input_limit.align_chunk(chunk_ok.clone()).unwrap(),
+            (chunk_ok.clone(), Zero::zero())
+        );
+        assert_eq!(
+            output_limit.align_chunk(chunk_ok.clone()).unwrap(),
+            (chunk_ok.clone(), Zero::zero())
+        );
+        assert_eq!(
+            empty_limit.align_chunk(chunk_ok.clone()).unwrap(),
+            (chunk_ok, Zero::zero())
+        );
     }
 }

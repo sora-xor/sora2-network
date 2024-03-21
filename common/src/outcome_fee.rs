@@ -111,7 +111,7 @@ where
         self
     }
 
-    pub fn reduce(mut self, other: Self) -> Self
+    pub fn subtract(mut self, other: Self) -> Self
     where
         AmountType: Zero,
     {

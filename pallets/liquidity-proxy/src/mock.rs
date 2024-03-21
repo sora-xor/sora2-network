@@ -784,7 +784,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
-            let fee_chunk = fee.clone().reduce(sub_fee);
+            let fee_chunk = fee.clone().subtract(sub_fee);
 
             sub_in = input;
             sub_out = output;
