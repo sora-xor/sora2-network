@@ -60,7 +60,7 @@ impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKenToke
             assets_permissions_account_id.clone(),
             KEN.into(),
             AssetSymbol(b"KEN".to_vec()),
-            AssetName(b"Kensetsu token.".to_vec()),
+            AssetName(b"Kensetsu token".to_vec()),
             common::DEFAULT_BALANCE_PRECISION,
             common::Balance::zero(),
             true,
@@ -75,3 +75,13 @@ impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKenToke
 }
 
 pub type Migrations = (RegisterKenToken<Runtime>,);
+
+#[cfg(test)]
+mod tests {
+    use common::{AssetName, IsValid};
+
+    #[test]
+    pub fn test_asset_name_is_valid() {
+        assert!(AssetName(b"Kensetsu token".to_vec()).is_valid());
+    }
+}
