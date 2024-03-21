@@ -6,7 +6,7 @@ use {
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
-        DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsPallet,
+        DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsProvider,
         PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
@@ -362,7 +362,7 @@ impl price_tools::Config for Runtime {
 
 pub struct MockPriceTools;
 
-impl PriceToolsPallet<AssetId> for MockPriceTools {
+impl PriceToolsProvider<AssetId> for MockPriceTools {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
@@ -472,6 +472,7 @@ impl crate::Config for Runtime {
     type LiquidityProxyPallet = MockLiquidityProxy;
     type UnsignedPriority = ConstU64<100>;
     type UnsignedLongevity = ConstU64<100>;
+    type WeightInfo = ();
 }
 
 pub struct ExtBuilder {

@@ -465,6 +465,10 @@ impl<T: Config> PriceToolsProvider<T::AssetId> for Pallet<T> {
             fail!(Error::<T>::AssetAlreadyRegistered);
         }
     }
+
+    fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        Pallet::<T>::spot_price(asset_id)
+    }
 }
 
 impl<T: Config> OnPoolReservesChanged<T::AssetId> for Pallet<T> {

@@ -2,8 +2,10 @@
 #![allow(clippy::type_complexity)]
 use codec::{Decode, Encode};
 use common::Balance;
+pub use weights::WeightInfo;
 
 mod benchmarking;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -54,10 +56,10 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{BorrowingPosition, LendingPosition, PoolInfo};
+    use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI, XOR};
-    use common::{LiquidityProxyTrait, PriceToolsPallet, APOLLO_ASSET_ID};
+    use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
@@ -91,6 +93,9 @@ pub mod pallet {
         /// A configuration for longevity of unsigned transactions.
         #[pallet::constant]
         type UnsignedLongevity: Get<u64>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -299,7 +304,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Add pool
         #[pallet::call_index(0)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_pool())]
         pub fn add_pool(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -401,7 +406,7 @@ pub mod pallet {
 
         /// Lend token
         #[pallet::call_index(1)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::lend())]
         pub fn lend(
             origin: OriginFor<T>,
             lending_asset: AssetIdOf<T>,
@@ -445,7 +450,7 @@ pub mod pallet {
 
         /// Borrow token
         #[pallet::call_index(2)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
             origin: OriginFor<T>,
             collateral_asset: AssetIdOf<T>,
@@ -572,7 +577,7 @@ pub mod pallet {
 
         /// Get rewards
         #[pallet::call_index(3)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -656,7 +661,7 @@ pub mod pallet {
 
         /// Withdraw
         #[pallet::call_index(4)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,
             withdrawn_asset: AssetIdOf<T>,
@@ -726,7 +731,7 @@ pub mod pallet {
 
         /// Repay
         #[pallet::call_index(5)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::repay())]
         pub fn repay(
             origin: OriginFor<T>,
             collateral_asset: AssetIdOf<T>,
@@ -875,7 +880,7 @@ pub mod pallet {
 
         /// Change rewards amount
         #[pallet::call_index(6)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_rewards_amount())]
         pub fn change_rewards_amount(
             origin: OriginFor<T>,
             is_lending: bool,
@@ -899,7 +904,7 @@ pub mod pallet {
 
         /// Change rewards per block
         #[pallet::call_index(7)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_rewards_per_block())]
         pub fn change_rewards_per_block(
             origin: OriginFor<T>,
             is_lending: bool,
@@ -946,7 +951,7 @@ pub mod pallet {
 
         /// Liquidate
         #[pallet::call_index(8)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(
             _origin: OriginFor<T>,
             user: AccountIdOf<T>,
@@ -990,7 +995,7 @@ pub mod pallet {
 
         /// Remove pool
         #[pallet::call_index(9)]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_pool())]
         pub fn remove_pool(
             origin: OriginFor<T>,
             asset_id_to_remove: AssetIdOf<T>,

@@ -1977,6 +1977,7 @@ impl apollo_platform::Config for Runtime {
     type LiquidityProxyPallet = LiquidityProxy;
     type UnsignedPriority = ApolloOffchainWorkerTxPriority;
     type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
+    type WeightInfo = apollo_platform::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
