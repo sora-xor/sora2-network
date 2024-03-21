@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.2.1"
+version = "3.2.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -74,7 +74,7 @@ faucet = { path = "../pallets/faucet", default-features = false, optional = true
 hermes-governance-platform = { path = "../pallets/hermes-governance-platform", default-features = false }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-kensetsu = { path = "../pallets/kensetsu", default-features = false, optional = true }
+kensetsu = { path = "../pallets/kensetsu", default-features = false }
 kensetsu-benchmarking = { path = "../pallets/kensetsu/benchmarking", default-features = false, optional = true }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }

@@ -16,7 +16,7 @@ test() {
         cargo test --release --features "private-net runtime-benchmarks"
     elif [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
-        export RUST_LOG="debug" 
+        export RUST_LOG="debug"
         cargo test --features try-runtime -- run_migrations
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
@@ -54,9 +54,9 @@ build() {
     subwasm metadata framenode_runtime.compact.compressed.wasm > $palletListFile
     set +e
     subwasm metadata -m Sudo framenode_runtime.compact.compressed.wasm
-    if [[ $? -eq $sudoCheckStatus ]]; then 
+    if [[ $? -eq $sudoCheckStatus ]]; then
         echo "✅ sudo check is successful!"
-    else 
+    else
         echo "❌ sudo check is failed!"
         exit 1
     fi
