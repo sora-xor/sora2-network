@@ -108,23 +108,6 @@ impl FixedWrapper {
         }
     }
 
-    /// If the result contains the error Overflow, returns MAX instead
-    pub fn saturating_try_into_balance(self) -> Result<Balance, ArithmeticError> {
-        match self.inner {
-            Ok(fixed) => fixed
-                .into_bits()
-                .try_into()
-                .map_err(|_| ArithmeticError::Overflow),
-            Err(e) => {
-                if e == ArithmeticError::Overflow {
-                    Ok(Balance::MAX)
-                } else {
-                    Err(e)
-                }
-            }
-        }
-    }
-
     pub fn into_balance(self) -> Balance {
         #[cfg(feature = "test")]
         {

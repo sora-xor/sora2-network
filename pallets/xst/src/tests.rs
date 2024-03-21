@@ -1472,7 +1472,7 @@ mod tests {
                 .0,
                 DiscreteQuotation {
                     chunks: VecDeque::from([SwapChunk::new(balance!(100), balance!(0.454545454545454545), Default::default())]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(2200000000))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
             
@@ -1523,7 +1523,7 @@ mod tests {
                 .0,
                 DiscreteQuotation {
                     chunks: VecDeque::from([SwapChunk::new(balance!(0.666666666666666666), balance!(100), Default::default())]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1499999999.9999999994))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(10000000))), None)
                 }
             );
         });
@@ -1567,7 +1567,7 @@ mod tests {
                         SwapChunk::new(balance!(10), balance!(0.045454545454545454), Default::default()),
                         SwapChunk::new(balance!(10), balance!(0.045454545454545459), Default::default()),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(2200000000))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
             
@@ -1651,7 +1651,7 @@ mod tests {
                         SwapChunk::new(balance!(0.066666666666666666), balance!(10), Default::default()),
                         SwapChunk::new(balance!(0.066666666666666672), balance!(10), Default::default()),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1499999999.9999999994))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(10000000))), None)
                 }
             );
         });
@@ -1695,7 +1695,7 @@ mod tests {
                         SwapChunk::new(balance!(10), balance!(0.045151818181818181), OutcomeFee::xst(balance!(0.000302727272727272))),
                         SwapChunk::new(balance!(10), balance!(0.045151818181818189), OutcomeFee::xst(balance!(0.000302727272727279))),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(2214750236.57559345239293684))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
             
@@ -1779,7 +1779,7 @@ mod tests {
                         SwapChunk::new(balance!(0.06711364353259374), balance!(10), OutcomeFee::xst(balance!(0.000446976865927074))),
                         SwapChunk::new(balance!(0.067113643532593749), balance!(10), OutcomeFee::xst(balance!(0.000446976865927077))),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1490009999.999999999403996))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(10000000))), None)
                 }
             );
         });
@@ -1921,7 +1921,7 @@ mod tests {
                         SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), Default::default()),
                         SwapChunk::new(balance!(1000000), balance!(149999999.99999999994), Default::default()),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1499999999.9999999994))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(10000000))), None)
                 }
             );
         });
@@ -1993,7 +1993,7 @@ mod tests {
                         SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), OutcomeFee::xst(balance!(6659.999999580858761485))),
                         SwapChunk::new(balance!(1000000), balance!(149000999.99999999994), OutcomeFee::xst(balance!(6659.999999580858761492))),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1490009999.999999999403996))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(10000000))), None)
                 }
             );
         });
