@@ -1240,7 +1240,9 @@ pub mod pallet {
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 true,
             )?;
-            desired_kusd_amount = desired_kusd_amount.min(amount);
+            // Correct by 1 because LiquidityProxy sometimes requires more max_amount_in with
+            // desired output
+            desired_kusd_amount = desired_kusd_amount.min(amount.saturating_sub(1));
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
