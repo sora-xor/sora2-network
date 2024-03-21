@@ -772,7 +772,7 @@ mod tests {
         );
         assert_eq!(
             empty_max_limit
-                .align_extra_chunk_max(acc.clone(), chunk5.clone())
+                .align_extra_chunk_max(acc, chunk5.clone())
                 .unwrap(),
             (chunk5, Zero::zero())
         );
@@ -793,7 +793,7 @@ mod tests {
         let chunk1 = SwapChunk::new(balance!(2), balance!(1), mock_fee.clone());
         let chunk2 = SwapChunk::new(balance!(2.5), balance!(1), mock_fee.clone());
         let chunk3 = SwapChunk::new(balance!(2), balance!(1.6), mock_fee.clone());
-        let chunk4 = SwapChunk::new(balance!(2.5), balance!(1.6), mock_fee.clone());
+        let chunk4 = SwapChunk::new(balance!(2.5), balance!(1.6), mock_fee);
 
         assert_eq!(
             input_precision_limit
@@ -934,7 +934,7 @@ mod tests {
         let chunk_min = SwapChunk::new(balance!(0.1), balance!(0.2), mock_fee.clone());
         let chunk_max = SwapChunk::new(balance!(160), balance!(250), mock_fee.clone());
         let chunk_precision = SwapChunk::new(balance!(2.5), balance!(1.6), mock_fee.clone());
-        let chunk_ok = SwapChunk::new(balance!(80), balance!(50), mock_fee.clone());
+        let chunk_ok = SwapChunk::new(balance!(80), balance!(50), mock_fee);
 
         assert_eq!(
             input_limit.align_chunk(chunk_min.clone()).unwrap(),
