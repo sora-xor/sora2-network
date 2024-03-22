@@ -4,7 +4,7 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, PriceToolsPallet, PriceVariant, APOLLO_ASSET_ID,
+    balance, AssetName, AssetSymbol, DEXId, PriceToolsProvider, PriceVariant, APOLLO_ASSET_ID,
     CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
@@ -720,10 +720,4 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::PoolRemoved(caller, asset_id.into()).into());
     }
-
-    impl_benchmark_test_suite!(
-        Pallet,
-        crate::mock::ExtBuilder::default().build(),
-        crate::mock::Runtime
-    );
 }

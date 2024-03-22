@@ -11,7 +11,7 @@ pub mod weights;
 mod mock;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -79,11 +79,12 @@ pub mod pallet {
         + assets::Config
         + price_tools::Config
         + liquidity_proxy::Config
+        + trading_pair::Config
         + SendTransactionTypes<Call<Self>>
     {
         const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type PriceTools: PriceToolsPallet<Self::AssetId>;
+        type PriceTools: PriceToolsProvider<Self::AssetId>;
         type LiquidityProxyPallet: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
         /// A configuration for base priority of unsigned transactions.
