@@ -44,12 +44,12 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 fn run_to_block<T: Config>(n: u32) {
     while frame_system::Pallet::<T>::block_number() < n.into() {
-        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number().into());
+        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
         frame_system::Pallet::<T>::set_block_number(
             frame_system::Pallet::<T>::block_number() + 1u32.into(),
         );
-        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number().into());
-        ApolloPlatform::<T>::on_initialize(frame_system::Pallet::<T>::block_number().into());
+        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
+        ApolloPlatform::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
     }
 }
 
@@ -92,7 +92,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     // Mint assets to Alice
     Assets::<T>::mint(
-        RawOrigin::Signed(xor_owner.clone()).into(),
+        RawOrigin::Signed(xor_owner).into(),
         XOR.into(),
         owner.clone(),
         balance!(1000),
@@ -108,7 +108,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     Assets::<T>::mint(
-        RawOrigin::Signed(dai_owner.clone()).into(),
+        RawOrigin::Signed(dai_owner).into(),
         DAI.into(),
         owner.clone(),
         balance!(500),
@@ -126,15 +126,15 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     Assets::<T>::mint(
         owner_origin.clone(),
         APOLLO_ASSET_ID.into(),
-        pallet_account.clone(),
+        pallet_account,
         balance!(100000),
     )
     .unwrap();
 
     Assets::<T>::mint(
-        RawOrigin::Signed(ceres_owner.clone()).into(),
+        RawOrigin::Signed(ceres_owner).into(),
         CERES_ASSET_ID.into(),
-        owner.clone(),
+        owner,
         balance!(500),
     )
     .unwrap();
@@ -206,7 +206,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )?;
 
     XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
+        owner_origin,
         DEX.into(),
         XOR.into(),
         CERES_ASSET_ID.into(),
@@ -269,7 +269,7 @@ benchmarks! {
         let lending_amount = balance!(100);
 
         ApolloPlatform::<T>::add_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             asset_id.into(),
             loan_to_value,
             liquidation_threshold,
@@ -340,7 +340,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::add_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             asset_id_dot.into(),
             loan_to_value,
             liquidation_threshold,
@@ -358,7 +358,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::lend(
-            RawOrigin::Signed(bob.clone()).into(),
+            RawOrigin::Signed(bob).into(),
             XOR.into(),
             lending_amount_bob
         ).unwrap();
@@ -391,7 +391,7 @@ benchmarks! {
         setup_benchmark::<T>()?;
 
         ApolloPlatform::<T>::add_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             asset_id.into(),
             loan_to_value,
             liquidation_threshold,
@@ -444,7 +444,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::add_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             asset_id_xor.into(),
             loan_to_value,
             liquidation_threshold,
@@ -462,7 +462,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::lend(
-            RawOrigin::Signed(bob.clone()).into(),
+            RawOrigin::Signed(bob).into(),
             asset_id_xor.into(),
             lending_amount_bob
         ).unwrap();
@@ -522,7 +522,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::add_pool(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Signed(caller).into(),
             asset_id_dot.into(),
             loan_to_value,
             liquidation_threshold,
@@ -540,7 +540,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::lend(
-            RawOrigin::Signed(bob.clone()).into(),
+            RawOrigin::Signed(bob).into(),
             XOR.into(),
             lending_amount_bob
         ).unwrap();
@@ -668,7 +668,7 @@ benchmarks! {
         ).unwrap();
 
         ApolloPlatform::<T>::lend(
-            RawOrigin::Signed(bob.clone()).into(),
+            RawOrigin::Signed(bob).into(),
             XOR.into(),
             lending_amount_bob
         ).unwrap();
