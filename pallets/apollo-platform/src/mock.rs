@@ -101,7 +101,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = common::PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([100; 32]);
@@ -463,7 +463,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 
         // Transfer from exchange account (output asset)
         let _ = Assets::transfer(
-            RawOrigin::Signed(exchange_account().clone()).into(),
+            RawOrigin::Signed(exchange_account()).into(),
             *output_asset_id,
             receiver.clone(),
             amount.amount(),

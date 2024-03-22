@@ -46,7 +46,7 @@ mod test {
 
         // Rewards from profit made through repayments and liquidations
         let profit_reward_per_block =
-            FixedWrapper::from(pool_info.profit_lending_rate) * share_in_pool.clone();
+            FixedWrapper::from(pool_info.profit_lending_rate) * share_in_pool;
 
         let basic_lending_interest = (basic_reward_per_block
             * FixedWrapper::from(total_lending_blocks))
@@ -159,7 +159,7 @@ mod test {
             .try_into_balance()
             .unwrap_or(0);
 
-            return (profit_lending_rate, borrowing_rate);
+            (profit_lending_rate, borrowing_rate)
         } else {
             // Update lending rate
             let profit_lending_rate = ((FixedWrapper::from(pool_info.rewards)
@@ -180,7 +180,7 @@ mod test {
             .try_into_balance()
             .unwrap_or(0);
 
-            return (profit_lending_rate, borrowing_rate);
+            (profit_lending_rate, borrowing_rate)
         }
     }
 
@@ -384,7 +384,7 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
-                user.clone(),
+                user,
                 KSM,
                 balance!(1),
                 balance!(1),
@@ -467,7 +467,7 @@ mod test {
             assert_ok!(ApolloPlatform::remove_pool(user.clone(), DOT));
 
             assert_ok!(ApolloPlatform::add_pool(
-                user.clone(),
+                user,
                 DOT,
                 balance!(0.2),
                 balance!(1),
@@ -611,12 +611,12 @@ mod test {
             ));
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(200000)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(100000)
             );
@@ -700,7 +700,7 @@ mod test {
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(200000)
             );
@@ -1012,24 +1012,24 @@ mod test {
 
             // Check user and pallet balances of the borrowed asset
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(299900)
             );
 
             // Check user and pallet balances of the collateral asset
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account())
                     .unwrap(),
                 balance!(100)
             );
@@ -1150,24 +1150,24 @@ mod test {
 
             // Check user and pallet balances of the borrowed asset
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(50)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(299950)
             );
 
             // Check user and pallet balances of the collateral asset
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account())
                     .unwrap(),
                 balance!(100)
             );
@@ -1198,24 +1198,24 @@ mod test {
 
             // Check user and pallet balances of the borrowed asset
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(299900)
             );
 
             // Check user and pallet balances of the collateral asset
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account())
                     .unwrap(),
                 balance!(100)
             );
@@ -1761,7 +1761,7 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
-                user.clone(),
+                user,
                 KSM,
                 balance!(1),
                 balance!(1),
@@ -2027,13 +2027,13 @@ mod test {
             // Check balances before withdrawal
             // Pallet balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(100)
             );
             // Alice balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(200)
             );
 
@@ -2055,13 +2055,13 @@ mod test {
             // Check balances after withdrawal
             // Pallet balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(50)
             );
             // Alice balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(250)
             );
 
@@ -2132,18 +2132,18 @@ mod test {
             // Check balances before withdrawal
             // Pallet balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(200)
             );
             // Alice balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(200)
             );
             // Alice balanec (APOLLO)
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap(),
                 balance!(300000)
             );
 
@@ -2169,18 +2169,18 @@ mod test {
             // Check balances after withdrawal
             // Pallet balance
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(100)
             );
             // Alice balance (XOR)
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(300)
             );
             // Alice balance (APOLLO)
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap(),
                 total_interest
             );
 
@@ -2436,19 +2436,19 @@ mod test {
             // Check balances before repay
             // Pool
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(800)
             );
             // Alice
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(200)
             );
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -2456,7 +2456,7 @@ mod test {
             );
             // Developer
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 balance!(0)
             );
@@ -2504,19 +2504,19 @@ mod test {
             // Check balances after repay
             // Pool
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(800)
             );
             // Alice
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 new_alice_balance
             );
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -2524,7 +2524,7 @@ mod test {
             );
             // Developer
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 developer_reserve
             );
@@ -2623,19 +2623,19 @@ mod test {
             // Check balances before repay
             // Pool
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(800)
             );
             // Alice
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(200)
             );
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -2643,7 +2643,7 @@ mod test {
             );
             // Developer
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 balance!(0)
             );
@@ -2691,19 +2691,19 @@ mod test {
             // Check balances after repay
             // Pool
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(801)
             );
             // Alice
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 new_alice_balance
             );
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -2711,7 +2711,7 @@ mod test {
             );
             // Developer
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 developer_reserve
             );
@@ -2827,19 +2827,19 @@ mod test {
             // Check balances before repay
             // Pool
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(800)
             );
             // Alice
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(300)
             );
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -2847,7 +2847,7 @@ mod test {
             );
             // Developer
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 balance!(0)
             );
@@ -2892,27 +2892,27 @@ mod test {
             // Check balances after repay
             // Pool
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(1000)
             );
             // Alice
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 new_alice_balance
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
                 balance!(200)
             );
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap(),
                 balance!(300000) + borrowing_interest_one_more_block.1
             );
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -2920,7 +2920,7 @@ mod test {
             );
             // Developer
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 developer_reserve
             );
@@ -3400,14 +3400,14 @@ mod test {
             // Check balances before distribution of rewards
             // Pallet
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(300)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_pallet_account()
                 )
                 .unwrap(),
@@ -3430,14 +3430,14 @@ mod test {
 
             // Pallet
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(200)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_pallet_account()
                 )
                 .unwrap(),
@@ -3446,7 +3446,7 @@ mod test {
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &CERES_ASSET_ID.into(),
+                    &CERES_ASSET_ID,
                     &get_pallet_account()
                 )
                 .unwrap(),
@@ -3456,7 +3456,7 @@ mod test {
             // Exchange
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &CERES_ASSET_ID.into(),
+                    &CERES_ASSET_ID,
                     &exchange_account()
                 )
                 .unwrap(),
@@ -3466,7 +3466,7 @@ mod test {
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -3475,7 +3475,7 @@ mod test {
 
             // Developer / Authority
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account())
                     .unwrap(),
                 developer_amount
             );
@@ -3863,7 +3863,7 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
-                RuntimeOrigin::signed(ApolloPlatform::authority_account().clone()),
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
                 balance!(1),
                 balance!(1),
@@ -3970,7 +3970,7 @@ mod test {
             ));
 
             assert_ok!(ApolloPlatform::add_pool(
-                RuntimeOrigin::signed(ApolloPlatform::authority_account().clone()),
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
                 XOR,
                 balance!(1),
                 balance!(1),
@@ -4072,34 +4072,34 @@ mod test {
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
                 balance!(200)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&XOR.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account())
                     .unwrap(),
                 balance!(299800)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account())
                     .unwrap(),
                 balance!(100)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DAI.into(), &alice()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&DAI, &alice()).unwrap(),
                 balance!(9000)
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DAI.into(), &get_pallet_account())
+                assets::Pallet::<Runtime>::free_balance(&DAI, &get_pallet_account())
                     .unwrap(),
                 balance!(1000)
             );
@@ -4148,7 +4148,7 @@ mod test {
             // Treasury
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &APOLLO_ASSET_ID.into(),
+                    &APOLLO_ASSET_ID,
                     &get_treasury_account()
                 )
                 .unwrap(),
@@ -4157,13 +4157,13 @@ mod test {
 
             // Developer / Authority
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DOT.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_authority_account())
                     .unwrap(),
                 developer_amount_dot
             );
 
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&DAI.into(), &get_authority_account())
+                assets::Pallet::<Runtime>::free_balance(&DAI, &get_authority_account())
                     .unwrap(),
                 developer_amount_dai
             );
@@ -4171,7 +4171,7 @@ mod test {
             // Exchange
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(
-                    &CERES_ASSET_ID.into(),
+                    &CERES_ASSET_ID,
                     &exchange_account()
                 )
                 .unwrap(),
@@ -4268,7 +4268,7 @@ mod test {
             assert_eq!(second_pool, DOT);
             assert_eq!(third_pool, KSM);
 
-            assert_ok!(ApolloPlatform::remove_pool(user.clone(), DOT));
+            assert_ok!(ApolloPlatform::remove_pool(user, DOT));
 
             let new_basic_lending_rate =
                 (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
@@ -4289,7 +4289,7 @@ mod test {
                 } else {
                     assert_eq!(pool_info.basic_lending_rate, 0);
                     assert_eq!(pool_info.borrowing_rewards_rate, 0);
-                    assert_eq!(pool_info.is_removed, true);
+                    assert!(pool_info.is_removed);
                 }
             }
         });
