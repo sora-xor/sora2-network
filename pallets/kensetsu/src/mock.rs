@@ -81,6 +81,10 @@ impl PriceToolsProvider<AssetId> for PriceToolsMock {
     fn register_asset(_asset_id: &AssetId) -> DispatchResult {
         unimplemented!()
     }
+
+    fn spot_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
+        unimplemented!()
+    }
 }
 
 pub struct MockLiquidityProxy;
