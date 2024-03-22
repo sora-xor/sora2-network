@@ -28,4 +28,60 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type Migrations = ();
+use crate::*;
+use common::KEN;
+use core::marker::PhantomData;
+use frame_support::{log::error, traits::OnRuntimeUpgrade};
+use sp_runtime::traits::Zero;
+
+pub struct RegisterKenToken<T>(PhantomData<T>);
+
+/// Initializes Kensetsu pallet.
+impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKenToken<T> {
+    fn on_runtime_upgrade() -> Weight {
+        let assets_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
+            b"SYSTEM_ACCOUNT".to_vec(),
+            b"ASSETS_PERMISSIONS".to_vec(),
+        );
+        let assets_permissions_account_id =
+            match technical::Pallet::<T>::tech_account_id_to_account_id(
+                &assets_permissions_tech_account_id,
+            ) {
+                Ok(account) => account,
+                Err(err) => {
+                    error!(
+                            "Failed to get account id for assets permissions technical account id: {:?}, error: {:?}",
+                            assets_permissions_tech_account_id, err
+                        );
+                    return <T as frame_system::Config>::DbWeight::get().reads(1);
+                }
+            };
+        if let Err(err) = assets::Pallet::<T>::register_asset_id(
+            assets_permissions_account_id.clone(),
+            KEN.into(),
+            AssetSymbol(b"KEN".to_vec()),
+            AssetName(b"Kensetsu token".to_vec()),
+            common::DEFAULT_BALANCE_PRECISION,
+            common::Balance::zero(),
+            true,
+            None,
+            None,
+        ) {
+            error!("Failed to register KEN asset, error: {:?}", err);
+            return <T as frame_system::Config>::DbWeight::get().reads(1);
+        }
+        <T as frame_system::Config>::BlockWeights::get().max_block
+    }
+}
+
+pub type Migrations = (RegisterKenToken<Runtime>,);
+
+#[cfg(test)]
+mod tests {
+    use common::{AssetName, IsValid};
+
+    #[test]
+    pub fn test_asset_name_is_valid() {
+        assert!(AssetName(b"Kensetsu token".to_vec()).is_valid());
+    }
+}

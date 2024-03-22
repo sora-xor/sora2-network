@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "3.2.1"
+version = "3.2.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
