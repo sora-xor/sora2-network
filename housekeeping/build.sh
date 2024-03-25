@@ -7,7 +7,7 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-allfeatures='private-net,ready-to-test'
+allfeatures="$featureList"
 
 # build func
 test() {
