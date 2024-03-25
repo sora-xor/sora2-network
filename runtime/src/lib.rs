@@ -2181,7 +2181,7 @@ impl bridge_proxy::Config for Runtime {
     type ParachainApp = ParachainBridgeApp;
 
     #[cfg(feature = "wip")]
-    type LiberlandApp = LiberlandBridgeApp;
+    type LiberlandApp = SubstrateBridgeApp;
     #[cfg(not(feature = "wip"))]
     type LiberlandApp = ();
 
@@ -2464,8 +2464,8 @@ construct_runtime! {
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
-        #[cfg(feature = "wip")] // Liberland
-        LiberlandBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
+        #[cfg(feature = "wip")]
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
         // Beefy pallets should be placed after channels
@@ -3253,7 +3253,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "wip")] // Liberland bridge
-            list_benchmark!(list, extra, substrate_bridge_app, LiberlandBridgeApp);
+            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
@@ -3357,7 +3357,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
             #[cfg(feature = "wip")] // Liberland bridge
-            add_benchmark!(params, batches, substrate_bridge_app, LiberlandBridgeApp);
+            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 

@@ -343,7 +343,6 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
-#[cfg(not(feature = "wip"))]
 impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     fn get_dispatch_info(&self) -> DispatchInfo {
         match &self.0 {
@@ -360,30 +359,7 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
-                DispatchError::Other("Unavailable")
-            }
-        }
-    }
-}
-
-#[cfg(feature = "wip")]
-impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
-    fn get_dispatch_info(&self) -> DispatchInfo {
-        match &self.0 {
-            bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
-                let call: parachain_bridge_app::Call<crate::Runtime> = msg.clone().into();
-                call.get_dispatch_info()
-            }
-            bridge_types::substrate::BridgeCall::XCMApp(_msg) => Default::default(),
-            bridge_types::substrate::BridgeCall::DataSigner(msg) => {
-                let call: bridge_data_signer::Call<crate::Runtime> = msg.clone().into();
-                call.get_dispatch_info()
-            }
-            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
-                let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
-                call.get_dispatch_info()
-            }
+            #[cfg(feature = "wip")]
             bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> =
                     match substrate_bridge_app::Call::try_from(msg.clone()) {
@@ -392,6 +368,8 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                     };
                 call.get_dispatch_info()
             }
+            #[cfg(not(feature = "wip"))]
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => Default::default(),
         }
     }
 }
@@ -532,7 +510,10 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::XCMApp(_) => false,
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
+            #[cfg(feature = "wip")]
             bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
+            #[cfg(not(feature = "wip"))]
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => false,
         }
     }
 }
