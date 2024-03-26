@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use crate::Error;
-use common::{assert_approx_eq, balance, fixed, fixed_wrapper, prelude::FixedWrapper};
+use common::{assert_approx_eq_abs, balance, fixed, fixed_wrapper, prelude::FixedWrapper};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
 
@@ -784,7 +784,7 @@ fn calculating_distribution_should_pass() {
             distribution.buy_back_tbcd,
             17014118346046923173168730371588410562u128
         );
-        assert_approx_eq!(
+        assert_approx_eq_abs!(
             distribution
                 .liquidity_providers
                 .saturating_add(distribution.buy_back_tbcd)

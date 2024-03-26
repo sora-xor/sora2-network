@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use common::DexIdOf;
+
 use crate::operations::*;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -41,9 +43,10 @@ pub type TechAccountIdOf<T> = <T as technical::Config>::TechAccountId;
 pub type DEXIdOf<T> = <T as common::Config>::DEXId;
 
 pub type PolySwapActionStructOf<T> =
-    PolySwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
+    PolySwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
 
-pub type PairSwapActionOf<T> = PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
+pub type PairSwapActionOf<T> =
+    PairSwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
 
 pub type WithdrawLiquidityActionOf<T> =
     WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;

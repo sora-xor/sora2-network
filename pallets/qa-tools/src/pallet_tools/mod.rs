@@ -31,5 +31,10 @@
 //! Pallet-separated tools. To avoid naming clashes and
 //! to distinguish logic related to different pallets.
 
+pub mod assets;
 pub mod liquidity_proxy;
+pub mod mcbc;
 pub mod order_book;
+pub mod pool_xyk;
+pub mod price_tools;
+pub mod xst;

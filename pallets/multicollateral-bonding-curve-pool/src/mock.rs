@@ -31,8 +31,8 @@
 use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{
-    AssetInfoProvider, Balance, FixedWrapper, PriceToolsProvider, QuoteAmount, SwapAmount,
-    SwapOutcome,
+    AssetInfoProvider, Balance, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
+    SwapAmount, SwapOutcome,
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,
@@ -326,7 +326,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -377,12 +377,12 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
@@ -484,7 +484,7 @@ impl MockDEXApi {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         match amount {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
@@ -495,14 +495,17 @@ impl MockDEXApi {
                 let fee = fee.into_balance();
                 let amount_out: Balance = amount_out.into_balance();
                 let amount_out = amount_out - fee;
-                Ok(SwapOutcome::new(amount_out, fee))
+                Ok(SwapOutcome::new(amount_out, OutcomeFee::xor(fee)))
             }
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
                     * Self::get_price(input_asset_id, output_asset_id);
-                Ok(SwapOutcome::new(amount_out.into_balance(), 0))
+                Ok(SwapOutcome::new(
+                    amount_out.into_balance(),
+                    OutcomeFee::new(),
+                ))
             }
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
@@ -513,14 +516,17 @@ impl MockDEXApi {
                 let fee = with_fee.clone() - amount_in;
                 let fee = fee.into_balance();
                 let with_fee = with_fee.into_balance();
-                Ok(SwapOutcome::new(with_fee, fee))
+                Ok(SwapOutcome::new(with_fee, OutcomeFee::xor(fee)))
             }
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
                     / Self::get_price(input_asset_id, output_asset_id);
-                Ok(SwapOutcome::new(amount_in.into_balance(), 0))
+                Ok(SwapOutcome::new(
+                    amount_in.into_balance(),
+                    OutcomeFee::new(),
+                ))
             }
         }
     }
@@ -532,7 +538,7 @@ impl MockDEXApi {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         match swap_amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
@@ -629,7 +635,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::inner_exchange(
             sender,
             receiver,
@@ -647,7 +653,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::inner_quote(
             &filter.dex_id,
             input_asset_id,
