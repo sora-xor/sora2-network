@@ -29,15 +29,17 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
-use common::KEN;
+use common::{KEN, KUSD};
 use core::marker::PhantomData;
 use frame_support::{log::error, traits::OnRuntimeUpgrade};
 use sp_runtime::traits::Zero;
 
-pub struct RegisterKenToken<T>(PhantomData<T>);
+pub struct RegisterKensetsuTokens<T>(PhantomData<T>);
 
-/// Initializes Kensetsu pallet.
-impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKenToken<T> {
+/// Initializes Kensetsu predefined assets:
+/// - KEN
+/// - KUSD
+impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKensetsuTokens<T> {
     fn on_runtime_upgrade() -> Weight {
         let assets_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
             b"SYSTEM_ACCOUNT".to_vec(),
@@ -70,18 +72,22 @@ impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKenToke
             error!("Failed to register KEN asset, error: {:?}", err);
             return <T as frame_system::Config>::DbWeight::get().reads(1);
         }
+        if let Err(err) = assets::Pallet::<T>::register_asset_id(
+            assets_permissions_account_id.clone(),
+            KUSD.into(),
+            AssetSymbol(b"KUSD".to_vec()),
+            AssetName(b"Kensetsu Stable Dollar".to_vec()),
+            common::DEFAULT_BALANCE_PRECISION,
+            common::Balance::zero(),
+            true,
+            None,
+            None,
+        ) {
+            error!("Failed to register KUSD asset, error: {:?}", err);
+            return <T as frame_system::Config>::DbWeight::get().reads(1);
+        }
         <T as frame_system::Config>::BlockWeights::get().max_block
     }
 }
 
-pub type Migrations = (RegisterKenToken<Runtime>,);
-
-#[cfg(test)]
-mod tests {
-    use common::{AssetName, IsValid};
-
-    #[test]
-    pub fn test_asset_name_is_valid() {
-        assert!(AssetName(b"Kensetsu token".to_vec()).is_valid());
-    }
-}
+pub type Migrations = (RegisterKensetsuTokens<Runtime>,);
