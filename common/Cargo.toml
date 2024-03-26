@@ -79,4 +79,7 @@ std = [
     'hex/std',
     "fixnum/std",
 ]
+
 test = ["env_logger"]
+
+runtime-benchmarks = []

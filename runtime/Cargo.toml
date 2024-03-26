@@ -336,6 +336,7 @@ runtime-benchmarks = [
     "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
     "ceres-liquidity-locker-benchmarking/runtime-benchmarks",
+    "common/runtime-benchmarks",
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
     "dex-api/runtime-benchmarks",

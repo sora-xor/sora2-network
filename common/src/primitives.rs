@@ -473,6 +473,13 @@ impl Default for AssetSymbol {
     }
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+impl From<Vec<u8>> for AssetSymbol {
+    fn from(v: Vec<u8>) -> Self {
+        AssetSymbol(v)
+    }
+}
+
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 
 impl IsValid for AssetSymbol {
@@ -516,6 +523,13 @@ impl Display for AssetName {
 impl Default for AssetName {
     fn default() -> Self {
         Self(b"Test".to_vec())
+    }
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl From<Vec<u8>> for AssetName {
+    fn from(v: Vec<u8>) -> Self {
+        AssetName(v)
     }
 }
 
