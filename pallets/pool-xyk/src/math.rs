@@ -168,7 +168,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Calulate (x_input,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and input is
+    /// Calculates (x_input,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and input is
     /// without fee.
     pub fn calc_input_for_exact_output(
         fee_fraction: Fixed,

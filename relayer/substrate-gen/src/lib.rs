@@ -135,7 +135,7 @@ pub mod runtime {
     use ::common::AssetSymbol;
     #[subxt(substitute_type = "common::primitives::LiquiditySourceType")]
     use ::common::LiquiditySourceType;
-    #[subxt(substitute_type = "common::primitives::PredefinedAssetId")]
+    #[subxt(substitute_type = "common::primitives::_allowed_deprecated::PredefinedAssetId")]
     use ::common::PredefinedAssetId;
     #[subxt(substitute_type = "common::primitives::RewardReason")]
     use ::common::RewardReason;
