@@ -152,6 +152,21 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -189,8 +204,10 @@
 </span><span class="kw">use </span>codec::{Codec, Decode, Encode};
 <span class="kw">use </span>common::prelude::OutcomeFee;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
-</span><span class="kw">use </span>common::utils::string_serialization;
+</span><span class="kw">use </span>common::utils::{fee_serialization, string_serialization};
 <span class="kw">use </span>common::BalanceWrapper;
+<span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
+</span><span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>sp_runtime::traits::{MaybeDisplay, MaybeFromStr, Zero};
@@ -198,7 +215,10 @@
 
 <span class="attr">#[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Debug, Serialize, Deserialize))]
-</span><span class="kw">pub struct </span>SwapOutcomeInfo&lt;Balance, AssetId: Ord&gt; {
+</span><span class="kw">pub struct </span>SwapOutcomeInfo&lt;Balance, AssetId&gt;
+<span class="kw">where
+    </span>AssetId: MaybeDisplay + MaybeFromStr + Ord,
+{
     <span class="attr">#[cfg_attr(
         feature = <span class="string">&quot;std&quot;</span>,
         serde(
@@ -210,13 +230,23 @@
         </span>)
     )]
     </span><span class="kw">pub </span>amount: Balance,
-    <span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, Balance&gt;,
+    <span class="attr">#[cfg_attr(
+        feature = <span class="string">&quot;std&quot;</span>,
+        serde(
+            bound(
+                serialize = <span class="string">&quot;Balance: std::fmt::Display&quot;</span>,
+                deserialize = <span class="string">&quot;AssetId: DeserializeOwned, Balance: DeserializeOwned + std::str::FromStr&quot;
+            </span>),
+            with = <span class="string">&quot;fee_serialization&quot;
+        </span>)
+    )]
+    </span><span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, Balance&gt;,
 }
 
 <span class="kw">impl</span>&lt;Balance, AssetId&gt; From&lt;SwapOutcomeInfoV1&lt;Balance&gt;&gt; <span class="kw">for </span>SwapOutcomeInfo&lt;Balance, AssetId&gt;
 <span class="kw">where
     </span>Balance: Copy + Zero,
-    AssetId: Ord + From&lt;common::AssetId32&lt;common::PredefinedAssetId&gt;&gt;,
+    AssetId: MaybeDisplay + MaybeFromStr + Ord + From&lt;common::AssetId32&lt;common::PredefinedAssetId&gt;&gt;,
 {
     <span class="kw">fn </span>from(value: SwapOutcomeInfoV1&lt;Balance&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -256,7 +286,7 @@
 <span class="macro">sp_api::decl_runtime_apis! </span>{
     <span class="attr">#[api_version(<span class="number">2</span>)]
     </span><span class="kw">pub trait </span>DEXAPI&lt;AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant&gt; <span class="kw">where
-        </span>AssetId: Codec + Ord,
+        </span>AssetId: Codec + MaybeDisplay + MaybeFromStr + Ord,
         DEXId: Codec,
         LiquiditySourceType: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
