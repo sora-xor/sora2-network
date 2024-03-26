@@ -2180,9 +2180,9 @@ impl bridge_proxy::Config for Runtime {
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
 
-    #[cfg(feature = "wip")]
+    #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
     type LiberlandApp = SubstrateBridgeApp;
-    #[cfg(not(feature = "wip"))]
+    #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
     type LiberlandApp = ();
 
     type TimepointProvider = GenericTimepointProvider;
@@ -2308,8 +2308,7 @@ impl parachain_bridge_app::Config for Runtime {
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
-// Liberland
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
 impl substrate_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
@@ -2464,7 +2463,7 @@ construct_runtime! {
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "ready-to-test")]
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
