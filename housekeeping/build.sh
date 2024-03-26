@@ -14,6 +14,10 @@ test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks"
+        if [[ ${TAG_NAME} =~ 'testnet'* ]]; then
+            RUST_LOG="debug"
+            cargo test --features try-runtime -- run_migrations
+        fi
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
@@ -21,7 +25,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features "$allfeatures"
+        cargo test --features "$allfeatures" --test-threads 2
     fi
 }
 
