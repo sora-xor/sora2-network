@@ -100,6 +100,12 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -131,15 +137,17 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use crate</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span>common::KEN;
+<span class="kw">use </span>common::{KEN, KUSD};
 <span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>frame_support::{log::error, traits::OnRuntimeUpgrade};
 <span class="kw">use </span>sp_runtime::traits::Zero;
 
-<span class="kw">pub struct </span>RegisterKenToken&lt;T&gt;(PhantomData&lt;T&gt;);
+<span class="kw">pub struct </span>RegisterKensetsuTokens&lt;T&gt;(PhantomData&lt;T&gt;);
 
-<span class="doccomment">/// Initializes Kensetsu pallet.
-</span><span class="kw">impl</span>&lt;T: assets::Config + technical::Config&gt; OnRuntimeUpgrade <span class="kw">for </span>RegisterKenToken&lt;T&gt; {
+<span class="doccomment">/// Initializes Kensetsu predefined assets:
+/// - KEN
+/// - KUSD
+</span><span class="kw">impl</span>&lt;T: assets::Config + technical::Config&gt; OnRuntimeUpgrade <span class="kw">for </span>RegisterKensetsuTokens&lt;T&gt; {
     <span class="kw">fn </span>on_runtime_upgrade() -&gt; Weight {
         <span class="kw">let </span>assets_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
             <span class="string">b&quot;SYSTEM_ACCOUNT&quot;</span>.to_vec(),
@@ -172,20 +180,24 @@
             <span class="macro">error!</span>(<span class="string">&quot;Failed to register KEN asset, error: {:?}&quot;</span>, err);
             <span class="kw">return </span>&lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().reads(<span class="number">1</span>);
         }
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = assets::Pallet::&lt;T&gt;::register_asset_id(
+            assets_permissions_account_id.clone(),
+            KUSD.into(),
+            AssetSymbol(<span class="string">b&quot;KUSD&quot;</span>.to_vec()),
+            AssetName(<span class="string">b&quot;Kensetsu Stable Dollar&quot;</span>.to_vec()),
+            common::DEFAULT_BALANCE_PRECISION,
+            common::Balance::zero(),
+            <span class="bool-val">true</span>,
+            <span class="prelude-val">None</span>,
+            <span class="prelude-val">None</span>,
+        ) {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to register KUSD asset, error: {:?}&quot;</span>, err);
+            <span class="kw">return </span>&lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().reads(<span class="number">1</span>);
+        }
         &lt;T <span class="kw">as </span>frame_system::Config&gt;::BlockWeights::get().max_block
     }
 }
 
-<span class="kw">pub type </span>Migrations = (RegisterKenToken&lt;Runtime&gt;,);
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>common::{AssetName, IsValid};
-
-    <span class="attr">#[test]
-    </span><span class="kw">pub fn </span>test_asset_name_is_valid() {
-        <span class="macro">assert!</span>(AssetName(<span class="string">b&quot;Kensetsu token&quot;</span>.to_vec()).is_valid());
-    }
-}
+<span class="kw">pub type </span>Migrations = (RegisterKensetsuTokens&lt;Runtime&gt;,);
 </code></pre></div>
 </section></main></body></html>
