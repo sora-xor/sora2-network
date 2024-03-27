@@ -96,6 +96,7 @@ fn test_create_cdp_overflow_error() {
     });
 }
 
+/// Create CDP should fail if collateral is under required minimal limit.
 #[test]
 fn test_create_cdp_collateral_below_minimal() {
     new_test_ext().execute_with(|| {
@@ -119,12 +120,13 @@ fn test_create_cdp_collateral_below_minimal() {
 fn test_create_cdp_sunny_day() {
     new_test_ext().execute_with(|| {
         let collateral = balance!(10);
+        let collateral_minimal_balance = collateral;
         let debt = balance!(2);
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
-            balance!(0),
+            collateral_minimal_balance,
         );
         set_balance(alice_account_id(), collateral);
 
