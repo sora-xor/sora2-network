@@ -19,16 +19,17 @@ use bridge_types::{
         TimepointProvider,
     },
     types::{AssetKind, MessageDirection, MessageStatus},
-    Address, GenericAccount, GenericNetworkId, GenericTimepoint, H160, H256,
+    Address, GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::ReferencePriceProvider;
 use common::{prelude::FixedWrapper, Balance};
+use common::{AssetInfoProvider, ReferencePriceProvider};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
 use frame_support::log;
 use scale_info::TypeInfo;
 use sp_core::U256;
+use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
 use sp_runtime::Saturating;
 use sp_std::prelude::*;
@@ -39,9 +40,9 @@ pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct BridgeRequest<AccountId, AssetId> {
-    source: GenericAccount<AccountId>,
-    dest: GenericAccount<AccountId>,
+pub struct BridgeRequest<AssetId> {
+    source: GenericAccount,
+    dest: GenericAccount,
     asset_id: AssetId,
     amount: Balance,
     status: MessageStatus,
@@ -61,6 +62,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::MainnetAccountId;
     use bridge_types::{
         substrate::ParachainAccountId,
         traits::BridgeApp,
@@ -89,6 +91,8 @@ pub mod pallet {
 
         type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
+        type LiberlandApp: BridgeApp<Self::AccountId, GenericAccount, Self::AssetId, Balance>;
+
         type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
 
         type ReferencePriceProvider: ReferencePriceProvider<Self::AssetId, Balance>;
@@ -98,6 +102,8 @@ pub mod pallet {
         type TimepointProvider: TimepointProvider;
 
         type WeightInfo: WeightInfo;
+
+        type AccountIdConverter: Convert<MainnetAccountId, Self::AccountId>;
     }
 
     #[pallet::storage]
@@ -108,7 +114,7 @@ pub mod pallet {
         (GenericNetworkId, T::AccountId),
         Blake2_128Concat,
         H256,
-        BridgeRequest<T::AccountId, T::AssetId>,
+        BridgeRequest<T::AssetId>,
         OptionQuery,
     >;
 
@@ -230,7 +236,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             asset_id: T::AssetId,
-            recipient: GenericAccount<T::AccountId>,
+            recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
@@ -251,6 +257,15 @@ pub mod pallet {
                 }
                 GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
                     frame_support::fail!(Error::<T>::WrongAccountKind);
+                }
+                GenericAccount::Liberland(recipient) => {
+                    T::LiberlandApp::transfer(
+                        network_id,
+                        asset_id,
+                        sender,
+                        GenericAccount::Liberland(recipient),
+                        amount,
+                    )?;
                 }
             }
             Ok(().into())
@@ -309,6 +324,7 @@ pub mod pallet {
             res.extend(T::ERC20App::list_apps());
             res.extend(T::HashiBridge::list_apps());
             res.extend(T::ParachainApp::list_apps());
+            res.extend(T::LiberlandApp::list_apps());
             res
         }
 
@@ -318,23 +334,27 @@ pub mod pallet {
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
             res.extend(T::ParachainApp::list_supported_assets(network_id));
+            res.extend(T::LiberlandApp::list_supported_assets(network_id));
             res
         }
 
         pub fn refund(
             network_id: GenericNetworkId,
             message_id: H256,
-            beneficiary: GenericAccount<T::AccountId>,
+            beneficiary: GenericAccount,
             asset_id: T::AssetId,
             amount: Balance,
         ) -> DispatchResult {
             let GenericAccount::Sora(beneficiary) = beneficiary else {
                 return Err(Error::<T>::WrongAccountKind.into());
             };
+            let beneficiary = T::AccountIdConverter::convert(beneficiary);
             if T::HashiBridge::is_asset_supported(network_id, asset_id) {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
                 T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::LiberlandApp::is_asset_supported(network_id, asset_id) {
+                T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::EthApp::is_asset_supported(network_id, asset_id) {
                 T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else {
@@ -349,6 +369,7 @@ pub mod pallet {
                 .max(T::EthApp::transfer_weight())
                 .max(T::ERC20App::transfer_weight())
                 .max(T::ParachainApp::transfer_weight())
+                .max(T::LiberlandApp::transfer_weight())
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
                 .saturating_add(T::EthApp::is_asset_supported_weight())
                 .saturating_add(T::ERC20App::is_asset_supported_weight())
@@ -356,7 +377,10 @@ pub mod pallet {
     }
 }
 
-impl<T: Config> GasTracker<Balance> for Pallet<T> {
+impl<T: Config> GasTracker<Balance> for Pallet<T>
+where
+    T::AccountId: From<bridge_types::MainnetAccountId>,
+{
     /// Records fee paid by relayer for message submission.
     /// - network_id - ethereum network id,
     /// - batch_nonce - batch nonce,
@@ -391,7 +415,10 @@ impl<T: Config> GasTracker<Balance> for Pallet<T> {
     }
 }
 
-impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pallet<T> {
+impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pallet<T>
+where
+    MainnetAccountId: From<T::AccountId>,
+{
     fn update_status(
         network_id: GenericNetworkId,
         message_id: H256,
@@ -440,7 +467,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
     fn inbound_request(
         network_id: GenericNetworkId,
         message_id: H256,
-        source: GenericAccount<T::AccountId>,
+        source: GenericAccount,
         dest: T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
@@ -454,7 +481,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
             &message_id,
             BridgeRequest {
                 source,
-                dest: GenericAccount::Sora(dest.clone()),
+                dest: GenericAccount::Sora(dest.clone().into()),
                 asset_id,
                 amount,
                 status,
@@ -469,7 +496,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         network_id: GenericNetworkId,
         message_id: H256,
         source: T::AccountId,
-        dest: GenericAccount<T::AccountId>,
+        dest: GenericAccount,
         asset_id: T::AssetId,
         amount: Balance,
         status: MessageStatus,
@@ -480,7 +507,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
             (&network_id, &source),
             &message_id,
             BridgeRequest {
-                source: GenericAccount::Sora(source.clone()),
+                source: GenericAccount::Sora(source.clone().into()),
                 dest,
                 asset_id,
                 amount,
@@ -695,5 +722,9 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
             symbol: asset_symbol.0,
             precision,
         }
+    }
+
+    fn ensure_asset_exists(asset_id: T::AssetId) -> bool {
+        assets::Pallet::<T>::asset_exists(&asset_id)
     }
 }
