@@ -521,6 +521,7 @@ pub mod pallet {
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
+            // any account can repay debt
             let _ = ensure_signed(origin)?;
             Self::repay_debt_internal(cdp_id, amount)
         }
