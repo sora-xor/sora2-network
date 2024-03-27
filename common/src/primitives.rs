@@ -293,12 +293,12 @@ where
 }
 
 impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
-    type Error = ();
+    type Error = &'static str;
 
     fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
         match asset_id {
             GenericAssetId::Sora(id) => Ok(id.into()),
-            _ => Err(()),
+            _ => Err("Non SORA assets is not supported"),
         }
     }
 }

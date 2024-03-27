@@ -2465,7 +2465,7 @@ construct_runtime! {
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
-        #[cfg(feature = "ready-to-test")]
+        #[cfg(feature = "ready-to-test")] // Generic Substrate Bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
