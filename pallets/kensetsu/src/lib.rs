@@ -86,6 +86,10 @@ pub struct CollateralRiskParameters {
 
     /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
+
+    /// Minimal deposit in collateral AssetId.
+    /// In order to protect from empty CDPs.
+    pub minimal_collateral_deposit: Balance,
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
@@ -385,11 +389,12 @@ pub mod pallet {
         WrongAssetId,
         CDPNotFound,
         CollateralInfoNotFound,
+        CollateralBelowMinimal,
         CDPSafe,
         CDPUnsafe,
         /// Too many CDPs per user
         CDPLimitPerUser,
-        // Risk management team size exceeded
+        /// Risk management team size exceeded
         TooManyManagers,
         OperationNotPermitted,
         OutstandingDebt,
@@ -422,9 +427,13 @@ pub mod pallet {
             borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let interest_coefficient = Self::collateral_infos(collateral_asset_id)
-                .ok_or(Error::<T>::CollateralInfoNotFound)?
-                .interest_coefficient;
+            let collateral_info = Self::collateral_infos(collateral_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let interest_coefficient = collateral_info.interest_coefficient;
+            ensure!(
+                collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
+                Error::<T>::CollateralBelowMinimal
+            );
             let cdp_id = Self::increment_cdp_id()?;
             Self::insert_cdp(
                 &who,

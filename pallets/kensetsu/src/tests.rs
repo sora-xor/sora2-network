@@ -85,12 +85,31 @@ fn test_create_cdp_overflow_error() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         NextCDPId::<TestRuntime>::set(CdpId::MAX);
 
         assert_noop!(
             KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
             KensetsuError::ArithmeticError
+        );
+    });
+}
+
+#[test]
+fn test_create_cdp_collateral_below_minimal() {
+    new_test_ext().execute_with(|| {
+        let minimal_balance = balance!(100);
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            minimal_balance,
+        );
+
+        assert_noop!(
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
+            KensetsuError::CollateralBelowMinimal
         );
     });
 }
@@ -105,6 +124,7 @@ fn test_create_cdp_sunny_day() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         set_balance(alice_account_id(), collateral);
 
@@ -180,6 +200,7 @@ fn test_close_cdp_only_owner() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
@@ -212,6 +233,7 @@ fn test_close_cdp_outstanding_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(1));
 
@@ -230,6 +252,7 @@ fn test_close_cdp_sunny_day() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
         assert_balance(&alice_account_id(), &XOR, balance!(0));
@@ -259,6 +282,7 @@ fn test_multiple_cdp_close() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id_1 = create_cdp_for_xor(alice(), balance!(10), balance!(0));
         let cdp_id_2 = create_cdp_for_xor(alice(), balance!(10), balance!(0));
@@ -318,6 +342,7 @@ fn test_deposit_collateral_not_enough_balance() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
@@ -336,6 +361,7 @@ fn test_deposit_collateral_overflow() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         // due to cast to i128 in update_balance() u128::MAX is done with 2 x i128::MAX
         let max_i128_amount = Balance::MAX / 2;
@@ -359,6 +385,7 @@ fn test_deposit_collateral_zero() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
         let amount = balance!(0);
@@ -387,6 +414,7 @@ fn test_deposit_collateral_sunny_day() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
         let amount = balance!(10);
@@ -434,6 +462,7 @@ fn test_borrow_only_owner() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         // Alice is CDP owner
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
@@ -466,6 +495,7 @@ fn test_borrow_cdp_overflow() {
             Balance::MAX,
             Perbill::from_percent(100),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         // due to cast to i128 in update_balance() u128::MAX is done with 2 x i128::MAX
         let max_i128_amount = Balance::MAX / 2;
@@ -486,6 +516,7 @@ fn test_borrow_cdp_unsafe() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let amount = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
@@ -506,6 +537,7 @@ fn test_borrow_cdp_type_hard_cap() {
             balance!(10),
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
@@ -526,6 +558,7 @@ fn test_borrow_protocol_hard_cap() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         assert_ok!(KensetsuPallet::update_hard_cap_total_supply(
             risk_manager(),
@@ -549,6 +582,7 @@ fn test_borrow_zero_amount() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -579,6 +613,7 @@ fn test_borrow_sunny_day() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
         let to_borrow = balance!(10);
@@ -615,6 +650,7 @@ fn test_borrow_cdp_accrue() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -677,6 +713,7 @@ fn test_repay_debt_amount_less_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -713,6 +750,7 @@ fn test_repay_debt_amount_eq_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -748,6 +786,7 @@ fn test_repay_debt_amount_gt_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -792,6 +831,7 @@ fn test_repay_debt_zero_amount() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -827,6 +867,7 @@ fn test_repay_debt_accrue() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -871,6 +912,7 @@ fn test_liquidate_cdp_safe() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
 
@@ -891,6 +933,7 @@ fn test_liquidate_accrue() {
             Balance::MAX,
             Perbill::from_percent(10),
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         // the CDP will be unsafe in the next second
         let debt = balance!(1000);
@@ -928,7 +971,12 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
         set_up_risk_manager();
         KensetsuPallet::update_liquidation_penalty(risk_manager(), Percent::from_percent(10))
             .expect("Must set liquidation penalty");
-        set_xor_as_collateral_type(Balance::MAX, Perbill::from_percent(50), FixedU128::zero());
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::zero(),
+            balance!(0),
+        );
         let collateral = balance!(2000);
         let debt = balance!(100);
         let collateral_liquidated = balance!(200);
@@ -981,7 +1029,12 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
         set_up_risk_manager();
         KensetsuPallet::update_liquidation_penalty(risk_manager(), Percent::from_percent(10))
             .expect("Must set liquidation penalty");
-        set_xor_as_collateral_type(Balance::MAX, Perbill::from_percent(50), FixedU128::zero());
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::zero(),
+            balance!(0),
+        );
         let collateral = balance!(2000);
         let debt = balance!(100);
         // debt + penalty = 100 + 10
@@ -1036,7 +1089,12 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
         set_up_risk_manager();
         KensetsuPallet::update_liquidation_penalty(risk_manager(), Percent::from_percent(10))
             .expect("Must set liquidation penalty");
-        set_xor_as_collateral_type(Balance::MAX, Perbill::from_percent(50), FixedU128::zero());
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::zero(),
+            balance!(0),
+        );
         let collateral = balance!(2000);
         let debt = balance!(1000);
         let collateral_liquidated = balance!(1050);
@@ -1092,6 +1150,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
             Balance::MAX,
             Perbill::from_percent(100),
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let collateral = balance!(100);
         let debt = balance!(100);
@@ -1159,6 +1218,7 @@ fn test_liquidate_kusd_bad_debt() {
             Balance::MAX,
             Perbill::from_percent(100),
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let collateral = balance!(100);
         let debt = balance!(100);
@@ -1229,6 +1289,7 @@ fn test_liquidate_zero_lot() {
             liquidation_ratio: Perbill::from_percent(100),
             max_liquidation_lot: balance!(0),
             stability_fee_rate: FixedU128::from_float(0.1),
+            minimal_collateral_deposit: balance!(0),
         };
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             risk_manager(),
@@ -1270,6 +1331,7 @@ fn test_accrue_no_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
@@ -1288,6 +1350,7 @@ fn test_accrue_wrong_time() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
@@ -1309,6 +1372,7 @@ fn test_accrue_overflow() {
             Perbill::from_percent(50),
             // This big number will result with overflow
             FixedU128::from_float(9999999.0),
+            balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(50));
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(9999);
@@ -1331,6 +1395,7 @@ fn test_accrue_profit() {
             Perbill::from_percent(50),
             // 10% per second
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -1364,6 +1429,7 @@ fn test_accrue_profit_same_time() {
             Perbill::from_percent(50),
             // 10% per second
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -1399,6 +1465,7 @@ fn test_accrue_interest_less_bad_debt() {
             Perbill::from_percent(50),
             // 20% per second
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -1436,6 +1503,7 @@ fn test_accrue_interest_eq_bad_debt() {
             Perbill::from_percent(50),
             // 20% per second
             FixedU128::from_float(0.1),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -1472,6 +1540,7 @@ fn test_accrue_interest_gt_bad_debt() {
             Perbill::from_percent(50),
             // 20% per second
             FixedU128::from_float(0.2),
+            balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
@@ -1506,6 +1575,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_float(0.1),
+            minimal_collateral_deposit: balance!(0),
         };
 
         assert_noop!(
@@ -1536,6 +1606,7 @@ fn test_update_collateral_risk_parameters_only_risk_manager() {
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_float(0.1),
+            minimal_collateral_deposit: balance!(0),
         };
 
         assert_noop!(
@@ -1555,6 +1626,7 @@ fn test_update_collateral_risk_parameters_wrong_asset_id() {
             liquidation_ratio: Perbill::from_percent(50),
             max_liquidation_lot: balance!(100),
             stability_fee_rate: FixedU128::from_float(0.1),
+            minimal_collateral_deposit: balance!(0),
         };
         let wrong_asset_id = AssetId32::from_bytes(hex!(
             "0000000000000000000000000000000000000000000000000000000007654321"
@@ -1588,6 +1660,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             liquidation_ratio: Perbill::from_percent(10),
             max_liquidation_lot: balance!(100),
             stability_fee_rate,
+            minimal_collateral_deposit: balance!(0),
         };
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
@@ -1605,6 +1678,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             liquidation_ratio: Perbill::from_percent(10),
             max_liquidation_lot: balance!(200),
             stability_fee_rate: FixedU128::from_float(0.2),
+            minimal_collateral_deposit: balance!(0),
         };
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2);
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
@@ -1756,6 +1830,7 @@ fn test_donate_no_bad_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
@@ -1784,6 +1859,7 @@ fn test_donate_donation_less_bad_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
@@ -1811,6 +1887,7 @@ fn test_donate_donation_eq_bad_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
@@ -1838,6 +1915,7 @@ fn test_donate_donation_gt_bad_debt() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
@@ -1862,6 +1940,7 @@ fn test_donate_zero_amount() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
 
@@ -1926,6 +2005,7 @@ fn test_withdraw_profit_sunny_day() {
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
+            balance!(0),
         );
         create_cdp_for_xor(alice(), balance!(100), initial_protocol_profit);
         assert_ok!(KensetsuPallet::donate(alice(), initial_protocol_profit));
