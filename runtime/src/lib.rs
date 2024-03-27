@@ -2181,6 +2181,12 @@ impl bridge_proxy::Config for Runtime {
 
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
+
+    #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+    type LiberlandApp = SubstrateBridgeApp;
+    #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
+    type LiberlandApp = ();
+
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
@@ -2189,6 +2195,7 @@ impl bridge_proxy::Config for Runtime {
         EnsureRoot<AccountId>,
     >;
     type WeightInfo = ();
+    type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
 #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -2301,6 +2308,21 @@ impl parachain_bridge_app::Config for Runtime {
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
+}
+
+#[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+impl substrate_bridge_app::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
+    type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeProxy;
+    type AccountIdConverter = impls::LiberlandAccountIdConverter;
+    type AssetIdConverter = impls::LiberlandAssetIdConverter;
+    type BalancePrecisionConverter = impls::GenericBalancePrecisionConverter;
+    type BridgeAssetLocker = BridgeProxy;
+    type WeightInfo = crate::weights::substrate_bridge_app::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2442,6 +2464,9 @@ construct_runtime! {
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
+
+        #[cfg(feature = "ready-to-test")] // Generic Substrate Bridge
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
         // Beefy pallets should be placed after channels
@@ -3228,6 +3253,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
+            #[cfg(feature = "wip")] // Liberland bridge
+            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
@@ -3330,6 +3357,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
+            #[cfg(feature = "wip")] // Liberland bridge
+            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 
