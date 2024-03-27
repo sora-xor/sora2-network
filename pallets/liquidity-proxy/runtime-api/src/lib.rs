@@ -35,7 +35,7 @@
 use codec::{Codec, Decode, Encode};
 use common::prelude::OutcomeFee;
 #[cfg(feature = "std")]
-use common::utils::string_serialization;
+use common::utils::{fee_serialization, string_serialization};
 use common::{BalanceWrapper, RewardReason};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -70,6 +70,16 @@ where
         )
     )]
     pub amount_without_impact: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "fee_serialization"
+        )
+    )]
     pub fee: OutcomeFee<AssetId, Balance>,
     pub rewards: Vec<RewardsInfo<Balance, AssetId>>,
     pub route: Vec<AssetId>,
@@ -258,5 +268,40 @@ sp_api::decl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType>;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::{balance, Balance};
+
+    type AssetId = common::AssetId32<common::PredefinedAssetId>;
+
+    #[test]
+    fn should_serialize_and_deserialize_outcome_fee() {
+        let info = SwapOutcomeInfo::<Balance, AssetId> {
+            fee: OutcomeFee::xor(balance!(0.003)),
+            ..Default::default()
+        };
+        let json_str = r#"{"amount":"0","amount_without_impact":"0","fee":{"0x0200000000000000000000000000000000000000000000000000000000000000":"3000000000000000"},"rewards":[],"route":[]}"#;
+
+        let parsed: SwapOutcomeInfo<Balance, AssetId> = serde_json::from_str(json_str).unwrap();
+        assert_eq!(serde_json::to_string(&info).unwrap(), json_str);
+        assert_eq!(info, parsed);
+        // should not panic
+        serde_json::to_value(info).unwrap();
+
+        let info = SwapOutcomeInfo::<Balance, AssetId> {
+            fee: OutcomeFee::xor(balance!(0.003)).merge(OutcomeFee::xst(balance!(0.04))),
+            ..Default::default()
+        };
+        let json_str = r#"{"amount":"0","amount_without_impact":"0","fee":{"0x0200000000000000000000000000000000000000000000000000000000000000":"3000000000000000","0x0200090000000000000000000000000000000000000000000000000000000000":"40000000000000000"},"rewards":[],"route":[]}"#;
+
+        let parsed: SwapOutcomeInfo<Balance, AssetId> = serde_json::from_str(json_str).unwrap();
+        assert_eq!(serde_json::to_string(&info).unwrap(), json_str);
+        assert_eq!(info, parsed);
+        // should not panic
+        serde_json::to_value(info).unwrap();
     }
 }

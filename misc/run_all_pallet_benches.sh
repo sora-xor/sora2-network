@@ -21,6 +21,7 @@ declare -A PATH_OVERRIDES=(
     [ethereum-light-client]=./pallets/trustless-bridge/ethereum-light-client/src/weights.rs
     [evm-bridge-proxy]=./pallets/trustless-bridge/bridge-proxy/src/weights.rs
     [migration-app]=./pallets/trustless-bridge/migration-app/src/weights.rs
+    [parachain-bridge-app]=./runtime/src/weights/parachain_bridge_app.rs
     [substrate-bridge-app]=./runtime/src/weights/substrate_bridge_app.rs
     [substrate-bridge-channel-inbound]=./runtime/src/weights/substrate_inbound_channel.rs
     [substrate-bridge-channel-outbound]=./runtime/src/weights/substrate_outbound_channel.rs

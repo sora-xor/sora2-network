@@ -107,7 +107,11 @@ where
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: DEXRuntimeAPI<Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>,
-    AssetId: Codec + Ord + From<common::AssetId32<common::PredefinedAssetId>>,
+    AssetId: Codec
+        + MaybeFromStr
+        + MaybeDisplay
+        + Ord
+        + From<common::AssetId32<common::PredefinedAssetId>>,
     DEXId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay + Copy + Zero,
     SwapVariant: Codec,
