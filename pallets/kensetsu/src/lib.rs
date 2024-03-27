@@ -392,7 +392,6 @@ pub mod pallet {
         // Risk management team size exceeded
         TooManyManagers,
         OperationNotPermitted,
-        OutstandingDebt,
         NoDebt,
         CDPsPerUserLimitReached,
         HardCapSupply,
@@ -453,17 +452,20 @@ pub mod pallet {
 
         /// Closes a Collateralized Debt Position (CDP).
         ///
+        /// If a CDP has outstanding debt, this amount is covered with owner balance. Collateral
+        /// then is returned to the owner and CDP is deleted.
+        ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            ensure!(cdp.debt == 0, Error::<T>::OutstandingDebt);
+            Self::repay_debt_internal(cdp_id, cdp.debt)?;
             technical::Pallet::<T>::transfer_out(
                 &cdp.collateral_asset_id,
                 &T::TreasuryTechAccount::get(),
@@ -519,26 +521,8 @@ pub mod pallet {
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
-            // if repaying amount exceeds debt, leftover is not burned
-            let to_cover_debt = amount.min(cdp.debt);
-            Self::burn_from(&who, to_cover_debt)?;
-            Self::update_cdp_debt(
-                cdp_id,
-                cdp.debt
-                    .checked_sub(to_cover_debt)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-            )?;
-            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, to_cover_debt)?;
-            Self::deposit_event(Event::DebtPayment {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: to_cover_debt,
-            });
-
-            Ok(())
+            let _ = ensure_signed(origin)?;
+            Self::repay_debt_internal(cdp_id, amount)
         }
 
         /// Liquidates a Collateralized Debt Position (CDP) if it becomes unsafe.
@@ -1011,6 +995,35 @@ pub mod pallet {
                 owner: who.clone(),
                 collateral_asset_id: cdp.collateral_asset_id,
                 amount: will_to_borrow_amount,
+            });
+
+            Ok(())
+        }
+
+        /// Repays debt
+        /// Burns KUSD amount from CDP owner, updates CDP balances.
+        ///
+        /// ## Parameters
+        ///
+        /// - 'cdp_id' - CDP id
+        /// - `amount` - The maximum amount to repay, if exceeds debt, the debt amount is repayed.
+        fn repay_debt_internal(cdp_id: CdpId, amount: Balance) -> DispatchResult {
+            let cdp = Self::accrue_internal(cdp_id)?;
+            // if repaying amount exceeds debt, leftover is not burned
+            let to_cover_debt = amount.min(cdp.debt);
+            Self::burn_from(&cdp.owner, to_cover_debt)?;
+            Self::update_cdp_debt(
+                cdp_id,
+                cdp.debt
+                    .checked_sub(to_cover_debt)
+                    .ok_or(Error::<T>::ArithmeticError)?,
+            )?;
+            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, to_cover_debt)?;
+            Self::deposit_event(Event::DebtPayment {
+                cdp_id,
+                owner: cdp.owner,
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: to_cover_debt,
             });
 
             Ok(())
