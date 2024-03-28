@@ -227,7 +227,7 @@ fn test_close_cdp_does_not_exist() {
     });
 }
 
-/// Doesn't allow to close CDP with outstanding debt
+/// When CDP has outstanding debt, it should be repayed.
 #[test]
 fn test_close_cdp_outstanding_debt() {
     new_test_ext().execute_with(|| {
@@ -237,16 +237,38 @@ fn test_close_cdp_outstanding_debt() {
             FixedU128::from_float(0.0),
             balance!(0),
         );
-        let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(1));
+        let debt = balance!(1);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(10), debt);
+        assert_balance(&alice_account_id(), &XOR, balance!(0));
+        assert_balance(&alice_account_id(), &KUSD, debt);
 
-        assert_noop!(
-            KensetsuPallet::close_cdp(alice(), cdp_id),
-            KensetsuError::OutstandingDebt
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+
+        System::assert_has_event(
+            Event::DebtPayment {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+                amount: debt,
+            }
+            .into(),
         );
+        System::assert_has_event(
+            Event::CDPClosed {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+            }
+            .into(),
+        );
+        assert_balance(&alice_account_id(), &XOR, balance!(10));
+        assert_balance(&alice_account_id(), &KUSD, balance!(0));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
     });
 }
 
-/// Closes CDP and returns collateral to the owner
+/// Closes CDP and returns collateral to the owner when debt == 0
 #[test]
 fn test_close_cdp_sunny_day() {
     new_test_ext().execute_with(|| {
