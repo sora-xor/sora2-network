@@ -1132,11 +1132,11 @@ pub mod pallet {
         pub fn get_price(asset_id: AssetIdOf<T>) -> Balance {
             // Get average price from PriceTools pallet
             let buy_price =
-                T::PriceTools::get_average_price(&asset_id.into(), &DAI.into(), PriceVariant::Buy)
+                T::PriceTools::get_average_price(&asset_id, &DAI.into(), PriceVariant::Buy)
                     .unwrap();
 
             let sell_price =
-                T::PriceTools::get_average_price(&asset_id.into(), &DAI.into(), PriceVariant::Sell)
+                T::PriceTools::get_average_price(&asset_id, &DAI.into(), PriceVariant::Sell)
                     .unwrap();
 
             // Average price in dollars
