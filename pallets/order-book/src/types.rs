@@ -49,6 +49,7 @@ pub type MarketSide<MaxSidePriceCount> =
 pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
     BoundedVec<OrderId, MaxOpenedLimitOrdersPerUser>;
 
+/// The public status of the order book that defines the list of allowed operations with the order book.
 #[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
@@ -66,6 +67,7 @@ pub enum OrderBookStatus {
     Stop,
 }
 
+/// The internal tech status of the order book which indicates an opportunity to change the attributes or public status.
 #[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
