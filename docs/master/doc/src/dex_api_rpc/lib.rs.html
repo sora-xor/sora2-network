@@ -218,6 +218,10 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -327,7 +331,11 @@
     C: Send + Sync + <span class="lifetime">&#39;static</span>,
     C: ProvideRuntimeApi&lt;Block&gt; + HeaderBackend&lt;Block&gt;,
     C::Api: DEXRuntimeAPI&lt;Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant&gt;,
-    AssetId: Codec + Ord + From&lt;common::AssetId32&lt;common::PredefinedAssetId&gt;&gt;,
+    AssetId: Codec
+        + MaybeFromStr
+        + MaybeDisplay
+        + Ord
+        + From&lt;common::AssetId32&lt;common::PredefinedAssetId&gt;&gt;,
     DEXId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay + Copy + Zero,
     SwapVariant: Codec,
