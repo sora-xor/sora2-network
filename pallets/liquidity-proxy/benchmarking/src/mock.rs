@@ -490,10 +490,6 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
         // do nothing
         Ok(())
     }
-
-    fn spot_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
-        Ok(balance!(1))
-    }
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {

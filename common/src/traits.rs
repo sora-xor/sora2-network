@@ -831,9 +831,6 @@ pub trait PriceToolsProvider<AssetId> {
 
     /// Add asset to be tracked for average price.
     fn register_asset(asset_id: &AssetId) -> DispatchResult;
-
-    /// Returns spot price of asset
-    fn spot_price(asset_id: &AssetId) -> Result<Balance, DispatchError>;
 }
 
 impl<AssetId> PriceToolsProvider<AssetId> for () {
@@ -846,10 +843,6 @@ impl<AssetId> PriceToolsProvider<AssetId> for () {
     }
 
     fn register_asset(_: &AssetId) -> DispatchResult {
-        unimplemented!()
-    }
-
-    fn spot_price(_: &AssetId) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 }

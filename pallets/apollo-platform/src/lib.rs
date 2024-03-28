@@ -59,7 +59,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
-    use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI, XOR};
+    use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI};
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
@@ -1130,27 +1130,19 @@ pub mod pallet {
         }
 
         pub fn get_price(asset_id: AssetIdOf<T>) -> Balance {
-            // Get XOR price from the spot price function in PriceTools pallet
-            let xor_price = T::PriceTools::spot_price(&DAI.into()).unwrap();
-
-            if asset_id == XOR.into() {
-                return xor_price;
-            }
-
             // Get average price from PriceTools pallet
             let buy_price =
-                T::PriceTools::get_average_price(&XOR.into(), &asset_id, PriceVariant::Buy)
+                T::PriceTools::get_average_price(&asset_id.into(), &DAI.into(), PriceVariant::Buy)
                     .unwrap();
 
             let sell_price =
-                T::PriceTools::get_average_price(&XOR.into(), &asset_id, PriceVariant::Sell)
+                T::PriceTools::get_average_price(&asset_id.into(), &DAI.into(), PriceVariant::Sell)
                     .unwrap();
 
             // Average price in dollars
-            (FixedWrapper::from(xor_price) * FixedWrapper::from(buy_price + sell_price)
-                / FixedWrapper::from(balance!(2)))
-            .try_into_balance()
-            .unwrap_or(0)
+            (FixedWrapper::from(buy_price + sell_price) / FixedWrapper::from(balance!(2)))
+                .try_into_balance()
+                .unwrap_or(0)
         }
 
         pub fn check_liquidation(
