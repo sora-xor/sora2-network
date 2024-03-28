@@ -46,12 +46,12 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 static_assertions = "1.1.0"
 hex = { version = "*", default-features = false }
 hex-literal = "0.4.1"
-env_logger = { version = "0.9.0", optional = true }
+env_logger = { version = "0.10.0", optional = true }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
 [dev-dependencies]
 serde_json = "1.0.41"
-env_logger = { version = "0.9.0" }
+env_logger = { version = "0.10.0" }
 
 [features]
 default = ['std']
@@ -77,7 +77,6 @@ std = [
     'currencies/std',
     'orml-traits/std',
     'hex/std',
-    "fixnum/std",
 ]
 
 test = ["env_logger"]

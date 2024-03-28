@@ -170,7 +170,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 [dev-dependencies]
-env_logger = "0.9.0"
+env_logger = "0.10.0"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 tokio = { version = "1.19.2", features = ["macros"] }
 sp-tracing = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }

@@ -40,7 +40,7 @@ hex-literal = "0.3.4"
 futures = "0.3.17"
 ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
 log = "0.4.14"
-env_logger = "0.9.0"
+env_logger = "0.10.0"
 sha3 = { version = "0.10.0" }
 sha2 = "0.10.0"
 sha1 = "0.6.0"

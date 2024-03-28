@@ -32,11 +32,11 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource,
-    RewardReason, SwapChunk,
+    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
@@ -45,7 +45,6 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -427,21 +426,22 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
 
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount() == 0 {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let step = amount.amount() / recommended_samples_count as Balance;
 
-        let mut chunks = VecDeque::new();
         let mut sub_in = 0;
         let mut sub_out = 0;
-        let mut sub_fee = 0;
+        let mut sub_fee = Default::default();
 
         for i in 1..=recommended_samples_count {
             let volume = amount.copy_direction(step * i as Balance);
@@ -451,25 +451,30 @@ impl<T: Config<I>, I: 'static>
 
             let (input, output, fee) = match volume {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    (desired_amount_in, outcome.amount, outcome.fee.get_xor()) // todo fix (m.tagirov)
+                    (desired_amount_in, outcome.amount, outcome.fee)
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    (outcome.amount, desired_amount_out, outcome.fee.get_xor()) // todo fix (m.tagirov)
+                    (outcome.amount, desired_amount_out, outcome.fee)
                 }
             };
 
             let input_chunk = input - sub_in;
             let output_chunk = output - sub_out;
-            let fee_chunk = fee - sub_fee;
+            let fee_chunk = fee.clone().subtract(sub_fee);
 
             sub_in = input;
             sub_out = output;
             sub_fee = fee;
 
-            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+            quotation
+                .chunks
+                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
-        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+        Ok((
+            quotation,
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(
