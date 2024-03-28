@@ -878,7 +878,6 @@ fn test_swap_weight_considers_available_sources() {
             LiquidityProxy::swap_weight(&DEX_A_ID, &DOT, &XOR, &Vec::new(), &FilterMode::Disabled,),
             swap_weight_without_path.saturating_add(multicollateral_weight)
         );
-        dbg!(2);
 
         // DOT -1-> XOR (DEX ID 1)
         // 1) Multicollateral + MockPool(1-3)
