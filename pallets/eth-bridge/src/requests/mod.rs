@@ -327,7 +327,7 @@ impl<T: Config> IncomingRequest<T> {
                 .ok_or(Error::<T>::UnsupportedAssetId)?;
                 let amount = if !asset_kind.is_owned() {
                     let sidechain_precision =
-                        SidechainAssetPrecision::<T>::get(network_id, &asset_id);
+                        SidechainAssetPrecision::<T>::get(network_id, asset_id);
                     let thischain_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
                     Pallet::<T>::convert_precision(
                         sidechain_precision,
@@ -353,7 +353,7 @@ impl<T: Config> IncomingRequest<T> {
                 })
             }
             ContractEvent::ChangePeers(peer_address, removed) => {
-                let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address);
+                let peer_account_id = PeerAccountId::<T>::get(network_id, peer_address);
                 ensure!(
                     removed || peer_account_id.is_some(),
                     Error::<T>::UnknownPeerAddress
@@ -517,7 +517,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => {
                 let hash = request.tx_hash;
                 let tx = Pallet::<T>::load_tx_receipt(hash, network_id)?;
-                Ok(tx.is_approved() == false) // TODO: check for gas limit
+                Ok(!tx.is_approved()) // TODO: check for gas limit
             }
             IncomingRequest::MarkAsDone(request) => {
                 Pallet::<T>::load_is_used(request.outgoing_request_hash, request.network_id)
@@ -582,17 +582,14 @@ impl<T: Config> LoadIncomingRequest<T> {
         match self {
             Self::Transaction(_request) => Ok(()),
             Self::Meta(request, _) => {
-                match request.kind {
-                    IncomingMetaRequestKind::MarkAsDone => {
-                        let request_status =
-                            RequestStatuses::<T>::get(request.network_id, request.hash)
-                                .ok_or(Error::<T>::UnknownRequest)?;
-                        ensure!(
-                            request_status == RequestStatus::ApprovalsReady,
-                            Error::<T>::RequestIsNotReady
-                        );
-                    }
-                    _ => (),
+                if request.kind == IncomingMetaRequestKind::MarkAsDone {
+                    let request_status =
+                        RequestStatuses::<T>::get(request.network_id, request.hash)
+                            .ok_or(Error::<T>::UnknownRequest)?;
+                    ensure!(
+                        request_status == RequestStatus::ApprovalsReady,
+                        Error::<T>::RequestIsNotReady
+                    );
                 }
                 Ok(())
             }
@@ -819,17 +816,11 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     pub fn is_load_incoming(&self) -> bool {
-        match self {
-            OffchainRequest::LoadIncoming(..) => true,
-            _ => false,
-        }
+        matches!(self, OffchainRequest::LoadIncoming(..))
     }
 
     pub fn is_incoming(&self) -> bool {
-        match self {
-            OffchainRequest::Incoming(..) => true,
-            _ => false,
-        }
+        matches!(self, OffchainRequest::Incoming(..))
     }
 
     pub fn should_be_skipped(&self) -> bool {

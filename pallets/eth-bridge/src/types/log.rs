@@ -64,17 +64,13 @@ pub struct Log {
 impl Log {
     /// Returns true if the log has been removed.
     pub fn is_removed(&self) -> bool {
-        match self.removed {
-            Some(val_removed) => return val_removed,
-            None => (),
+        if let Some(val_removed) = self.removed {
+            return val_removed;
         }
-        match self.log_type {
-            Some(ref val_log_type) => {
-                if val_log_type == "removed" {
-                    return true;
-                }
+        if let Some(ref val_log_type) = self.log_type {
+            if val_log_type == "removed" {
+                return true;
             }
-            None => (),
         }
         false
     }

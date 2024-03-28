@@ -10,7 +10,7 @@ repository = 'https://github.com/sora-xor/sora2-network'
 [dependencies]
 serde = { version = "1.0.101", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3" }
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
+jsonrpsee = { version = "0.16.2", features = ["server", "client", "macros"] }
 sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }

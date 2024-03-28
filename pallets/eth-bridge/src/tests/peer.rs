@@ -81,7 +81,7 @@ fn should_add_peer_in_eth_network() {
             new_peer_id
         );
         assert_eq!(
-            crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
+            crate::PeerAccountId::<Runtime>::get(net_id, new_peer_address),
             Some(new_peer_id.clone())
         );
         assert_eq!(
@@ -108,7 +108,7 @@ fn should_add_peer_in_eth_network() {
             timepoint: Default::default(),
             network_id: net_id,
         });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_request).unwrap();
         assert!(!crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
         // peer is added to XOR contract
         let tx_hash = request_incoming(
@@ -130,7 +130,7 @@ fn should_add_peer_in_eth_network() {
                 timepoint: Default::default(),
                 network_id: net_id,
             });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_request).unwrap();
         assert!(!crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
         // peer is added to VAL contract
         let tx_hash = request_incoming(
@@ -146,7 +146,7 @@ fn should_add_peer_in_eth_network() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::VAL,
-                author: alice.clone(),
+                author: alice,
                 tx_hash,
                 at_height: 3,
                 timepoint: Default::default(),
@@ -154,10 +154,10 @@ fn should_add_peer_in_eth_network() {
             });
         assert!(!crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_some());
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_request).unwrap();
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_none());
         assert!(crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
-        assert!(bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
+        assert!(bridge_multisig::Accounts::<Runtime>::get(bridge_acc_id)
             .unwrap()
             .is_signatory(&new_peer_id));
     });
@@ -197,7 +197,7 @@ fn should_add_peer_in_simple_networks() {
             new_peer_id
         );
         assert_eq!(
-            crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
+            crate::PeerAccountId::<Runtime>::get(net_id, new_peer_address),
             Some(new_peer_id.clone())
         );
         assert_eq!(
@@ -216,17 +216,17 @@ fn should_add_peer_in_simple_networks() {
             peer_account_id: Some(new_peer_id.clone()),
             peer_address: new_peer_address,
             removed: false,
-            author: alice.clone(),
+            author: alice,
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id,
         });
         assert!(!crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_request).unwrap();
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_none());
         assert!(crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
-        assert!(bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
+        assert!(bridge_multisig::Accounts::<Runtime>::get(bridge_acc_id)
             .unwrap()
             .is_signatory(&new_peer_id));
     });
@@ -256,16 +256,16 @@ fn should_remove_peer_in_simple_network() {
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
 
         // incoming request part
         let tx_hash = request_incoming(
@@ -280,18 +280,18 @@ fn should_remove_peer_in_simple_network() {
             peer_account_id: Some(peer_id.clone()),
             peer_address,
             removed: true,
-            author: alice.clone(),
+            author: alice,
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id,
         });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_request).unwrap();
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_none());
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
     });
 }
 
@@ -320,17 +320,17 @@ fn should_remove_peer_in_eth_network() {
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         approve_next_request(&state, net_id).expect("request wasn't approved");
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
 
         // incoming request part
         let tx_hash = request_incoming(
@@ -351,8 +351,8 @@ fn should_remove_peer_in_eth_network() {
             timepoint: Default::default(),
             network_id: net_id,
         });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert_incoming_request_done(&state, incoming_request).unwrap();
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         // peer is added to XOR contract
         let tx_hash = request_incoming(
             alice.clone(),
@@ -373,8 +373,8 @@ fn should_remove_peer_in_eth_network() {
                 timepoint: Default::default(),
                 network_id: net_id,
             });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert_incoming_request_done(&state, incoming_request).unwrap();
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         // peer is added to VAL contract
         let tx_hash = request_incoming(
             alice.clone(),
@@ -389,19 +389,19 @@ fn should_remove_peer_in_eth_network() {
                 peer_address,
                 added: false,
                 contract: ChangePeersContract::VAL,
-                author: alice.clone(),
+                author: alice,
                 tx_hash,
                 at_height: 3,
                 timepoint: Default::default(),
                 network_id: net_id,
             });
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
+        assert_incoming_request_done(&state, incoming_request).unwrap();
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_none());
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
     });
 }
 
@@ -427,7 +427,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
         );
         assert_err!(
             EthBridge::add_peer(
-                RuntimeOrigin::signed(bob.clone()),
+                RuntimeOrigin::signed(bob),
                 peer_id.clone(),
                 EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
@@ -514,11 +514,11 @@ fn should_parse_add_peer_on_old_contract() {
         assert_eq!(
             inc_req,
             IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
-                peer_account_id: new_peer_id.clone(),
+                peer_account_id: new_peer_id,
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::XOR,
-                author: alice.clone(),
+                author: alice,
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -570,7 +570,7 @@ fn should_parse_remove_peer_on_old_contract() {
                 peer_address: new_peer_address,
                 added: false,
                 contract: ChangePeersContract::VAL,
-                author: alice.clone(),
+                author: alice,
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),

@@ -506,7 +506,7 @@ construct_runtime!(
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub trait Mock {
-    fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>);
+    fn on_request(pending_request: &mut http::PendingRequest, url: &str, body: Cow<'_, str>);
     fn should_fail_send_signed_transaction() -> bool;
 }
 
@@ -545,7 +545,7 @@ pub struct State {
 }
 
 impl Mock for State {
-    fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>) {
+    fn on_request(pending_request: &mut http::PendingRequest, url: &str, body: Cow<'_, str>) {
         OFFCHAIN_STATE.with(|oc_state_ref_cell| {
             RESPONSES.with(|ref_cell| {
                 let oc_state_opt = oc_state_ref_cell.borrow();
@@ -726,7 +726,7 @@ impl Default for ExtBuilder {
             vec![
                 AssetConfig::Thischain { id: PSWAP.into() },
                 AssetConfig::Sidechain {
-                    id: XOR.into(),
+                    id: XOR,
                     sidechain_id: sp_core::H160::from_str(
                         "40fd72257597aa14c7231a7b1aaa29fce868f677",
                     )
@@ -735,7 +735,7 @@ impl Default for ExtBuilder {
                     precision: DEFAULT_BALANCE_PRECISION,
                 },
                 AssetConfig::Sidechain {
-                    id: VAL.into(),
+                    id: VAL,
                     sidechain_id: sp_core::H160::from_str(
                         "3f9feac97e5feb15d8bf98042a9a01b515da3dfb",
                     )
@@ -745,8 +745,8 @@ impl Default for ExtBuilder {
                 },
             ],
             Some(vec![
-                (XOR.into(), common::balance!(350000)),
-                (VAL.into(), common::balance!(33900000)),
+                (XOR, common::balance!(350000)),
+                (VAL, common::balance!(33900000)),
             ]),
             Some(4),
             Default::default(),
@@ -796,7 +796,7 @@ impl ExtBuilder {
             ExtendedNetworkConfig {
                 config: NetworkConfig {
                     initial_peers: peers_keys.iter().map(|(_, id, _)| id).cloned().collect(),
-                    bridge_account_id: multisig_account_id.clone(),
+                    bridge_account_id: multisig_account_id,
                     assets,
                     bridge_contract_address: contract_address,
                     reserves: reserves.unwrap_or_default(),
@@ -817,7 +817,7 @@ impl ExtBuilder {
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
         let mut endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
-        let network_ids: Vec<_> = self.networks.iter().map(|(id, _)| *id).collect();
+        let network_ids: Vec<_> = self.networks.keys().copied().collect();
         let mut networks: Vec<_> = self.networks.clone().into_iter().collect();
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
         let mut offchain_guard = offchain.0.write();
@@ -838,7 +838,7 @@ impl ExtBuilder {
                 |asset_config| {
                     (
                         ext_network.config.bridge_account_id.clone(),
-                        asset_config.asset_id().clone(),
+                        *asset_config.asset_id(),
                         0,
                     )
                 },
@@ -918,7 +918,7 @@ impl ExtBuilder {
             .map(|x| (x.clone(), Balance::from(0u32)))
             .collect();
         balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 0)));
-        for (_net_id, ext_network) in &self.networks {
+        for ext_network in self.networks.values() {
             balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 0)));
         }
         balances.sort_by_key(|x| x.0.clone());
@@ -949,7 +949,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            balances: endowed_accounts.clone(),
+            balances: endowed_accounts,
         }
         .assimilate_storage(&mut storage)
         .unwrap();

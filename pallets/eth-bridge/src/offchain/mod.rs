@@ -192,7 +192,7 @@ impl<T: Config> Pallet<T> {
                 _ => (),
             }
         }
-        Err(Error::<T>::UnknownEvent.into())
+        Err(Error::<T>::UnknownEvent)
     }
 
     /// Verifies the message signed by a peer. Also, compares the given `AccountId` with the given
@@ -209,7 +209,7 @@ impl<T: Config> Pallet<T> {
             secp256k1::PublicKey::parse_slice(ecdsa_public_key.as_slice(), None).map(|pk| (sig, pk))
         });
         if let Ok((signature, public_key)) = res {
-            let signer_account = MultiSigner::Ecdsa(ecdsa_public_key.clone()).into_account();
+            let signer_account = MultiSigner::Ecdsa(*ecdsa_public_key).into_account();
             let verified = secp256k1::verify(&message, &signature, &public_key);
             signer_account.encode() == author.encode() && verified
         } else {
@@ -309,7 +309,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Option<(T::AssetId, AssetKind)>, Error<T>> {
         let is_sidechain_token = raw_asset_id == H256::zero();
         if is_sidechain_token {
-            let asset_id = match Self::registered_sidechain_asset(network_id, &token_address) {
+            let asset_id = match Self::registered_sidechain_asset(network_id, token_address) {
                 Some(asset_id) => asset_id,
                 _ => {
                     return Ok(None);
@@ -317,11 +317,11 @@ impl<T: Config> Pallet<T> {
             };
             Ok(Some((
                 asset_id,
-                Self::registered_asset(network_id, &asset_id).unwrap_or(AssetKind::Sidechain),
+                Self::registered_asset(network_id, asset_id).unwrap_or(AssetKind::Sidechain),
             )))
         } else {
             let asset_id = T::AssetId::from(H256(raw_asset_id.0));
-            let asset_kind = Self::registered_asset(network_id, &asset_id);
+            let asset_kind = Self::registered_asset(network_id, asset_id);
             if asset_kind.is_none() || asset_kind.unwrap() == AssetKind::Sidechain {
                 fail!(Error::<T>::UnknownAssetId);
             }
@@ -341,7 +341,7 @@ impl<T: Config> Pallet<T> {
         let (fun, arg_pos, tail, added) = if let Some(tail) = tx
             .input
             .0
-            .strip_prefix(&*ADD_PEER_BY_PEER_ID.get_or_init(init_add_peer_by_peer_fn))
+            .strip_prefix(ADD_PEER_BY_PEER_ID.get_or_init(init_add_peer_by_peer_fn))
         {
             (
                 &ADD_PEER_BY_PEER_FN,
@@ -352,7 +352,7 @@ impl<T: Config> Pallet<T> {
         } else if let Some(tail) = tx
             .input
             .0
-            .strip_prefix(&*REMOVE_PEER_BY_PEER_ID.get_or_init(init_remove_peer_by_peer_fn))
+            .strip_prefix(REMOVE_PEER_BY_PEER_ID.get_or_init(init_remove_peer_by_peer_fn))
         {
             (
                 &REMOVE_PEER_BY_PEER_FN,
