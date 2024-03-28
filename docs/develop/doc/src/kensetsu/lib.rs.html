@@ -1442,6 +1442,20 @@
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1836,7 +1850,6 @@
         <span class="comment">// Risk management team size exceeded
         </span>TooManyManagers,
         OperationNotPermitted,
-        OutstandingDebt,
         NoDebt,
         CDPsPerUserLimitReached,
         HardCapSupply,
@@ -1897,17 +1910,20 @@
 
         <span class="doccomment">/// Closes a Collateralized Debt Position (CDP).
         ///
+        /// If a CDP has outstanding debt, this amount is covered with owner balance. Collateral
+        /// then is returned to the owner and CDP is deleted.
+        ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
         </span><span class="attr">#[pallet::call_index(<span class="number">1</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::close_cdp())]
         </span><span class="kw">pub fn </span>close_cdp(origin: OriginFor&lt;T&gt;, cdp_id: CdpId) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="kw">let </span>cdp = <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>cdp = <span class="self">Self</span>::cdp(cdp_id).ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(who == cdp.owner, Error::&lt;T&gt;::OperationNotPermitted);
-            <span class="macro">ensure!</span>(cdp.debt == <span class="number">0</span>, Error::&lt;T&gt;::OutstandingDebt);
+            <span class="self">Self</span>::repay_debt_internal(cdp_id, cdp.debt)<span class="question-mark">?</span>;
             technical::Pallet::&lt;T&gt;::transfer_out(
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
@@ -1963,26 +1979,9 @@
         </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::repay_debt())]
         </span><span class="kw">pub fn </span>repay_debt(origin: OriginFor&lt;T&gt;, cdp_id: CdpId, amount: Balance) -&gt; DispatchResult {
-            <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="kw">let </span>cdp = <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
-            <span class="comment">// if repaying amount exceeds debt, leftover is not burned
-            </span><span class="kw">let </span>to_cover_debt = amount.min(cdp.debt);
-            <span class="self">Self</span>::burn_from(<span class="kw-2">&amp;</span>who, to_cover_debt)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::update_cdp_debt(
-                cdp_id,
-                cdp.debt
-                    .checked_sub(to_cover_debt)
-                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
-            )<span class="question-mark">?</span>;
-            <span class="self">Self</span>::decrease_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, to_cover_debt)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::deposit_event(Event::DebtPayment {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: to_cover_debt,
-            });
-
-            <span class="prelude-val">Ok</span>(())
+            <span class="comment">// any account can repay debt
+            </span><span class="kw">let _ </span>= ensure_signed(origin)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::repay_debt_internal(cdp_id, amount)
         }
 
         <span class="doccomment">/// Liquidates a Collateralized Debt Position (CDP) if it becomes unsafe.
@@ -2455,6 +2454,35 @@
                 owner: who.clone(),
                 collateral_asset_id: cdp.collateral_asset_id,
                 amount: will_to_borrow_amount,
+            });
+
+            <span class="prelude-val">Ok</span>(())
+        }
+
+        <span class="doccomment">/// Repays debt
+        /// Burns KUSD amount from CDP owner, updates CDP balances.
+        ///
+        /// ## Parameters
+        ///
+        /// - &#39;cdp_id&#39; - CDP id
+        /// - `amount` - The maximum amount to repay, if exceeds debt, the debt amount is repayed.
+        </span><span class="kw">fn </span>repay_debt_internal(cdp_id: CdpId, amount: Balance) -&gt; DispatchResult {
+            <span class="kw">let </span>cdp = <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
+            <span class="comment">// if repaying amount exceeds debt, leftover is not burned
+            </span><span class="kw">let </span>to_cover_debt = amount.min(cdp.debt);
+            <span class="self">Self</span>::burn_from(<span class="kw-2">&amp;</span>cdp.owner, to_cover_debt)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::update_cdp_debt(
+                cdp_id,
+                cdp.debt
+                    .checked_sub(to_cover_debt)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
+            )<span class="question-mark">?</span>;
+            <span class="self">Self</span>::decrease_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, to_cover_debt)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::deposit_event(Event::DebtPayment {
+                cdp_id,
+                owner: cdp.owner,
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: to_cover_debt,
             });
 
             <span class="prelude-val">Ok</span>(())

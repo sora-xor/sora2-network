@@ -27,9 +27,11 @@
 <li><code>borrow_amount</code>: The amount the user wants to borrow.</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.close_cdp" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.close_cdp" class="fn">close_cdp</a>(&amp;self, cdp_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>) -&gt; StaticTxPayload&lt;<a class="struct" href="struct.CloseCdp.html" title="struct substrate_gen::runtime::kensetsu::calls::CloseCdp">CloseCdp</a>&gt;</h4></section></summary><div class="docblock"><p>Closes a Collateralized Debt Position (CDP).</p>
+<p>If a CDP has outstanding debt, this amount is covered with owner balance. Collateral
+then is returned to the owner and CDP is deleted.</p>
 <h6 id="parameters-1"><a href="#parameters-1">Parameters</a></h6>
 <ul>
-<li><code>origin</code>: The origin of the transaction.</li>
+<li><code>origin</code>: The origin of the transaction, only CDP owner is allowed.</li>
 <li><code>cdp_id</code>: The ID of the CDP to be closed.</li>
 </ul>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.deposit_collateral" class="method"><a class="srclink rightside" href="../../../../src/substrate_gen/lib.rs.html#73-76">source</a><h4 class="code-header">pub fn <a href="#method.deposit_collateral" class="fn">deposit_collateral</a>(

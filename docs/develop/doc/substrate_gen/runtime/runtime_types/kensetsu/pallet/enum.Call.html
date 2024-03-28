@@ -72,9 +72,11 @@
 <li><code>borrow_amount</code>: The amount the user wants to borrow.</li>
 </ul>
 </div><section id="variant.close_cdp" class="variant"><a href="#variant.close_cdp" class="anchor">§</a><h3 class="code-header">close_cdp</h3></section><div class="sub-variant" id="variant.close_cdp.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.close_cdp.field.cdp_id" class="small-section-header"><a href="#variant.close_cdp.field.cdp_id" class="anchor field">§</a><code>cdp_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a></code></span></div></div><div class="docblock"><p>Closes a Collateralized Debt Position (CDP).</p>
+<p>If a CDP has outstanding debt, this amount is covered with owner balance. Collateral
+then is returned to the owner and CDP is deleted.</p>
 <h5 id="parameters-1"><a href="#parameters-1">Parameters</a></h5>
 <ul>
-<li><code>origin</code>: The origin of the transaction.</li>
+<li><code>origin</code>: The origin of the transaction, only CDP owner is allowed.</li>
 <li><code>cdp_id</code>: The ID of the CDP to be closed.</li>
 </ul>
 </div><section id="variant.deposit_collateral" class="variant"><a href="#variant.deposit_collateral" class="anchor">§</a><h3 class="code-header">deposit_collateral</h3></section><div class="sub-variant" id="variant.deposit_collateral.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.deposit_collateral.field.cdp_id" class="small-section-header"><a href="#variant.deposit_collateral.field.cdp_id" class="anchor field">§</a><code>cdp_id: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a></code></span></div><div class="sub-variant-field"><span id="variant.deposit_collateral.field.collateral_amount" class="small-section-header"><a href="#variant.deposit_collateral.field.collateral_amount" class="anchor field">§</a><code>collateral_amount: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a></code></span></div></div><div class="docblock"><p>Deposits collateral into a Collateralized Debt Position (CDP).</p>
