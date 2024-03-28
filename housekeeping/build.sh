@@ -7,7 +7,7 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-allfeatures='private-net,ready-to-test'
+allfeatures="$featureList"
 
 # build func
 test() {
@@ -21,7 +21,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features $allfeatures -- --test-threads=1
+        cargo test --features $allfeatures -- --test-threads=2 
     fi
     if [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
