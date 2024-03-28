@@ -1040,6 +1040,8 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
+        // liquidation flag was set
+        assert!(LiquidatedThisBlock::<TestRuntime>::get());
     });
 }
 
@@ -1097,6 +1099,8 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
+        // liquidation flag was set
+        assert!(LiquidatedThisBlock::<TestRuntime>::get());
     });
 }
 
@@ -1158,6 +1162,8 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
         let kusd_supply = get_total_supply(&KUSD);
         // were burned in liquidation (debt) - cdp.debt = 108 KUSD
         assert_eq!(initial_kusd_supply - debt + cdp.debt, kusd_supply);
+        // liquidation flag was set
+        assert!(LiquidatedThisBlock::<TestRuntime>::get());
     });
 }
 
@@ -1225,6 +1231,8 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
+        // liquidation flag was set
+        assert!(LiquidatedThisBlock::<TestRuntime>::get());
     });
 }
 
@@ -1297,6 +1305,8 @@ fn test_liquidate_kusd_bad_debt() {
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
+        // liquidation flag was set
+        assert!(LiquidatedThisBlock::<TestRuntime>::get());
     });
 }
 
