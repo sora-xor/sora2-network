@@ -1456,6 +1456,15 @@
 <a href="#1441" id="1441">1441</a>
 <a href="#1442" id="1442">1442</a>
 <a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1544,6 +1553,10 @@
 
     <span class="doccomment">/// Protocol Interest rate per second
     </span><span class="kw">pub </span>stability_fee_rate: FixedU128,
+
+    <span class="doccomment">/// Minimal deposit in collateral AssetId.
+    /// In order to protect from empty CDPs.
+    </span><span class="kw">pub </span>minimal_collateral_deposit: Balance,
 }
 
 <span class="doccomment">/// Collateral parameters, includes risk info and additional data for interest rate calculation
@@ -1843,11 +1856,12 @@
         WrongAssetId,
         CDPNotFound,
         CollateralInfoNotFound,
+        CollateralBelowMinimal,
         CDPSafe,
         CDPUnsafe,
         <span class="doccomment">/// Too many CDPs per user
         </span>CDPLimitPerUser,
-        <span class="comment">// Risk management team size exceeded
+        <span class="doccomment">/// Risk management team size exceeded
         </span>TooManyManagers,
         OperationNotPermitted,
         NoDebt,
@@ -1879,9 +1893,13 @@
             borrow_amount: Balance,
         ) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="kw">let </span>interest_coefficient = <span class="self">Self</span>::collateral_infos(collateral_asset_id)
-                .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?
-                </span>.interest_coefficient;
+            <span class="kw">let </span>collateral_info = <span class="self">Self</span>::collateral_infos(collateral_asset_id)
+                .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
+            <span class="kw">let </span>interest_coefficient = collateral_info.interest_coefficient;
+            <span class="macro">ensure!</span>(
+                collateral_amount &gt;= collateral_info.risk_parameters.minimal_collateral_deposit,
+                Error::&lt;T&gt;::CollateralBelowMinimal
+            );
             <span class="kw">let </span>cdp_id = <span class="self">Self</span>::increment_cdp_id()<span class="question-mark">?</span>;
             <span class="self">Self</span>::insert_cdp(
                 <span class="kw-2">&amp;</span>who,

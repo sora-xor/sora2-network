@@ -435,6 +435,9 @@
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -516,6 +519,7 @@
                 liquidation_ratio: Perbill::from_percent(<span class="number">50</span>),
                 max_liquidation_lot: <span class="macro">balance!</span>(<span class="number">100</span>),
                 stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(<span class="number">10</span>)),
+                minimal_collateral_deposit: <span class="macro">balance!</span>(<span class="number">0</span>),
             },
             kusd_supply: <span class="macro">balance!</span>(<span class="number">0</span>),
             last_fee_update_time: Default::default(),
@@ -562,6 +566,7 @@
                 max_liquidation_lot: <span class="macro">balance!</span>(<span class="number">100</span>),
                 liquidation_ratio: Perbill::from_percent(<span class="number">1</span>),
                 stability_fee_rate: FixedU128::zero(),
+                minimal_collateral_deposit: <span class="macro">balance!</span>(<span class="number">0</span>),
             }
         }
     });
@@ -790,6 +795,7 @@
                 liquidation_ratio: Perbill::from_percent(<span class="number">50</span>),
                 max_liquidation_lot: <span class="macro">balance!</span>(<span class="number">100</span>),
                 stability_fee_rate: Default::default(),
+                minimal_collateral_deposit: <span class="macro">balance!</span>(<span class="number">0</span>),
             }
         ).unwrap();
     }
