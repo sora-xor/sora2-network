@@ -2503,7 +2503,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
-        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 113,
+        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
     }
 }
 
