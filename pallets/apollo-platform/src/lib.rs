@@ -300,6 +300,8 @@ pub mod pallet {
         InvalidLiquidation,
         /// Pool is removed
         PoolIsRemoved,
+        /// Invalid borrowing amount
+        InvalidBorrowingAmount,
     }
 
     #[pallet::call]
@@ -416,7 +418,17 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            ensure!(lending_amount > 0, Error::<T>::InvalidLendingAmount);
+            // Check if lending amount is minimum 10$
+            let lending_asset_price = Self::get_price(lending_asset);
+            let lending_amount_in_dollars: u128 = (FixedWrapper::from(lending_amount)
+                * FixedWrapper::from(lending_asset_price))
+            .try_into_balance()
+            .unwrap_or(0);
+            ensure!(
+                lending_amount_in_dollars >= balance!(10),
+                Error::<T>::InvalidLendingAmount
+            );
+
             let mut pool_info =
                 <PoolData<T>>::get(lending_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
             ensure!(!pool_info.is_removed, Error::<T>::PoolIsRemoved);
@@ -466,6 +478,17 @@ pub mod pallet {
                 Error::<T>::SameCollateralAndBorrowingAssets
             );
 
+            // Check if borrowing amount is minimum 10$
+            let borrow_asset_price = Self::get_price(borrowing_asset);
+            let borrowing_amount_in_dollars: u128 = (FixedWrapper::from(borrowing_amount)
+                * FixedWrapper::from(borrow_asset_price))
+            .try_into_balance()
+            .unwrap_or(0);
+            ensure!(
+                borrowing_amount_in_dollars >= balance!(10),
+                Error::<T>::InvalidBorrowingAmount
+            );
+
             let mut borrow_pool_info =
                 <PoolData<T>>::get(borrowing_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
             ensure!(!borrow_pool_info.is_removed, Error::<T>::PoolIsRemoved);
@@ -480,7 +503,6 @@ pub mod pallet {
             let mut user_lending_info = <UserLendingInfo<T>>::get(collateral_asset, user.clone())
                 .ok_or(Error::<T>::NothingLended)?;
             let collateral_asset_price = Self::get_price(collateral_asset);
-            let borrow_asset_price = Self::get_price(borrowing_asset);
 
             // Calculate required collateral asset in dollars
             let coll_amount_in_dollars = ((FixedWrapper::from(borrowing_amount)

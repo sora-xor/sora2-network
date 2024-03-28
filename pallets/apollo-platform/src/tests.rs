@@ -508,7 +508,7 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                ApolloPlatform::lend(RuntimeOrigin::signed(alice()), XOR, balance!(0)),
+                ApolloPlatform::lend(RuntimeOrigin::signed(alice()), XOR, balance!(9)),
                 Error::<Runtime>::InvalidLendingAmount
             );
         });
@@ -714,6 +714,17 @@ mod test {
             assert_err!(
                 ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, XOR, balance!(100)),
                 Error::<Runtime>::SameCollateralAndBorrowingAssets
+            );
+        });
+    }
+
+    #[test]
+    fn borrow_invalid_borrowing_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, DOT, balance!(9)),
+                Error::<Runtime>::InvalidBorrowingAmount
             );
         });
     }
