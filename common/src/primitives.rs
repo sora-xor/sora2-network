@@ -31,7 +31,7 @@
 use crate::fixed_wrapper::FixedWrapper;
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid, Price};
-
+use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::TypeInfo;
@@ -295,6 +295,17 @@ where
     }
 }
 
+impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
+    type Error = &'static str;
+
+    fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
+        match asset_id {
+            GenericAssetId::Sora(id) => Ok(id.into()),
+            _ => Err("Non SORA assets is not supported"),
+        }
+    }
+}
+
 #[cfg(feature = "std")]
 impl<AssetId> FromStr for AssetId32<AssetId> {
     type Err = &'static str;
@@ -465,6 +476,13 @@ impl Default for AssetSymbol {
     }
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+impl From<Vec<u8>> for AssetSymbol {
+    fn from(v: Vec<u8>) -> Self {
+        AssetSymbol(v)
+    }
+}
+
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 
 impl IsValid for AssetSymbol {
@@ -508,6 +526,13 @@ impl Display for AssetName {
 impl Default for AssetName {
     fn default() -> Self {
         Self(b"Test".to_vec())
+    }
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl From<Vec<u8>> for AssetName {
+    fn from(v: Vec<u8>) -> Self {
+        AssetName(v)
     }
 }
 

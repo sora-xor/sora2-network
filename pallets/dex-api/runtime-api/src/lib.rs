@@ -35,8 +35,10 @@
 use codec::{Codec, Decode, Encode};
 use common::prelude::OutcomeFee;
 #[cfg(feature = "std")]
-use common::utils::string_serialization;
+use common::utils::{fee_serialization, string_serialization};
 use common::BalanceWrapper;
+#[cfg(feature = "std")]
+use serde::de::DeserializeOwned;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr, Zero};
@@ -44,7 +46,10 @@ use sp_std::prelude::*;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct SwapOutcomeInfo<Balance, AssetId: Ord> {
+pub struct SwapOutcomeInfo<Balance, AssetId>
+where
+    AssetId: MaybeDisplay + MaybeFromStr + Ord,
+{
     #[cfg_attr(
         feature = "std",
         serde(
@@ -56,13 +61,23 @@ pub struct SwapOutcomeInfo<Balance, AssetId: Ord> {
         )
     )]
     pub amount: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "AssetId: DeserializeOwned, Balance: DeserializeOwned + std::str::FromStr"
+            ),
+            with = "fee_serialization"
+        )
+    )]
     pub fee: OutcomeFee<AssetId, Balance>,
 }
 
 impl<Balance, AssetId> From<SwapOutcomeInfoV1<Balance>> for SwapOutcomeInfo<Balance, AssetId>
 where
     Balance: Copy + Zero,
-    AssetId: Ord + From<common::AssetId32<common::PredefinedAssetId>>,
+    AssetId: MaybeDisplay + MaybeFromStr + Ord + From<common::AssetId32<common::PredefinedAssetId>>,
 {
     fn from(value: SwapOutcomeInfoV1<Balance>) -> Self {
         Self {
@@ -102,7 +117,7 @@ pub struct SwapOutcomeInfoV1<Balance> {
 sp_api::decl_runtime_apis! {
     #[api_version(2)]
     pub trait DEXAPI<AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant> where
-        AssetId: Codec + Ord,
+        AssetId: Codec + MaybeDisplay + MaybeFromStr + Ord,
         DEXId: Codec,
         LiquiditySourceType: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,

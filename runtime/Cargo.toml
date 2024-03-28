@@ -48,6 +48,7 @@ leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.gi
 bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false }
 bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false }
 parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
@@ -291,6 +292,7 @@ std = [
     "sp-transaction-pool/std",
     "sp-version/std",
     "sp-npos-elections/std",
+    "substrate-bridge-app/std",
     "technical/std",
     "trading-pair-runtime-api/std",
     "trading-pair/std",
@@ -337,6 +339,7 @@ runtime-benchmarks = [
     "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
     "ceres-liquidity-locker-benchmarking/runtime-benchmarks",
+    "common/runtime-benchmarks",
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
     "dex-api/runtime-benchmarks",
@@ -353,6 +356,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
+    "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
