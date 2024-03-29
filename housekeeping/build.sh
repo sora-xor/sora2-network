@@ -13,7 +13,7 @@ allfeatures="$featureList"
 test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
-        cargo test --release --features "private-net runtime-benchmarks"
+        cargo test --release --features "private-net runtime-benchmarks" -- --test-threads=2
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
@@ -21,7 +21,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features "$allfeatures" -- --test-threads=2 
+        cargo test --features "$allfeatures" -- --test-threads=2
     fi
     if [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
@@ -33,7 +33,7 @@ test() {
 build() {
     printf "Tag is %s\n" ${TAG_NAME}
     printf "BuildTag is %s\n" ${buildTag}
-    sudoCheckStatus="0"
+    sudoCheckStatus=0
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
