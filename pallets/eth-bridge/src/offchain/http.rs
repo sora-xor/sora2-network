@@ -67,7 +67,7 @@ impl<T: Config> Pallet<T> {
             HTTP_REQUEST_TIMEOUT_SECS * 1000,
         ));
         for (key, value) in headers {
-            request = request.add_header(*key, &*value);
+            request = request.add_header(key, value);
         }
         #[allow(unused_mut)]
         let mut pending = request.deadline(timeout).send().map_err(|e| {
@@ -119,11 +119,11 @@ impl<T: Config> Pallet<T> {
                     jsonrpc: Some(jsonrpc::Version::V2),
                     method: method.into(),
                     params,
-                    id: jsonrpc::Id::Num(id as u64),
+                    id: jsonrpc::Id::Num(id),
                 },
             )))
             .map_err(|_| Error::<T>::JsonSerializationError)?,
-            &headers,
+            headers,
         )
         .and_then(|x| {
             String::from_utf8(x).map_err(|e| {
@@ -149,13 +149,13 @@ impl<T: Config> Pallet<T> {
                 } else {
                     serde_json::from_value(s.result).map_err(|e| {
                         error!("json_rpc_request: from_value failed, {}", e);
-                        Error::<T>::JsonDeserializationError.into()
+                        Error::<T>::JsonDeserializationError
                     })
                 }
             }
             _ => {
                 error!("json_rpc_request: request failed");
-                Err(Error::<T>::JsonDeserializationError.into())
+                Err(Error::<T>::JsonDeserializationError)
             }
         }
     }

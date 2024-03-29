@@ -399,7 +399,7 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
     let request_encoded = request.to_eth_abi(request_hash)?;
     let approvals: BTreeSet<SignatureParams> =
-        crate::RequestApprovals::<T>::get(request.network_id(), &request_hash);
+        crate::RequestApprovals::<T>::get(request.network_id(), request_hash);
     let input_tokens = request_encoded.input_tokens(Some(approvals.into_iter().collect()));
     fun_meta
         .function
@@ -433,7 +433,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         let request_hash = self.outgoing_request_hash;
         let net_id = self.network_id;
-        let req_status = crate::RequestStatuses::<T>::get(net_id, &self.outgoing_request_hash)
+        let req_status = crate::RequestStatuses::<T>::get(net_id, self.outgoing_request_hash)
             .ok_or(crate::Error::<T>::UnknownRequest)?;
         ensure!(
             req_status == RequestStatus::ApprovalsReady,
@@ -451,7 +451,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
             expected_input == self.tx_input,
             crate::Error::<T>::InvalidContractInput
         );
-        crate::RequestStatuses::<T>::insert(net_id, &request_hash, RequestStatus::Frozen);
+        crate::RequestStatuses::<T>::insert(net_id, request_hash, RequestStatus::Frozen);
         Ok(())
     }
 
@@ -459,7 +459,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::RequestStatuses::<T>::insert(
             self.network_id,
-            &self.outgoing_request_hash,
+            self.outgoing_request_hash,
             RequestStatus::ApprovalsReady,
         );
         Ok(())
@@ -563,7 +563,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
     /// Checks that the current bridge status is `Initialized`, otherwise an error is thrown.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
-            crate::BridgeStatuses::<T>::get(&self.network_id).ok_or(Error::<T>::UnknownNetwork)?
+            crate::BridgeStatuses::<T>::get(self.network_id).ok_or(Error::<T>::UnknownNetwork)?
                 == BridgeStatus::Initialized,
             Error::<T>::ContractIsAlreadyInMigrationStage
         );
@@ -607,9 +607,9 @@ impl<T: Config> IncomingMigrate<T> {
     /// Checks that the current bridge status is `Migrating`, otherwise an error is thrown.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
-            crate::BridgeStatuses::<T>::get(&self.network_id).ok_or(Error::<T>::UnknownNetwork)?
+            crate::BridgeStatuses::<T>::get(self.network_id).ok_or(Error::<T>::UnknownNetwork)?
                 == BridgeStatus::Migrating
-                && crate::PendingBridgeSignatureVersions::<T>::get(&self.network_id).is_some(),
+                && crate::PendingBridgeSignatureVersions::<T>::get(self.network_id).is_some(),
             Error::<T>::ContractIsNotInMigrationStage
         );
         Ok(())
@@ -623,7 +623,7 @@ impl<T: Config> IncomingMigrate<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::BridgeContractAddress::<T>::insert(self.network_id, self.new_contract_address);
         crate::BridgeStatuses::<T>::insert(self.network_id, BridgeStatus::Initialized);
-        let signature_version = crate::PendingBridgeSignatureVersions::<T>::take(&self.network_id)
+        let signature_version = crate::PendingBridgeSignatureVersions::<T>::take(self.network_id)
             .ok_or(Error::<T>::ContractIsNotInMigrationStage)?;
         crate::BridgeSignatureVersions::<T>::insert(self.network_id, signature_version);
         Ok(self.tx_hash)

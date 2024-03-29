@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::types::{H256, U64};
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use codec::{Decode, Encode};
 use serde::Deserialize;
 #[cfg(test)]
@@ -57,9 +57,9 @@ impl<'a> serde::Deserialize<'a> for OpaqueExtrinsic {
         D: serde::Deserializer<'a>,
     {
         let s: String = Deserialize::deserialize(de)?;
-        let r = common::utils::parse_hex_string(&s).ok_or(serde::de::Error::custom(format!(
-            "Expected hex string \"0x..\""
-        )))?;
+        let r = common::utils::parse_hex_string(&s).ok_or(serde::de::Error::custom(
+            "Expected hex string \"0x..\"".to_string(),
+        ))?;
         Decode::decode(&mut &r[..])
             .map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
     }

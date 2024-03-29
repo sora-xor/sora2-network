@@ -88,6 +88,7 @@ pub fn no_event() -> bool {
     frame_system::Pallet::<Runtime>::events().pop().is_none()
 }
 
+#[allow(clippy::result_large_err)]
 pub fn approve_request(
     state: &State,
     request: OutgoingRequest<Runtime>,
@@ -111,7 +112,7 @@ pub fn approve_request(
             0
         };
         let sigs_needed = majority(keypairs.len()) + additional_sigs;
-        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, &request_hash).unwrap();
+        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, request_hash).unwrap();
         ensure!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account_id.clone()),
@@ -166,6 +167,7 @@ pub fn last_outgoing_request(net_id: u32) -> Option<(OutgoingRequest<Runtime>, H
     }
 }
 
+#[allow(clippy::result_large_err)]
 pub fn approve_last_request(
     state: &State,
     net_id: u32,
@@ -175,6 +177,7 @@ pub fn approve_last_request(
     Ok((outgoing_request, hash))
 }
 
+#[allow(clippy::result_large_err)]
 pub fn approve_next_request(
     state: &State,
     net_id: u32,
@@ -188,6 +191,7 @@ pub fn approve_next_request(
     Ok((outgoing_request, hash))
 }
 
+#[allow(clippy::result_large_err)]
 pub fn request_incoming(
     account_id: AccountId,
     tx_hash: H256,
@@ -207,12 +211,13 @@ pub fn request_incoming(
     }
     let hash = last_request.hash();
     assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &hash).unwrap(),
+        crate::RequestStatuses::<Runtime>::get(net_id, hash).unwrap(),
         RequestStatus::Pending
     );
     Ok(hash)
 }
 
+#[allow(clippy::result_large_err)]
 pub fn assert_incoming_request_done(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,
@@ -240,7 +245,7 @@ pub fn assert_incoming_request_done(
     );
     assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
     assert_eq!(
-        *crate::Requests::get(net_id, &req_hash)
+        *crate::Requests::get(net_id, req_hash)
             .unwrap()
             .as_incoming()
             .unwrap()
@@ -248,18 +253,19 @@ pub fn assert_incoming_request_done(
         incoming_request
     );
     assert_ok!(EthBridge::finalize_incoming_request(
-        RuntimeOrigin::signed(bridge_acc_id.clone()),
+        RuntimeOrigin::signed(bridge_acc_id),
         req_hash,
         net_id,
     ));
     assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
+        crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
         RequestStatus::Done
     );
     assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
     Ok(())
 }
 
+#[allow(clippy::result_large_err)]
 pub fn assert_incoming_request_registration_failed(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,
@@ -276,11 +282,11 @@ pub fn assert_incoming_request_registration_failed(
     );
     assert_ok!(
         EthBridge::register_incoming_request(
-            RuntimeOrigin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id),
             incoming_request.clone(),
         ),
         PostDispatchInfo {
-            pays_fee: Pays::No.into(),
+            pays_fee: Pays::No,
             actual_weight: None
         }
     );

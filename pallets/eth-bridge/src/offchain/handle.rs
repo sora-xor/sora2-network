@@ -404,21 +404,19 @@ impl<T: Config> Pallet<T> {
                     }
                     _ => continue,
                 };
-                match maybe_call {
-                    Ok(Call::<T>::import_incoming_request {
-                        load_incoming_request,
-                        ..
-                    }) => {
-                        let tx_hash = load_incoming_request.hash();
+                if let Ok(Call::<T>::import_incoming_request {
+                    load_incoming_request,
+                    ..
+                }) = maybe_call
+                {
+                    let tx_hash = load_incoming_request.hash();
 
-                        if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
-                            to_remove.push(*key);
-                            // Skip already submitted requests.
-                            continue;
-                        }
-                        let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call);
+                    if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+                        to_remove.push(*key);
+                        // Skip already submitted requests.
+                        continue;
                     }
-                    _ => (),
+                    let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call);
                 };
             }
         }
@@ -623,7 +621,7 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
             let request_submission_height: T::BlockNumber =
-                Self::request_submission_height(network_id, &request_hash);
+                Self::request_submission_height(network_id, request_hash);
             let number = T::BlockNumber::from(MAX_PENDING_TX_BLOCKS_PERIOD);
             let diff = substrate_finalized_height.saturating_sub(request_submission_height);
             let should_reapprove = diff >= number && diff % number == T::BlockNumber::zero();

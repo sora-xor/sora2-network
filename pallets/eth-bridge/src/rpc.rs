@@ -219,6 +219,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Get registered assets and tokens.
+    #[allow(clippy::type_complexity)]
     pub fn get_registered_assets(
         network_id: Option<T::NetworkId>,
     ) -> Result<
@@ -232,10 +233,10 @@ impl<T: Config> Pallet<T> {
         Ok(iter_storage::<RegisteredAsset<T>, _, _, _, _, _>(
             network_id,
             |(network_id, asset_id, kind)| {
-                let token_info = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
+                let token_info = RegisteredSidechainToken::<T>::get(network_id, asset_id)
                     .map(|x| H160(x.0))
                     .map(|address| {
-                        let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
+                        let precision = SidechainAssetPrecision::<T>::get(network_id, asset_id);
                         (address, precision)
                     });
                 let asset_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;

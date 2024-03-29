@@ -40,7 +40,7 @@ fn test() {
         super::migrate::<Runtime>();
 
         for dex_info in DEXInfos::<Runtime>::iter_values() {
-            assert_eq!(dex_info.synthetic_base_asset_id, XST.into());
+            assert_eq!(dex_info.synthetic_base_asset_id, XST);
         }
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
     });

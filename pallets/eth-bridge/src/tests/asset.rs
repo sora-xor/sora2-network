@@ -98,10 +98,10 @@ fn should_mint_and_burn_sidechain_asset() {
             network_id: ETH_NETWORK_ID,
             should_take_fee: false,
         });
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
         check_invariant(&asset_id, 100);
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -118,17 +118,14 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
 
     #[track_caller]
     fn check_invariant() {
-        assert_eq!(
-            Assets::total_issuance(&XOR.into()).unwrap(),
-            balance!(350000)
-        );
+        assert_eq!(Assets::total_issuance(&XOR).unwrap(), balance!(350000));
     }
 
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         assert_eq!(
-            EthBridge::registered_asset(net_id, AssetId32::from(XOR)).unwrap(),
+            EthBridge::registered_asset(net_id, XOR).unwrap(),
             AssetKind::SidechainOwned
         );
         check_invariant();
@@ -142,7 +139,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: EthAddress::from([1; 20]),
             to: alice.clone(),
-            asset_id: XOR.into(),
+            asset_id: XOR,
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
             author: alice.clone(),
@@ -152,11 +149,11 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
             network_id: ETH_NETWORK_ID,
             should_take_fee: false,
         });
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
         check_invariant();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            RuntimeOrigin::signed(alice),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
@@ -179,7 +176,7 @@ fn should_register_and_find_asset_ids() {
         )
         .unwrap()
         .unwrap();
-        assert_eq!(asset_id, XOR.into());
+        assert_eq!(asset_id, XOR);
         assert_eq!(asset_kind, AssetKind::Thischain);
         let token_address = EthAddress::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
         // registers unknown token
@@ -315,7 +312,7 @@ fn should_reserve_owned_asset_on_different_networks() {
 
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let asset_id = XOR.into();
+        let asset_id = XOR;
         Assets::mint_to(&asset_id, &alice, &alice, 100u32.into()).unwrap();
         Assets::mint_to(
             &asset_id,
@@ -376,7 +373,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             network_id: net_id_0,
             should_take_fee: false,
         });
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2; 32]),
@@ -390,14 +387,14 @@ fn should_reserve_owned_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
-            author: alice.clone(),
+            author: alice,
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id_1,
             should_take_fee: false,
         });
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
         assert_eq!(Assets::total_issuance(&asset_id).unwrap(), supply);
     });
 }
@@ -468,7 +465,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             network_id: net_id_0,
             should_take_fee: false,
         });
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
 
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
@@ -499,10 +496,10 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             network_id: net_id_1,
             should_take_fee: false,
         });
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
 
         assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
@@ -560,7 +557,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
             net_id,
         )
         .unwrap();
-        let sidechain_amount = 1 * 10_u128.pow(decimals as u32);
+        let sidechain_amount = 10_u128.pow(decimals as u32);
         let incoming_trasfer = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(DepositEvent::new(
                 alice.clone(),
@@ -586,7 +583,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         // Outgoing transfer part.
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            asset_id.clone(),
+            asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             balance!(1),
             net_id,
@@ -637,7 +634,7 @@ fn should_convert_amount_for_indivisible_token() {
         // Outgoing transfer part.
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            asset_id.clone(),
+            asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             1,
             net_id,
@@ -725,7 +722,7 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
                 H256::zero(),
             )),
             LoadIncomingTransactionRequest::new(
-                alice.clone(),
+                alice,
                 tx_hash,
                 Default::default(),
                 IncomingTransactionRequestKind::Transfer,
@@ -776,8 +773,8 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
         .unwrap();
         assert_noop!(
             EthBridge::transfer_to_sidechain(
-                RuntimeOrigin::signed(alice.clone()),
-                asset_id.clone(),
+                RuntimeOrigin::signed(alice),
+                asset_id,
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 balance!(0.1000009),
                 net_id,

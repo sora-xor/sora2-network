@@ -66,19 +66,16 @@ fn should_cancel_ready_outgoing_request() {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         // Sending request part
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100u32.into()
-        );
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 100u32.into());
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 0);
         let (outgoing_req, outgoing_req_hash) =
             approve_last_request(&state, net_id).expect("request wasn't approved");
 
@@ -99,10 +96,10 @@ fn should_cancel_ready_outgoing_request() {
         .unwrap();
         let incoming_transfer =
             IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
-                outgoing_request: outgoing_req.clone(),
+                outgoing_request: outgoing_req,
                 outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
-                tx_input: tx_input.clone(),
+                tx_input,
                 author: alice.clone(),
                 tx_hash,
                 at_height: 1,
@@ -110,11 +107,8 @@ fn should_cancel_ready_outgoing_request() {
                 network_id: ETH_NETWORK_ID,
             });
 
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100u32.into()
-        );
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 100u32.into());
     });
 }
 
@@ -126,19 +120,16 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         // Sending request part
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100u32.into()
-        );
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 100u32.into());
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 0);
         let (outgoing_req, outgoing_req_hash) =
             approve_last_request(&state, net_id).expect("request wasn't approved");
 
@@ -159,10 +150,10 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
         .unwrap();
         let incoming_transfer =
             IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
-                outgoing_request: outgoing_req.clone(),
+                outgoing_request: outgoing_req,
                 outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
-                tx_input: tx_input.clone(),
+                tx_input,
                 author: alice.clone(),
                 tx_hash,
                 at_height: 1,
@@ -180,11 +171,11 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
         });
         assert_incoming_request_registration_failed(
             &state,
-            incoming_transfer.clone(),
+            incoming_transfer,
             Error::InvalidContractInput,
         )
         .unwrap();
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 0);
     });
 }
 
@@ -196,19 +187,16 @@ fn should_fail_cancel_unfinished_outgoing_request() {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         // Sending request part
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100u32.into()
-        );
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 100u32.into());
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 0);
         let (outgoing_req, outgoing_req_hash) =
             last_outgoing_request(net_id).expect("request wasn't found");
 
@@ -241,11 +229,11 @@ fn should_fail_cancel_unfinished_outgoing_request() {
             });
         assert_incoming_request_registration_failed(
             &state,
-            incoming_transfer.clone(),
+            incoming_transfer,
             Error::RequestIsNotReady,
         )
         .unwrap();
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR, &alice).unwrap(), 0);
     });
 }
 
@@ -257,14 +245,14 @@ fn should_cancel_outgoing_prepared_requests() {
         vec![
             AssetConfig::Thischain { id: PSWAP.into() },
             AssetConfig::Sidechain {
-                id: XOR.into(),
+                id: XOR,
                 sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
                     .unwrap(),
                 owned: true,
                 precision: DEFAULT_BALANCE_PRECISION,
             },
             AssetConfig::Sidechain {
-                id: VAL.into(),
+                id: VAL,
                 sidechain_id: sp_core::H160::from_str("3f9feac97e5feb15d8bf98042a9a01b515da3dfb")
                     .unwrap(),
                 owned: true,
@@ -272,8 +260,8 @@ fn should_cancel_outgoing_prepared_requests() {
             },
         ],
         Some(vec![
-            (XOR.into(), common::balance!(350000)),
-            (VAL.into(), common::balance!(33900000)),
+            (XOR, common::balance!(350000)),
+            (VAL, common::balance!(33900000)),
         ]),
         Some(5),
         Default::default(),
@@ -294,8 +282,8 @@ fn should_cancel_outgoing_prepared_requests() {
             None,
         )
         .unwrap();
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
-        Assets::mint_to(&XOR.into(), &alice, bridge_acc, 100u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, bridge_acc, 100u32.into()).unwrap();
         let ocw0_account_id = &state.networks[&net_id].ocw_keypairs[0].1;
         // Paris (preparation requests, testable request).
         let test_acc = AccountId32::new([10u8; 32]);
@@ -306,7 +294,7 @@ fn should_cancel_outgoing_prepared_requests() {
                 OutgoingTransfer {
                     from: alice.clone(),
                     to: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-                    asset_id: XOR.into(),
+                    asset_id: XOR,
                     amount: 1_u32.into(),
                     nonce: 0,
                     network_id: net_id,
@@ -318,7 +306,7 @@ fn should_cancel_outgoing_prepared_requests() {
                 vec![],
                 OutgoingAddAsset {
                     author: alice.clone(),
-                    asset_id: DOT.into(),
+                    asset_id: DOT,
                     nonce: 0,
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -411,7 +399,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     peer_address: EthAddress::from([10u8; 20]),
                     nonce: 0,
                     network_id: net_id + 1,
-                    peer_account_id: test_acc.clone(),
+                    peer_account_id: test_acc,
                     timepoint: Default::default(),
                     compat_hash: None,
                 }
@@ -420,7 +408,7 @@ fn should_cancel_outgoing_prepared_requests() {
             (
                 vec![OutgoingRemovePeer {
                     author: alice.clone(),
-                    peer_address: crate::PeerAddress::<Runtime>::get(&net_id, &ocw0_account_id),
+                    peer_address: crate::PeerAddress::<Runtime>::get(net_id, ocw0_account_id),
                     nonce: 0,
                     network_id: net_id,
                     peer_account_id: ocw0_account_id.clone(),
@@ -430,7 +418,7 @@ fn should_cancel_outgoing_prepared_requests() {
                 .into()],
                 OutgoingRemovePeerCompat {
                     author: alice.clone(),
-                    peer_address: crate::PeerAddress::<Runtime>::get(&net_id, &ocw0_account_id),
+                    peer_address: crate::PeerAddress::<Runtime>::get(net_id, ocw0_account_id),
                     nonce: 0,
                     network_id: net_id,
                     peer_account_id: ocw0_account_id.clone(),
@@ -467,7 +455,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     .into(),
                 ],
                 OutgoingMigrate {
-                    author: alice.clone(),
+                    author: alice,
                     new_contract_address: Default::default(),
                     erc20_native_tokens: vec![],
                     nonce: 0,
@@ -516,11 +504,11 @@ fn should_cancel_outgoing_prepared_requests() {
 fn should_cancel_incoming_prepared_requests() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
-    builder.add_currency(net_id, AssetConfig::Thischain { id: DOT.into() });
+    builder.add_currency(net_id, AssetConfig::Thischain { id: DOT });
     builder.add_currency(
         net_id,
         AssetConfig::Sidechain {
-            id: USDT.into(),
+            id: USDT,
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -530,9 +518,9 @@ fn should_cancel_incoming_prepared_requests() {
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let bridge_acc = &state.networks[&net_id].config.bridge_account_id;
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
-        Assets::mint_to(&XOR.into(), &alice, bridge_acc, 100u32.into()).unwrap();
-        Assets::mint_to(&DOT.into(), &alice, bridge_acc, 100u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, bridge_acc, 100u32.into()).unwrap();
+        Assets::mint_to(&DOT, &alice, bridge_acc, 100u32.into()).unwrap();
         // Paris (preparation requests, testable request).
         let requests: Vec<(Vec<OffchainRequest<Runtime>>, OffchainRequest<Runtime>)> = vec![
             (
@@ -540,7 +528,7 @@ fn should_cancel_incoming_prepared_requests() {
                 IncomingTransfer {
                     from: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                     to: alice.clone(),
-                    asset_id: XOR.into(),
+                    asset_id: XOR,
                     asset_kind: AssetKind::SidechainOwned,
                     amount: 1_u32.into(),
                     author: alice.clone(),
@@ -557,7 +545,7 @@ fn should_cancel_incoming_prepared_requests() {
                 IncomingTransfer {
                     from: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                     to: alice.clone(),
-                    asset_id: DOT.into(),
+                    asset_id: DOT,
                     asset_kind: AssetKind::Thischain,
                     amount: 1_u32.into(),
                     author: alice.clone(),
@@ -574,7 +562,7 @@ fn should_cancel_incoming_prepared_requests() {
                 IncomingTransfer {
                     from: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                     to: alice.clone(),
-                    asset_id: USDT.into(),
+                    asset_id: USDT,
                     asset_kind: AssetKind::Sidechain,
                     amount: 1_u32.into(),
                     author: alice.clone(),
@@ -590,7 +578,7 @@ fn should_cancel_incoming_prepared_requests() {
                 vec![],
                 IncomingAddToken {
                     token_address: EthAddress::from([100; 20]),
-                    asset_id: KSM.into(),
+                    asset_id: KSM,
                     precision: DEFAULT_BALANCE_PRECISION,
                     symbol: Default::default(),
                     name: Default::default(),
@@ -636,7 +624,7 @@ fn should_cancel_incoming_prepared_requests() {
                 ],
                 IncomingMigrate {
                     new_contract_address: Default::default(),
-                    author: alice.clone(),
+                    author: alice,
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
