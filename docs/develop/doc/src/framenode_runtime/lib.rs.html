@@ -6337,7 +6337,7 @@
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 <span class="bool-val">false</span>,
                 <span class="bool-val">true</span>,
-            ).ok().map(|(quote_info, <span class="kw">_</span>)| liquidity_proxy_runtime_api::SwapOutcomeInfo::&lt;Balance, AssetId&gt; {
+            ).ok().map(|(quote_info, <span class="kw">_</span>, <span class="kw">_</span>)| liquidity_proxy_runtime_api::SwapOutcomeInfo::&lt;Balance, AssetId&gt; {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(<span class="number">0</span>),
                 fee: quote_info.outcome.fee,

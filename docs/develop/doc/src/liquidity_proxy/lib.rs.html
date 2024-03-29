@@ -2747,62 +2747,6 @@
 <a href="#2732" id="2732">2732</a>
 <a href="#2733" id="2733">2733</a>
 <a href="#2734" id="2734">2734</a>
-<a href="#2735" id="2735">2735</a>
-<a href="#2736" id="2736">2736</a>
-<a href="#2737" id="2737">2737</a>
-<a href="#2738" id="2738">2738</a>
-<a href="#2739" id="2739">2739</a>
-<a href="#2740" id="2740">2740</a>
-<a href="#2741" id="2741">2741</a>
-<a href="#2742" id="2742">2742</a>
-<a href="#2743" id="2743">2743</a>
-<a href="#2744" id="2744">2744</a>
-<a href="#2745" id="2745">2745</a>
-<a href="#2746" id="2746">2746</a>
-<a href="#2747" id="2747">2747</a>
-<a href="#2748" id="2748">2748</a>
-<a href="#2749" id="2749">2749</a>
-<a href="#2750" id="2750">2750</a>
-<a href="#2751" id="2751">2751</a>
-<a href="#2752" id="2752">2752</a>
-<a href="#2753" id="2753">2753</a>
-<a href="#2754" id="2754">2754</a>
-<a href="#2755" id="2755">2755</a>
-<a href="#2756" id="2756">2756</a>
-<a href="#2757" id="2757">2757</a>
-<a href="#2758" id="2758">2758</a>
-<a href="#2759" id="2759">2759</a>
-<a href="#2760" id="2760">2760</a>
-<a href="#2761" id="2761">2761</a>
-<a href="#2762" id="2762">2762</a>
-<a href="#2763" id="2763">2763</a>
-<a href="#2764" id="2764">2764</a>
-<a href="#2765" id="2765">2765</a>
-<a href="#2766" id="2766">2766</a>
-<a href="#2767" id="2767">2767</a>
-<a href="#2768" id="2768">2768</a>
-<a href="#2769" id="2769">2769</a>
-<a href="#2770" id="2770">2770</a>
-<a href="#2771" id="2771">2771</a>
-<a href="#2772" id="2772">2772</a>
-<a href="#2773" id="2773">2773</a>
-<a href="#2774" id="2774">2774</a>
-<a href="#2775" id="2775">2775</a>
-<a href="#2776" id="2776">2776</a>
-<a href="#2777" id="2777">2777</a>
-<a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2890,6 +2834,13 @@
 
 <span class="kw">type </span>LiquiditySourceIdOf&lt;T&gt; = LiquiditySourceId&lt;&lt;T <span class="kw">as </span>common::Config&gt;::DEXId, LiquiditySourceType&gt;;
 <span class="kw">type </span>Rewards&lt;AssetId&gt; = Vec&lt;(Balance, AssetId, RewardReason)&gt;;
+
+<span class="doccomment">/// Exchange route as:
+/// - from AssetId
+/// - to AssetId
+/// - swap amounts
+/// Can be either WithDesiredInput or WithDesiredOutput.
+</span><span class="kw">type </span>ExchangeRoute&lt;AssetId&gt; = Vec&lt;(AssetId, AssetId, SwapAmount&lt;Balance&gt;)&gt;;
 
 <span class="kw">pub const </span>TECH_ACCOUNT_PREFIX: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;liquidity-proxy&quot;</span>;
 <span class="kw">pub const </span>TECH_ACCOUNT_MAIN: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;main&quot;</span>;
@@ -3186,84 +3137,60 @@
         ),
         DispatchError,
     &gt; {
-        <span class="kw">match </span>amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in,
-                min_amount_out,
-            } =&gt; {
-                <span class="kw">let </span>(best_path, quote_weight) = <span class="self">Self</span>::select_best_path(
-                    dex_info,
-                    asset_paths,
-                    Ordering::Greater,
-                    desired_amount_in,
-                    filter,
-                    <span class="bool-val">true</span>,
-                    <span class="bool-val">true</span>,
-                )
-                .map(|(info, weight)| (info.path, weight))<span class="question-mark">?</span>;
-                <span class="self">Self</span>::exchange_sequence_with_input_amount(
-                    dex_info,
-                    sender,
-                    receiver,
-                    <span class="kw-2">&amp;</span>best_path,
-                    desired_amount_in,
-                    filter,
-                )
-                .and_then(|(swap, sources, weight)| {
-                    <span class="macro">ensure!</span>(
-                        swap.amount &gt;= min_amount_out,
-                        Error::&lt;T&gt;::SlippageNotTolerated
-                    );
-                    <span class="prelude-val">Ok</span>((swap, sources, quote_weight.saturating_add(weight)))
-                })
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-            } =&gt; {
-                <span class="kw">let </span>(best_path, quote_weight) = <span class="self">Self</span>::select_best_path(
-                    dex_info,
-                    asset_paths,
-                    Ordering::Less,
-                    desired_amount_out,
-                    filter,
-                    <span class="bool-val">true</span>,
-                    <span class="bool-val">true</span>,
-                )
-                .map(|(info, weight)| (info.path, weight))<span class="question-mark">?</span>;
-                <span class="kw">let </span>(input_amount, weight) =
-                    <span class="self">Self</span>::calculate_input_amount(dex_info, <span class="kw-2">&amp;</span>best_path, desired_amount_out, filter)<span class="question-mark">?</span>;
-                <span class="kw">let </span>quote_weight = quote_weight.saturating_add(weight);
-                <span class="macro">ensure!</span>(
-                    input_amount &lt;= max_amount_in,
-                    Error::&lt;T&gt;::SlippageNotTolerated
-                );
+        <span class="kw">let </span>(<span class="kw">_</span>, route, quote_weight) = <span class="self">Self</span>::select_best_path(
+            dex_info,
+            asset_paths,
+            amount.variant(),
+            amount.amount(),
+            filter,
+            <span class="bool-val">true</span>,
+            <span class="bool-val">true</span>,
+        )
+        .map(|(info, swaps, weight)| (info.path, swaps, weight))<span class="question-mark">?</span>;
 
-                <span class="self">Self</span>::exchange_sequence_with_input_amount(
-                    dex_info,
-                    sender,
-                    receiver,
-                    <span class="kw-2">&amp;</span>best_path,
-                    input_amount,
-                    filter,
-                )
-                .and_then(|(<span class="kw-2">mut </span>swap, sources, weight)| {
-                    swap.amount = input_amount;
-                    <span class="prelude-val">Ok</span>((swap, sources, quote_weight.saturating_add(weight)))
-                })
-            }
-        }
+        <span class="self">Self</span>::exchange_sequence_with_desired_amount(dex_info, sender, receiver, <span class="kw-2">&amp;</span>route, filter)
+            .and_then(|(<span class="kw-2">mut </span>swap, sources, weight)| {
+                <span class="kw">match </span>amount {
+                    SwapAmount::WithDesiredInput { min_amount_out, .. } =&gt; {
+                        <span class="macro">ensure!</span>(
+                            swap.amount &gt;= min_amount_out,
+                            Error::&lt;T&gt;::SlippageNotTolerated
+                        );
+                        <span class="prelude-val">Ok</span>((swap, sources, quote_weight.saturating_add(weight)))
+                    }
+                    SwapAmount::WithDesiredOutput { max_amount_in, .. } =&gt; {
+                        <span class="comment">// The input limit on the first exchange is an input amount for the whole exchange
+                        </span><span class="kw">let </span>input_amount = route
+                            .first()
+                            .ok_or(Error::&lt;T&gt;::UnavailableExchangePath)<span class="question-mark">?
+                            </span>.<span class="number">2
+                            </span>.limit();
+                        swap.amount = input_amount;
+                        <span class="macro">ensure!</span>(
+                            swap.amount &lt;= max_amount_in,
+                            Error::&lt;T&gt;::SlippageNotTolerated
+                        );
+                        <span class="prelude-val">Ok</span>((swap, sources, quote_weight.saturating_add(weight)))
+                    }
+                }
+            })
     }
 
-    <span class="doccomment">/// Exchange sequence of assets using input amount.
+    <span class="doccomment">/// Performs the sequence of assets exchanges.
     ///
     /// Performs [`Self::exchange_single()`] for each pair of assets and aggregates the results.
-    </span><span class="kw">fn </span>exchange_sequence_with_input_amount(
+    ///
+    /// # Parameters
+    /// - `dex_info` - information about DEX
+    /// - `sender` - address that sends amount
+    /// - `receiver` - swap beneficiary
+    /// - `swaps` - exchange route with amounts
+    /// - `filter` - filter for liquidity sources
+    </span><span class="kw">fn </span>exchange_sequence_with_desired_amount(
         dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
-        assets: <span class="kw-2">&amp;</span>[T::AssetId],
-        input_amount: Balance,
+        route: <span class="kw-2">&amp;</span>ExchangeRoute&lt;T::AssetId&gt;,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
@@ -3276,101 +3203,59 @@
         <span class="kw">use </span>itertools::EitherOrBoth::<span class="kw-2">*</span>;
 
         <span class="kw">let </span>transit_account = T::GetTechnicalAccountId::get();
-        <span class="kw">let </span>exchange_count = assets.len() - <span class="number">1</span>;
+        <span class="kw">let </span>exchange_count = route.len();
 
         <span class="kw">let </span>sender_iter = sp_std::iter::once(sender)
             .chain(sp_std::iter::repeat(<span class="kw-2">&amp;</span>transit_account).take(exchange_count - <span class="number">1</span>));
         <span class="kw">let </span>receiver_iter = sp_std::iter::repeat(<span class="kw-2">&amp;</span>transit_account)
             .take(exchange_count - <span class="number">1</span>)
             .chain(sp_std::iter::once(receiver));
-        <span class="kw">let </span><span class="kw-2">mut </span>current_amount = input_amount;
 
         fallible_iterator::convert(
-            assets
+            route
                 .iter()
-                .tuple_windows()
                 .zip_longest(sender_iter)
                 .zip_longest(receiver_iter)
                 .map(|zip| <span class="kw">match </span>zip {
-                    Both(Both((from, to), cur_sender), cur_receiver) =&gt; {
-                        (from, to, cur_sender, cur_receiver)
+                    Both(Both((from, to, swap_amount), cur_sender), cur_receiver) =&gt; {
+                        (from, to, swap_amount, cur_sender, cur_receiver)
                     }
                     <span class="comment">// Sanity check. Should never happen
                     </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(
                         <span class="string">&quot;Exchanging failed, iterator invariants are broken - \
-                         this is a programmer error&quot;
+                                 this is a programmer error&quot;
                     </span>),
                 })
                 <span class="comment">// Exchange
-                </span>.map(
-                    |(from, to, cur_sender, cur_receiver)| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, DispatchError&gt; {
-                        <span class="kw">let </span>swap_amount =
-                            SwapAmount::with_desired_input(current_amount, Balance::zero());
-
-                        <span class="kw">let </span>(swap_outcome, sources, weight) = <span class="self">Self</span>::exchange_single(
-                            cur_sender,
-                            cur_receiver,
-                            <span class="kw-2">&amp;</span>dex_info.base_asset_id,
-                            from,
-                            to,
-                            swap_amount,
-                            filter.clone(),
-                        )<span class="question-mark">?</span>;
-
-                        current_amount = swap_outcome.amount;
-                        <span class="prelude-val">Ok</span>((swap_outcome, sources, weight))
-                    },
+                </span>.map(|(from, to, swap_amount, cur_sender, cur_receiver)| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, DispatchError&gt; {
+                    <span class="kw">let </span>(swap_outcome, sources, weight) = <span class="self">Self</span>::exchange_single(
+                        cur_sender,
+                        cur_receiver,
+                        <span class="kw-2">&amp;</span>dex_info.base_asset_id,
+                        <span class="kw-2">&amp;</span>from,
+                        <span class="kw-2">&amp;</span>to,
+                        swap_amount.clone(),
+                        filter.clone(),
+                    )<span class="question-mark">?</span>;
+                    <span class="prelude-val">Ok</span>((swap_outcome, sources, weight))
+                }),
+        )
+            <span class="comment">// Exchange aggregation
+            </span>.fold(
+                (
+                    SwapOutcome::new(<span class="macro">balance!</span>(<span class="number">0</span>), OutcomeFee::new()),
+                    Vec::new(),
+                    Weight::zero(),
                 ),
-        )
-        <span class="comment">// Exchange aggregation
-        </span>.fold(
-            (
-                SwapOutcome::new(<span class="macro">balance!</span>(<span class="number">0</span>), OutcomeFee::new()),
-                Vec::new(),
-                Weight::zero(),
-            ),
-            |(<span class="kw-2">mut </span>outcome, <span class="kw-2">mut </span>sources, <span class="kw-2">mut </span>total_weight),
-             (swap_outcome, swap_sources, swap_weight)| {
-                outcome.amount = swap_outcome.amount;
-                outcome.fee = outcome.fee.merge(swap_outcome.fee);
-                merge_two_vectors_unique(<span class="kw-2">&amp;mut </span>sources, swap_sources);
-                total_weight = total_weight.saturating_add(swap_weight);
-                <span class="prelude-val">Ok</span>((outcome, sources, total_weight))
-            },
-        )
-    }
-
-    <span class="doccomment">/// Calculate the input amount for a given `output_amount` for a sequence of direct swaps.
-    </span><span class="kw">fn </span>calculate_input_amount(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        assets: <span class="kw-2">&amp;</span>[T::AssetId],
-        output_amount: Balance,
-        filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Balance, Weight), DispatchError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>amount = output_amount;
-        <span class="kw">let </span><span class="kw-2">mut </span>total_weight = Weight::zero();
-
-        assets
-            .iter()
-            .rev()
-            .tuple_windows()
-            .map(|(to, from)| (from, to)) <span class="comment">// Need to reverse pairs as well
-            </span>.map(|(from, to)| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, DispatchError&gt; {
-                <span class="kw">let </span>(quote, <span class="kw">_</span>, <span class="kw">_</span>, weight) = <span class="self">Self</span>::quote_single(
-                    <span class="kw-2">&amp;</span>dex_info.base_asset_id,
-                    <span class="kw-2">&amp;</span>from,
-                    <span class="kw-2">&amp;</span>to,
-                    QuoteAmount::with_desired_output(amount),
-                    filter.clone(),
-                    <span class="bool-val">true</span>,
-                    <span class="bool-val">true</span>,
-                )<span class="question-mark">?</span>;
-                total_weight = total_weight.saturating_add(weight);
-                amount = quote.amount;
-                <span class="prelude-val">Ok</span>(())
-            })
-            .for_each(drop);
-        <span class="prelude-val">Ok</span>((amount, total_weight))
+                |(<span class="kw-2">mut </span>outcome, <span class="kw-2">mut </span>sources, <span class="kw-2">mut </span>total_weight),
+                 (swap_outcome, swap_sources, swap_weight)| {
+                    outcome.amount = swap_outcome.amount;
+                    outcome.fee = outcome.fee.merge(swap_outcome.fee);
+                    merge_two_vectors_unique(<span class="kw-2">&amp;mut </span>sources, swap_sources);
+                    total_weight = total_weight.saturating_add(swap_weight);
+                    <span class="prelude-val">Ok</span>((outcome, sources, total_weight))
+                },
+            )
     }
 
     <span class="doccomment">/// Performs a swap given a number of liquidity sources and a distribution of the swap amount across the sources.
@@ -3456,7 +3341,14 @@
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;,
+            ExchangeRoute&lt;T::AssetId&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
         <span class="macro">ensure!</span>(
             input_asset_id != output_asset_id,
             Error::&lt;T&gt;::UnavailableExchangePath
@@ -3466,62 +3358,44 @@
             ExchangePath::&lt;T&gt;::new_trivial(<span class="kw-2">&amp;</span>dex_info, <span class="kw-2">*</span>input_asset_id, <span class="kw-2">*</span>output_asset_id);
         maybe_path.map_or_else(
             || <span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnavailableExchangePath.into()),
-            |paths| <span class="self">Self</span>::quote_sequence(<span class="kw-2">&amp;</span>dex_info, paths, amount, <span class="kw-2">&amp;</span>filter, skip_info, deduce_fee),
+            |paths| {
+                <span class="self">Self</span>::select_best_path(
+                    <span class="kw-2">&amp;</span>dex_info,
+                    paths,
+                    amount.variant(),
+                    amount.amount(),
+                    <span class="kw-2">&amp;</span>filter,
+                    skip_info,
+                    deduce_fee,
+                )
+            },
         )
     }
 
-    <span class="doccomment">/// Quote sequence of assets, where each pair is a direct exchange.
-    /// Selects swaps path via `select_best_path`
-    </span><span class="kw">fn </span>quote_sequence(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        asset_paths: Vec&lt;ExchangePath&lt;T&gt;&gt;,
-        amount: QuoteAmount&lt;Balance&gt;,
-        filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-        skip_info: bool,
-        deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
-        <span class="kw">match </span>amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; <span class="self">Self</span>::select_best_path(
-                dex_info,
-                asset_paths,
-                Ordering::Greater,
-                desired_amount_in,
-                filter,
-                skip_info,
-                deduce_fee,
-            ),
-            QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; <span class="self">Self</span>::select_best_path(
-                dex_info,
-                asset_paths,
-                Ordering::Less,
-                desired_amount_out,
-                filter,
-                skip_info,
-                deduce_fee,
-            ),
-        }
-    }
-
     <span class="doccomment">/// Selects the best path between two swap paths
-    /// `ord` parameter influences the preprocessing before
-    /// calling `quote_pairs_with_flexible_amount`. The Ordering:Greater variant
-    /// is related to `QuoteAmount::WithDesiredInput` and other ordering variants are related to
-    /// `QuoteAmount::WithDesiredOutput`
     ///
     /// Returns Result containing a quote result and the selected path
     </span><span class="kw">fn </span>select_best_path(
         dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
         asset_paths: Vec&lt;ExchangePath&lt;T&gt;&gt;,
-        ord: Ordering,
+        swap_variant: SwapVariant,
         amount: Balance,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (
+            QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;,
+            ExchangeRoute&lt;T::AssetId&gt;,
+            Weight,
+        ),
+        DispatchError,
+    &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
+        <span class="kw">let </span><span class="kw-2">mut </span>swaps = ExchangeRoute::&lt;T::AssetId&gt;::new();
         <span class="kw">let </span><span class="kw-2">mut </span>path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
-            <span class="kw">let </span>quote = <span class="kw">match </span>ord {
-                Ordering::Greater =&gt; <span class="self">Self</span>::quote_pairs_with_flexible_amount(
+            <span class="kw">let </span>quote = <span class="kw">match </span>swap_variant {
+                SwapVariant::WithDesiredInput =&gt; <span class="self">Self</span>::quote_pairs_with_flexible_amount(
                     dex_info,
                     atomic_path.iter().tuple_windows(),
                     QuoteAmount::with_desired_input,
@@ -3529,8 +3403,9 @@
                     filter,
                     skip_info,
                     deduce_fee,
+                    swap_variant,
                 ),
-                <span class="kw">_ </span>=&gt; <span class="self">Self</span>::quote_pairs_with_flexible_amount(
+                SwapVariant::WithDesiredOutput =&gt; <span class="self">Self</span>::quote_pairs_with_flexible_amount(
                     dex_info,
                     atomic_path
                         .iter()
@@ -3542,10 +3417,12 @@
                     filter,
                     skip_info,
                     deduce_fee,
+                    swap_variant,
                 ),
             };
             quote.map(|x| {
-                weight = weight.saturating_add(x.<span class="number">4</span>);
+                swaps = x.<span class="number">4</span>;
+                weight = weight.saturating_add(x.<span class="number">5</span>);
                 QuoteInfo {
                     outcome: x.<span class="number">0</span>,
                     amount_without_impact: x.<span class="number">1</span>,
@@ -3565,16 +3442,19 @@
                 (<span class="prelude-val">Ok</span>(<span class="kw">_</span>), <span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; acc,
                 (<span class="prelude-val">Err</span>(<span class="kw">_</span>), <span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; path,
                 (<span class="prelude-val">Ok</span>(acc_quote_info), <span class="prelude-val">Ok</span>(quote_info)) =&gt; {
-                    <span class="kw">match </span>(ord, acc_quote_info.outcome.cmp(<span class="kw-2">&amp;</span>quote_info.outcome)) {
-                        (Ordering::Greater, Ordering::Less) =&gt; path,
-                        (Ordering::Greater, <span class="kw">_</span>) =&gt; acc,
+                    <span class="kw">match </span>(
+                        swap_variant,
+                        acc_quote_info.outcome.cmp(<span class="kw-2">&amp;</span>quote_info.outcome),
+                    ) {
+                        (SwapVariant::WithDesiredInput, Ordering::Less) =&gt; path,
+                        (SwapVariant::WithDesiredInput, <span class="kw">_</span>) =&gt; acc,
                         (<span class="kw">_</span>, Ordering::Less) =&gt; acc,
                         <span class="kw">_ </span>=&gt; path,
                     }
                 }
                 <span class="kw">_ </span>=&gt; acc,
             })
-            .map(|quote| (quote, weight))
+            .map(|quote| (quote, swaps, weight))
     }
 
     <span class="doccomment">/// Quote given pairs of assets using `amount_ctr` to construct [`QuoteAmount`] for each pair.
@@ -3588,12 +3468,14 @@
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
+        swap_variant: SwapVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
             SwapOutcome&lt;Balance, T::AssetId&gt;,
             <span class="prelude-ty">Option</span>&lt;Balance&gt;,
             Rewards&lt;T::AssetId&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
+            ExchangeRoute&lt;T::AssetId&gt;,
             Weight,
         ),
         DispatchError,
@@ -3610,8 +3492,10 @@
                 skip_info,
                 deduce_fee,
             )<span class="question-mark">?</span>;
+            <span class="kw">let </span>amount_sent = current_amount;
             current_amount = quote.amount;
             <span class="prelude-val">Ok</span>((
+                amount_sent,
                 quote,
                 rewards,
                 liquidity_sources,
@@ -3625,6 +3509,7 @@
                 init_outcome_without_impact,
                 Rewards::new(),
                 Vec::new(),
+                Vec::new(),
                 Weight::zero(),
             ),
             |(
@@ -3632,9 +3517,11 @@
                 <span class="kw-2">mut </span>outcome_without_impact,
                 <span class="kw-2">mut </span>rewards,
                 <span class="kw-2">mut </span>liquidity_sources,
+                <span class="kw-2">mut </span>vec_swaps,
                 <span class="kw-2">mut </span>weight,
             ),
              (
+                amount_sent,
                 quote,
                 <span class="kw-2">mut </span>quote_rewards,
                 quote_liquidity_sources,
@@ -3657,12 +3544,28 @@
                 outcome.fee = outcome.fee.merge(quote.fee);
                 rewards.append(<span class="kw-2">&amp;mut </span>quote_rewards);
                 weight = weight.saturating_add(quote_weight);
+                <span class="kw">match </span>swap_variant {
+                    SwapVariant::WithDesiredInput =&gt; vec_swaps.push((
+                        <span class="kw-2">*</span>from_asset,
+                        <span class="kw-2">*</span>to_asset,
+                        SwapAmount::with_desired_input(amount_sent, quote.amount),
+                    )),
+                    SwapVariant::WithDesiredOutput =&gt; vec_swaps.insert(
+                        <span class="number">0</span>,
+                        (
+                            <span class="kw-2">*</span>from_asset,
+                            <span class="kw-2">*</span>to_asset,
+                            SwapAmount::with_desired_output(amount_sent, quote.amount),
+                        ),
+                    ),
+                }
                 merge_two_vectors_unique(<span class="kw-2">&amp;mut </span>liquidity_sources, quote_liquidity_sources);
                 <span class="prelude-val">Ok</span>((
                     outcome,
                     outcome_without_impact,
                     rewards,
                     liquidity_sources,
+                    vec_swaps,
                     weight,
                 ))
             },
@@ -4009,12 +3912,7 @@
     ///                     list_liquidity_sources()
     ///                     quote()
     ///                     smart_split()
-    ///         calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
-    ///             quote_single()
-    ///                 list_liquidity_sources()
-    ///                 quote()
-    ///                 smart_split()
-    ///         exchange_sequence_with_input_amount()
+    ///         exchange_sequence_with_desired_amount()
     ///             exchange_single()
     ///                 quote_single()
     ///                     list_liquidity_sources()
@@ -4027,7 +3925,6 @@
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
         input: <span class="kw-2">&amp;</span>T::AssetId,
         output: <span class="kw-2">&amp;</span>T::AssetId,
-        swap_variant: SwapVariant,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; Weight {
         <span class="comment">// Get DEX info or return weight that will be rejected
@@ -4054,12 +3951,6 @@
         <span class="comment">// in quote_pairs_with_flexible_amount()
         </span>weight =
             weight.saturating_add(quote_single_weight.saturating_mul(trivial_paths.len() <span class="kw">as </span>u64));
-
-        <span class="comment">// in calculate_input_amount()
-        </span>weight = weight.saturating_add(<span class="kw">match </span>swap_variant {
-            SwapVariant::WithDesiredInput =&gt; Weight::zero(),
-            SwapVariant::WithDesiredOutput =&gt; quote_single_weight,
-        });
 
         <span class="kw">let </span><span class="kw-2">mut </span>weights = Vec::new();
 
@@ -4114,7 +4005,6 @@
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
         input: <span class="kw-2">&amp;</span>T::AssetId,
         output: <span class="kw-2">&amp;</span>T::AssetId,
-        swap_variant: SwapVariant,
         selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
         filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; Weight {
@@ -4123,8 +4013,7 @@
             filter_mode.clone(),
             selected_source_types.clone(),
         );
-        <span class="kw">let </span>inner_exchange_weight =
-            <span class="self">Self</span>::inner_exchange_weight(dex_id, input, output, swap_variant, filter);
+        <span class="kw">let </span>inner_exchange_weight = <span class="self">Self</span>::inner_exchange_weight(dex_id, input, output, filter);
 
         <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::check_indivisible_assets()
             .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter())
@@ -4171,7 +4060,6 @@
                     <span class="kw-2">&amp;</span>swap_batch_info.dex_id,
                     input,
                     <span class="kw-2">&amp;</span>swap_batch_info.outcome_asset_id,
-                    SwapVariant::WithDesiredOutput,
                     filter,
                 );
 
@@ -5048,7 +4936,7 @@
             <span class="bool-val">true</span>,
             deduce_fee,
         )
-        .map(|(quote_info, <span class="kw">_</span>)| quote_info.outcome)
+        .map(|(quote_info, <span class="kw">_</span>, <span class="kw">_</span>)| quote_info.outcome)
     }
 
     <span class="doccomment">/// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
@@ -5245,7 +5133,7 @@
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         </span><span class="attr">#[pallet::call_index(<span class="number">0</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, (<span class="kw-2">*</span>swap_amount).into(), selected_source_types, filter_mode))]
+        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, selected_source_types, filter_mode))]
         </span><span class="kw">pub fn </span>swap(
             origin: OriginFor&lt;T&gt;,
             dex_id: T::DEXId,
@@ -5283,7 +5171,7 @@
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         </span><span class="attr">#[pallet::call_index(<span class="number">1</span>)]
-        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, (<span class="kw-2">*</span>swap_amount).into(), selected_source_types, filter_mode))]
+        #[pallet::weight(Pallet::&lt;T&gt;::swap_weight(dex_id, input_asset_id, output_asset_id, selected_source_types, filter_mode))]
         </span><span class="kw">pub fn </span>swap_transfer(
             origin: OriginFor&lt;T&gt;,
             receiver: T::AccountId,
@@ -5446,7 +5334,7 @@
                 &amp;&amp; max_amount_in &gt; <span class="kw-2">&amp;</span>Balance::zero()
                 &amp;&amp; desired_xor_amount &gt; <span class="kw-2">&amp;</span>Balance::zero()
             {
-                weight = weight.saturating_add(Pallet::&lt;T&gt;::swap_weight(dex_id, asset_id, <span class="kw-2">&amp;</span>common::XOR.into(), SwapVariant::WithDesiredOutput, selected_source_types, filter_mode));
+                weight = weight.saturating_add(Pallet::&lt;T&gt;::swap_weight(dex_id, asset_id, <span class="kw-2">&amp;</span>common::XOR.into(), selected_source_types, filter_mode));
             }
             weight
         })]
