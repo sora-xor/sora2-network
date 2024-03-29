@@ -42,7 +42,7 @@ build() {
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
-        sudoCheckStatus="101"
+        sudoCheckStatus=101
     elif [[ -n $buildTag ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
     fi
