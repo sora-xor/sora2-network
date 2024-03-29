@@ -1264,11 +1264,6 @@ pub mod pallet {
                 true,
             )?;
             desired_kusd_amount = desired_kusd_amount.min(amount);
-            let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::TreasuryTechAccount::get(),
-            )?;
-            let kusd_balance_before =
-                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
             let swap_outcome = T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 technical_account_id,
@@ -1278,17 +1273,10 @@ pub mod pallet {
                 SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
-            let kusd_balance_after =
-                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            // This value may differ from `desired_kusd_amount`, so this is calculation of actual
-            // amount swapped.
-            let kusd_swapped = kusd_balance_after
-                .checked_sub(kusd_balance_before)
-                .ok_or(Error::<T>::ArithmeticError)?;
             let collateral_liquidated = swap_outcome.amount;
             // penalty is a protocol profit which stays on treasury tech account
-            let penalty = Self::liquidation_penalty() * kusd_swapped.min(cdp.debt);
-            let proceeds = kusd_swapped - penalty;
+            let penalty = Self::liquidation_penalty() * desired_kusd_amount.min(cdp.debt);
+            let proceeds = desired_kusd_amount - penalty;
             Ok((collateral_liquidated, proceeds, penalty))
         }
 
