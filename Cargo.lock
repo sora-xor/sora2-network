@@ -1446,9 +1446,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-platform"
-version = "0.1.8"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24b1f0365a6c6bb4020cd05806fd0d33c44d38046b8bd7f0e40814b9763cabfc"
+checksum = "694c8807f2ae16faecc43dc17d74b3eb042482789fd0eb64b39a2e04e087053f"
 dependencies = [
  "serde",
 ]
@@ -4475,6 +4475,7 @@ dependencies = [
  "bridge-proxy-rpc",
  "bridge-types",
  "bumpalo",
+ "cargo-platform",
  "clap 4.3.17",
  "clap_lex 0.5.0",
  "common",
@@ -4549,6 +4550,7 @@ dependencies = [
  "sp-timestamp",
  "sp-transaction-pool",
  "sp-trie",
+ "substrate-bip39",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
@@ -4989,15 +4991,6 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "getrandom_or_panic"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea1015b5a70616b688dc230cfe50c8af89d972cb132d5a622814d29773b10b9"
-dependencies = [
- "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -7089,18 +7082,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "merlin"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58c38e2799fc0978b65dfff8023ec7843e2330bb462f19198840b34b6582397d"
-dependencies = [
- "byteorder",
- "keccak",
- "rand_core 0.6.4",
- "zeroize",
-]
-
-[[package]]
 name = "migration-app"
 version = "0.1.1"
 dependencies = [
@@ -7814,9 +7795,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.101"
+version = "0.9.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dda2b0f344e78efc2facf7d195d098df0dd72151b26ab98da807afc26c198dff"
+checksum = "c597637d56fbc83893a35eb0dd04b2b8e7a50c91e64e9493e398b5df4fb45fa2"
 dependencies = [
  "cc",
  "libc",
@@ -10858,7 +10839,7 @@ dependencies = [
  "fork-tree",
  "futures 0.3.30",
  "log",
- "merlin 2.0.1",
+ "merlin",
  "num-bigint",
  "num-rational",
  "num-traits",
@@ -10870,7 +10851,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-keystore",
  "sc-telemetry",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "sp-api",
  "sp-application-crypto",
  "sp-block-builder",
@@ -11786,27 +11767,10 @@ dependencies = [
  "arrayvec 0.5.2",
  "curve25519-dalek 2.1.3",
  "getrandom 0.1.16",
- "merlin 2.0.1",
+ "merlin",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "sha2 0.8.2",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "schnorrkel"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8de18f6d8ba0aad7045f5feae07ec29899c1112584a38509a84ad7b04451eaa0"
-dependencies = [
- "arrayref",
- "arrayvec 0.7.4",
- "curve25519-dalek 4.1.2",
- "getrandom_or_panic",
- "merlin 3.0.0",
- "rand_core 0.6.4",
- "sha2 0.10.8",
  "subtle",
  "zeroize",
 ]
@@ -12439,7 +12403,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "async-trait",
- "merlin 2.0.1",
+ "merlin",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -12475,7 +12439,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "sp-core",
  "sp-runtime",
  "sp-std",
@@ -12499,14 +12463,14 @@ dependencies = [
  "lazy_static",
  "libsecp256k1",
  "log",
- "merlin 2.0.1",
+ "merlin",
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "primitive-types 0.12.2",
  "rand 0.8.5",
  "regex",
  "scale-info",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "secp256k1",
  "secrecy",
  "serde",
@@ -12663,10 +12627,10 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "async-trait",
  "futures 0.3.30",
- "merlin 2.0.1",
+ "merlin",
  "parity-scale-codec",
  "parking_lot 0.12.1",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "serde",
  "sp-core",
  "sp-externalities",
@@ -13190,13 +13154,13 @@ dependencies = [
 
 [[package]]
 name = "substrate-bip39"
-version = "0.4.6"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a7590dc041b9bc2825e52ce5af8416c73dbe9d0654402bfd4b4941938b94d8f"
+checksum = "e620c7098893ba667438b47169c00aacdd9e7c10e042250ce2b60b087ec97328"
 dependencies = [
  "hmac 0.11.0",
  "pbkdf2 0.8.0",
- "schnorrkel 0.11.4",
+ "schnorrkel",
  "sha2 0.9.9",
  "zeroize",
 ]
@@ -13738,9 +13702,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.36.0"
+version = "1.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61285f6515fa018fb2d1e46eb21223fff441ee8db5d0f1435e8ab4f5cdb80931"
+checksum = "1adbebffeca75fcfd058afa480fb6c0b81e165a0323f9c9d39c9697e37c46787"
 dependencies = [
  "backtrace",
  "bytes",
