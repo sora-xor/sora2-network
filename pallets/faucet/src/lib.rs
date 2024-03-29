@@ -32,7 +32,9 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::{balance, AssetInfoProvider, Balance, HERMES_ASSET_ID, PSWAP, VAL, XOR};
+use common::{
+    balance, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL, XOR,
+};
 use frame_support::ensure;
 use hex_literal::hex;
 use sp_arithmetic::traits::Saturating;
@@ -260,6 +262,7 @@ impl<T: Config> Pallet<T> {
             || asset_id == pswap
             || asset_id == ceres
             || asset_id == HERMES_ASSET_ID.into()
+            || asset_id == APOLLO_ASSET_ID.into()
         {
             Ok(())
         } else {

@@ -210,7 +210,7 @@ pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(
     "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
 ));
 pub const APOLLO_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
-    "00c9594f342106df38447209a6bfa8bf99742f652f20b9cb508219c2ac567982"
+    "00efe45135018136733be626b380a87ae663ccf6784a25fe9d9d2be64acecb9d"
 ));
 #[cfg(not(feature = "private-net"))]
 pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
