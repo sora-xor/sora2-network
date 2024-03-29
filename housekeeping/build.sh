@@ -33,7 +33,7 @@ test() {
 build() {
     printf "Tag is %s\n" ${TAG_NAME}
     printf "BuildTag is %s\n" ${buildTag}
-    sudoCheckStatus="0"
+    sudoCheckStatus=0
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
