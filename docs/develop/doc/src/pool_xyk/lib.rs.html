@@ -1179,6 +1179,21 @@
 <a href="#1164" id="1164">1164</a>
 <a href="#1165" id="1165">1165</a>
 <a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1219,17 +1234,17 @@
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{ensure, fail, Parameter};
 <span class="kw">use </span>frame_system::ensure_signed;
-<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 
+<span class="kw">use </span>common::alt::{DiscreteQuotation, SwapChunk};
 <span class="kw">use </span>common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::{
     fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    RewardReason, SwapChunk, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager, XykPool,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
+    XykPool,
 };
 
 <span class="kw">mod </span>aliases;
@@ -1627,9 +1642,11 @@
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>quotation = DiscreteQuotation::new();
+
         <span class="kw">if </span>amount.amount().is_zero() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>((VecDeque::new(), Weight::zero()));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((quotation, Weight::zero()));
         }
 
         <span class="kw">let </span>samples_count = <span class="kw">if </span>recommended_samples_count &lt; <span class="number">1 </span>{
@@ -1683,7 +1700,6 @@
         }
         volumes.push((amount.amount(), remaining));
 
-        <span class="kw">let </span><span class="kw-2">mut </span>chunks = VecDeque::new();
         <span class="kw">let </span><span class="kw-2">mut </span>sub_sum = Balance::zero();
         <span class="kw">let </span><span class="kw-2">mut </span>sub_fee = Balance::zero();
 
@@ -1700,10 +1716,17 @@
                     )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>output = calculated.saturating_sub(sub_sum);
-                    <span class="kw">let </span>fee_chunk = fee.saturating_sub(sub_fee);
+
+                    <span class="comment">// in XOR for dex_id = 0
+                    // in XSTUSD for dex_id = 1
+                    </span><span class="kw">let </span>fee_chunk =
+                        OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
+
                     sub_sum = calculated;
                     sub_fee = fee;
-                    chunks.push_back(SwapChunk::new(step, output, fee_chunk));
+                    quotation
+                        .chunks
+                        .push_back(SwapChunk::new(step, output, fee_chunk));
                 }
             }
             QuoteAmount::WithDesiredOutput { .. } =&gt; {
@@ -1718,15 +1741,22 @@
                     )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>input = calculated.saturating_sub(sub_sum);
-                    <span class="kw">let </span>fee_chunk = fee.saturating_sub(sub_fee);
+
+                    <span class="comment">// in XOR for dex_id = 0
+                    // in XSTUSD for dex_id = 1
+                    </span><span class="kw">let </span>fee_chunk =
+                        OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
+
                     sub_sum = calculated;
                     sub_fee = fee;
-                    chunks.push_back(SwapChunk::new(input, step, fee_chunk));
+                    quotation
+                        .chunks
+                        .push_back(SwapChunk::new(input, step, fee_chunk));
                 }
             }
         }
 
-        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(samples_count)))
+        <span class="prelude-val">Ok</span>((quotation, <span class="self">Self</span>::step_quote_weight(samples_count)))
     }
 
     <span class="kw">fn </span>exchange(

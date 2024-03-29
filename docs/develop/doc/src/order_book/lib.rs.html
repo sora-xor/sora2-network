@@ -1548,6 +1548,90 @@
 <a href="#1533" id="1533">1533</a>
 <a href="#1534" id="1534">1534</a>
 <a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
+<a href="#1547" id="1547">1547</a>
+<a href="#1548" id="1548">1548</a>
+<a href="#1549" id="1549">1549</a>
+<a href="#1550" id="1550">1550</a>
+<a href="#1551" id="1551">1551</a>
+<a href="#1552" id="1552">1552</a>
+<a href="#1553" id="1553">1553</a>
+<a href="#1554" id="1554">1554</a>
+<a href="#1555" id="1555">1555</a>
+<a href="#1556" id="1556">1556</a>
+<a href="#1557" id="1557">1557</a>
+<a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
+<a href="#1573" id="1573">1573</a>
+<a href="#1574" id="1574">1574</a>
+<a href="#1575" id="1575">1575</a>
+<a href="#1576" id="1576">1576</a>
+<a href="#1577" id="1577">1577</a>
+<a href="#1578" id="1578">1578</a>
+<a href="#1579" id="1579">1579</a>
+<a href="#1580" id="1580">1580</a>
+<a href="#1581" id="1581">1581</a>
+<a href="#1582" id="1582">1582</a>
+<a href="#1583" id="1583">1583</a>
+<a href="#1584" id="1584">1584</a>
+<a href="#1585" id="1585">1585</a>
+<a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
+<a href="#1610" id="1610">1610</a>
+<a href="#1611" id="1611">1611</a>
+<a href="#1612" id="1612">1612</a>
+<a href="#1613" id="1613">1613</a>
+<a href="#1614" id="1614">1614</a>
+<a href="#1615" id="1615">1615</a>
+<a href="#1616" id="1616">1616</a>
+<a href="#1617" id="1617">1617</a>
+<a href="#1618" id="1618">1618</a>
+<a href="#1619" id="1619">1619</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1584,14 +1668,15 @@
 #![feature(int_roundings)]
 
 </span><span class="kw">use </span>assets::AssetIdOf;
+<span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::prelude::{
-    EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
-    TradingPair,
+    BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
+    SwapOutcome, TradingPair,
 };
 <span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason, SwapChunk,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 <span class="kw">use </span>core::fmt::Debug;
@@ -1601,10 +1686,11 @@
 <span class="kw">use </span>frame_support::traits::{Get, Time};
 <span class="kw">use </span>frame_support::weights::{Weight, WeightMeter};
 <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
-<span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
+<span class="kw">use </span>sp_runtime::traits::{
+    AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedMul, MaybeDisplay, Zero,
+};
 <span class="kw">use </span>sp_runtime::BoundedVec;
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
-<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="kw">pub mod </span>weights;
@@ -2832,61 +2918,143 @@
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
+
+        <span class="kw">if </span>amount.amount().is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((DiscreteQuotation::new(), Weight::zero()));
+        }
 
         <span class="kw">let </span>order_book = &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
 
         <span class="kw">let </span>direction = order_book.get_direction(input_asset_id, output_asset_id)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>limit = <span class="kw">match </span>amount {
+        <span class="kw">let </span>market_depth = order_book.market_depth(
+            direction.switched(),
+            <span class="prelude-val">Some</span>(OrderAmount::Base(order_book.max_lot_size)),
+            <span class="kw-2">&amp;mut </span>data,
+        );
+
+        <span class="kw">let </span>(base_min_amount, quote_min_amount) = order_book.sum_market(
+            market_depth
+                .iter()
+                .map(|(<span class="kw-2">ref </span>price, <span class="kw-2">ref </span>volume)| (price, volume)),
+            <span class="prelude-val">Some</span>(OrderAmount::Base(order_book.min_lot_size)),
+            <span class="bool-val">false</span>,
+        )<span class="question-mark">?</span>;
+
+        <span class="kw">if </span><span class="kw-2">*</span>base_min_amount.value() &lt; order_book.min_lot_size {
+            <span class="comment">// order-book has not ehough liquidity even for min amount
+            </span><span class="kw">return </span><span class="prelude-val">Ok</span>((
+                DiscreteQuotation::new(),
+                <span class="self">Self</span>::step_quote_weight(recommended_samples_count),
+            ));
+        }
+
+        <span class="kw">let </span>(base_max_amount, quote_max_amount) = order_book.sum_market(
+            market_depth
+                .iter()
+                .map(|(<span class="kw-2">ref </span>price, <span class="kw-2">ref </span>volume)| (price, volume)),
+            <span class="prelude-val">Some</span>(OrderAmount::Base(order_book.max_lot_size)),
+            <span class="bool-val">false</span>,
+        )<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>quotation = DiscreteQuotation::new();
+
+        <span class="kw">let </span>target = <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; <span class="kw">match </span>direction {
                 PriceVariant::Buy =&gt; {
+                    quotation.limits.min_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Input(<span class="kw-2">*</span>quote_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Input(<span class="kw-2">*</span>quote_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        <span class="prelude-val">Some</span>(SideAmount::Output(<span class="kw-2">*</span>order_book.step_lot_size.balance()));
+
                     OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
                 }
-                PriceVariant::Sell =&gt; OrderAmount::Base(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_in),
-                ),
+                PriceVariant::Sell =&gt; {
+                    quotation.limits.min_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Input(<span class="kw-2">*</span>base_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Input(<span class="kw-2">*</span>base_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        <span class="prelude-val">Some</span>(SideAmount::Input(<span class="kw-2">*</span>order_book.step_lot_size.balance()));
+
+                    OrderAmount::Base(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_in),
+                    )
+                }
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; <span class="kw">match </span>direction {
-                PriceVariant::Buy =&gt; OrderAmount::Base(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_out),
-                ),
+                PriceVariant::Buy =&gt; {
+                    quotation.limits.min_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Output(<span class="kw-2">*</span>base_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Output(<span class="kw-2">*</span>base_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        <span class="prelude-val">Some</span>(SideAmount::Output(<span class="kw-2">*</span>order_book.step_lot_size.balance()));
+
+                    OrderAmount::Base(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_out),
+                    )
+                }
                 PriceVariant::Sell =&gt; {
+                    quotation.limits.min_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Output(<span class="kw-2">*</span>quote_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        <span class="prelude-val">Some</span>(SideAmount::Output(<span class="kw-2">*</span>quote_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        <span class="prelude-val">Some</span>(SideAmount::Input(<span class="kw-2">*</span>order_book.step_lot_size.balance()));
+
                     OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
                 }
             },
         };
 
-        <span class="kw">let </span>market_depth = order_book.market_depth(direction.switched(), <span class="prelude-val">Some</span>(limit), <span class="kw-2">&amp;mut </span>data);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>chunks = VecDeque::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>target_sum = BalanceUnit::zero();
         <span class="kw">for </span>(price, base_volume) <span class="kw">in </span>market_depth.iter() {
             <span class="kw">let </span>quote_volume = price
                 .checked_mul(base_volume)
                 .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>;
+
             <span class="kw">match </span>direction {
-                PriceVariant::Buy =&gt; chunks.push_back(SwapChunk::new(
+                PriceVariant::Buy =&gt; quotation.chunks.push_back(SwapChunk::new(
                     <span class="kw-2">*</span>quote_volume.balance(),
                     <span class="kw-2">*</span>base_volume.balance(),
-                    Balance::zero(),
+                    Default::default(),
                 )),
-                PriceVariant::Sell =&gt; chunks.push_back(SwapChunk::new(
+                PriceVariant::Sell =&gt; quotation.chunks.push_back(SwapChunk::new(
                     <span class="kw-2">*</span>base_volume.balance(),
                     <span class="kw-2">*</span>quote_volume.balance(),
-                    Balance::zero(),
+                    Default::default(),
                 )),
+            }
+
+            target_sum = <span class="kw">match </span>target {
+                OrderAmount::Base(..) =&gt; target_sum
+                    .checked_add(base_volume)
+                    .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
+                OrderAmount::Quote(..) =&gt; target_sum
+                    .checked_add(<span class="kw-2">&amp;</span>quote_volume)
+                    .ok_or(Error::&lt;T&gt;::AmountCalculationFailed)<span class="question-mark">?</span>,
+            };
+            <span class="kw">if </span>target_sum &gt;= <span class="kw-2">*</span>target.value() {
+                <span class="kw">break</span>;
             }
         }
 
-        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(recommended_samples_count)))
+        <span class="prelude-val">Ok</span>((
+            quotation,
+            <span class="self">Self</span>::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     <span class="kw">fn </span>exchange(

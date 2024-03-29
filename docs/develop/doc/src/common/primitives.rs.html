@@ -1243,84 +1243,6 @@
 <a href="#1228" id="1228">1228</a>
 <a href="#1229" id="1229">1229</a>
 <a href="#1230" id="1230">1230</a>
-<a href="#1231" id="1231">1231</a>
-<a href="#1232" id="1232">1232</a>
-<a href="#1233" id="1233">1233</a>
-<a href="#1234" id="1234">1234</a>
-<a href="#1235" id="1235">1235</a>
-<a href="#1236" id="1236">1236</a>
-<a href="#1237" id="1237">1237</a>
-<a href="#1238" id="1238">1238</a>
-<a href="#1239" id="1239">1239</a>
-<a href="#1240" id="1240">1240</a>
-<a href="#1241" id="1241">1241</a>
-<a href="#1242" id="1242">1242</a>
-<a href="#1243" id="1243">1243</a>
-<a href="#1244" id="1244">1244</a>
-<a href="#1245" id="1245">1245</a>
-<a href="#1246" id="1246">1246</a>
-<a href="#1247" id="1247">1247</a>
-<a href="#1248" id="1248">1248</a>
-<a href="#1249" id="1249">1249</a>
-<a href="#1250" id="1250">1250</a>
-<a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
-<a href="#1253" id="1253">1253</a>
-<a href="#1254" id="1254">1254</a>
-<a href="#1255" id="1255">1255</a>
-<a href="#1256" id="1256">1256</a>
-<a href="#1257" id="1257">1257</a>
-<a href="#1258" id="1258">1258</a>
-<a href="#1259" id="1259">1259</a>
-<a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
-<a href="#1265" id="1265">1265</a>
-<a href="#1266" id="1266">1266</a>
-<a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
-<a href="#1295" id="1295">1295</a>
-<a href="#1296" id="1296">1296</a>
-<a href="#1297" id="1297">1297</a>
-<a href="#1298" id="1298">1298</a>
-<a href="#1299" id="1299">1299</a>
-<a href="#1300" id="1300">1300</a>
-<a href="#1301" id="1301">1301</a>
-<a href="#1302" id="1302">1302</a>
-<a href="#1303" id="1303">1303</a>
-<a href="#1304" id="1304">1304</a>
-<a href="#1305" id="1305">1305</a>
-<a href="#1306" id="1306">1306</a>
-<a href="#1307" id="1307">1307</a>
-<a href="#1308" id="1308">1308</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1351,9 +1273,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::fixed_wrapper::FixedWrapper;
-<span class="kw">use </span><span class="kw">crate</span>::traits::{IsRepresentation, PureOrWrapped};
-<span class="kw">use crate</span>::{Fixed, IsValid, Price};
+</span><span class="kw">use </span><span class="kw">crate</span>::traits::{IsRepresentation, PureOrWrapped};
+<span class="kw">use crate</span>::{Fixed, IsValid};
 <span class="kw">use </span>bridge_types::GenericAssetId;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
 <span class="kw">use </span>core::{fmt::Debug, str::FromStr};
@@ -1362,7 +1283,7 @@
 <span class="kw">use </span>frame_support::{ensure, BoundedVec, RuntimeDebug};
 <span class="kw">use </span>hex_literal::hex;
 <span class="kw">use </span>sp_core::H256;
-<span class="kw">use </span>sp_runtime::traits::{Get, Zero};
+<span class="kw">use </span>sp_runtime::traits::Get;
 <span class="kw">use </span>sp_std::marker::PhantomData;
 <span class="kw">use </span>sp_std::vec::Vec;
 <span class="kw">use </span>static_assertions::_core::cmp::Ordering;
@@ -2550,83 +2471,6 @@
 <span class="kw">impl</span>&lt;N: Get&lt;u32&gt;&gt; Ord <span class="kw">for </span>BoundedString&lt;N&gt; {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
         <span class="self">self</span>.<span class="number">0</span>.cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>)
-    }
-}
-
-<span class="attr">#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-</span><span class="kw">pub struct </span>SwapChunk&lt;AmountType&gt; {
-    <span class="kw">pub </span>input: AmountType,
-    <span class="kw">pub </span>output: AmountType,
-    <span class="kw">pub </span>fee: AmountType,
-}
-
-<span class="kw">impl</span>&lt;AmountType&gt; SwapChunk&lt;AmountType&gt; {
-    <span class="kw">pub fn </span>new(input: AmountType, output: AmountType, fee: AmountType) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ input, output, fee }
-    }
-}
-
-<span class="kw">impl </span>SwapChunk&lt;Balance&gt; {
-    <span class="doccomment">/// Calculates a price of the chunk
-    </span><span class="kw">pub fn </span>price(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Price&gt; {
-        (FixedWrapper::from(<span class="self">self</span>.output) / FixedWrapper::from(<span class="self">self</span>.input))
-            .get()
-            .ok()
-    }
-
-    <span class="doccomment">/// Calculates a linearly proportional input amount depending on the price and an output amount.
-    /// `output` attribute must be less than or equal to `self.output`
-    </span><span class="kw">pub fn </span>proportional_input(<span class="kw-2">&amp;</span><span class="self">self</span>, output: Balance) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
-        <span class="kw">if </span>output.is_zero() {
-            <span class="kw">return </span><span class="prelude-val">Some</span>(Balance::zero());
-        }
-
-        <span class="kw">let </span>price = <span class="self">self</span>.price()<span class="question-mark">?</span>;
-
-        (FixedWrapper::from(output) / price).try_into_balance().ok()
-    }
-
-    <span class="doccomment">/// Calculates a linearly proportional output amount depending on the price and an input amount.
-    /// `input` attribute must be less than or equal to `self.input`
-    </span><span class="kw">pub fn </span>proportional_output(<span class="kw-2">&amp;</span><span class="self">self</span>, input: Balance) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
-        <span class="kw">if </span>input.is_zero() {
-            <span class="kw">return </span><span class="prelude-val">Some</span>(Balance::zero());
-        }
-
-        <span class="kw">let </span>price = <span class="self">self</span>.price()<span class="question-mark">?</span>;
-
-        (FixedWrapper::from(input) * price).try_into_balance().ok()
-    }
-
-    <span class="kw">pub fn </span>rescale_by_input(<span class="self">self</span>, input: Balance) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>output = <span class="self">self</span>.proportional_output(input)<span class="question-mark">?</span>;
-        <span class="kw">let </span>ratio = FixedWrapper::from(input) / FixedWrapper::from(<span class="self">self</span>.input);
-        <span class="kw">let </span>fee = (FixedWrapper::from(<span class="self">self</span>.fee) * ratio)
-            .try_into_balance()
-            .ok()<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(<span class="self">Self</span>::new(input, output, fee))
-    }
-
-    <span class="kw">pub fn </span>rescale_by_output(<span class="self">self</span>, output: Balance) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>input = <span class="self">self</span>.proportional_input(output)<span class="question-mark">?</span>;
-        <span class="kw">let </span>ratio = FixedWrapper::from(output) / FixedWrapper::from(<span class="self">self</span>.output);
-        <span class="kw">let </span>fee = (FixedWrapper::from(<span class="self">self</span>.fee) * ratio)
-            .try_into_balance()
-            .ok()<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(<span class="self">Self</span>::new(input, output, fee))
-    }
-
-    <span class="kw">pub fn </span>rescale_by_ratio(<span class="self">self</span>, ratio: Fixed) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>input = (FixedWrapper::from(<span class="self">self</span>.input) * ratio)
-            .try_into_balance()
-            .ok()<span class="question-mark">?</span>;
-        <span class="kw">let </span>output = (FixedWrapper::from(<span class="self">self</span>.output) * ratio)
-            .try_into_balance()
-            .ok()<span class="question-mark">?</span>;
-        <span class="kw">let </span>fee = (FixedWrapper::from(<span class="self">self</span>.fee) * ratio)
-            .try_into_balance()
-            .ok()<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(<span class="self">Self</span>::new(input, output, fee))
     }
 }
 </code></pre></div>

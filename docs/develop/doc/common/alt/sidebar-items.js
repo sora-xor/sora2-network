@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SideAmount"],"struct":["DiscreteQuotation","SwapChunk","SwapLimits"]};
