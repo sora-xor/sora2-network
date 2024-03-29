@@ -28,9 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::fixed_wrapper::FixedWrapper;
 use crate::traits::{IsRepresentation, PureOrWrapped};
-use crate::{Fixed, IsValid, Price};
+use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
@@ -39,7 +38,7 @@ use frame_support::traits::ConstU32;
 use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
-use sp_runtime::traits::{Get, Zero};
+use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
@@ -1227,82 +1226,5 @@ impl<N: Get<u32>> PartialOrd for BoundedString<N> {
 impl<N: Get<u32>> Ord for BoundedString<N> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SwapChunk<AmountType> {
-    pub input: AmountType,
-    pub output: AmountType,
-    pub fee: AmountType,
-}
-
-impl<AmountType> SwapChunk<AmountType> {
-    pub fn new(input: AmountType, output: AmountType, fee: AmountType) -> Self {
-        Self { input, output, fee }
-    }
-}
-
-impl SwapChunk<Balance> {
-    /// Calculates a price of the chunk
-    pub fn price(&self) -> Option<Price> {
-        (FixedWrapper::from(self.output) / FixedWrapper::from(self.input))
-            .get()
-            .ok()
-    }
-
-    /// Calculates a linearly proportional input amount depending on the price and an output amount.
-    /// `output` attribute must be less than or equal to `self.output`
-    pub fn proportional_input(&self, output: Balance) -> Option<Balance> {
-        if output.is_zero() {
-            return Some(Balance::zero());
-        }
-
-        let price = self.price()?;
-
-        (FixedWrapper::from(output) / price).try_into_balance().ok()
-    }
-
-    /// Calculates a linearly proportional output amount depending on the price and an input amount.
-    /// `input` attribute must be less than or equal to `self.input`
-    pub fn proportional_output(&self, input: Balance) -> Option<Balance> {
-        if input.is_zero() {
-            return Some(Balance::zero());
-        }
-
-        let price = self.price()?;
-
-        (FixedWrapper::from(input) * price).try_into_balance().ok()
-    }
-
-    pub fn rescale_by_input(self, input: Balance) -> Option<Self> {
-        let output = self.proportional_output(input)?;
-        let ratio = FixedWrapper::from(input) / FixedWrapper::from(self.input);
-        let fee = (FixedWrapper::from(self.fee) * ratio)
-            .try_into_balance()
-            .ok()?;
-        Some(Self::new(input, output, fee))
-    }
-
-    pub fn rescale_by_output(self, output: Balance) -> Option<Self> {
-        let input = self.proportional_input(output)?;
-        let ratio = FixedWrapper::from(output) / FixedWrapper::from(self.output);
-        let fee = (FixedWrapper::from(self.fee) * ratio)
-            .try_into_balance()
-            .ok()?;
-        Some(Self::new(input, output, fee))
-    }
-
-    pub fn rescale_by_ratio(self, ratio: Fixed) -> Option<Self> {
-        let input = (FixedWrapper::from(self.input) * ratio)
-            .try_into_balance()
-            .ok()?;
-        let output = (FixedWrapper::from(self.output) * ratio)
-            .try_into_balance()
-            .ok()?;
-        let fee = (FixedWrapper::from(self.fee) * ratio)
-            .try_into_balance()
-            .ok()?;
-        Some(Self::new(input, output, fee))
     }
 }

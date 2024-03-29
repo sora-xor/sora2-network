@@ -108,10 +108,13 @@ leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git" }
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 enum-as-inner = "=0.5.1"
+
 # TODO remove after toolchain is updated
 # newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
 ahash = "=0.8.5"
 bumpalo = "=3.14.0"
+cargo-platform = "=0.1.7"
+substrate-bip39 = "=0.4.5"
 
 [build-dependencies]
 substrate-build-script-utils = "3"

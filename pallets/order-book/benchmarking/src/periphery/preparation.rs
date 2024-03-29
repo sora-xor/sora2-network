@@ -662,8 +662,10 @@ pub fn quote<T: Config>(
         .sum_market(
             data_layer
                 .get_aggregated_bids(&order_book.order_book_id)
-                .iter(),
+                .iter()
+                .rev(),
             None,
+            false,
         )
         .unwrap();
     assert!(total_bids_amount.is_base());
