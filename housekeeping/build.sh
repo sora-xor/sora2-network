@@ -13,7 +13,7 @@ allfeatures="$featureList"
 test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
-        cargo test --release --features "private-net runtime-benchmarks"
+        cargo test --release --features "private-net runtime-benchmarks" -- --test-threads=2
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
@@ -33,7 +33,7 @@ test() {
 build() {
     printf "Tag is %s\n" ${TAG_NAME}
     printf "BuildTag is %s\n" ${buildTag}
-    sudoCheckStatus="0"
+    sudoCheckStatus=0
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
@@ -42,9 +42,7 @@ build() {
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
-        sudoCheckStatus="101"
-    elif [[ -n $buildTag ]]; then
-        featureList='private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
+        sudoCheckStatus=1
     fi
     printf "⚡️ Building with features: %s\n" "$featureList"
     printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
