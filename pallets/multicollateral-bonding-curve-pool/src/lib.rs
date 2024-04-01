@@ -46,17 +46,17 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, OutcomeFee,
-    PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
+    PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
-use common::BuyBackHandler;
 use common::{
-    balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
-    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, SwapChunk, TradingPairSourceManager, Vesting,
-    PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, DEXId, DexIdOf,
+    GetMarketInfo, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager,
+    Vesting, PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -65,7 +65,6 @@ use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
 #[cfg(feature = "std")]
@@ -1604,12 +1603,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
+
+        let mut quotation = DiscreteQuotation::new();
+
         if amount.amount().is_zero() {
-            return Ok((VecDeque::new(), Weight::zero()));
+            return Ok((quotation, Weight::zero()));
         }
 
         let samples_count = if recommended_samples_count < 1 {
@@ -1635,7 +1637,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
         volumes.push(amount);
 
-        let mut chunks = VecDeque::new();
         let mut sub_in = Balance::zero();
         let mut sub_out = Balance::zero();
         let mut sub_fee = Balance::zero();
@@ -1649,16 +1650,55 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
             let input_chunk = input_amount.saturating_sub(sub_in);
             let output_chunk = output_amount.saturating_sub(sub_out);
-            let fee_chunk = fee_amount.saturating_sub(sub_fee);
+
+            // in XOR
+            let fee_chunk = OutcomeFee::from_asset(
+                T::GetBaseAssetId::get(),
+                fee_amount.saturating_sub(sub_fee),
+            );
 
             sub_in = input_amount;
             sub_out = output_amount;
             sub_fee = fee_amount;
 
-            chunks.push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
+            quotation
+                .chunks
+                .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
         }
 
-        Ok((chunks, Self::step_quote_weight(samples_count)))
+        if input_asset_id == base_asset_id {
+            let reserves_tech_account_id = ReservesAcc::<T>::get();
+            let reserves_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let collateral_supply: FixedWrapper =
+                Assets::<T>::free_balance(&output_asset_id, &reserves_account_id)?.into();
+
+            quotation.limits.max_amount = match amount.variant() {
+                SwapVariant::WithDesiredInput => {
+                    let main_price_per_reference_unit: FixedWrapper =
+                        Self::sell_function(&input_asset_id, &output_asset_id, Fixed::ZERO)?.into();
+
+                    let collateral_price_per_reference_unit: FixedWrapper =
+                        Self::reference_price(&output_asset_id, PriceVariant::Sell)?.into();
+
+                    let main_supply = collateral_supply * collateral_price_per_reference_unit
+                        / main_price_per_reference_unit;
+
+                    Some(SideAmount::Input(
+                        main_supply
+                            .try_into_balance()
+                            .map_err(|_| Error::<T>::PriceCalculationFailed)?,
+                    ))
+                }
+                SwapVariant::WithDesiredOutput => Some(SideAmount::Output(
+                    collateral_supply
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?,
+                )),
+            };
+        }
+
+        Ok((quotation, Self::step_quote_weight(samples_count)))
     }
 
     fn exchange(
