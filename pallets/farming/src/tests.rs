@@ -28,18 +28,20 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::assert_ok;
+use frame_support::{assert_noop, assert_ok};
 
 use common::{balance, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::log::debug;
+use frame_system::RawOrigin;
 use pool_xyk::Properties;
+use sp_runtime::traits::BadOrigin;
 use vested_rewards::Rewards;
 
 use crate::mock::{
     self, run_to_block, AssetId, DEXId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE,
     DAVE, DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
 };
-use crate::{PoolFarmer, PoolFarmers};
+use crate::{Pallet, PoolFarmer, PoolFarmers};
 
 fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
     assert_ok!(trading_pair::Pallet::<Runtime>::register(
@@ -63,6 +65,10 @@ fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
 fn test() {
     let dex_id = DEX_A_ID;
     ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(Pallet::<Runtime>::set_lp_min_xor_for_bonus_reward(
+            RawOrigin::Root.into(),
+            balance!(1)
+        ));
         init_pool(DEX_A_ID, XOR, DOT);
         init_pool(DEX_A_ID, XOR, PSWAP);
         init_pool(DEX_A_ID, XOR, XSTUSD);
@@ -404,5 +410,31 @@ fn test() {
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
         assert_eq!(eve_reward, balance!(375576.575413164636883116));
+    });
+}
+
+#[test]
+fn set_lp_min_xor_for_bonus_reward_should_forbid_for_non_root_call() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_noop!(
+            Pallet::<Runtime>::set_lp_min_xor_for_bonus_reward(
+                RuntimeOrigin::signed(ALICE()),
+                balance!(100000)
+            ),
+            BadOrigin
+        );
+        assert!(Pallet::<Runtime>::lp_min_xor_for_bonus_reward() == balance!(0));
+    });
+}
+
+#[test]
+fn set_lp_min_xor_for_bonus_reward_should_work() {
+    ExtBuilder::default().build().execute_with(|| {
+        let modified_min_xor = balance!(3 * (10_i32.pow(6)));
+        assert_ok!(Pallet::<Runtime>::set_lp_min_xor_for_bonus_reward(
+            RawOrigin::Root.into(),
+            modified_min_xor
+        ));
+        assert!(Pallet::<Runtime>::lp_min_xor_for_bonus_reward() == modified_min_xor);
     });
 }

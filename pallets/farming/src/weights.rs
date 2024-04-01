@@ -63,6 +63,7 @@ pub trait WeightInfo {
 	fn refresh_pool(a: u32, ) -> Weight;
 	fn prepare_accounts_for_vesting(a: u32, b: u32, ) -> Weight;
 	fn vest_account_rewards(a: u32, ) -> Weight;
+	fn set_lp_min_xor_for_bonus_reward() -> Weight;
 }
 
 /// Weights for farming using the Substrate node and recommended hardware.
@@ -132,6 +133,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 5468).saturating_mul(a.into()))
 	}
+
+	fn set_lp_min_xor_for_bonus_reward() -> Weight{
+		Weight::from_parts(5_967_353, 631)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -199,5 +205,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 			.saturating_add(RocksDbWeight::get().writes((2_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 5468).saturating_mul(a.into()))
+	}
+
+	fn set_lp_min_xor_for_bonus_reward() -> Weight{
+		Weight::from_parts(5_967_353, 631)
+		.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
