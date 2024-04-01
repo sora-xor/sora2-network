@@ -185,7 +185,7 @@ impl<T: Config> Pallet<T> {
             .try_into_balance()
             .unwrap_or(0);
 
-        if base_asset_amt < balance!(1) {
+        if base_asset_amt < Self::lp_min_xor_for_bonus_reward() {
             return 0;
         }
 
@@ -316,6 +316,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::StorageVersion;
+    use frame_system::{ensure_root, pallet_prelude::*};
     use sp_runtime::traits::Zero;
     use sp_runtime::AccountId32;
 
@@ -331,6 +332,7 @@ pub mod pallet {
         + pool_xyk::Config
         + vested_rewards::Config
     {
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         const PSWAP_PER_DAY: Balance;
         const REFRESH_FREQUENCY: BlockNumberFor<Self>;
         const VESTING_COEFF: u32;
@@ -379,6 +381,14 @@ pub mod pallet {
         IncRefError,
     }
 
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        LpMinXorForBonusRewardUpdated {
+            lp_min_xor_for_bonus_reward: Balance,
+        },
+    }
+
     /// Pools whose farmers are refreshed at the specific block. Block => Pools
     #[pallet::storage]
     pub type Pools<T: Config> =
@@ -388,6 +398,29 @@ pub mod pallet {
     #[pallet::storage]
     pub type PoolFarmers<T: Config> =
         StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn lp_min_xor_for_bonus_reward)]
+    pub type LpMinXorForBonusReward<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_lp_min_xor_for_bonus_reward())]
+        pub fn set_lp_min_xor_for_bonus_reward(
+            origin: OriginFor<T>,
+            new_lp_min_xor_for_bonus_reward: Balance,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            LpMinXorForBonusReward::<T>::mutate(|lp_min_xor_for_bonus_reward| {
+                *lp_min_xor_for_bonus_reward = new_lp_min_xor_for_bonus_reward;
+            });
+            Self::deposit_event(Event::LpMinXorForBonusRewardUpdated {
+                lp_min_xor_for_bonus_reward: new_lp_min_xor_for_bonus_reward,
+            });
+            Ok(())
+        }
+    }
 }
 
 pub mod rpc {

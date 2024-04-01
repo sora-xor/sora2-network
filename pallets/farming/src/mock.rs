@@ -147,7 +147,7 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
-        Farming: farming::{Pallet, Storage},
+        Farming: farming::{Pallet, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
@@ -398,6 +398,7 @@ impl Config for Runtime {
     type RewardDoublingAssets = RewardDoublingAssets;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
+    type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct ExtBuilder {
