@@ -56,7 +56,7 @@ bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = 
 [dev-dependencies]
 async-std = { version = "1.5", features = ["attributes", "unstable"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-env_logger = "0.8.1"
+env_logger = "0.10.0"
 frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
