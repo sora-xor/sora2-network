@@ -379,14 +379,23 @@ pub mod pallet {
     pub enum Error<T> {
         /// Increment account reference error.
         IncRefError,
+        /// Invalid New xor Min amount for Liquidity Provider Bonus Reward.
+        InvalidNewLpMinXorForBonusRewardError,
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
+        /// When Minimum XOR amount for Liquidity Provider Bonus Reward is updated
         LpMinXorForBonusRewardUpdated {
-            lp_min_xor_for_bonus_reward: Balance,
+            new_lp_min_xor_for_bonus_reward: Balance,
+            old_lp_min_xor_for_bonus_reward: Balance,
         },
+    }
+
+    #[pallet::type_value]
+    pub fn DefaultLpMinXorForBonusReward<T: Config>() -> Balance {
+        balance!(1)
     }
 
     /// Pools whose farmers are refreshed at the specific block. Block => Pools
@@ -401,7 +410,8 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn lp_min_xor_for_bonus_reward)]
-    pub type LpMinXorForBonusReward<T: Config> = StorageValue<_, Balance, ValueQuery>;
+    pub type LpMinXorForBonusReward<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultLpMinXorForBonusReward<T>>;
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -412,11 +422,15 @@ pub mod pallet {
             new_lp_min_xor_for_bonus_reward: Balance,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            LpMinXorForBonusReward::<T>::mutate(|lp_min_xor_for_bonus_reward| {
-                *lp_min_xor_for_bonus_reward = new_lp_min_xor_for_bonus_reward;
-            });
+            ensure!(
+                new_lp_min_xor_for_bonus_reward >= balance!(1),
+                <Error<T>>::InvalidNewLpMinXorForBonusRewardError
+            );
+            let old_lp_min_xor_for_bonus_reward = <LpMinXorForBonusReward<T>>::get();
+            <LpMinXorForBonusReward<T>>::put(new_lp_min_xor_for_bonus_reward);
             Self::deposit_event(Event::LpMinXorForBonusRewardUpdated {
-                lp_min_xor_for_bonus_reward: new_lp_min_xor_for_bonus_reward,
+                new_lp_min_xor_for_bonus_reward,
+                old_lp_min_xor_for_bonus_reward,
             });
             Ok(())
         }
