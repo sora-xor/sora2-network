@@ -65,8 +65,21 @@ fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
 fn test() {
     let dex_id = DEX_A_ID;
     ExtBuilder::default().build().execute_with(|| {
-        let _ =
-            <Pallet<Runtime>>::set_lp_min_xor_for_bonus_reward(RawOrigin::Root.into(), balance!(1));
+        // Check default value for lp_min_xor_for_bonus_reward
+        assert_eq!(
+            <Pallet<Runtime>>::lp_min_xor_for_bonus_reward(),
+            balance!(3000000)
+        );
+        // Update lp_min_xor_for_bonus_reward
+        <Pallet<Runtime>>::set_lp_min_xor_for_bonus_reward(RawOrigin::Root.into(), balance!(1))
+            .unwrap();
+
+        // Check lp_min_xor_for_bonus_reward updated
+        assert_eq!(
+            <Pallet<Runtime>>::lp_min_xor_for_bonus_reward(),
+            balance!(1)
+        );
+
         init_pool(DEX_A_ID, XOR, DOT);
         init_pool(DEX_A_ID, XOR, PSWAP);
         init_pool(DEX_A_ID, XOR, XSTUSD);

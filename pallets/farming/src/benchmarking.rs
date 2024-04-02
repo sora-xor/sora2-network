@@ -165,7 +165,7 @@ benchmarks! {
         let root = RawOrigin::Root;
         let balance = balance!(10000000);
     }: {
-       let _ = Pallet::<T>::set_lp_min_xor_for_bonus_reward(root.into(), balance);
+       Pallet::<T>::set_lp_min_xor_for_bonus_reward(root.into(), balance).unwrap();
     }
 
 }
