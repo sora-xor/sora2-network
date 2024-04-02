@@ -7,13 +7,13 @@ wasmReportFile='subwasm_report.json'
 PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
-allfeatures="$featureList"
+allfeatures='private-net,ready-to-test'
 
 # build func
 test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
-        cargo test --release --features "private-net runtime-benchmarks" -- --test-threads=2
+        cargo test --release --features "private-net runtime-benchmarks"
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
@@ -21,7 +21,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features "$allfeatures" -- --test-threads=2 
+        cargo test --features "$allfeatures" -- --test-threads=1 
     fi
     if [[ $prBranch = 'master' ]]; then
         printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
@@ -33,7 +33,7 @@ test() {
 build() {
     printf "Tag is %s\n" ${TAG_NAME}
     printf "BuildTag is %s\n" ${buildTag}
-    sudoCheckStatus=0
+    sudoCheckStatus="0"
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
@@ -42,7 +42,12 @@ build() {
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
-        sudoCheckStatus=1
+        sudoCheckStatus="101"
+    elif [[ $buildTag == 'latest' ]]; then
+        featureList='include-real-files'
+        sudoCheckStatus="101"
+    elif [[ -n $buildTag ]]; then
+        featureList='private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
     fi
     printf "⚡️ Building with features: %s\n" "$featureList"
     printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
