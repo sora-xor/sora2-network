@@ -335,6 +335,10 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
             precision: 18,
         }
     }
+
+    fn ensure_asset_exists(_: AssetId) -> bool {
+        true
+    }
 }
 
 impl erc20_app::Config for Test {

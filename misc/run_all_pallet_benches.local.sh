@@ -27,6 +27,7 @@ declare -A PATH_OVERRIDES=(
     [multisig-verifier]=./runtime/src/weights/multisig_verifier.rs
     [bridge-data-signer]=./runtime/src/weights/bridge_data_signer.rs
     [dispatch]=./runtime/src/weights/dispatch.rs
+    [parachain-bridge-app]=./runtime/src/weights/parachain_bridge_app.rs
     [substrate-bridge-app]=./runtime/src/weights/substrate_bridge_app.rs
     [substrate-bridge-channel-inbound]=./runtime/src/weights/substrate_inbound_channel.rs
     [substrate-bridge-channel-outbound]=./runtime/src/weights/substrate_outbound_channel.rs
