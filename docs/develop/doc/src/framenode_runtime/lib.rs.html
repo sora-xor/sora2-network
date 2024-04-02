@@ -3427,6 +3427,16 @@
 <a href="#3412" id="3412">3412</a>
 <a href="#3413" id="3413">3413</a>
 <a href="#3414" id="3414">3414</a>
+<a href="#3415" id="3415">3415</a>
+<a href="#3416" id="3416">3416</a>
+<a href="#3417" id="3417">3417</a>
+<a href="#3418" id="3418">3418</a>
+<a href="#3419" id="3419">3419</a>
+<a href="#3420" id="3420">3420</a>
+<a href="#3421" id="3421">3421</a>
+<a href="#3422" id="3422">3422</a>
+<a href="#3423" id="3423">3423</a>
+<a href="#3424" id="3424">3424</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3710,6 +3720,18 @@
 </span><span class="kw">pub const </span>FARMING_VESTING_COEFF: u32 = <span class="number">3</span>;
 <span class="kw">pub const </span>FARMING_VESTING_FREQUENCY: BlockNumber = <span class="number">6 </span>* HOURS;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
+</span><span class="macro">parameter_types! </span>{
+    <span class="kw">pub const </span>BondingDuration: sp_staking::EraIndex = <span class="number">1</span>; <span class="comment">// 1 era for unbonding (6 hours).
+    </span><span class="kw">pub const </span>SlashDeferDuration: sp_staking::EraIndex = <span class="number">0</span>; <span class="comment">// no slash cancellation on testnets expected.
+</span>}
+
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;private-net&quot;</span>))]
+</span><span class="macro">parameter_types! </span>{
+    <span class="kw">pub const </span>BondingDuration: sp_staking::EraIndex = <span class="number">28</span>; <span class="comment">// 28 eras for unbonding (7 days).
+    </span><span class="kw">pub const </span>SlashDeferDuration: sp_staking::EraIndex = <span class="number">27</span>; <span class="comment">// 27 eras in which slashes can be cancelled (slightly less than 7 days).
+</span>}
+
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>BlockHashCount: BlockNumber = <span class="number">250</span>;
     <span class="kw">pub const </span>Version: RuntimeVersion = VERSION;
@@ -3717,11 +3739,9 @@
     <span class="kw">pub const </span>EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS <span class="kw">as </span>u64;
     <span class="kw">pub const </span>ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     <span class="kw">pub const </span>SessionsPerEra: sp_staking::SessionIndex = <span class="number">6</span>; <span class="comment">// 6 hours
-    </span><span class="kw">pub const </span>BondingDuration: sp_staking::EraIndex = <span class="number">28</span>; <span class="comment">// 28 eras for unbonding (7 days).
     </span><span class="kw">pub const </span>ReportLongevity: u64 =
         BondingDuration::get() <span class="kw">as </span>u64 * SessionsPerEra::get() <span class="kw">as </span>u64 * EpochDuration::get();
-    <span class="kw">pub const </span>SlashDeferDuration: sp_staking::EraIndex = <span class="number">27</span>; <span class="comment">// 27 eras in which slashes can be cancelled (slightly less than 7 days).
-    </span><span class="kw">pub const </span>MaxNominatorRewardedPerValidator: u32 = <span class="number">256</span>;
+    <span class="kw">pub const </span>MaxNominatorRewardedPerValidator: u32 = <span class="number">256</span>;
     <span class="kw">pub const </span>ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / <span class="number">4</span>;
     <span class="kw">pub const </span>MaxIterations: u32 = <span class="number">10</span>;
     <span class="comment">// 0.05%. The higher the value, the more strict solution acceptance becomes.
