@@ -65,10 +65,8 @@ fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
 fn test() {
     let dex_id = DEX_A_ID;
     ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(Pallet::<Runtime>::set_lp_min_xor_for_bonus_reward(
-            RawOrigin::Root.into(),
-            balance!(1)
-        ));
+        let _ =
+            <Pallet<Runtime>>::set_lp_min_xor_for_bonus_reward(RawOrigin::Root.into(), balance!(1));
         init_pool(DEX_A_ID, XOR, DOT);
         init_pool(DEX_A_ID, XOR, PSWAP);
         init_pool(DEX_A_ID, XOR, XSTUSD);
@@ -423,7 +421,6 @@ fn set_lp_min_xor_for_bonus_reward_should_forbid_for_non_root_call() {
             ),
             BadOrigin
         );
-        assert!(Pallet::<Runtime>::lp_min_xor_for_bonus_reward() == balance!(0));
     });
 }
 

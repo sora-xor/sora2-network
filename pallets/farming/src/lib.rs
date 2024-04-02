@@ -41,7 +41,7 @@ mod mock;
 mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod utils;
-mod weights;
+pub mod weights;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
@@ -379,8 +379,6 @@ pub mod pallet {
     pub enum Error<T> {
         /// Increment account reference error.
         IncRefError,
-        /// Invalid New xor Min amount for Liquidity Provider Bonus Reward.
-        InvalidNewLpMinXorForBonusRewardError,
     }
 
     #[pallet::event]
@@ -395,7 +393,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultLpMinXorForBonusReward<T: Config>() -> Balance {
-        balance!(1)
+        balance!(3000000)
     }
 
     /// Pools whose farmers are refreshed at the specific block. Block => Pools
@@ -422,10 +420,6 @@ pub mod pallet {
             new_lp_min_xor_for_bonus_reward: Balance,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            ensure!(
-                new_lp_min_xor_for_bonus_reward >= balance!(1),
-                <Error<T>>::InvalidNewLpMinXorForBonusRewardError
-            );
             let old_lp_min_xor_for_bonus_reward = <LpMinXorForBonusReward<T>>::get();
             <LpMinXorForBonusReward<T>>::put(new_lp_min_xor_for_bonus_reward);
             Self::deposit_event(Event::LpMinXorForBonusRewardUpdated {
