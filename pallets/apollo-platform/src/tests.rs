@@ -18,12 +18,12 @@ mod test {
     }
 
     fn get_authority_account() -> AccountId {
-        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        let bytes = hex!("04beb508e2b0da93e9ab77d65934562f55d11452f0582a31f61d2257fa4e3625");
         AccountId::decode(&mut &bytes[..]).unwrap()
     }
 
     fn get_treasury_account() -> AccountId {
-        let bytes = hex!("04621d8671f5ccc9c4dd86898e346f8ca163bc290ceee6bd2a8376a6d6dd8547");
+        let bytes = hex!("987579f1d0158f7d3507f0516ac156547f0d3066bbffca4bb6d186291bbd7c11");
         AccountId::decode(&mut &bytes[..]).unwrap()
     }
 
