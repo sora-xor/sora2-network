@@ -224,7 +224,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -331,12 +331,16 @@ parameter_type_with_key! {
 impl Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = crate::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();

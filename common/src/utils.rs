@@ -47,10 +47,7 @@ const BASIS_POINTS_RANGE: u16 = 10000;
 /// Check if value belongs valid range of basis points.
 /// Returns true if range is valid, false otherwise.
 pub fn in_basis_points_range<BP: Into<u16>>(value: BP) -> bool {
-    match value.into() {
-        0..=BASIS_POINTS_RANGE => true,
-        _ => false,
-    }
+    matches!(value.into(), 0..=BASIS_POINTS_RANGE)
 }
 
 /// Create fraction as Fixed from BasisPoints value.
@@ -170,6 +167,81 @@ pub mod string_serialization_opt {
             }
             None => Ok(None),
         }
+    }
+}
+
+// Serialize OutcomeFee
+// Balance inside the map must be represented as String
+#[cfg(feature = "std")]
+pub mod fee_serialization {
+    use crate::outcome_fee::OutcomeFee;
+    use serde::de::Visitor;
+    use serde::{Deserialize, Deserializer, Serializer};
+    use sp_std::collections::btree_map::BTreeMap;
+    use sp_std::marker::PhantomData;
+
+    struct FeeMapVisitor<K, V> {
+        marker: PhantomData<(K, V)>,
+    }
+
+    impl<'de, K, V> Visitor<'de> for FeeMapVisitor<K, V>
+    where
+        K: Deserialize<'de> + Ord,
+        V: Deserialize<'de> + std::str::FromStr,
+    {
+        type Value = BTreeMap<K, V>;
+
+        fn expecting(
+            &self,
+            formatter: &mut scale_info::prelude::fmt::Formatter,
+        ) -> scale_info::prelude::fmt::Result {
+            formatter.write_str("OutcomeFee BTreeMap<AssetId, Balance>")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut fee_map = BTreeMap::new();
+
+            while let Some((key, s)) = map.next_entry()? {
+                let value = std::str::FromStr::from_str(s)
+                    .map_err(|_| serde::de::Error::custom("Parse from string failed"))?;
+                fee_map.insert(key, value);
+            }
+
+            Ok(fee_map)
+        }
+    }
+
+    pub fn serialize<S, AssetId, AmountType>(
+        fee: &OutcomeFee<AssetId, AmountType>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        AssetId: Ord + std::fmt::Display,
+        AmountType: std::fmt::Display,
+    {
+        serializer.collect_map(
+            fee.0
+                .iter()
+                .map(|(asset, amount)| (asset.to_string(), amount.to_string())),
+        )
+    }
+
+    pub fn deserialize<'de, D, AssetId, AmountType>(
+        deserializer: D,
+    ) -> Result<OutcomeFee<AssetId, AmountType>, D::Error>
+    where
+        D: Deserializer<'de>,
+        AssetId: Ord + Deserialize<'de>,
+        AmountType: Deserialize<'de> + std::str::FromStr,
+    {
+        let map = deserializer.deserialize_map(FeeMapVisitor {
+            marker: PhantomData,
+        })?;
+        Ok(OutcomeFee(map))
     }
 }
 

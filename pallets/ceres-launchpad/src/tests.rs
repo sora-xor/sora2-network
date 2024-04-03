@@ -3,7 +3,7 @@ use crate::{pallet, Error, FeePercentOnRaisedFunds, Pallet as CeresLaunchpadPall
 use common::fixnum::ops::CheckedAdd;
 use common::prelude::FixedWrapper;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PoolXykPallet, CERES_ASSET_ID,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, XykPool, CERES_ASSET_ID,
     DEFAULT_BALANCE_PRECISION, PSWAP, XOR, XSTUSD,
 };
 use frame_support::{assert_err, assert_ok, PalletId};
@@ -3714,13 +3714,13 @@ fn create_ilo_tokens_for_ilo_overflow() {
         assert_err!(
             CeresLaunchpadPallet::<Runtime>::create_ilo(
                 RuntimeOrigin::signed(ALICE),
-                base_asset.into(),
-                CERES_ASSET_ID.into(),
+                base_asset,
+                CERES_ASSET_ID,
                 balance!(7693),
                 balance!(3000),
                 2,
-                u128::MAX.into(),
-                (u128::MAX / 2).into(),
+                u128::MAX,
+                u128::MAX / 2,
                 balance!(0.2),
                 balance!(0.25),
                 true,

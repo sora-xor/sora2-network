@@ -34,7 +34,6 @@ construct_runtime! {
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
-        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
@@ -101,8 +100,11 @@ parameter_types! {
 
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
+    type StringLimit = StringLimit;
+    type OptionsLimit = OptionsLimit;
+    type TitleLimit = TitleLimit;
+    type DescriptionLimit = DescriptionLimit;
 }
 
 parameter_types! {
@@ -143,13 +145,6 @@ impl permissions::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-}
-
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = ();
@@ -160,13 +155,17 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = ();
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = ();
+    type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -216,7 +215,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl tokens::Config for Runtime {
@@ -245,6 +244,10 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
+    pub const StringLimit: u32 = 64;
+    pub const OptionsLimit: u32 = 6;
+    pub const TitleLimit: u32 = 128;
+    pub const DescriptionLimit: u32 = 4096;
 }
 
 impl pallet_balances::Config for Runtime {

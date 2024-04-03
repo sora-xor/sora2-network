@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.0.0"
+version = "3.2.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -109,11 +109,20 @@ sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branc
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 enum-as-inner = "=0.5.1"
 
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
+ahash = "=0.8.5"
+bumpalo = "=3.14.0"
+cargo-platform = "=0.1.7"
+substrate-bip39 = "=0.4.5"
+
 [build-dependencies]
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
-assert_cmd = "2.0.4"
+# TODO remove after toolchain is updated
+# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
+assert_cmd = "=2.0.13"
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies
@@ -134,9 +143,6 @@ private-net = [
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
-    "common/wip",
-    "dex-api-rpc/wip",
-    "liquidity-proxy-rpc/wip",
     "beefy-light-client",
     "beefy-light-client-rpc",
 ]

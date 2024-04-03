@@ -132,7 +132,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Pallet, Storage},
+        DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -271,6 +271,7 @@ impl assets::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
@@ -278,9 +279,9 @@ impl dex_api::Config for Runtime {
     type XYKPool = MockLiquiditySource;
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
-
-    #[cfg(feature = "wip")] // order-book
+    type DexInfoProvider = ();
     type OrderBook = ();
+    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -293,7 +294,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -337,13 +338,17 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -372,6 +377,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
+    type TradingPairSourceManager = ();
     type WeightInfo = ();
 }
 

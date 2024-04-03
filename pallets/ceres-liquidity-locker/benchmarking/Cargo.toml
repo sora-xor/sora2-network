@@ -75,5 +75,3 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]
-
-wip = ["common/wip", "dex-api/wip"]

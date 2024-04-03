@@ -31,14 +31,14 @@
 use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{
-    AssetInfoProvider, Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount,
-    SwapOutcome,
+    AssetInfoProvider, Balance, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
+    SwapAmount, SwapOutcome,
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,
     BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, PriceVariant, TechPurpose, VestedRewardsPallet, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP,
+    TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -203,6 +203,7 @@ impl Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type VestedRewardsPallet = MockVestedRewards;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = BuyBackHandlerImpl;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
@@ -244,7 +245,7 @@ impl BuyBackHandler<AccountId, AssetId> for BuyBackHandlerImpl {
 
 pub struct MockVestedRewards;
 
-impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
+impl Vesting<AccountId, AssetId> for MockVestedRewards {
     fn add_tbc_reward(account: &AccountId, amount: Balance) -> DispatchResult {
         Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
             *old_amount = old_amount.saturating_add(amount)
@@ -325,7 +326,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -362,6 +363,7 @@ impl pswap_distribution::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
@@ -375,13 +377,17 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -478,7 +484,7 @@ impl MockDEXApi {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         match amount {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
@@ -489,14 +495,17 @@ impl MockDEXApi {
                 let fee = fee.into_balance();
                 let amount_out: Balance = amount_out.into_balance();
                 let amount_out = amount_out - fee;
-                Ok(SwapOutcome::new(amount_out, fee))
+                Ok(SwapOutcome::new(amount_out, OutcomeFee::xor(fee)))
             }
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
                     * Self::get_price(input_asset_id, output_asset_id);
-                Ok(SwapOutcome::new(amount_out.into_balance(), 0))
+                Ok(SwapOutcome::new(
+                    amount_out.into_balance(),
+                    OutcomeFee::new(),
+                ))
             }
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
@@ -507,14 +516,17 @@ impl MockDEXApi {
                 let fee = with_fee.clone() - amount_in;
                 let fee = fee.into_balance();
                 let with_fee = with_fee.into_balance();
-                Ok(SwapOutcome::new(with_fee, fee))
+                Ok(SwapOutcome::new(with_fee, OutcomeFee::xor(fee)))
             }
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
                     / Self::get_price(input_asset_id, output_asset_id);
-                Ok(SwapOutcome::new(amount_in.into_balance(), 0))
+                Ok(SwapOutcome::new(
+                    amount_in.into_balance(),
+                    OutcomeFee::new(),
+                ))
             }
         }
     }
@@ -526,7 +538,7 @@ impl MockDEXApi {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         match swap_amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
@@ -623,7 +635,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::inner_exchange(
             sender,
             receiver,
@@ -641,7 +653,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::inner_quote(
             &filter.dex_id,
             input_asset_id,
@@ -652,7 +664,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     }
 }
 
-impl PriceToolsPallet<AssetId> for MockDEXApi {
+impl PriceToolsProvider<AssetId> for MockDEXApi {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
@@ -921,7 +933,6 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();

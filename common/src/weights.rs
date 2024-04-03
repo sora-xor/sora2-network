@@ -112,10 +112,10 @@ pub fn err_pays_no(err: impl Into<DispatchError>) -> DispatchErrorWithPostInfo {
     }
 }
 
-/// Try to consume the given weight `max_n` times. If weight is only
-/// enough to consume `n <= max_n` times, it consumes it `n` times
-/// and returns `n`.
-pub fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64) -> u64 {
+/// Check if it possible to consume the given weight `max_n` times.
+/// If weight is only enough to consume `n <= max_n` times, it returns `n`.
+/// If `consume_weight` is true, it consumes it `n` times.
+pub fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64, consume_weight: bool) -> u64 {
     let n = {
         let weight_left = meter.remaining();
         // Maximum possible subtractions that we can do on each value
@@ -132,10 +132,13 @@ pub fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64) -> u64 {
         let max_possible_n = n_ref_time.min(n_proof_size);
         max_possible_n.min(max_n)
     };
-    // `n` was obtained as integer division `left/w`, so multiplying `n*w` will not exceed `left`;
-    // it means it will fit into u64
-    let to_consume = w.saturating_mul(n);
-    meter.defensive_saturating_accrue(to_consume);
+
+    if consume_weight {
+        // `n` was obtained as integer division `left/w`, so multiplying `n*w` will not exceed `left`;
+        // it means it will fit into u64
+        let to_consume = w.saturating_mul(n);
+        meter.defensive_saturating_accrue(to_consume);
+    }
     n
 }
 
@@ -148,7 +151,14 @@ mod tests {
         // Within limits
         let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
         assert_eq!(
-            check_accrue_n(&mut weight_counter, 10.into(), 10),
+            check_accrue_n(&mut weight_counter, 10.into(), 10, false),
+            10,
+            "Should accrue within limits"
+        );
+        assert_eq!(weight_counter.remaining(), 100.into());
+
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 10.into(), 10, true),
             10,
             "Should accrue within limits"
         );
@@ -157,7 +167,14 @@ mod tests {
         // Just above limit
         let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
         assert_eq!(
-            check_accrue_n(&mut weight_counter, 11.into(), 10),
+            check_accrue_n(&mut weight_counter, 11.into(), 10, false),
+            9,
+            "Should partially accrue"
+        );
+        assert_eq!(weight_counter.remaining(), 100.into());
+
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 11.into(), 10, true),
             9,
             "Should partially accrue"
         );
@@ -166,21 +183,30 @@ mod tests {
         // Can't accrue at all
         let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
         assert_eq!(
-            check_accrue_n(&mut weight_counter, 101.into(), 1),
+            check_accrue_n(&mut weight_counter, 101.into(), 1, false),
             0,
             "Should restrict even a single consumption exceeding limits"
         );
         assert_eq!(weight_counter.remaining(), 100.into());
+
         // Won't accrue if 0 needed
         assert_eq!(
-            check_accrue_n(&mut weight_counter, 1.into(), 0),
+            check_accrue_n(&mut weight_counter, 1.into(), 0, true),
             0,
             "Should work with 0 maximum consumptions"
         );
         assert_eq!(weight_counter.remaining(), 100.into());
+
         // 0 weight is freely consumed
         assert_eq!(
-            check_accrue_n(&mut weight_counter, 0.into(), u64::MAX),
+            check_accrue_n(&mut weight_counter, 0.into(), u64::MAX, false),
+            u64::MAX,
+            "0 weight should be allowed to be consumed infinitely (max_int is reasonably high for weight)"
+        );
+        assert_eq!(weight_counter.remaining(), 100.into());
+
+        assert_eq!(
+            check_accrue_n(&mut weight_counter, 0.into(), u64::MAX, true),
             u64::MAX,
             "0 weight should be allowed to be consumed infinitely (max_int is reasonably high for weight)"
         );

@@ -494,15 +494,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         let account_id = ensure_signed(origin)?;
 
         Self::trusted_relayers()
-            // In Rust 1.62 can be replaced with
-            // `and_then(|relayers| relayers.contains(account_id).then_some(()))`
-            .and_then(|relayers| {
-                if relayers.contains(&account_id) {
-                    Some(())
-                } else {
-                    None
-                }
-            })
+            .and_then(|relayers| relayers.contains(&account_id).then_some(()))
             .ok_or_else(|| Error::<T, I>::UnauthorizedRelayer.into())
     }
 

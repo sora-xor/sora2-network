@@ -270,16 +270,16 @@ impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConve
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: U256,
-    ) -> Option<Balance> {
-        amount.try_into().ok()
+    ) -> Option<(Balance, U256)> {
+        amount.try_into().ok().map(|x| (x, amount))
     }
 
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<U256> {
-        Some(amount.into())
+    ) -> Option<(Balance, U256)> {
+        Some((amount, amount.into()))
     }
 }
 
@@ -334,6 +334,10 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
             symbol: Default::default(),
             precision: 18,
         }
+    }
+
+    fn ensure_asset_exists(_: AssetId) -> bool {
+        true
     }
 }
 

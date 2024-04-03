@@ -83,4 +83,4 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
 ]
 
-wip = ["common/wip", "dex-api/wip", "liquidity-proxy/wip"]
+wip = ["liquidity-proxy/wip"]

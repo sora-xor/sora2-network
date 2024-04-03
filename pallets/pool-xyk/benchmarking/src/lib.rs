@@ -39,7 +39,7 @@ use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
     balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
-    DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
@@ -50,7 +50,6 @@ use sp_std::prelude::*;
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
-use trading_pair::Pallet as TradingPair;
 
 #[cfg(test)]
 mod mock;
@@ -68,8 +67,6 @@ fn alice<T: Config>() -> T::AccountId {
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     let _ = Permissions::<T>::assign_permission(
@@ -109,7 +106,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
     Assets::<T>::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
@@ -195,6 +192,27 @@ benchmarks! {
             &XOR.into(),
             &DOT.into(),
             amount.into(),
+            true,
+        ).unwrap()
+    }
+    verify {
+        // can't check, nothing is changed
+    }
+
+    step_quote {
+        let a in 10..1000;
+        setup_benchmark::<T>()?;
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(10000),
+            min_amount_out: balance!(0),
+        };
+    }: {
+        XYKPool::<T>::step_quote(
+            &DEX.into(),
+            &XOR.into(),
+            &DOT.into(),
+            amount.into(),
+            a as usize,
             true,
         ).unwrap()
     }

@@ -48,7 +48,6 @@ ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features 
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 dex-manager = { path = "../dex-manager" }
 permissions = { path = "../permissions" }
-trading-pair = { path = "../trading-pair" }
 pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }

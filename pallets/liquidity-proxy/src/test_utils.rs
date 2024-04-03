@@ -30,9 +30,9 @@
 
 use crate::mock::{adar, AccountId, Assets, DEXId, LiquidityProxy};
 use crate::{BatchReceiverInfo, SwapBatchInfo};
-use common::prelude::{QuoteAmount, SwapOutcome};
+use common::prelude::{FixedWrapper, QuoteAmount, SwapOutcome};
 use common::{
-    assert_approx_eq, balance, AssetId32, AssetInfoProvider, Balance, LiquidityProxyTrait,
+    assert_approx_eq_abs, balance, AssetId32, AssetInfoProvider, Balance, LiquidityProxyTrait,
     LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, XOR,
 };
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ pub fn check_swap_batch_executed_amount(
         account_desired_amount
             .into_iter()
             .for_each(|(account_id, desired_amount)| {
-                assert_approx_eq!(
+                assert_approx_eq_abs!(
                     desired_amount,
                     Assets::free_balance(&asset_id, &account_id).unwrap(),
                     balance!(0.00001)
@@ -77,15 +77,23 @@ pub fn check_swap_batch_executed_amount(
     });
 }
 
+pub fn calculate_adar_commission(amount: Balance) -> Balance {
+    let adar_commission_ratio = FixedWrapper::from(LiquidityProxy::adar_commission_ratio());
+
+    (FixedWrapper::from(amount) * adar_commission_ratio)
+        .try_into_balance()
+        .unwrap()
+}
+
 pub fn check_adar_commission(
     swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
     sources: Vec<LiquiditySourceType>,
 ) {
     let actual_input_amount = calculate_swap_batch_input_amount(swap_batches, sources);
 
-    let adar_fee = LiquidityProxy::calculate_adar_commission(actual_input_amount).unwrap();
+    let adar_fee = calculate_adar_commission(actual_input_amount);
 
-    assert_approx_eq!(
+    assert_approx_eq_abs!(
         Assets::free_balance(&XOR, &adar()).unwrap(),
         adar_fee,
         balance!(0.02)
@@ -135,7 +143,7 @@ pub fn calculate_swap_batch_input_amount_with_adar_commission(
     sources: Vec<LiquiditySourceType>,
 ) -> Balance {
     let amount_in = calculate_swap_batch_input_amount(swap_batches, sources);
-    let adar_fee = LiquidityProxy::calculate_adar_commission(amount_in).unwrap();
+    let adar_fee = calculate_adar_commission(amount_in);
 
     amount_in
         .checked_add(adar_fee)

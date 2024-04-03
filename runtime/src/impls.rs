@@ -30,6 +30,7 @@
 
 use core::marker::PhantomData;
 
+use bridge_types::{GenericAccount, GenericAssetId, GenericBalance};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
@@ -44,6 +45,7 @@ use frame_support::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 use scale_info::TypeInfo;
 use sp_core::U256;
+use sp_runtime::traits::Convert;
 use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
@@ -289,6 +291,19 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
+            #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> = msg.try_into()?;
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
+                Err(DispatchErrorWithPostInfo {
+                    post_info: Default::default(),
+                    error: DispatchError::Other("Unavailable"),
+                })
+            }
         }
     }
 }
@@ -309,7 +324,32 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
+            #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> =
+                    match substrate_bridge_app::Call::try_from(msg.clone()) {
+                        Ok(c) => c,
+                        Err(_) => return Default::default(),
+                    };
+                call.get_dispatch_info()
+            }
+            #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => Default::default(),
         }
+    }
+}
+
+pub struct LiberlandAccountIdConverter;
+impl Convert<crate::AccountId, GenericAccount> for LiberlandAccountIdConverter {
+    fn convert(a: crate::AccountId) -> GenericAccount {
+        GenericAccount::Sora(a)
+    }
+}
+
+pub struct LiberlandAssetIdConverter;
+impl Convert<crate::AssetId, GenericAssetId> for LiberlandAssetIdConverter {
+    fn convert(a: crate::AssetId) -> GenericAssetId {
+        GenericAssetId::Sora(a.into())
     }
 }
 
@@ -320,26 +360,21 @@ impl BalancePrecisionConverter {
         precision_from: u8,
         precision_to: u8,
         amount: crate::Balance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, crate::Balance)> {
         if precision_from == precision_to {
-            return Some(amount);
+            return Some((amount, amount));
         }
         if precision_from < precision_to {
             let exp = (precision_to - precision_from) as u32;
             let coeff = 10_u128.checked_pow(exp)?;
-            let coerced_amount = amount.saturating_mul(coeff);
-            if coerced_amount / coeff != amount {
-                return None;
-            }
-            Some(coerced_amount)
+            let coerced_amount = amount.checked_mul(coeff)?;
+            // No rounding in this case
+            Some((amount, coerced_amount))
         } else {
             let exp = (precision_from - precision_to) as u32;
             let coeff = 10_u128.checked_pow(exp)?;
-            let coerced_amount = amount / coeff;
-            if coerced_amount * coeff != amount {
-                return None;
-            }
-            Some(coerced_amount)
+            let coerced_amount = amount.checked_div(coeff)?;
+            Some((coerced_amount * coeff, coerced_amount))
         }
     }
 }
@@ -351,16 +386,17 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: crate::Balance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, crate::Balance)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         Self::convert_precision(sidechain_precision, thischain_precision, amount)
+            .map(|(a, b)| (b, a))
     }
 
     fn to_sidechain(
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: crate::Balance,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, crate::Balance)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
     }
@@ -373,23 +409,60 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: U256,
-    ) -> Option<crate::Balance> {
+    ) -> Option<(crate::Balance, U256)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        let res = Self::convert_precision(
+        Self::convert_precision(
             sidechain_precision,
             thischain_precision,
             amount.try_into().ok()?,
-        )?;
-        Some(res)
+        )
+        .map(|(a, b)| (b, a.into()))
     }
 
     fn to_sidechain(
         asset_id: &crate::AssetId,
         sidechain_precision: u8,
         amount: crate::Balance,
-    ) -> Option<U256> {
+    ) -> Option<(crate::Balance, U256)> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
-        Self::convert_precision(thischain_precision, sidechain_precision, amount).map(Into::into)
+        Self::convert_precision(thischain_precision, sidechain_precision, amount)
+            .map(|(a, b)| (a, b.into()))
+    }
+}
+
+pub struct GenericBalancePrecisionConverter;
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, GenericBalance>
+    for GenericBalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: GenericBalance,
+    ) -> Option<(crate::Balance, GenericBalance)> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        match amount {
+            GenericBalance::Substrate(val) => BalancePrecisionConverter::convert_precision(
+                sidechain_precision,
+                thischain_precision,
+                val,
+            )
+            .map(|(a, b)| (b, GenericBalance::Substrate(a))),
+            GenericBalance::EVM(_) => None,
+        }
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<(crate::Balance, GenericBalance)> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        BalancePrecisionConverter::convert_precision(
+            thischain_precision,
+            sidechain_precision,
+            amount,
+        )
+        .map(|(a, b)| (a, GenericBalance::Substrate(b)))
     }
 }
 
@@ -402,6 +475,10 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::XCMApp(_) => false,
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
+            #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
+            #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => false,
         }
     }
 }
@@ -465,5 +542,33 @@ mod test {
 
         t(5 * MEBIBYTE + 1);
         t(u32::MAX);
+    }
+
+    #[test]
+    fn test_balance_precision_converter() {
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(12, 18, 123_u128),
+            Some((123_u128, 123_000_000_u128))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(6, 60, 123_u128),
+            None
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(6, 6, u128::MAX),
+            Some((u128::MAX, u128::MAX))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(18, 12, 123_456_789_123_456_789_u128),
+            Some((123_456_789_123_000_000_u128, 123_456_789_123_u128))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(18, 12, 123_456_789_123_000_000_u128),
+            Some((123_456_789_123_000_000_u128, 123_456_789_123_u128))
+        );
+        assert_eq!(
+            BalancePrecisionConverter::convert_precision(18, 9, 123_456_789_123_000_000_u128),
+            Some((123_456_789_000_000_000_u128, 123_456_789_u128))
+        );
     }
 }

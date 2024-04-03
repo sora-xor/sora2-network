@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(clippy::type_complexity)]
+#![feature(int_roundings)]
 
 #[macro_use]
 extern crate alloc;
@@ -45,12 +45,14 @@ pub mod mock;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
 
+pub mod alt;
 mod balance_unit;
 pub mod cache_storage;
 pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
 pub mod migrations;
+mod outcome_fee;
 mod primitives;
 pub mod serialization;
 pub mod storage;
@@ -68,6 +70,7 @@ pub use traits::Config;
 pub mod prelude {
     pub use super::balance_unit::*;
     pub use super::fixed_wrapper::*;
+    pub use super::outcome_fee::*;
     pub use super::primitives::*;
     pub use super::serialization::*;
     pub use super::swap_amount::*;
@@ -191,13 +194,13 @@ pub fn convert_block_number_to_timestamp<T: Config + pallet_timestamp::Config>(
         let num_of_seconds: u32 =
             ((unlocking_block - current_block) * 6u32.into()).unique_saturated_into();
         let mut timestamp: T::Moment = num_of_seconds.into();
-        timestamp = timestamp * 1000u32.into();
+        timestamp *= 1000u32.into();
         current_timestamp + timestamp
     } else {
         let num_of_seconds: u32 =
             ((current_block - unlocking_block) * 6u32.into()).unique_saturated_into();
         let mut timestamp: T::Moment = num_of_seconds.into();
-        timestamp = timestamp * 1000u32.into();
+        timestamp *= 1000u32.into();
         current_timestamp - timestamp
     }
 }

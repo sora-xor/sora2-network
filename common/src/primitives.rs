@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
+use crate::{Fixed, IsValid};
+use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::TypeInfo;
@@ -41,7 +43,6 @@ use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
 
-use crate::{Fixed, IsValid};
 #[cfg(feature = "std")]
 use {
     rustc_hex::ToHex,
@@ -112,7 +113,7 @@ pub struct TradingPair<AssetId> {
 }
 
 impl<AssetId: Eq> TradingPair<AssetId> {
-    pub fn consists_of(&self, asset_id: &AssetId) -> bool {
+    pub fn contains(&self, asset_id: &AssetId) -> bool {
         &self.base_asset_id == asset_id || &self.target_asset_id == asset_id
     }
 }
@@ -126,40 +127,68 @@ impl<T> TradingPair<T> {
     }
 }
 
-/// Asset identifier.
-#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
-#[repr(u8)]
-pub enum PredefinedAssetId {
-    XOR = 0,
-    DOT = 1,
-    KSM = 2,
-    USDT = 3,
-    VAL = 4,
-    PSWAP = 5,
-    DAI = 6,
-    ETH = 7,
-    XSTUSD = 8,
-    XST = 9,
-    TBCD = 10,
+pub use _allowed_deprecated::PredefinedAssetId;
+
+// separate module where deprecated usage is allowed;
+// in order to fix deprecated warnings in derive macros
+mod _allowed_deprecated {
+    #![allow(deprecated)]
+
+    use codec::{Decode, Encode, MaxEncodedLen};
+    use frame_support::RuntimeDebug;
+
+    #[cfg(feature = "std")]
+    use serde::{Deserialize, Serialize};
+
+    /// Asset identifier.
+    ///
+    /// Note: actual asset ids used for `DOT`, `KSM`, and `USDT` are different from predefined ones,
+    /// so they shouldn't be used.
+    #[derive(
+        Encode,
+        Decode,
+        Eq,
+        PartialEq,
+        Copy,
+        Clone,
+        PartialOrd,
+        Ord,
+        RuntimeDebug,
+        scale_info::TypeInfo,
+        MaxEncodedLen,
+    )]
+    #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+    #[repr(u8)]
+    pub enum PredefinedAssetId {
+        XOR = 0,
+        #[deprecated(
+            note = "asset id for this variant is either absent or different in all environments; \
+                refrain from using the predefined version."
+        )]
+        DOT = 1,
+        #[deprecated(
+            note = "asset id for this variant is either absent or different in all environments; \
+                    refrain from using the predefined version."
+        )]
+        KSM = 2,
+        #[deprecated(
+            note = "asset id for this variant is different in production; refrain from using \
+                    the predefined version."
+        )]
+        USDT = 3,
+        VAL = 4,
+        PSWAP = 5,
+        DAI = 6,
+        ETH = 7,
+        XSTUSD = 8,
+        XST = 9,
+        TBCD = 10,
+        KEN = 11,
+        KUSD = 12,
+    }
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DOT);
-pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KSM);
-pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
 pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::VAL);
 pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
 pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
@@ -168,6 +197,8 @@ pub const XSTUSD: AssetId32<PredefinedAssetId> =
     AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
 pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XST);
 pub const TBCD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+pub const KEN: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KEN);
+pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
@@ -176,6 +207,26 @@ pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes
 ));
 pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
+));
+#[cfg(not(feature = "private-net"))]
+pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
+));
+#[cfg(not(feature = "private-net"))]
+pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "00117b0fa73c4672e03a7d9d774e3b3f91beb893e93d9a8d0430295f44225db8"
+));
+#[cfg(feature = "private-net")]
+pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+));
+// `private-net` is not used in prod
+#[allow(deprecated)]
+#[cfg(any(feature = "private-net", test))]
+pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+#[cfg(not(any(feature = "private-net", test)))]
+pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0083a6b3fbc6edae06f115c8953ddd7cbfba0b74579d6ea190f96853073b76f4"
 ));
 
 impl IsRepresentation for PredefinedAssetId {
@@ -237,6 +288,17 @@ where
 {
     fn from(tech_asset: TechAssetId<AssetId>) -> Self {
         Ok(tech_asset.into())
+    }
+}
+
+impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
+    type Error = &'static str;
+
+    fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
+        match asset_id {
+            GenericAssetId::Sora(id) => Ok(id.into()),
+            _ => Err("Non SORA assets is not supported"),
+        }
     }
 }
 
@@ -359,12 +421,14 @@ where
     PartialOrd,
     Ord,
     RuntimeDebug,
+    Default,
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum DEXId {
+    #[default]
     Polkaswap = 0,
     PolkaswapXSTUSD = 1,
 }
@@ -372,12 +436,6 @@ pub enum DEXId {
 impl From<DEXId> for u32 {
     fn from(dex_id: DEXId) -> Self {
         dex_id as u32
-    }
-}
-
-impl Default for DEXId {
-    fn default() -> Self {
-        DEXId::Polkaswap
     }
 }
 
@@ -414,6 +472,13 @@ impl Default for AssetSymbol {
     }
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+impl From<Vec<u8>> for AssetSymbol {
+    fn from(v: Vec<u8>) -> Self {
+        AssetSymbol(v)
+    }
+}
+
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 
 impl IsValid for AssetSymbol {
@@ -426,7 +491,7 @@ impl IsValid for AssetSymbol {
             && self
                 .0
                 .iter()
-                .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
@@ -460,6 +525,13 @@ impl Default for AssetName {
     }
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+impl From<Vec<u8>> for AssetName {
+    fn from(v: Vec<u8>) -> Self {
+        AssetName(v)
+    }
+}
+
 const ASSET_NAME_MAX_LENGTH: usize = 33;
 
 impl IsValid for AssetName {
@@ -470,16 +542,25 @@ impl IsValid for AssetName {
         !self.0.is_empty()
             && self.0.len() <= ASSET_NAME_MAX_LENGTH
             && self.0.iter().all(|byte| {
-                (b'A'..=b'Z').contains(&byte)
-                    || (b'a'..=b'z').contains(&byte)
-                    || (b'0'..=b'9').contains(&byte)
+                byte.is_ascii_uppercase()
+                    || byte.is_ascii_lowercase()
+                    || byte.is_ascii_digit()
                     || byte == &b' '
             })
     }
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct ContentSource(pub Vec<u8>);
@@ -502,12 +583,6 @@ impl Display for ContentSource {
     }
 }
 
-impl Default for ContentSource {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
 impl IsValid for ContentSource {
     fn is_valid(&self) -> bool {
         self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
@@ -515,7 +590,16 @@ impl IsValid for ContentSource {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct Description(pub Vec<u8>);
@@ -538,12 +622,6 @@ impl Display for Description {
     }
 }
 
-impl Default for Description {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
 impl IsValid for Description {
     fn is_valid(&self) -> bool {
         self.0.len() <= ASSET_DESCRIPTION_MAX_LENGTH
@@ -551,7 +629,16 @@ impl IsValid for Description {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct SymbolName(pub Vec<u8>);
@@ -579,12 +666,6 @@ impl Display for SymbolName {
     }
 }
 
-impl Default for SymbolName {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
 impl IsValid for SymbolName {
     /// Same as for AssetSymbol
     fn is_valid(&self) -> bool {
@@ -593,14 +674,23 @@ impl IsValid for SymbolName {
             && self
                 .0
                 .iter()
-                .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
 const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    Default,
+    scale_info::TypeInfo,
 )]
 pub struct CrowdloanTag(pub BoundedVec<u8, ConstU32<CROWDLOAN_TAG_MAX_LENGTH>>);
 
@@ -624,12 +714,6 @@ impl Display for CrowdloanTag {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
         write!(f, "{}", s)
-    }
-}
-
-impl Default for CrowdloanTag {
-    fn default() -> Self {
-        Self(Default::default())
     }
 }
 
@@ -684,6 +768,7 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     Ord,
     scale_info::TypeInfo,
     MaxEncodedLen,
+    strum::EnumIter,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
@@ -696,8 +781,6 @@ pub enum LiquiditySourceType {
     MockPool3,
     MockPool4,
     XSTPool,
-
-    #[cfg(feature = "wip")] // order-book
     OrderBook,
 }
 
@@ -758,24 +841,15 @@ impl<DEXId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DEXId, Liquidity
 // LstId is Liquidity Source Type Id.
 impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
     fn is_pure(&self) -> bool {
-        match self {
-            TechAssetId::Wrapped(_) => false,
-            _ => true,
-        }
+        !matches!(self, TechAssetId::Wrapped(_))
     }
 
     fn is_wrapped(&self) -> bool {
-        match self {
-            TechAssetId::Wrapped(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAssetId::Wrapped(_))
     }
 
     fn is_wrapped_regular(&self) -> bool {
-        match self {
-            TechAssetId::Wrapped(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAssetId::Wrapped(_))
     }
 }
 
@@ -783,6 +857,7 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
 pub enum TechPurpose<AssetId> {
     FeeCollector = 0,
     FeeCollectorForPair(TradingPair<AssetId>) = 1,
@@ -794,7 +869,9 @@ pub enum TechPurpose<AssetId> {
 /// Enum encoding of technical account id, pure and wrapped records.
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
@@ -802,16 +879,14 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
+    #[default]
     None,
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
 impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, AssetId, DEXId> {
     fn is_representation(&self) -> bool {
-        match self {
-            TechAccountId::WrappedRepr(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAccountId::WrappedRepr(_))
     }
 }
 
@@ -822,12 +897,6 @@ impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
 {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self {
         TechAccountId::Generic(tag, data)
-    }
-}
-
-impl<AccountId, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
-    fn default() -> Self {
-        TechAccountId::None
     }
 }
 
@@ -844,13 +913,9 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
 {
     fn to_fee_account(&self) -> Option<Self> {
         match self {
-            TechAccountId::Pure(dex, purpose) => match purpose {
-                TechPurpose::XykLiquidityKeeper(tpair) => Some(TechAccountId::Pure(
-                    dex.clone(),
-                    TechPurpose::FeeCollectorForPair(tpair.clone()),
-                )),
-                _ => None,
-            },
+            TechAccountId::Pure(dex, TechPurpose::XykLiquidityKeeper(tpair)) => Some(
+                TechAccountId::Pure(dex.clone(), TechPurpose::FeeCollectorForPair(tpair.clone())),
+            ),
             _ => None,
         }
     }
@@ -914,24 +979,19 @@ where
     AccountId: IsRepresentation,
 {
     fn is_pure(&self) -> bool {
-        match self {
-            TechAccountId::Pure(_, _) => true,
-            TechAccountId::Generic(_, _) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            TechAccountId::Pure(_, _) | TechAccountId::Generic(_, _)
+        )
     }
     fn is_wrapped_regular(&self) -> bool {
-        match self {
-            TechAccountId::Wrapped(_) => true,
-            _ => false,
-        }
+        matches!(self, TechAccountId::Wrapped(_))
     }
     fn is_wrapped(&self) -> bool {
-        match self {
-            TechAccountId::Pure(_, _) => false,
-            TechAccountId::Generic(_, _) => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            TechAccountId::Pure(_, _) | TechAccountId::Generic(_, _)
+        )
     }
 }
 
@@ -1055,7 +1115,7 @@ mod tests {
         );
 
         // should not panic
-        serde_json::to_value(&asset_id).unwrap();
+        serde_json::to_value(asset_id).unwrap();
     }
 
     #[test]
@@ -1072,7 +1132,7 @@ mod tests {
         assert_eq!(unwrapped, balance);
 
         // should not panic
-        serde_json::to_value(&BalanceWrapper(balance)).unwrap();
+        serde_json::to_value(BalanceWrapper(balance)).unwrap();
     }
 }
 
