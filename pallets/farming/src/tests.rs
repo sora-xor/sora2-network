@@ -32,6 +32,7 @@ use frame_support::{assert_noop, assert_ok};
 
 use common::{balance, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::log::debug;
+use frame_system;
 use frame_system::RawOrigin;
 use pool_xyk::Properties;
 use sp_runtime::traits::BadOrigin;
@@ -41,7 +42,9 @@ use crate::mock::{
     self, run_to_block, AssetId, DEXId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE,
     DAVE, DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
 };
-use crate::{Pallet, PoolFarmer, PoolFarmers};
+use crate::{Event, Pallet, PoolFarmer, PoolFarmers};
+
+type System = frame_system::Pallet<Runtime>;
 
 fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
     assert_ok!(trading_pair::Pallet::<Runtime>::register(
@@ -440,11 +443,21 @@ fn set_lp_min_xor_for_bonus_reward_should_forbid_for_non_root_call() {
 #[test]
 fn set_lp_min_xor_for_bonus_reward_should_work() {
     ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
         let modified_min_xor = balance!(3 * (10_i32.pow(6)));
+        let old_lp_min_xor_for_bonus_reward = Pallet::<Runtime>::lp_min_xor_for_bonus_reward();
         assert_ok!(Pallet::<Runtime>::set_lp_min_xor_for_bonus_reward(
             RawOrigin::Root.into(),
             modified_min_xor
         ));
-        assert!(Pallet::<Runtime>::lp_min_xor_for_bonus_reward() == modified_min_xor);
+        let new_lp_min_xor_for_bonus_reward = Pallet::<Runtime>::lp_min_xor_for_bonus_reward();
+        assert_eq!(new_lp_min_xor_for_bonus_reward, modified_min_xor);
+        System::assert_has_event(
+            Event::LpMinXorForBonusRewardUpdated {
+                new_lp_min_xor_for_bonus_reward,
+                old_lp_min_xor_for_bonus_reward,
+            }
+            .into(),
+        );
     });
 }
