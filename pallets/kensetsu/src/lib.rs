@@ -221,26 +221,33 @@ pub mod pallet {
                 // This CDP id can be predicted and manipulated in front-running attack. It is a
                 // known problem. The purpose of the code is not to protect from the attack but to
                 // make choosing of CDP to liquidate more 'fair' then incremental order.
-                let (randomness, _) = T::Randomness::random(&block_number.encode());
-                match CdpId::decode(&mut randomness.as_ref()) {
-                    Ok(random_number) => {
-                        // Random bias by modulus operation is acceptable here
-                        let cdp_id = random_number % unsafe_cdp_ids.len() as u128;
-                        debug!("Liquidation of CDP {:?}", cdp_id);
-                        let call = Call::<T>::liquidate { cdp_id };
-                        if let Err(err) =
-                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
-                                call.into(),
-                            )
-                        {
-                            warn!(
+                let (randomness, _) = T::Randomness::random(&b"kensetsu"[..]);
+                match randomness {
+                    Some(randomness) => {
+                        match CdpId::decode(&mut randomness.as_ref()) {
+                            Ok(random_number) => {
+                                // Random bias by modulus operation is acceptable here
+                                let cdp_id = random_number % unsafe_cdp_ids.len() as u128;
+                                debug!("Liquidation of CDP {:?}", cdp_id);
+                                let call = Call::<T>::liquidate { cdp_id };
+                                if let Err(err) =
+                                    SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
+                                        call.into(),
+                                    )
+                                {
+                                    warn!(
                                 "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
                                 cdp_id, err
                             );
+                                }
+                            }
+                            Err(error) => {
+                                warn!("Failed to get randomness during liquidation: {}", error);
+                            }
                         }
                     }
-                    Err(error) => {
-                        warn!("Failed to get randomness during liquidation: {}", error);
+                    None => {
+                        warn!("No randomness provided.");
                     }
                 }
             }
@@ -256,7 +263,7 @@ pub mod pallet {
         + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+        type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,

@@ -69,8 +69,8 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 
 pub struct MockRandomness;
 
-impl Randomness<Hash, BlockNumber> for MockRandomness {
-    fn random(_subject: &[u8]) -> (Hash, BlockNumber) {
+impl Randomness<Option<Hash>, BlockNumber> for MockRandomness {
+    fn random(_subject: &[u8]) -> (Option<Hash>, BlockNumber) {
         unimplemented!()
     }
 }
