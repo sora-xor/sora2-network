@@ -1465,6 +1465,23 @@
 <a href="#1450" id="1450">1450</a>
 <a href="#1451" id="1451">1451</a>
 <a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1613,7 +1630,7 @@
     <span class="kw">use </span>sp_arithmetic::traits::{CheckedMul, Saturating};
     <span class="kw">use </span>sp_arithmetic::Percent;
     <span class="kw">use </span>sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    <span class="kw">use </span>sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One};
+    <span class="kw">use </span>sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One, Zero};
     <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
     <span class="kw">use </span>sp_std::vec::Vec;
 
@@ -2710,14 +2727,11 @@
             <span class="kw">let </span>risk_parameters = <span class="self">Self</span>::collateral_infos(cdp.collateral_asset_id)
                 .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?
                 </span>.risk_parameters;
-            <span class="kw">let </span><span class="kw-2">mut </span>desired_kusd_amount = cdp
-                .debt
-                .checked_add(<span class="self">Self</span>::liquidation_penalty() * cdp.debt)
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
             <span class="kw">let </span>collateral_to_liquidate = cdp
                 .collateral_amount
                 .min(risk_parameters.max_liquidation_lot);
             <span class="macro">ensure!</span>(collateral_to_liquidate &gt; <span class="number">0</span>, Error::&lt;T&gt;::ZeroLiquidationLot);
+
             <span class="comment">// With quote before exchange we are sure that it will not result in infinite amount in for exchange and
             // there is enough liquidity for swap.
             </span><span class="kw">let </span>SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
@@ -2730,29 +2744,49 @@
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 <span class="bool-val">true</span>,
             )<span class="question-mark">?</span>;
-            desired_kusd_amount = desired_kusd_amount.min(amount);
-            <span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
+            <span class="kw">let </span>desired_kusd_amount = cdp
+                .debt
+                .checked_add(<span class="self">Self</span>::liquidation_penalty() * cdp.debt)
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+            <span class="kw">let </span>swap_amount = <span class="kw">if </span>amount &gt; desired_kusd_amount {
+                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate)
+            } <span class="kw">else </span>{
+                SwapAmount::with_desired_input(collateral_to_liquidate, Balance::zero())
+            };
+
+            <span class="comment">// Since there is an issue with LiquidityProxy exchange amount that may differ from
+            // requested one, we check balances here.
+            </span><span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
             <span class="kw">let </span>kusd_balance_before =
                 T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>swap_outcome = T::LiquidityProxy::exchange(
+            <span class="kw">let </span>collateral_balance_before =
+                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
+
+            T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 technical_account_id,
                 technical_account_id,
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
                 <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
-                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate),
+                swap_amount,
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )<span class="question-mark">?</span>;
+
             <span class="kw">let </span>kusd_balance_after =
                 T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>collateral_balance_after =
+                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
             <span class="comment">// This value may differ from `desired_kusd_amount`, so this is calculation of actual
             // amount swapped.
             </span><span class="kw">let </span>kusd_swapped = kusd_balance_after
                 .checked_sub(kusd_balance_before)
                 .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-            <span class="kw">let </span>collateral_liquidated = swap_outcome.amount;
+            <span class="kw">let </span>collateral_liquidated = collateral_balance_before
+                .checked_sub(collateral_balance_after)
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+
             <span class="comment">// penalty is a protocol profit which stays on treasury tech account
             </span><span class="kw">let </span>penalty = <span class="self">Self</span>::liquidation_penalty() * kusd_swapped.min(cdp.debt);
             <span class="kw">let </span>proceeds = kusd_swapped - penalty;
