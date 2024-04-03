@@ -3893,6 +3893,21 @@ mod test {
     }
 
     #[test]
+    fn liquidate_user_does_not_exist() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::liquidate(
+                    RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                    alice(),
+                    XOR,
+                ),
+                Error::<Runtime>::InvalidLiquidation
+            );
+        })
+    }
+
+    #[test]
     fn liquidate_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {

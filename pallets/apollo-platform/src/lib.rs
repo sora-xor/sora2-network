@@ -963,7 +963,10 @@ pub mod pallet {
             user: AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
-            let user_infos = UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap();
+            let user_infos =
+                UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap_or_default();
+            ensure!(!user_infos.is_empty(), Error::<T>::InvalidLiquidation);
+
             if !Self::check_liquidation(&user_infos, asset_id) {
                 return Err(Error::<T>::InvalidLiquidation.into());
             }
@@ -976,7 +979,8 @@ pub mod pallet {
                     user_info.collateral_amount,
                     asset_id,
                 );
-                let mut collateral_pool_info = PoolData::<T>::get(*collateral_asset).unwrap();
+                let mut collateral_pool_info =
+                    PoolData::<T>::get(*collateral_asset).unwrap_or_default();
                 collateral_pool_info.total_collateral = collateral_pool_info
                     .total_collateral
                     .saturating_sub(user_info.collateral_amount);
@@ -984,7 +988,7 @@ pub mod pallet {
                 <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
             }
 
-            let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap();
+            let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap_or_default();
             borrow_pool_info.total_borrowed = borrow_pool_info
                 .total_borrowed
                 .saturating_sub(total_borrowed);
@@ -1054,7 +1058,8 @@ pub mod pallet {
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
                 Call::liquidate { user, asset_id } => {
-                    let user_infos = UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap();
+                    let user_infos =
+                        UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap_or_default();
                     if Self::check_liquidation(&user_infos, *asset_id) {
                         ValidTransaction::with_tag_prefix("Apollo::liquidate")
                             .priority(T::UnsignedPriority::get())
@@ -1133,11 +1138,11 @@ pub mod pallet {
             // Get average price from PriceTools pallet
             let buy_price =
                 T::PriceTools::get_average_price(&asset_id, &DAI.into(), PriceVariant::Buy)
-                    .unwrap();
+                    .unwrap_or_default();
 
             let sell_price =
                 T::PriceTools::get_average_price(&asset_id, &DAI.into(), PriceVariant::Sell)
-                    .unwrap();
+                    .unwrap_or_default();
 
             // Average price in dollars
             (FixedWrapper::from(buy_price + sell_price) / FixedWrapper::from(balance!(2)))
@@ -1153,7 +1158,7 @@ pub mod pallet {
             let mut total_borrowed: Balance = 0;
 
             for (collateral_asset, user_info) in user_infos.iter() {
-                let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap();
+                let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap_or_default();
                 let collateral_asset_price = Self::get_price(*collateral_asset);
 
                 // Multiply collateral value and liquidation threshold and then add it to the sum
@@ -1344,7 +1349,7 @@ pub mod pallet {
                 return T::DbWeight::get().reads(counter);
             }
             let pool_asset = <PoolsByBlock<T>>::get(pool_index).unwrap_or_default();
-            let mut pool_info = <PoolData<T>>::get(pool_asset).unwrap();
+            let mut pool_info = <PoolData<T>>::get(pool_asset).unwrap_or_default();
 
             // Update lending interests
             let mut rewards: Balance = 0;
