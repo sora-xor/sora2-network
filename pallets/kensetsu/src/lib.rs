@@ -35,7 +35,7 @@
 //! deposit or lock amount of the token in CDP as collateral. Then the individual is allowed to
 //! borrow new minted Kensetsu USD (KUSD) in amount up to value of collateral corrected by
 //! `liquidation_ratio` coefficient. The debt in KUSD is a subject of `stability_fee` interest rate.
-//! Collateral may be unlocked only when the debt and the interest are payed back. If the value of
+//! Collateral may be unlocked only when the debt and the interest are paid back. If the value of
 //! collateral has changed in a way that it does not secure the debt, the collateral is liquidated
 //! to cover the debt and the interest.
 
