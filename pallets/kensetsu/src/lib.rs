@@ -88,6 +88,10 @@ pub struct CollateralRiskParameters {
 
     /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
+
+    /// Minimal deposit in collateral AssetId.
+    /// In order to protect from empty CDPs.
+    pub minimal_collateral_deposit: Balance,
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
@@ -142,18 +146,22 @@ pub mod pallet {
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedMul, Saturating, Zero};
+    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One};
+    use sp_runtime::traits::CheckedConversion;
     use sp_std::collections::{btree_set::BTreeSet, vec_deque::VecDeque};
     use sp_std::vec::Vec;
 
     /// CDP id type
     pub type CdpId = u128;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -422,14 +430,14 @@ pub mod pallet {
         WrongAssetId,
         CDPNotFound,
         CollateralInfoNotFound,
+        CollateralBelowMinimal,
         CDPSafe,
         CDPUnsafe,
         /// Too many CDPs per user
         CDPLimitPerUser,
-        // Risk management team size exceeded
+        /// Risk management team size exceeded
         TooManyManagers,
         OperationNotPermitted,
-        OutstandingDebt,
         NoDebt,
         CDPsPerUserLimitReached,
         HardCapSupply,
@@ -461,9 +469,13 @@ pub mod pallet {
             borrow_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let interest_coefficient = Self::collateral_infos(collateral_asset_id)
-                .ok_or(Error::<T>::CollateralInfoNotFound)?
-                .interest_coefficient;
+            let collateral_info = Self::collateral_infos(collateral_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let interest_coefficient = collateral_info.interest_coefficient;
+            ensure!(
+                collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
+                Error::<T>::CollateralBelowMinimal
+            );
             let cdp_id = Self::increment_cdp_id()?;
             Self::insert_cdp(
                 &who,
@@ -492,17 +504,20 @@ pub mod pallet {
 
         /// Closes a Collateralized Debt Position (CDP).
         ///
+        /// If a CDP has outstanding debt, this amount is covered with owner balance. Collateral
+        /// then is returned to the owner and CDP is deleted.
+        ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            ensure!(cdp.debt == 0, Error::<T>::OutstandingDebt);
+            Self::repay_debt_internal(cdp_id, cdp.debt)?;
             technical::Pallet::<T>::transfer_out(
                 &cdp.collateral_asset_id,
                 &T::TreasuryTechAccount::get(),
@@ -558,26 +573,9 @@ pub mod pallet {
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
-            // if repaying amount exceeds debt, leftover is not burned
-            let to_cover_debt = amount.min(cdp.debt);
-            Self::burn_from(&who, to_cover_debt)?;
-            Self::update_cdp_debt(
-                cdp_id,
-                cdp.debt
-                    .checked_sub(to_cover_debt)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-            )?;
-            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, to_cover_debt)?;
-            Self::deposit_event(Event::DebtPayment {
-                cdp_id,
-                owner: who,
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: to_cover_debt,
-            });
-
-            Ok(())
+            // any account can repay debt
+            let _ = ensure_signed(origin)?;
+            Self::repay_debt_internal(cdp_id, amount)
         }
 
         /// Liquidates a Collateralized Debt Position (CDP) if it becomes unsafe.
@@ -1076,6 +1074,35 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Repays debt
+        /// Burns KUSD amount from CDP owner, updates CDP balances.
+        ///
+        /// ## Parameters
+        ///
+        /// - 'cdp_id' - CDP id
+        /// - `amount` - The maximum amount to repay, if exceeds debt, the debt amount is repayed.
+        fn repay_debt_internal(cdp_id: CdpId, amount: Balance) -> DispatchResult {
+            let cdp = Self::accrue_internal(cdp_id)?;
+            // if repaying amount exceeds debt, leftover is not burned
+            let to_cover_debt = amount.min(cdp.debt);
+            Self::burn_from(&cdp.owner, to_cover_debt)?;
+            Self::update_cdp_debt(
+                cdp_id,
+                cdp.debt
+                    .checked_sub(to_cover_debt)
+                    .ok_or(Error::<T>::ArithmeticError)?,
+            )?;
+            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, to_cover_debt)?;
+            Self::deposit_event(Event::DebtPayment {
+                cdp_id,
+                owner: cdp.owner,
+                collateral_asset_id: cdp.collateral_asset_id,
+                amount: to_cover_debt,
+            });
+
+            Ok(())
+        }
+
         /// Covers bad debt using a specified amount of stablecoin (KUSD).
         /// The function facilitates the covering of bad debt using stablecoin from a specific account,
         /// handling the transfer and burning of stablecoin as needed to cover the bad debt.
@@ -1280,14 +1307,11 @@ pub mod pallet {
             let risk_parameters = Self::collateral_infos(cdp.collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?
                 .risk_parameters;
-            let mut desired_kusd_amount = cdp
-                .debt
-                .checked_add(Self::liquidation_penalty() * cdp.debt)
-                .ok_or(Error::<T>::ArithmeticError)?;
             let collateral_to_liquidate = cdp
                 .collateral_amount
                 .min(risk_parameters.max_liquidation_lot);
             ensure!(collateral_to_liquidate > 0, Error::<T>::ZeroLiquidationLot);
+
             // With quote before exchange we are sure that it will not result in infinite amount in for exchange and
             // there is enough liquidity for swap.
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
@@ -1300,29 +1324,49 @@ pub mod pallet {
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 true,
             )?;
-            desired_kusd_amount = desired_kusd_amount.min(amount);
+            let desired_kusd_amount = cdp
+                .debt
+                .checked_add(Self::liquidation_penalty() * cdp.debt)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            let swap_amount = if amount > desired_kusd_amount {
+                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate)
+            } else {
+                SwapAmount::with_desired_input(collateral_to_liquidate, Balance::zero())
+            };
+
+            // Since there is an issue with LiquidityProxy exchange amount that may differ from
+            // requested one, we check balances here.
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
             let kusd_balance_before =
                 T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let swap_outcome = T::LiquidityProxy::exchange(
+            let collateral_balance_before =
+                T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
+
+            T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 technical_account_id,
                 technical_account_id,
                 &cdp.collateral_asset_id,
                 &T::KusdAssetId::get(),
-                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate),
+                swap_amount,
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
+
             let kusd_balance_after =
                 T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
+            let collateral_balance_after =
+                T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
             // This value may differ from `desired_kusd_amount`, so this is calculation of actual
             // amount swapped.
             let kusd_swapped = kusd_balance_after
                 .checked_sub(kusd_balance_before)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            let collateral_liquidated = swap_outcome.amount;
+            let collateral_liquidated = collateral_balance_before
+                .checked_sub(collateral_balance_after)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * kusd_swapped.min(cdp.debt);
             let proceeds = kusd_swapped - penalty;
