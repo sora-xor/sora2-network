@@ -218,7 +218,7 @@
 <span class="kw">use </span>sp_runtime::traits::{CheckedMul, Zero};
 <span class="kw">use </span>sp_runtime::{SaturatedConversion, Saturating};
 
-<span class="doccomment">/// GTC Limit Order
+<span class="doccomment">/// GTD (good till date) Limit Order
 </span><span class="attr">#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 </span><span class="kw">pub struct </span>LimitOrder&lt;T&gt;
