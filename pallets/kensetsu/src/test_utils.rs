@@ -137,7 +137,7 @@ pub fn set_xor_as_collateral_type(
 }
 
 /// Makes CDPs unsafe by changing liquidation ratio.
-pub fn make_cdp_unsafe() {
+pub fn make_cdps_unsafe() {
     CollateralInfos::<TestRuntime>::mutate(XOR, |info| {
         if let Some(info) = info.as_mut() {
             info.risk_parameters = CollateralRiskParameters {

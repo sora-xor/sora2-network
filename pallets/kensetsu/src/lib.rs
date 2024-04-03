@@ -146,7 +146,7 @@ pub mod pallet {
     use sp_arithmetic::traits::{CheckedMul, Saturating};
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One};
+    use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One, Zero};
     use sp_std::collections::btree_set::BTreeSet;
     use sp_std::vec::Vec;
 
@@ -1243,14 +1243,11 @@ pub mod pallet {
             let risk_parameters = Self::collateral_infos(cdp.collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?
                 .risk_parameters;
-            let mut desired_kusd_amount = cdp
-                .debt
-                .checked_add(Self::liquidation_penalty() * cdp.debt)
-                .ok_or(Error::<T>::ArithmeticError)?;
             let collateral_to_liquidate = cdp
                 .collateral_amount
                 .min(risk_parameters.max_liquidation_lot);
             ensure!(collateral_to_liquidate > 0, Error::<T>::ZeroLiquidationLot);
+
             // With quote before exchange we are sure that it will not result in infinite amount in for exchange and
             // there is enough liquidity for swap.
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
@@ -1263,29 +1260,49 @@ pub mod pallet {
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 true,
             )?;
-            desired_kusd_amount = desired_kusd_amount.min(amount);
+            let desired_kusd_amount = cdp
+                .debt
+                .checked_add(Self::liquidation_penalty() * cdp.debt)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            let swap_amount = if amount > desired_kusd_amount {
+                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate)
+            } else {
+                SwapAmount::with_desired_input(collateral_to_liquidate, Balance::zero())
+            };
+
+            // Since there is an issue with LiquidityProxy exchange amount that may differ from
+            // requested one, we check balances here.
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
             let kusd_balance_before =
                 T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let swap_outcome = T::LiquidityProxy::exchange(
+            let collateral_balance_before =
+                T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
+
+            T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
                 technical_account_id,
                 technical_account_id,
                 &cdp.collateral_asset_id,
                 &T::KusdAssetId::get(),
-                SwapAmount::with_desired_output(desired_kusd_amount, collateral_to_liquidate),
+                swap_amount,
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
+
             let kusd_balance_after =
                 T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
+            let collateral_balance_after =
+                T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
             // This value may differ from `desired_kusd_amount`, so this is calculation of actual
             // amount swapped.
             let kusd_swapped = kusd_balance_after
                 .checked_sub(kusd_balance_before)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            let collateral_liquidated = swap_outcome.amount;
+            let collateral_liquidated = collateral_balance_before
+                .checked_sub(collateral_balance_after)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * kusd_swapped.min(cdp.debt);
             let proceeds = kusd_swapped - penalty;
