@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["AddWhitelistedContributor","AddWhitelistedIloOrganizer","ChangeCeresBurnFee","ChangeCeresContributionFee","ChangeFeePercentForRaisedFunds","Claim","ClaimLpTokens","ClaimPswapRewards","Contribute","CreateIlo","EmergencyWithdraw","FinishIlo","RemoveWhitelistedContributor","RemoveWhitelistedIloOrganizer","TransactionApi"]};

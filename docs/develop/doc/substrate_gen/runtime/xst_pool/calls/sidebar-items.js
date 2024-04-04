@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["DisableSyntheticAsset","EnableSyntheticAsset","RegisterSyntheticAsset","RemoveSyntheticAsset","SetReferenceAsset","SetSyntheticAssetFee","SetSyntheticBaseAssetFloorPrice","TransactionApi"]};

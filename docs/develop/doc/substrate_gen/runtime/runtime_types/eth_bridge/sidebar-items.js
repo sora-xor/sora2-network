@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["BridgeSignatureVersion","BridgeStatus"],"mod":["offchain","pallet","requests"]};

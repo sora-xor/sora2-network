@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["GenericAccount","GenericAssetId","GenericBalance","GenericCommitment","GenericNetworkId","GenericTimepoint","LiberlandAssetId","SubNetworkId"],"mod":["difficulty","ethashproof","evm","header","log","network_config","substrate","types"]};

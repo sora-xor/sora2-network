@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["FillInput","OrderBookAttributes","RandomAmount","SideFillInput"]};

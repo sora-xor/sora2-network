@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["CandidateSlashed","ElectionError","EmptyTerm","MemberKicked","NewTerm","Renounced","SeatHolderSlashed"]};

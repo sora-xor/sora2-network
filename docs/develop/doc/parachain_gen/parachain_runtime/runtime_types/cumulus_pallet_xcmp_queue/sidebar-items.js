@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["InboundState","OutboundState"],"mod":["pallet"],"struct":["InboundChannelDetails","OutboundChannelDetails","QueueConfigData"]};

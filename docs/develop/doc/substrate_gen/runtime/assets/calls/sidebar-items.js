@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["Burn","ForceMint","Mint","Register","SetNonMintable","TransactionApi","Transfer","UpdateBalance","UpdateInfo"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["NetworkInitialized","PeerAdded","PeerRemoved","VerificationSuccessful"]};

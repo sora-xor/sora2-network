@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["H128","H160","H256","H512","U256"]};

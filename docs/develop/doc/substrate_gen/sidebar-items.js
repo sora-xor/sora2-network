@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["AssetKind","BridgeSignatureVersion"],"mod":["config","runtime"],"struct":["SignatureParams"],"type":["MaxU32","UnboundedBridgeMessage","UnboundedGenericCommitment","UnboundedGenericCommitmentWithBlock"]};

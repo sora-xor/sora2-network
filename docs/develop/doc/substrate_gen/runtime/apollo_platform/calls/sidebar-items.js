@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["AddPool","Borrow","ChangeRewardsAmount","ChangeRewardsPerBlock","GetRewards","Lend","Liquidate","RemovePool","Repay","TransactionApi","Withdraw"]};

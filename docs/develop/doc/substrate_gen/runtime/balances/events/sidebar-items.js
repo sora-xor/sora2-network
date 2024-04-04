@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["BalanceSet","Deposit","DustLost","Endowed","ReserveRepatriated","Reserved","Slashed","Transfer","Unreserved","Withdraw"]};

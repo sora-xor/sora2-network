@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["MultiProof","OriginCaller","RuntimeCall","RuntimeEvent"],"mod":["opaque"],"struct":["NposCompactSolution24","Runtime"]};
