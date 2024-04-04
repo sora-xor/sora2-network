@@ -86,7 +86,7 @@ pub struct CollateralRiskParameters {
     /// The max amount of collateral can be liquidated in one round
     pub max_liquidation_lot: Balance,
 
-    /// Protocol Interest rate per second
+    /// Protocol Interest rate per millisecond
     pub stability_fee_rate: FixedU128,
 
     /// Minimal deposit in collateral AssetId.

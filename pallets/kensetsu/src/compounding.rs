@@ -67,8 +67,8 @@ pub fn compound(
 fn tests_compound_zero_rate() {
     let initial_balance = balance!(10000);
     let rate = FixedU128::from(0);
-    // 1 year in seconds
-    let time = 31556952;
+    // 1 year in milliseconds
+    let time = 31556952000;
     // balance shall not change
     assert_eq!(
         compound(initial_balance, rate, time).unwrap(),
@@ -81,7 +81,7 @@ fn test_compound_zero_principal() {
     let initial_balance = balance!(0);
     let rate = FixedU128::from(11);
     // 1 year in seconds
-    let time = 31556952;
+    let time = 31556952000;
     // shall not change
     assert_eq!(
         compound(initial_balance, rate, time).unwrap(),
