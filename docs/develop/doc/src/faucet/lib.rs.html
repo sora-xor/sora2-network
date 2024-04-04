@@ -311,6 +311,9 @@
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -345,7 +348,9 @@
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
 
-</span><span class="kw">use </span>common::{balance, AssetInfoProvider, Balance, HERMES_ASSET_ID, PSWAP, VAL, XOR};
+</span><span class="kw">use </span>common::{
+    balance, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL, XOR,
+};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>hex_literal::hex;
 <span class="kw">use </span>sp_arithmetic::traits::Saturating;
@@ -573,6 +578,7 @@
             || asset_id == pswap
             || asset_id == ceres
             || asset_id == HERMES_ASSET_ID.into()
+            || asset_id == APOLLO_ASSET_ID.into()
         {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{

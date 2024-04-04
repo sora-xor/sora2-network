@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Borrowed","ChangedRewardsAmount","ChangedRewardsAmountPerBlock","ClaimedBorrowingRewards","ClaimedLendingRewards","Lended","Liquidated","PoolAdded","PoolRemoved","Repaid","Withdrawn"]};
