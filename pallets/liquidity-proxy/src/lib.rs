@@ -34,9 +34,11 @@
 
 extern crate core;
 
-mod liquidity_aggregator;
+pub mod liquidity_aggregator;
 #[cfg(test)]
 mod mock;
+#[cfg(test)]
+mod new_tests;
 #[cfg(test)]
 mod test_utils;
 #[cfg(test)]
@@ -2162,6 +2164,29 @@ impl<T: Config> Pallet<T> {
             max_input_amount,
         )?;
         Ok((adar_commission, executed_batch_input_amount, total_weight))
+    }
+
+    /// Wrapper for `quote_single` to make possible call it from tests.
+    pub fn test_quote(
+        dex_id: T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
+    ) -> Result<AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>, DispatchError>
+    {
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        Pallet::<T>::quote_single(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            filter,
+            true,
+            deduce_fee,
+        )
+        .map(|(aggregated_swap_outcome, _, _, _)| aggregated_swap_outcome)
     }
 }
 

@@ -41,7 +41,11 @@ sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-
 common = { path = "../../common", features = ["test"] }
 dex-api = { path = "../dex-api" }
 dex-manager = { path = "../dex-manager" }
+framenode-chain-spec = { path = "../../node/chain_spec", features = ["test", "private-net"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "private-net"] }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
+order-book = { path = "../order-book" }
+qa-tools = { path = "../qa-tools" }
 technical = { path = "../technical" }
 permissions = { path = "../permissions" }
 vested-rewards = { path = "../vested-rewards" }
