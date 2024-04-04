@@ -284,7 +284,6 @@ members = [
     "pallets/kensetsu",
     "pallets/band",
     "pallets/qa-tools",
-    "substrate-gen",
     "node/",
     "utils/parse",
     "utils/generate-bags",
