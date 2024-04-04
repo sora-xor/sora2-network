@@ -216,6 +216,31 @@
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -281,6 +306,7 @@
 	<span class="kw">fn </span>refresh_pool(a: u32, ) -&gt; Weight;
 	<span class="kw">fn </span>prepare_accounts_for_vesting(a: u32, b: u32, ) -&gt; Weight;
 	<span class="kw">fn </span>vest_account_rewards(a: u32, ) -&gt; Weight;
+	<span class="kw">fn </span>set_lp_min_xor_for_bonus_reward() -&gt; Weight;
 }
 
 <span class="doccomment">/// Weights for farming using the Substrate node and recommended hardware.
@@ -350,6 +376,18 @@
 			.saturating_add(T::DbWeight::get().writes((<span class="number">2_u64</span>).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(<span class="number">0</span>, <span class="number">5468</span>).saturating_mul(a.into()))
 	}
+
+	<span class="doccomment">/// Storage: Farming LpMinXorForBonusReward (r:1 w:1)
+	/// Proof Skipped: Farming LpMinXorForBonusReward (max_values: Some(1), max_size: None, mode: Measured)
+	</span><span class="kw">fn </span>set_lp_min_xor_for_bonus_reward() -&gt; Weight {
+		<span class="comment">// Proof Size summary in bytes:
+		//  Measured:  `109`
+		//  Estimated: `604`
+		// Minimum execution time: 8_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">9_000_000</span>, <span class="number">604</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">1</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>))
+	}
 }
 
 <span class="comment">// For backwards compatibility and tests
@@ -417,6 +455,18 @@
 			.saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
 			.saturating_add(RocksDbWeight::get().writes((<span class="number">2_u64</span>).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(<span class="number">0</span>, <span class="number">5468</span>).saturating_mul(a.into()))
+	}
+
+	<span class="doccomment">/// Storage: Farming LpMinXorForBonusReward (r:1 w:1)
+	/// Proof Skipped: Farming LpMinXorForBonusReward (max_values: Some(1), max_size: None, mode: Measured)
+	</span><span class="kw">fn </span>set_lp_min_xor_for_bonus_reward() -&gt; Weight {
+		<span class="comment">// Proof Size summary in bytes:
+		//  Measured:  `109`
+		//  Estimated: `604`
+		// Minimum execution time: 8_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">9_000_000</span>, <span class="number">604</span>)
+			.saturating_add(RocksDbWeight::get().reads(<span class="number">1</span>))
+			.saturating_add(RocksDbWeight::get().writes(<span class="number">1</span>))
 	}
 }
 </code></pre></div>
