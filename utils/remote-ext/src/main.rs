@@ -2,7 +2,6 @@
 #![allow(clippy::all)]
 
 use clap::Parser;
-use common::prelude::SwapVariant;
 use common::{DEXId, FilterMode};
 use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
@@ -58,7 +57,6 @@ async fn main() -> AnyResult<()> {
                 &DEXId::Polkaswap.into(),
                 &input,
                 &output,
-                SwapVariant::WithDesiredOutput,
                 &Vec::new(),
                 &FilterMode::Disabled,
             )

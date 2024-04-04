@@ -34,14 +34,15 @@
 #![feature(int_roundings)]
 
 use assets::AssetIdOf;
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
-    EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
-    TradingPair,
+    BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
+    SwapOutcome, TradingPair,
 };
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason, SwapChunk,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
@@ -51,10 +52,11 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, CheckedMul, MaybeDisplay, Zero};
+use sp_runtime::traits::{
+    AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedMul, MaybeDisplay, Zero,
+};
 use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
-use sp_std::collections::vec_deque::VecDeque;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -188,6 +190,7 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The storage contains the information about order book, it's parameters and statuses.
     #[pallet::storage]
     #[pallet::getter(fn order_books)]
     pub type OrderBooks<T: Config> = StorageMap<
@@ -198,6 +201,7 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// The storage contains the information about all limit orders in all order books.
     #[pallet::storage]
     #[pallet::getter(fn limit_orders)]
     pub type LimitOrders<T: Config> = StorageDoubleMap<
@@ -210,6 +214,7 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// The index contains the list with the bid order `id` for each price.
     #[pallet::storage]
     #[pallet::getter(fn bids)]
     pub type Bids<T: Config> = StorageDoubleMap<
@@ -222,6 +227,7 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// The index contains the list with the ask order `id` for each price.
     #[pallet::storage]
     #[pallet::getter(fn asks)]
     pub type Asks<T: Config> = StorageDoubleMap<
@@ -234,6 +240,7 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// The index contains the aggregated information about bids with total volume of orders for each price.
     #[pallet::storage]
     #[pallet::getter(fn aggregated_bids)]
     pub type AggregatedBids<T: Config> = StorageMap<
@@ -244,6 +251,7 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// The index contains the aggregated information about asks with total volume of orders for each price.
     #[pallet::storage]
     #[pallet::getter(fn aggregated_asks)]
     pub type AggregatedAsks<T: Config> = StorageMap<
@@ -254,6 +262,7 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// The index contains the list with the order `id` for the user in different order books.
     #[pallet::storage]
     #[pallet::getter(fn user_limit_orders)]
     pub type UserLimitOrders<T: Config> = StorageDoubleMap<
@@ -266,6 +275,7 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// The tech storage that is used in the order expiration mechanism.
     #[pallet::storage]
     #[pallet::getter(fn expired_orders_at)]
     pub type ExpirationsAgenda<T: Config> = StorageMap<
@@ -276,6 +286,7 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// The tech storage that is used during the process of updating the order book.
     #[pallet::storage]
     #[pallet::getter(fn alignment_cursor)]
     pub type AlignmentCursor<T: Config> = StorageMap<
@@ -521,6 +532,29 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Creates a new order book for the pair of assets.
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account who must have permissions to create the order book
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        /// - `tick_size`: price step
+        /// - `step_lot_size`: amount step
+        /// - `min_lot_size`: minimal order amount
+        /// - `max_lot_size`: maximal order amount
+        ///
+        /// # Rules:
+        /// - root & tech committee can create any order book
+        /// - a regular user can create an order book only for indivisible base assets (most likely NFT) and only if they have this asset on their balance
+        /// - trading pair for the assets must be registered before the creating an order book
+        ///
+        /// # Attribute rules (for `tick_size`, `step_lot_size`, `min_lot_size` & `max_lot_size`):
+        /// - all attributes must be non-zero
+        /// - `min_lot_size` <= `max_lot_size`
+        /// - `step_lot_size` <= `min_lot_size`
+        /// - `min_lot_size` & `max_lot_size` must be a multiple of `step_lot_size`
+        /// - `max_lot_size` <= `min_lot_size` * `SOFT_MIN_MAX_RATIO`, now `SOFT_MIN_MAX_RATIO` = 1 000
+        /// - `max_lot_size` <= total supply of `base` asset
+        /// - precision of `tick_size` * `step_lot_size` must not overflow **18 digits**
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::create_orderbook())]
         pub fn create_orderbook(
@@ -580,6 +614,22 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Deletes the order book
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account who must have permissions to delete the order book
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        ///
+        /// # Rules:
+        /// - only root & tech committee can delete the order book
+        /// - status of the order book must be [`OnlyCancel`](OrderBookStatus::OnlyCancel) or [`Stop`](OrderBookStatus::Stop)
+        /// - the order book must be empty - doesn't contain any orders
+        ///
+        /// # Real life delete process:
+        /// 1. Announce that the order book will be deleted.
+        /// 2. Stop the order book by changing the status to [`OnlyCancel`](OrderBookStatus::OnlyCancel) or [`Stop`](OrderBookStatus::Stop)
+        /// 3. Wait until users cancel their orders or their lifetime just expires (maximum 1 month).
+        /// 4. Delete the empty order book.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
         pub fn delete_orderbook(
@@ -615,6 +665,47 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Updates the attributes of the order book
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account who must have permissions to update the order book
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        /// - `tick_size`: price step
+        /// - `step_lot_size`: amount step
+        /// - `min_lot_size`: minimal order amount
+        /// - `max_lot_size`: maximal order amount
+        ///
+        /// # Rules:
+        /// - only root & tech committee can update the order book
+        /// - status of the order book must be [`OnlyCancel`](OrderBookStatus::OnlyCancel) or [`Stop`](OrderBookStatus::Stop)
+        /// - inernal tech status of the order book must be [`Ready`](OrderBookTechStatus::Ready), that means the previos update is completed
+        ///
+        /// # Attribute rules (for `tick_size`, `step_lot_size`, `min_lot_size` & `max_lot_size`):
+        /// - all attributes must be non-zero
+        /// - `min_lot_size` <= `max_lot_size`
+        /// - `step_lot_size` <= `min_lot_size`
+        /// - `min_lot_size` & `max_lot_size` must be a multiple of `step_lot_size`
+        /// - `max_lot_size` <= total supply of `base` asset
+        /// - precision of `tick_size` * `step_lot_size` must not overflow 18 digits
+        /// - `max_lot_size` <= `min_lot_size` * `SOFT_MIN_MAX_RATIO`, now `SOFT_MIN_MAX_RATIO` = 1 000
+        /// - `max_lot_size` <= **old** `min_lot_size` * `HARD_MIN_MAX_RATIO`, now `HARD_MIN_MAX_RATIO` = 4 000
+        ///
+        /// # Real life update process:
+        /// 1. Announce that the order book will be updated.
+        /// 2. Stop the order book by changing the status to [`OnlyCancel`](OrderBookStatus::OnlyCancel) or [`Stop`](OrderBookStatus::Stop)
+        /// 3. Update the order book attributes according to the rules[^note].
+        /// 4. Wait the orders alignment if it is necessary - the order book tech status must become [`Ready`](OrderBookTechStatus::Ready).
+        /// 5. Change the order book status back to [`Trade`](OrderBookStatus::Trade) or other necessary status.
+        /// 6. Announce that the order book update is completed.
+        ///
+        /// [^note]: according to tech reasons it is forbidden to update `max_lot_size` with too large a value (see last 2 rules).
+        /// For example, if the current values `min_lot_size` = 1 & `max_lot_size` = 1 000,
+        /// we cannot change it to `min_lot_size` = 1 000 & `max_lot_size` = 1 000 000.
+        /// In this case it is necessary to do several update rounds:
+        /// 1. `min_lot_size`: 1 --> 1 000, `max_lot_size`: 1 000 --> 4 000
+        /// 2. `max_lot_size`: 4 000 --> 1 000 000
+        ///
+        /// It is also not recommended to batch these updates, because the tech status of the order book can be changed after the 1st update and the 2nd update will be declined in this case.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::update_orderbook())]
         pub fn update_orderbook(
@@ -680,6 +771,18 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Sets the order book status
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account who must have permissions to change the order book status
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        /// - `status`: one of the statuses from [OrderBookStatus]
+        ///
+        /// # Rules:
+        /// - only root & tech committee can set the order book status
+        /// - if the order book is locked by updating (tech status is [`Updating`](OrderBookTechStatus::Updating)), the allowed statues to set:
+        ///     - [`OnlyCancel`](OrderBookStatus::OnlyCancel)
+        ///     - [`Stop`](OrderBookStatus::Stop)
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
         pub fn change_orderbook_status(
@@ -708,6 +811,24 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Places the limit order into the order book
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account, the limit order owner
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        /// - `price`: price in the `quote asset`
+        /// - `amount`: volume of the limit order in the `base asset`
+        /// - `side`: [side](PriceVariant) where to place the limit order
+        /// - `lifespan`: life duration of the limit order in millisecs, if not defined the default value 30 days is set
+        ///
+        /// # Rules:
+        /// - `price` must be a multiple of [`OrderBook::tick_size`]
+        /// - `amount` >= [`OrderBook::min_lot_size`]
+        /// - `amount` <= [`OrderBook::max_lot_size`]
+        /// - `amount` must be a multiple of [`OrderBook::step_lot_size`]
+        /// - if the `price` crosses the spread (the opposite `side`):
+        ///     - if [`OrderBook::status`] allows to trade - the limit order is converted into market order and the exchange occurs
+        ///     - if [`OrderBook::status`] doesn't allow to trade - transaction fails
         #[pallet::call_index(4)]
         // in the worst case the limit order is converted into market order and the exchange occurs
         #[pallet::weight(Pallet::<T>::exchange_weight())]
@@ -767,6 +888,18 @@ pub mod pallet {
             })
         }
 
+        /// Cancels the limit order
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account who owns the limit order
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        /// - `order_id`: `id` of the limit order
+        ///
+        /// # Rules:
+        /// - only the order owner can cancel the limit order
+        ///
+        /// # Note:
+        /// Network fee isn't charged if the order is successfully cancelled by the owner
         #[pallet::call_index(5)]
         #[pallet::weight(
             <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
@@ -795,6 +928,17 @@ pub mod pallet {
             })
         }
 
+        /// Cancels the list of limit orders
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account who owns the limit orders
+        /// - `limit_orders_to_cancel`: the list with [`order_book_id`](OrderBookId) & `order_id` pairs to cancel
+        ///
+        /// # Rules:
+        /// - only the owner of **all** orders can cancel all limit orders from the list
+        ///
+        /// # Note:
+        /// Network fee isn't charged if orders are successfully cancelled by the owner
         #[pallet::call_index(6)]
         #[pallet::weight({
             let cancel_limit_order = <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
@@ -833,6 +977,19 @@ pub mod pallet {
             })
         }
 
+        /// Executes the market order
+        ///
+        /// # Parameters:
+        /// - `origin`: caller account
+        /// - `order_book_id`: [order book identifier](OrderBookId) that contains: `DexId`, `base asset` & `quote asset`
+        /// - `direction`: [direction](PriceVariant) of the market order
+        /// - `amount`: volume of the `base asset` to trade
+        ///
+        /// # Rules:
+        /// - works only for order books with indivisible `base asset`, because there is no other ability to trade such assets. All other divisible assets must be traded by `liquidity_proxy::swap`
+        /// - `amount` >= [`OrderBook::min_lot_size`]
+        /// - `amount` <= [`OrderBook::max_lot_size`]
+        /// - `amount` must be a multiple of [`OrderBook::step_lot_size`]
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::execute_market_order())]
         pub fn execute_market_order(
@@ -1282,61 +1439,143 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(VecDeque<SwapChunk<Balance>>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
+
+        if amount.amount().is_zero() {
+            return Ok((DiscreteQuotation::new(), Weight::zero()));
+        }
 
         let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
         let mut data = CacheDataLayer::<T>::new();
 
         let direction = order_book.get_direction(input_asset_id, output_asset_id)?;
 
-        let limit = match amount {
+        let market_depth = order_book.market_depth(
+            direction.switched(),
+            Some(OrderAmount::Base(order_book.max_lot_size)),
+            &mut data,
+        );
+
+        let (base_min_amount, quote_min_amount) = order_book.sum_market(
+            market_depth
+                .iter()
+                .map(|(ref price, ref volume)| (price, volume)),
+            Some(OrderAmount::Base(order_book.min_lot_size)),
+            false,
+        )?;
+
+        if *base_min_amount.value() < order_book.min_lot_size {
+            // order-book has not ehough liquidity even for min amount
+            return Ok((
+                DiscreteQuotation::new(),
+                Self::step_quote_weight(recommended_samples_count),
+            ));
+        }
+
+        let (base_max_amount, quote_max_amount) = order_book.sum_market(
+            market_depth
+                .iter()
+                .map(|(ref price, ref volume)| (price, volume)),
+            Some(OrderAmount::Base(order_book.max_lot_size)),
+            false,
+        )?;
+
+        let mut quotation = DiscreteQuotation::new();
+
+        let target = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 PriceVariant::Buy => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Input(*quote_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Input(*quote_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Output(*order_book.step_lot_size.balance()));
+
                     OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
                 }
-                PriceVariant::Sell => OrderAmount::Base(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_in),
-                ),
+                PriceVariant::Sell => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Input(*base_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Input(*base_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Input(*order_book.step_lot_size.balance()));
+
+                    OrderAmount::Base(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_in),
+                    )
+                }
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
-                PriceVariant::Buy => OrderAmount::Base(
-                    order_book
-                        .step_lot_size
-                        .copy_divisibility(desired_amount_out),
-                ),
+                PriceVariant::Buy => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Output(*base_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Output(*base_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Output(*order_book.step_lot_size.balance()));
+
+                    OrderAmount::Base(
+                        order_book
+                            .step_lot_size
+                            .copy_divisibility(desired_amount_out),
+                    )
+                }
                 PriceVariant::Sell => {
+                    quotation.limits.min_amount =
+                        Some(SideAmount::Output(*quote_min_amount.value().balance()));
+                    quotation.limits.max_amount =
+                        Some(SideAmount::Output(*quote_max_amount.value().balance()));
+                    quotation.limits.amount_precision =
+                        Some(SideAmount::Input(*order_book.step_lot_size.balance()));
+
                     OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
                 }
             },
         };
 
-        let market_depth = order_book.market_depth(direction.switched(), Some(limit), &mut data);
-
-        let mut chunks = VecDeque::new();
+        let mut target_sum = BalanceUnit::zero();
         for (price, base_volume) in market_depth.iter() {
             let quote_volume = price
                 .checked_mul(base_volume)
                 .ok_or(Error::<T>::AmountCalculationFailed)?;
+
             match direction {
-                PriceVariant::Buy => chunks.push_back(SwapChunk::new(
+                PriceVariant::Buy => quotation.chunks.push_back(SwapChunk::new(
                     *quote_volume.balance(),
                     *base_volume.balance(),
-                    Balance::zero(),
+                    Default::default(),
                 )),
-                PriceVariant::Sell => chunks.push_back(SwapChunk::new(
+                PriceVariant::Sell => quotation.chunks.push_back(SwapChunk::new(
                     *base_volume.balance(),
                     *quote_volume.balance(),
-                    Balance::zero(),
+                    Default::default(),
                 )),
+            }
+
+            target_sum = match target {
+                OrderAmount::Base(..) => target_sum
+                    .checked_add(base_volume)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+                OrderAmount::Quote(..) => target_sum
+                    .checked_add(&quote_volume)
+                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+            };
+            if target_sum >= *target.value() {
+                break;
             }
         }
 
-        Ok((chunks, Self::step_quote_weight(recommended_samples_count)))
+        Ok((
+            quotation,
+            Self::step_quote_weight(recommended_samples_count),
+        ))
     }
 
     fn exchange(

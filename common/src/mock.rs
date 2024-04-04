@@ -106,8 +106,8 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::ETH => AcmeSpyKit,
             PredefinedAssetId::XSTUSD => Mango,
             PredefinedAssetId::XST => BatteryForMusicPlayer,
-            PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KEN => JesterMarotte,
+            PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
         }
     }

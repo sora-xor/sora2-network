@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.2.1"
+version = "3.2.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -48,6 +48,7 @@ leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.gi
 bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false }
 bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false }
 parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
@@ -74,7 +75,7 @@ faucet = { path = "../pallets/faucet", default-features = false, optional = true
 hermes-governance-platform = { path = "../pallets/hermes-governance-platform", default-features = false }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-kensetsu = { path = "../pallets/kensetsu", default-features = false, optional = true }
+kensetsu = { path = "../pallets/kensetsu", default-features = false }
 kensetsu-benchmarking = { path = "../pallets/kensetsu/benchmarking", default-features = false, optional = true }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
@@ -169,7 +170,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 [dev-dependencies]
-env_logger = "0.9.0"
+env_logger = "0.10.0"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 tokio = { version = "1.19.2", features = ["macros"] }
 sp-tracing = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -289,6 +290,7 @@ std = [
     "sp-transaction-pool/std",
     "sp-version/std",
     "sp-npos-elections/std",
+    "substrate-bridge-app/std",
     "technical/std",
     "trading-pair-runtime-api/std",
     "trading-pair/std",
@@ -334,6 +336,7 @@ runtime-benchmarks = [
     "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
     "ceres-liquidity-locker-benchmarking/runtime-benchmarks",
+    "common/runtime-benchmarks",
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
     "dex-api/runtime-benchmarks",
@@ -350,6 +353,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
+    "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",

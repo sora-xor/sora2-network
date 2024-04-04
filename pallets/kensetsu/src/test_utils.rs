@@ -121,6 +121,7 @@ pub fn set_xor_as_collateral_type(
     hard_cap: Balance,
     liquidation_ratio: Perbill,
     stability_fee_rate: FixedU128,
+    minimal_collateral_deposit: Balance,
 ) {
     CollateralInfos::<TestRuntime>::set(
         XOR,
@@ -130,6 +131,7 @@ pub fn set_xor_as_collateral_type(
                 max_liquidation_lot: balance!(1000),
                 liquidation_ratio,
                 stability_fee_rate,
+                minimal_collateral_deposit,
             },
             kusd_supply: balance!(0),
             last_fee_update_time: 0,
@@ -140,7 +142,7 @@ pub fn set_xor_as_collateral_type(
 }
 
 /// Makes CDPs unsafe by changing liquidation ratio.
-pub fn make_cdp_unsafe() {
+pub fn make_cdps_unsafe() {
     CollateralInfos::<TestRuntime>::mutate(XOR, |info| {
         if let Some(info) = info.as_mut() {
             info.risk_parameters = CollateralRiskParameters {
@@ -148,6 +150,7 @@ pub fn make_cdp_unsafe() {
                 max_liquidation_lot: balance!(1000),
                 liquidation_ratio: Perbill::from_percent(1),
                 stability_fee_rate: FixedU128::zero(),
+                minimal_collateral_deposit: balance!(0),
             }
         }
     });

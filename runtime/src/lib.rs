@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 73,
+    spec_version: 74,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 73,
+    transaction_version: 74,
     state_version: 0,
 };
 
@@ -281,6 +281,18 @@ pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
 pub const FARMING_VESTING_COEFF: u32 = 3;
 pub const FARMING_VESTING_FREQUENCY: BlockNumber = 6 * HOURS;
 
+#[cfg(feature = "private-net")]
+parameter_types! {
+    pub const BondingDuration: sp_staking::EraIndex = 1; // 1 era for unbonding (6 hours).
+    pub const SlashDeferDuration: sp_staking::EraIndex = 0; // no slash cancellation on testnets expected.
+}
+
+#[cfg(not(feature = "private-net"))]
+parameter_types! {
+    pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
+    pub const SlashDeferDuration: sp_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
+}
+
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const Version: RuntimeVersion = VERSION;
@@ -288,10 +300,8 @@ parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
-    pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const SlashDeferDuration: sp_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
     pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
@@ -2183,6 +2193,12 @@ impl bridge_proxy::Config for Runtime {
 
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
+
+    #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+    type LiberlandApp = SubstrateBridgeApp;
+    #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
+    type LiberlandApp = ();
+
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
         liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
@@ -2191,6 +2207,7 @@ impl bridge_proxy::Config for Runtime {
         EnsureRoot<AccountId>,
     >;
     type WeightInfo = ();
+    type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
 #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -2303,6 +2320,21 @@ impl parachain_bridge_app::Config for Runtime {
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
+}
+
+#[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
+impl substrate_bridge_app::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
+    type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeProxy;
+    type AccountIdConverter = impls::LiberlandAccountIdConverter;
+    type AssetIdConverter = impls::LiberlandAssetIdConverter;
+    type BalancePrecisionConverter = impls::GenericBalancePrecisionConverter;
+    type BridgeAssetLocker = BridgeProxy;
+    type WeightInfo = crate::weights::substrate_bridge_app::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2444,6 +2476,9 @@ construct_runtime! {
         ParachainBridgeApp: parachain_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
+
+        #[cfg(feature = "ready-to-test")] // Generic Substrate Bridge
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
         // Beefy pallets should be placed after channels
@@ -2885,7 +2920,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(quote_info, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(quote_info, _, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(0),
                 fee: quote_info.outcome.fee,
@@ -3230,6 +3265,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
+            #[cfg(feature = "wip")] // Liberland bridge
+            list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
 
@@ -3332,6 +3369,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
+            #[cfg(feature = "wip")] // Liberland bridge
+            add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
 
