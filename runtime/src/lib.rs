@@ -1598,7 +1598,8 @@ impl farming::Config for Runtime {
     type Scheduler = Scheduler;
     type RewardDoublingAssets = FarmingRewardDoublingAssets;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = farming::weights::SubstrateWeight<Runtime>;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -2436,7 +2437,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Pallet, Storage} = 42,
+        Farming: farming::{Pallet, Call, Storage, Event<T>} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
