@@ -235,19 +235,28 @@ pub mod pallet {
                         match CdpId::decode(&mut randomness.as_ref()) {
                             Ok(random_number) => {
                                 // Random bias by modulus operation is acceptable here
-                                let cdp_id = random_number % unsafe_cdp_ids.len() as u128;
-                                debug!("Liquidation of CDP {:?}", cdp_id);
-                                let call = Call::<T>::liquidate { cdp_id };
-                                if let Err(err) =
-                                    SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
-                                        call.into(),
-                                    )
-                                {
-                                    warn!(
-                                "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
-                                cdp_id, err
-                            );
-                                }
+                                let random_id =
+                                    (random_number % unsafe_cdp_ids.len() as u128) as usize;
+                                unsafe_cdp_ids
+                                    .get(random_id)
+                                    .map_or_else(
+                                        || {
+                                            warn!("Failed to get random cdp_id {}.", random_id);
+                                        },
+                                        |cdp_id| {
+                                        debug!("Liquidation of CDP {:?}", cdp_id);
+                                        let call = Call::<T>::liquidate { cdp_id: *cdp_id };
+                                        if let Err(err) =
+                                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
+                                                call.into(),
+                                            )
+                                        {
+                                            warn!(
+                                                "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
+                                                cdp_id, err
+                                            );
+                                        }
+                                    });
                             }
                             Err(error) => {
                                 warn!("Failed to get randomness during liquidation: {}", error);
