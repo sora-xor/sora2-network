@@ -1976,6 +1976,22 @@ impl kensetsu::Config for Runtime {
 }
 
 parameter_types! {
+    pub ApolloOffchainWorkerTxPriority: TransactionPriority =
+        Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 5; // set 100 for release
+}
+
+impl apollo_platform::Config for Runtime {
+    const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
+    type RuntimeEvent = RuntimeEvent;
+    type PriceTools = PriceTools;
+    type LiquidityProxyPallet = LiquidityProxy;
+    type UnsignedPriority = ApolloOffchainWorkerTxPriority;
+    type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
+    type WeightInfo = apollo_platform::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
     // small value for test environment in order to check postponing expirations
     pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(15) * BlockWeights::get().max_block;
     pub AlignmentSchedulerMaxWeight: Weight = Perbill::from_percent(35) * BlockWeights::get().max_block;
@@ -2497,6 +2513,8 @@ construct_runtime! {
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
+
+        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
     }
 }
 
@@ -3240,6 +3258,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
+            list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
@@ -3344,6 +3363,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
+            add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
