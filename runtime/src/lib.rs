@@ -281,6 +281,18 @@ pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
 pub const FARMING_VESTING_COEFF: u32 = 3;
 pub const FARMING_VESTING_FREQUENCY: BlockNumber = 6 * HOURS;
 
+#[cfg(feature = "private-net")]
+parameter_types! {
+    pub const BondingDuration: sp_staking::EraIndex = 1; // 1 era for unbonding (6 hours).
+    pub const SlashDeferDuration: sp_staking::EraIndex = 0; // no slash cancellation on testnets expected.
+}
+
+#[cfg(not(feature = "private-net"))]
+parameter_types! {
+    pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
+    pub const SlashDeferDuration: sp_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
+}
+
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const Version: RuntimeVersion = VERSION;
@@ -288,10 +300,8 @@ parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
-    pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const SlashDeferDuration: sp_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
     pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
