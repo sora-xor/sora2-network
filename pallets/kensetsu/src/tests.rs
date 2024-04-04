@@ -33,9 +33,9 @@ use super::*;
 use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     alice, alice_account_id, assert_bad_debt, assert_balance, bob, create_cdp_for_xor,
-    demeter_farming_account_id, deposit_xor_to_cdp, get_total_supply, make_cdp_unsafe,
-    protocol_owner, protocol_owner_account_id, risk_manager, risk_manager_account_id, set_bad_debt,
-    set_balance, set_borrow_tax, set_up_risk_manager, set_xor_as_collateral_type, tech_account_id,
+    deposit_xor_to_cdp, get_total_supply, make_cdp_unsafe, protocol_owner,
+    protocol_owner_account_id, risk_manager, risk_manager_account_id, set_bad_debt, set_balance,
+    set_borrow_tax, set_up_risk_manager, set_xor_as_collateral_type, tech_account_id,
 };
 
 use common::{balance, AssetId32, Balance, KEN, KUSD, XOR};
@@ -649,7 +649,7 @@ fn borrow_with_ken_incentivization() {
             initial_total_kusd_supply + to_borrow + borrow_tax
         );
         let demeter_farming_amount = INCENTIVE_REMINT_PERCENT * buyback_amount;
-        assert_balance(&demeter_farming_account_id(), &KEN, demeter_farming_amount);
+        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
     });
 }
 

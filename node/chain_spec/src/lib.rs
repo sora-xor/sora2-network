@@ -1416,8 +1416,6 @@ fn testnet_genesis(
                     AssetSymbol(b"KEN".to_vec()),
                     AssetName(b"Kensetsu incentive token".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    // TODO set initial balance
-                    // (https://github.com/sora-xor/sora2-network/issues/913)
                     Balance::zero(),
                     true,
                     None,
@@ -2092,8 +2090,6 @@ fn mainnet_genesis(
             AssetSymbol(b"KEN".to_vec()),
             AssetName(b"Kensetsu incentive token".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            // TODO set initial balance
-            // (https://github.com/sora-xor/sora2-network/issues/913)
             Balance::zero(),
             true,
             None,

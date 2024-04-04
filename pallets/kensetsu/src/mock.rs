@@ -248,14 +248,6 @@ parameter_types! {
         technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.")
     };
-    pub DemeterFarmingAccountId: AccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            b"demeter".to_vec(),
-            b"farming".to_vec(),
-        );
-        technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.")
-    };
     pub const KenAssetId: AssetId = KEN;
     pub const KusdAssetId: AssetId = KUSD;
 
@@ -278,7 +270,6 @@ impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type DemeterFarmingAccount = DemeterFarmingAccountId;
     type KenAssetId = KenAssetId;
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceToolsMock;

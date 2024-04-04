@@ -241,7 +241,6 @@ pub mod pallet {
             Description,
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
-        type DemeterFarmingAccount: Get<Self::AccountId>;
         type KenAssetId: Get<Self::AssetId>;
         type KusdAssetId: Get<Self::AssetId>;
         type PriceTools: PriceToolsProvider<Self::AssetId>;
@@ -1184,18 +1183,14 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
-            Self::mint_treasury(stability_fee)?;
+            Self::mint_treasury(&T::KusdAssetId::get(), stability_fee)?;
 
             Ok(cdp)
         }
 
         /// Mint token to protocol technical account
-        fn mint_treasury(amount: Balance) -> DispatchResult {
-            technical::Pallet::<T>::mint(
-                &T::KusdAssetId::get(),
-                &T::TreasuryTechAccount::get(),
-                amount,
-            )?;
+        fn mint_treasury(asset_id: &T::AssetId, amount: Balance) -> DispatchResult {
+            technical::Pallet::<T>::mint(asset_id, &T::TreasuryTechAccount::get(), amount)?;
             Ok(())
         }
 
@@ -1314,7 +1309,7 @@ pub mod pallet {
         /// - borrow_tax_kusd - borrow tax from borrowing amount.
         fn incentivize_ken_token(borrow_tax_kusd: Balance) -> DispatchResult {
             if borrow_tax_kusd > 0 {
-                Self::mint_treasury(borrow_tax_kusd)?;
+                Self::mint_treasury(&T::KusdAssetId::get(), borrow_tax_kusd)?;
                 let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                     &T::TreasuryTechAccount::get(),
                 )?;
@@ -1334,12 +1329,7 @@ pub mod pallet {
                     swap_outcome.amount,
                 )?;
                 let to_remint = INCENTIVE_REMINT_PERCENT * swap_outcome.amount;
-                assets::Pallet::<T>::mint_to(
-                    &T::KenAssetId::get(),
-                    &technical_account_id,
-                    &T::DemeterFarmingAccount::get(),
-                    to_remint,
-                )?;
+                Self::mint_treasury(&T::KenAssetId::get(), to_remint)?;
             }
 
             Ok(())

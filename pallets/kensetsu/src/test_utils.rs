@@ -74,11 +74,6 @@ pub fn tech_account_id() -> AccountId {
         .expect("Failed to get ordinary account id for technical account id.")
 }
 
-/// Returns mocked Demeter farming account.
-pub fn demeter_farming_account_id() -> AccountId {
-    <TestRuntime as Config>::DemeterFarmingAccount::get()
-}
-
 /// Returns Risk Manager account
 pub fn risk_manager() -> OriginFor<TestRuntime> {
     RuntimeOrigin::signed(bob_account_id())
