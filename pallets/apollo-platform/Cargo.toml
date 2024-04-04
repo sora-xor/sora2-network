@@ -1,0 +1,83 @@
+[package]
+description = "Pallet for APOLLO lending-borrowing platform."
+authors = ["Jovan Milosevic <jovan@ceresblockchain.solutions>"]
+license = "BSD-4-Clause"
+homepage = "https://cerestoken.io"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "apollo-platform"
+version = "1.3.1"
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+technical = { path = "../technical", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
+permissions = { path = "../permissions", default-features = false }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+hex-literal = "0.4.1"
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+price-tools = { path = "../price-tools", default-features = false }
+liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+
+[dev-dependencies]
+assets = { path = "../assets" }
+common = { path = "../../common", features = ["test"] }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+apollo-platform = { path = ".", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+permissions = { path = "../permissions" }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+pswap-distribution = { path = "../pswap-distribution" }
+technical = { path = "../technical" }
+trading-pair = { path = "../trading-pair" }
+price-tools = { path = "../price-tools" }
+liquidity-proxy = { path = "../liquidity-proxy" }
+dex-api = { path = "../dex-api" }
+vested-rewards = { path = "../vested-rewards", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+
+[features]
+default = ['std']
+std = [
+    "assets/std",
+    "codec/std",
+    "dex-manager/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-timestamp/std",
+    "serde",
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "sp-io/std",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]
+
+try-runtime = ["frame-support/try-runtime"]
