@@ -273,7 +273,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex-literal 0.4.1",
+ "hex-literal",
  "liquidity-proxy",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",

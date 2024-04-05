@@ -232,11 +232,10 @@ pub mod pallet {
                 let (randomness, _) = T::Randomness::random(&b"kensetsu"[..]);
                 match randomness {
                     Some(randomness) => {
-                        match CdpId::decode(&mut randomness.as_ref()) {
+                        match u32::decode(&mut randomness.as_ref()) {
                             Ok(random_number) => {
                                 // Random bias by modulus operation is acceptable here
-                                let random_id =
-                                    (random_number % unsafe_cdp_ids.len() as u128) as usize;
+                                let random_id = random_number as usize % unsafe_cdp_ids.len();
                                 unsafe_cdp_ids
                                     .get(random_id)
                                     .map_or_else(
