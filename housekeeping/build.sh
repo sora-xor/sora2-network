@@ -13,7 +13,7 @@ allfeatures="$featureList"
 test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
-        cargo test --release --features "private-net runtime-benchmarks"
+        cargo test --release --features "private-net runtime-benchmarks" -- --test-threads 2
         if [[ ${TAG_NAME} =~ 'testnet'* ]]; then
             RUST_LOG="debug"
             cargo test --features try-runtime -- run_migrations
