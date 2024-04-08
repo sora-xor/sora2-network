@@ -33,7 +33,6 @@
 #![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
-use assets::AssetIdOf;
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
@@ -41,7 +40,7 @@ use common::prelude::{
 };
 use common::LiquiditySourceType;
 use common::{
-    AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+    AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };

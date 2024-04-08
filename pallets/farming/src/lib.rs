@@ -43,9 +43,8 @@ mod tests;
 mod utils;
 mod weights;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::{RewardReason, TradingPair};
+use common::{AssetIdOf, RewardReason, TradingPair};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -312,7 +311,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::StorageVersion;
@@ -327,7 +325,7 @@ pub mod pallet {
         + assets::Config
         + permissions::Config
         + technical::Config
-        + tokens::Config<Balance = Balance, CurrencyId = <Self as assets::Config>::AssetId>
+        + tokens::Config<Balance = Balance, CurrencyId = <Self as common::Config>::AssetId>
         + pool_xyk::Config
         + vested_rewards::Config
     {

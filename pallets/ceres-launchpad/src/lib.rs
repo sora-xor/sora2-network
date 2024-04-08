@@ -101,7 +101,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + assets::Config
+        + common::Config
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
@@ -130,7 +130,7 @@ pub mod pallet {
     type VestedRewards<T> = vested_rewards::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    type AssetIdOf<T> = <T as common::Config>::AssetId;
     type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]

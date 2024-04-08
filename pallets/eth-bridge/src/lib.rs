@@ -175,7 +175,6 @@ const RE_HANDLE_TXS_PERIOD: u32 = 200;
 /// Minimum peers required to start bridge migration
 pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
 type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
@@ -332,6 +331,7 @@ pub mod pallet {
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
+    use common::AssetIdOf;
     use frame_support::log;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::{GetCallMetadata, StorageVersion};

@@ -32,8 +32,8 @@ use crate::{
     Config, LimitOrder, MarketSide, OrderBookEvent, OrderBookId, OrderPrice, OrderVolume,
     PriceOrders, UserOrders,
 };
-use assets::AssetIdOf;
-use common::PriceVariant;
+
+use common::{AssetIdOf, PriceVariant};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::WeightMeter;
 use sp_std::collections::btree_map::BTreeMap;

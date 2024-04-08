@@ -41,8 +41,7 @@ use order_book_imported::{
     Pallet, PriceOrders,
 };
 
-use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, Balance, DexIdOf, PriceVariant};
+use common::{balance, AssetIdOf, AssetInfoProvider, Balance, DexIdOf, PriceVariant};
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchResult;
 use frame_system::RawOrigin;

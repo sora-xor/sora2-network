@@ -29,11 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use assets::AssetIdOf;
+
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{
-    balance, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, TradingPair,
+    balance, AssetIdOf, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, TradingPair,
     TradingPairSourceManager, XOR,
 };
 use frame_support::dispatch::{DispatchError, RawOrigin};

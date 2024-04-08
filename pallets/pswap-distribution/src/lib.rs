@@ -60,7 +60,7 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 type DexIdOf<T> = <T as common::Config>::DEXId;
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
+type AssetIdOf<T> = <T as common::Config>::AssetId;
 type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 

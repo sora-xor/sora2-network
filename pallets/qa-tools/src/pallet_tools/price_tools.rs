@@ -29,10 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
-use common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
+use common::{balance, AssetIdOf, Balance, PriceToolsProvider, PriceVariant, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use sp_arithmetic::traits::{CheckedDiv, One};

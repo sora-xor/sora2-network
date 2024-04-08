@@ -34,8 +34,7 @@ pub mod liquidity_sources {
     use crate::pallet_tools::mcbc::TbcdCollateralInput;
     use crate::pallet_tools::price_tools::AssetPrices;
     use crate::Config;
-    use assets::AssetIdOf;
-    use common::DexIdOf;
+    use common::{AssetIdOf, DexIdOf};
     use frame_support::dispatch::{DispatchError, DispatchResult};
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;

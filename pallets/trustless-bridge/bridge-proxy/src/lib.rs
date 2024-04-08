@@ -77,7 +77,7 @@ pub mod pallet {
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
+    type BalanceOf<T> = <<T as common::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
     #[pallet::config]
     pub trait Config:
@@ -538,7 +538,7 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
-    type AssetId = <T as assets::Config>::AssetId;
+    type AssetId = <T as common::Config>::AssetId;
     type Balance = Balance;
 
     fn lock_asset(

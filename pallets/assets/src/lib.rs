@@ -55,13 +55,13 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    hash, Amount, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
+    hash, Amount, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter,
+    DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
+use frame_support::ensure;
 use frame_support::traits::Get;
-use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
 use sp_core::hash::H512;
@@ -69,17 +69,12 @@ use sp_core::H256;
 use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
 use tiny_keccak::{Hasher, Keccak};
-use traits::{
-    MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
-};
+use traits::{MultiCurrency, MultiCurrencyExtended, MultiReservableCurrency};
 pub use weights::WeightInfo;
 
-pub type AssetIdOf<T> = <T as Config>::AssetId;
 pub type Permissions<T> = permissions::Pallet<T>;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type CurrencyIdOf<T> =
-    <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
 
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
@@ -176,18 +171,12 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{ContentSource, Description};
+    use common::{AmountOf, ContentSource, CurrencyIdOf, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
 
-    pub(crate) type AmountOf<T> = <<T as Config>::Currency as MultiCurrencyExtended<
-        <T as frame_system::Config>::AccountId,
-    >>::Amount;
-
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + permissions::Config + tokens::Config + common::Config
-    {
+    pub trait Config: frame_system::Config + permissions::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
@@ -209,20 +198,6 @@ pub mod pallet {
             + From<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
             + Into<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
 
-        /// DEX assets (currency) identifier.
-        type AssetId: Parameter
-            + Member
-            + Copy
-            + MaybeSerializeDeserialize
-            + Ord
-            + Default
-            + Into<CurrencyIdOf<Self>>
-            + From<common::AssetId32<common::PredefinedAssetId>>
-            + From<H256>
-            + Into<H256>
-            + Into<<Self as tokens::Config>::CurrencyId>
-            + MaxEncodedLen;
-
         /// The base asset as the core asset in all trading pairs
         type GetBaseAssetId: Get<Self::AssetId>;
 
@@ -243,15 +218,6 @@ pub mod pallet {
 
         /// Liquidity proxy to perform [`GetBuyBackAssetId`] buy-back and burn
         type BuyBackLiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
-
-        /// Currency to transfer, reserve/unreserve, lock/unlock assets
-        type Currency: MultiLockableCurrency<
-                Self::AccountId,
-                Moment = Self::BlockNumber,
-                CurrencyId = Self::AssetId,
-                Balance = Balance,
-            > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
-            + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
 
         /// Get the balance from other components
         type GetTotalBalance: GetTotalBalance<Self>;

@@ -32,9 +32,8 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use assets::AssetIdOf;
 use common::prelude::EnsureDEXManager;
-use common::{hash, DexInfoProvider, ManagementMode};
+use common::{hash, AssetIdOf, DexInfoProvider, ManagementMode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;

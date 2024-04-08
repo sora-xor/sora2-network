@@ -33,9 +33,8 @@ use crate::offchain::SignatureParams;
 use crate::requests::Assets;
 use crate::util::get_bridge_account;
 use crate::{
-    AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
-    EthAddress, EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint,
-    WeightInfo,
+    AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error, EthAddress,
+    EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint, WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use bridge_types::traits::BridgeAssetLockChecker;
@@ -46,7 +45,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{AssetName, AssetSymbol, BalancePrecision};
+use common::{AssetIdOf, AssetName, AssetSymbol, BalancePrecision};
 #[allow(unused_imports)]
 use frame_support::debug;
 use frame_support::dispatch::{DispatchError, DispatchResult};

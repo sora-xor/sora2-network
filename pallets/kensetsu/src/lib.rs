@@ -41,7 +41,6 @@
 
 pub use pallet::*;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use frame_support::log::{debug, warn};
@@ -135,9 +134,9 @@ pub mod pallet {
     use crate::weights::WeightInfo;
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
-        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, PriceToolsProvider,
-        PriceVariant, DAI,
+        AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
+        ContentSource, DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter,
+        PriceToolsProvider, PriceVariant, DAI,
     };
     use frame_support::pallet_prelude::*;
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};

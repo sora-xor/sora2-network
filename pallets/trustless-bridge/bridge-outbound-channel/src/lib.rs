@@ -27,7 +27,7 @@ mod test;
 // we can store only 256 messages in single commitment.
 pub const MAX_QUEUE_SIZE: usize = 256;
 
-type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
+type BalanceOf<T> = <<T as common::Config>::Currency as MultiCurrency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 

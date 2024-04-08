@@ -114,7 +114,7 @@ pub mod pallet {
     type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as common::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]

@@ -43,7 +43,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, AssetInfoProvider};
+    use common::{balance, AssetIdOf, AssetInfoProvider};
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -73,7 +73,6 @@ pub mod pallet {
     type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]

@@ -27,7 +27,6 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 common = { path = "../../common", default-features = false }
 permissions = { path = "../permissions", default-features = false }
@@ -54,7 +53,6 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
-    "tokens/std",
     "traits/std",
 ]
 

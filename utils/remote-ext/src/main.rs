@@ -2,13 +2,12 @@
 #![allow(clippy::all)]
 
 use clap::Parser;
-use common::{DEXId, FilterMode};
+use common::{AssetIdOf, DEXId, FilterMode};
 use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
-use framenode_runtime::assets::AssetIdOf;
 use framenode_runtime::order_book::WeightInfo;
 use framenode_runtime::{Runtime, Weight};
 use std::sync::Arc;

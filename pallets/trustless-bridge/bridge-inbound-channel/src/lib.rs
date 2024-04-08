@@ -30,7 +30,7 @@ mod test;
 
 mod events;
 
-type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
+type BalanceOf<T> = <<T as common::Config>::Currency as MultiCurrency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 

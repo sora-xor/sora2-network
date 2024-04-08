@@ -77,7 +77,7 @@ pub mod v4 {
         Blake2_128Concat,
         <T as frame_system::Config>::AccountId,
         Blake2_128Concat,
-        <T as assets::Config>::AssetId,
+        <T as common::Config>::AssetId,
         <T as frame_system::Config>::BlockNumber,
         ValueQuery,
     >;
@@ -233,9 +233,9 @@ pub(crate) mod deprecated {
     pub type MarketMakingPairs<T: Config> = StorageDoubleMap<
         Pallet<T>,
         Blake2_128Concat,
-        <T as assets::Config>::AssetId,
+        <T as common::Config>::AssetId,
         Blake2_128Concat,
-        <T as assets::Config>::AssetId,
+        <T as common::Config>::AssetId,
         (),
         ValueQuery,
     >;

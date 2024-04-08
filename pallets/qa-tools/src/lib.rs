@@ -55,10 +55,9 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
     use common::{
-        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};

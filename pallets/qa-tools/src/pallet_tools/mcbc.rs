@@ -30,10 +30,9 @@
 
 use crate::Config;
 use crate::{pallet_tools, Error};
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
-use common::{AssetInfoProvider, Balance, DEXId, TradingPairSourceManager, TBCD};
+use common::{AssetIdOf, AssetInfoProvider, Balance, DEXId, TradingPairSourceManager, TBCD};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;

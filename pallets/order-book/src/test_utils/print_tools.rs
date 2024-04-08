@@ -30,9 +30,8 @@
 
 use super::order_book_imported;
 
-use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
-use common::PriceVariant;
+use common::{AssetIdOf, PriceVariant};
 use order_book_imported::{
     Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, OrderBookId, OrderPrice,
     OrderVolume, PriceOrders,

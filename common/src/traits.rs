@@ -30,8 +30,8 @@
 
 use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
 use crate::{
-    Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PriceVariant,
-    PswapRemintInfo, RewardReason,
+    Amount, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle,
+    PriceVariant, PswapRemintInfo, RewardReason,
 };
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
@@ -40,14 +40,18 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use frame_support::Parameter;
 use frame_system::RawOrigin;
+use orml_traits::{
+    MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
+};
+use sp_runtime::traits::Member;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
 use crate::alt::DiscreteQuotation;
 use crate::primitives::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
+use sp_core::H256;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
-
 /// Check on origin that it is a DEX owner.
 pub trait EnsureDEXManager<DEXId, AccountId, Error> {
     fn ensure_can_manage<OuterOrigin>(
@@ -522,9 +526,15 @@ pub trait LiquidityRegistry<
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 pub type DexIdOf<T> = <T as Config>::DEXId;
+pub type AssetIdOf<T> = <T as Config>::AssetId;
+pub type AmountOf<T> = <<T as Config>::Currency as MultiCurrencyExtended<
+    <T as frame_system::Config>::AccountId,
+>>::Amount;
+pub type CurrencyIdOf<T> =
+    <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
 
 /// Common DEX trait. Used for DEX-related pallets.
-pub trait Config: frame_system::Config + currencies::Config {
+pub trait Config: frame_system::Config + currencies::Config + tokens::Config {
     /// DEX identifier.
     type DEXId: Parameter
         + MaybeSerializeDeserialize
@@ -546,6 +556,29 @@ pub trait Config: frame_system::Config + currencies::Config {
         + PartialEq
         + MaxEncodedLen
         + From<crate::primitives::LiquiditySourceType>;
+
+    /// Currency to transfer, reserve/unreserve, lock/unlock assets
+    type Currency: MultiLockableCurrency<
+            Self::AccountId,
+            Moment = Self::BlockNumber,
+            CurrencyId = Self::AssetId,
+            Balance = Balance,
+        > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
+        + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
+
+    /// DEX assets (currency) identifier.
+    type AssetId: Parameter
+        + Member
+        + Copy
+        + MaybeSerializeDeserialize
+        + Ord
+        + Default
+        + Into<CurrencyIdOf<Self>>
+        + From<crate::primitives::AssetId32<crate::primitives::PredefinedAssetId>>
+        + From<H256>
+        + Into<H256>
+        + Into<<Self as tokens::Config>::CurrencyId>
+        + MaxEncodedLen;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:

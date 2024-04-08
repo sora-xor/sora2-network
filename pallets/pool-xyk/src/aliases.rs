@@ -34,7 +34,7 @@ use crate::operations::*;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
+pub type AssetIdOf<T> = <T as common::Config>::AssetId;
 
 pub type TechAssetIdOf<T> = <T as technical::Config>::TechAssetId;
 

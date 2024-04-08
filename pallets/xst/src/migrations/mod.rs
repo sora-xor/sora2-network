@@ -49,7 +49,7 @@ type PermissionedTechAccount<T: Config> =
 
 #[frame_support::storage_alias]
 type EnabledSynthetics<T: Config> =
-    StorageValue<Pallet<T>, BTreeSet<<T as assets::Config>::AssetId>, ValueQuery>;
+    StorageValue<Pallet<T>, BTreeSet<<T as common::Config>::AssetId>, ValueQuery>;
 
 pub struct CustomSyntheticsUpgrade<T>(core::marker::PhantomData<T>);
 

@@ -36,9 +36,8 @@ use order_book_imported::{
     OrderPrice, OrderVolume, Pallet, Payment,
 };
 
-use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, Scalar};
-use common::PriceVariant;
+use common::{AssetIdOf, PriceVariant};
 use frame_support::log::{debug, trace};
 use frame_support::traits::{Get, Time};
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};

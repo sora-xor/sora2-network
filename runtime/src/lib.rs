@@ -935,6 +935,8 @@ impl currencies::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetId = AssetId;
+    type Currency = currencies::Pallet<Runtime>;
 }
 
 pub struct GetTotalBalance;
@@ -954,7 +956,7 @@ impl assets::Config for Runtime {
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
+
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -962,7 +964,7 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = liquidity_proxy::Pallet<Runtime>;
-    type Currency = currencies::Pallet<Runtime>;
+
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
 }

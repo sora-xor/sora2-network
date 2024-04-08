@@ -32,7 +32,7 @@ use crate::offchain::SignatureParams;
 use crate::requests::{Assets, RequestStatus};
 use crate::util::{get_bridge_account, Decoder};
 use crate::{
-    types, AssetIdOf, AssetKind, BridgeNetworkId, BridgeSignatureVersion, BridgeSignatureVersions,
+    types, AssetKind, BridgeNetworkId, BridgeSignatureVersion, BridgeSignatureVersions,
     BridgeStatus, BridgeTimepoint, Config, Error, EthAddress, OffchainRequest, OutgoingRequest,
     Pallet, RequestStatuses, MAX_PEERS, MIN_PEERS,
 };
@@ -45,7 +45,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
+use common::{AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;

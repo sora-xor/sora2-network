@@ -58,7 +58,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
+pub type TradingPair<T> = common::prelude::TradingPair<<T as common::Config>::AssetId>;
 type Assets<T> = assets::Pallet<T>;
 
 pub use weights::WeightInfo;

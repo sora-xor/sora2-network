@@ -33,10 +33,9 @@ use crate::{
     MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
     OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
-use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::QuoteAmount;
-use common::{Balance, PriceVariant};
+use common::{AssetIdOf, Balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;

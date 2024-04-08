@@ -25,7 +25,7 @@ benchmarks! {
         AssetNameOf<T>: From<common::AssetName>,
         AssetSymbolOf<T>: From<common::AssetSymbol>,
         BalanceOf<T>: From<u128>,
-        <T as assets::Config>::AssetId: From<AssetIdOf<T>>,
+        <T as common::Config>::AssetId: From<AssetIdOf<T>>,
         <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>
     }
     // Benchmark `burn` extrinsic under worst case conditions:
@@ -37,11 +37,11 @@ benchmarks! {
         let amount = balance!(20);
         let asset_id: AssetIdOf<T> = XOR.into();
 
-        <T as assets::Config>::Currency::deposit(asset_id.clone().into(), &caller, amount.into())?;
+        <T as common::Config>::Currency::deposit(asset_id.clone().into(), &caller, amount.into())?;
 
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, recipient, amount.into())
     verify {
-        assert_eq!(<T as assets::Config>::Currency::total_balance(asset_id.into(), &caller), balance!(0).into());
+        assert_eq!(<T as common::Config>::Currency::total_balance(asset_id.into(), &caller), balance!(0).into());
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:

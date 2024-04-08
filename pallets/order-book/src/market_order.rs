@@ -29,9 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Error, OrderBookId, OrderVolume};
-use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::PriceVariant;
+use common::{AssetIdOf, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;

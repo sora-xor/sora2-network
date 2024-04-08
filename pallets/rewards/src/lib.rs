@@ -49,14 +49,13 @@ use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
-use assets::AssetIdOf;
 #[cfg(feature = "std")]
 use common::balance;
 use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
-use common::{eth, AccountIdOf, Balance, OnValBurned, VAL};
+use common::{eth, AccountIdOf, AssetIdOf, Balance, OnValBurned, VAL};
 
 #[cfg(feature = "include-real-files")]
 use hex_literal::hex;

@@ -44,7 +44,6 @@ mod benchmarking;
 
 use core::convert::TryInto;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
@@ -53,7 +52,7 @@ use common::prelude::{
     PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 use common::{
-    balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, DEXId, DexIdOf,
+    balance, fixed, fixed_wrapper, AssetIdOf, AssetInfoProvider, BuyBackHandler, DEXId, DexIdOf,
     GetMarketInfo, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager,
     Vesting, PSWAP, TBCD, VAL, XOR, XST,

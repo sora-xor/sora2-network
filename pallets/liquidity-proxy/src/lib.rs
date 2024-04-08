@@ -43,18 +43,17 @@ mod test_utils;
 mod tests;
 pub mod weights;
 
-use assets::AssetIdOf;
 use assets::WeightInfo as _;
 use codec::{Decode, Encode};
 use common::prelude::{
     Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 use common::{
-    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
-    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
-    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, Vesting,
+    balance, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo,
+    DexIdOf, DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves,
+    LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason,
+    TradingPair, TradingPairSourceManager, Vesting,
 };
 use core::marker::PhantomData;
 use fallible_iterator::FallibleIterator as _;

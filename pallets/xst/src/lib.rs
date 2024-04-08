@@ -47,7 +47,6 @@ pub mod migrations;
 
 use core::convert::TryInto;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
@@ -56,9 +55,9 @@ use common::prelude::{
     SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    balance, fixed, fixed_wrapper, AssetId32, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol,
+    DEXId, DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled,
+    PriceVariant, Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;

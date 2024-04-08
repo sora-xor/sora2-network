@@ -34,7 +34,7 @@
 
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
+use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
@@ -51,7 +51,6 @@ mod tests;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TechAccountIdOf<T> = <T as Config>::TechAccountId;
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type TechAssetIdOf<T> = <T as Config>::TechAssetId;
 type DEXIdOf<T> = <T as common::Config>::DEXId;
 

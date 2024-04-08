@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use assets::AssetIdOf;
-use common::{AccountIdOf, FixedInner};
+
+use common::{AccountIdOf, AssetIdOf, FixedInner};
 use frame_support::dispatch::DispatchError;
 use sp_std::cmp::Ordering;
 

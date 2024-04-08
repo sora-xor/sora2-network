@@ -32,10 +32,10 @@ use crate::offchain::SignatureParams;
 use crate::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use crate::util::iter_storage;
 use crate::{
-    AssetIdOf, Config, LoadToIncomingRequestHash, Pallet, RegisteredAsset,
-    RegisteredSidechainToken, RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
+    Config, LoadToIncomingRequestHash, Pallet, RegisteredAsset, RegisteredSidechainToken,
+    RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
 };
-use common::{AssetInfoProvider, BalancePrecision};
+use common::{AssetIdOf, AssetInfoProvider, BalancePrecision};
 use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use sp_core::{H160, H256};

@@ -143,7 +143,6 @@ impl assets::Config for Runtime {
     type ExtraAccountId = u64;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
-    type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -151,7 +150,7 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
+
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
