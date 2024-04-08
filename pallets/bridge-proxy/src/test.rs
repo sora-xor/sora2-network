@@ -31,7 +31,7 @@
 use crate::mock::RuntimeCall;
 use crate::mock::RuntimeEvent;
 use crate::mock::{
-    new_tester, AccountId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch, ERC20App,
+    new_tester, AccountId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch, FungibleApp,
     System, Test, BASE_EVM_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions};
@@ -158,8 +158,8 @@ fn burn_failed() {
 fn mint_successfull() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = ERC20App::app_address(BASE_EVM_NETWORK_ID, AssetKind::Sidechain).unwrap();
-        let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
+        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID, AssetKind::Sidechain).unwrap();
+        let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
             MessageId::basic(
@@ -168,7 +168,7 @@ fn mint_successfull() {
                 0,
             ),
             GenericTimepoint::Parachain(1),
-            &RuntimeCall::ERC20App(erc20_app::Call::mint {
+            &RuntimeCall::FungibleApp(evm_fungible_app::Call::mint {
                 token,
                 sender: Default::default(),
                 recipient: recipient.clone(),
@@ -211,8 +211,8 @@ fn mint_successfull() {
 fn mint_failed() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = ERC20App::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
+        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
             MessageId::basic(
@@ -221,7 +221,7 @@ fn mint_failed() {
                 0,
             ),
             Default::default(),
-            &RuntimeCall::ERC20App(erc20_app::Call::mint {
+            &RuntimeCall::FungibleApp(evm_fungible_app::Call::mint {
                 token,
                 sender: Default::default(),
                 recipient: recipient.clone(),
@@ -243,8 +243,8 @@ fn mint_failed() {
 fn mint_not_enough_locked() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = ERC20App::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
+        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
             MessageId::basic(
@@ -253,7 +253,7 @@ fn mint_not_enough_locked() {
                 0,
             ),
             GenericTimepoint::Parachain(1),
-            &RuntimeCall::ERC20App(erc20_app::Call::mint {
+            &RuntimeCall::FungibleApp(evm_fungible_app::Call::mint {
                 token,
                 sender: Default::default(),
                 recipient: recipient.clone(),
