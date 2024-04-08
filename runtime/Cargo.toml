@@ -51,7 +51,7 @@ parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", d
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
-apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
+apollo-platform = { path = "../pallets/apollo-platform", default-features = false, optional = true }
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 band = { path = "../pallets/band", default-features = false }
@@ -329,7 +329,7 @@ wip = [
     "pallet-beefy-mmr",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test"]
+ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
