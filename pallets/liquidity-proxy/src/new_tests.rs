@@ -32,7 +32,7 @@
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::prelude::{OutcomeFee, QuoteAmount, SwapAmount};
+use common::prelude::{OutcomeFee, SwapAmount};
 use common::{
     balance, DexIdOf, FilterMode, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
     VAL, XOR,
@@ -82,7 +82,7 @@ fn check_alt() {
             RuntimeOrigin::root(),
             alice::<Runtime>(),
             XOR,
-            balance!(1000).try_into().unwrap()
+            balance!(100000).try_into().unwrap()
         ));
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1947),
@@ -105,11 +105,14 @@ fn check_alt() {
                 vec![
                     (
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
-                        QuoteAmount::with_desired_input(balance!(7.7))
+                        SwapAmount::with_desired_input(
+                            balance!(7.7),
+                            balance!(0.690405237531098527)
+                        )
                     ),
                     (
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
-                        QuoteAmount::with_desired_input(balance!(1939.3))
+                        SwapAmount::with_desired_input(balance!(1939.3), balance!(176.3))
                     )
                 ],
                 balance!(176.990405237531098527),
