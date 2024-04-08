@@ -321,7 +321,7 @@ pub mod pallet {
     pub type Timestamp<T> = timestamp::Pallet<T>;
 
     /// Flag indicates that liquidation took place in this block. Only one liquidation per block is
-    /// allowed, th flag is dropped every block.
+    /// allowed, the flag is dropped every block.
     #[pallet::storage]
     #[pallet::getter(fn liquidated_this_block)]
     pub type LiquidatedThisBlock<T> = StorageValue<_, bool, ValueQuery>;
