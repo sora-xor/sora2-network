@@ -63,6 +63,7 @@ pub trait WeightInfo {
 	fn refresh_pool(a: u32, ) -> Weight;
 	fn prepare_accounts_for_vesting(a: u32, b: u32, ) -> Weight;
 	fn vest_account_rewards(a: u32, ) -> Weight;
+	fn set_lp_min_xor_for_bonus_reward() -> Weight;
 }
 
 /// Weights for farming using the Substrate node and recommended hardware.
@@ -132,6 +133,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 5468).saturating_mul(a.into()))
 	}
+
+	/// Storage: Farming LpMinXorForBonusReward (r:1 w:1)
+	/// Proof Skipped: Farming LpMinXorForBonusReward (max_values: Some(1), max_size: None, mode: Measured)
+	fn set_lp_min_xor_for_bonus_reward() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `109`
+		//  Estimated: `604`
+		// Minimum execution time: 8_000 nanoseconds.
+		Weight::from_parts(9_000_000, 604)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 }
 
 // For backwards compatibility and tests
@@ -199,5 +212,17 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 			.saturating_add(RocksDbWeight::get().writes((2_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 5468).saturating_mul(a.into()))
+	}
+
+	/// Storage: Farming LpMinXorForBonusReward (r:1 w:1)
+	/// Proof Skipped: Farming LpMinXorForBonusReward (max_values: Some(1), max_size: None, mode: Measured)
+	fn set_lp_min_xor_for_bonus_reward() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `109`
+		//  Estimated: `604`
+		// Minimum execution time: 8_000 nanoseconds.
+		Weight::from_parts(9_000_000, 604)
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 }

@@ -1598,7 +1598,8 @@ impl farming::Config for Runtime {
     type Scheduler = Scheduler;
     type RewardDoublingAssets = FarmingRewardDoublingAssets;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = farming::weights::SubstrateWeight<Runtime>;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -1974,6 +1975,22 @@ impl kensetsu::Config for Runtime {
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+    pub ApolloOffchainWorkerTxPriority: TransactionPriority =
+        Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 5; // set 100 for release
+}
+
+impl apollo_platform::Config for Runtime {
+    const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
+    type RuntimeEvent = RuntimeEvent;
+    type PriceTools = PriceTools;
+    type LiquidityProxyPallet = LiquidityProxy;
+    type UnsignedPriority = ApolloOffchainWorkerTxPriority;
+    type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
+    type WeightInfo = apollo_platform::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -2422,7 +2439,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Pallet, Storage} = 42,
+        Farming: farming::{Pallet, Call, Storage, Event<T>} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
@@ -2498,6 +2515,8 @@ construct_runtime! {
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
         #[cfg(feature = "private-net")]
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
+
+        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
     }
 }
 
@@ -3241,6 +3260,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
+            list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
@@ -3345,6 +3365,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
+            add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
