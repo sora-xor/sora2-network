@@ -1342,8 +1342,8 @@ pub mod pallet {
             Ok((collateral_liquidated, proceeds, penalty))
         }
 
-        /// Buys back KEN token with stablecoin and burns them. Then 80% of burned is reminted and
-        /// sent to demeter farming reward for liquidity providers to XOR/KUSD pool.
+        /// Buys back KEN token with stablecoin and burns. Then 80% of burned is reminted for
+        /// incentivization with Demeter farming for XOR/KUSD liquidity providers.
         ///
         /// ## Parameters
         /// - borrow_tax_kusd - borrow tax from borrowing amount.
