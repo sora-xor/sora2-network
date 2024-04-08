@@ -1948,7 +1948,7 @@ parameter_types! {
 
     // 1 day = 86_400_000
     // TODO set 86_400_000
-    pub const AccrueInterestPeriod: Moment = 30_000;
+    pub const AccrueInterestPeriod: Moment = 300_000;
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
