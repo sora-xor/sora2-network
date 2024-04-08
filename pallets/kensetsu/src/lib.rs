@@ -698,9 +698,7 @@ pub mod pallet {
         pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            BorrowTax::<T>::mutate(|borrow_tax| {
-                *borrow_tax = new_borrow_tax;
-            });
+            BorrowTax::<T>::set(new_borrow_tax);
             Self::deposit_event(Event::BorrowTaxUpdated {
                 borrow_tax: new_borrow_tax,
             });
@@ -722,9 +720,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            LiquidationPenalty::<T>::mutate(|liquidation_penalty| {
-                *liquidation_penalty = new_liquidation_penalty;
-            });
+            LiquidationPenalty::<T>::set(new_liquidation_penalty);
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
                 liquidation_penalty: new_liquidation_penalty,
             });
