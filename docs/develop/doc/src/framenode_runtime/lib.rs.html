@@ -3458,6 +3458,11 @@
 <a href="#3443" id="3443">3443</a>
 <a href="#3444" id="3444">3444</a>
 <a href="#3445" id="3445">3445</a>
+<a href="#3446" id="3446">3446</a>
+<a href="#3447" id="3447">3447</a>
+<a href="#3448" id="3448">3448</a>
+<a href="#3449" id="3449">3449</a>
+<a href="#3450" id="3450">3450</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3719,10 +3724,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">74</span>,
+    spec_version: <span class="number">75</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">74</span>,
+    transaction_version: <span class="number">75</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -5435,13 +5440,15 @@
     <span class="kw">type </span>WeightInfo = kensetsu::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="macro">parameter_types! </span>{
+<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Apollo
+</span><span class="macro">parameter_types! </span>{
     <span class="kw">pub </span>ApolloOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(<span class="number">10</span>) * TransactionPriority::max_value();
     <span class="kw">pub </span>ApolloOffchainWorkerTxLongevity: TransactionLongevity = <span class="number">5</span>; <span class="comment">// set 100 for release
 </span>}
 
-<span class="kw">impl </span>apollo_platform::Config <span class="kw">for </span>Runtime {
+<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Apollo
+</span><span class="kw">impl </span>apollo_platform::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = <span class="number">15 </span>* MINUTES;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>PriceTools = PriceTools;
@@ -5974,7 +5981,8 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
         </span>QaTools: qa_tools::{Pallet, Call, Event&lt;T&gt;} = <span class="number">112</span>,
 
-        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Apollo
+        </span>ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
     }
 }
 
@@ -6718,7 +6726,8 @@
             <span class="macro">list_benchmark!</span>(list, extra, band, Band);
             <span class="macro">list_benchmark!</span>(list, extra, xst, XSTPoolBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, oracle_proxy, OracleProxy);
-            <span class="macro">list_benchmark!</span>(list, extra, apollo_platform, ApolloPlatform);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Apollo
+            </span><span class="macro">list_benchmark!</span>(list, extra, apollo_platform, ApolloPlatform);
             <span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
@@ -6823,7 +6832,8 @@
             <span class="macro">add_benchmark!</span>(params, batches, xst, XSTPoolBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             <span class="macro">add_benchmark!</span>(params, batches, oracle_proxy, OracleProxy);
-            <span class="macro">add_benchmark!</span>(params, batches, apollo_platform, ApolloPlatform);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Apollo
+            </span><span class="macro">add_benchmark!</span>(params, batches, apollo_platform, ApolloPlatform);
             <span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
