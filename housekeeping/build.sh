@@ -13,7 +13,11 @@ allfeatures="$featureList"
 test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
-        cargo test --release --features "private-net runtime-benchmarks" -- --test-threads=2
+        cargo test --release --features "private-net runtime-benchmarks" -- --test-threads 2
+        if [[ ${TAG_NAME} =~ 'testnet'* ]]; then
+            RUST_LOG="debug"
+            cargo test --features try-runtime -- run_migrations
+        fi
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
         export RUSTFLAGS="-Cinstrument-coverage"
@@ -21,12 +25,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features "$allfeatures" -- --test-threads=2 
-    fi
-    if [[ $prBranch = 'master' ]]; then
-        printf "⚡️ This is "$prbranch" Running tests and migrations %s\n"
-        RUST_LOG="debug"
-        cargo test --features try-runtime -- run_migrations
+        cargo test --features "$allfeatures" -- --test-threads 2
     fi
 }
 
@@ -36,10 +35,8 @@ build() {
     sudoCheckStatus=0
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
-    elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
+    elif [[ ${TAG_NAME} =~ 'testnet'* ]]; then
         featureList='private-net include-real-files ready-to-test'
-    elif [[ ${TAG_NAME} =~ 'test'* ]]; then
-        featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
         sudoCheckStatus=1
