@@ -327,10 +327,9 @@ wip = [
     "erc20-app",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "apollo-platform",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test"]
+ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
