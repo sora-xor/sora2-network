@@ -211,11 +211,11 @@ pub mod pallet {
                     cdp.collateral_amount,
                     cdp.collateral_asset_id,
                 ) {
-                    Ok(true) => {
+                    Ok(true) => {}
+                    Ok(false) => {
                         debug!("CDP {:?} unsafe", cdp_id);
                         unsafe_cdp_ids.push_back(cdp_id);
                     }
-                    Ok(false) => {}
                     Err(err) => {
                         warn!(
                             "Failed in offchain_worker check cdp {:?} safety: {:?}",
@@ -320,11 +320,17 @@ pub mod pallet {
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
 
+    /// Default value for LiquidatedThisBlock storage
+    #[pallet::type_value]
+    pub fn DefaultLiquidatedThisBlock() -> bool {
+        false
+    }
+
     /// Flag indicates that liquidation took place in this block. Only one liquidation per block is
     /// allowed, the flag is dropped every block.
     #[pallet::storage]
     #[pallet::getter(fn liquidated_this_block)]
-    pub type LiquidatedThisBlock<T> = StorageValue<_, bool, ValueQuery>;
+    pub type LiquidatedThisBlock<T> = StorageValue<_, bool, ValueQuery, DefaultLiquidatedThisBlock>;
 
     /// System bad debt, the amount of KUSD not secured with collateral.
     #[pallet::storage]
@@ -596,7 +602,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             ensure!(
-                Self::check_liquidation_available()?,
+                Self::check_liquidation_available(),
                 Error::<T>::LiquidationLimit
             );
             let cdp = Self::accrue_internal(cdp_id)?;
@@ -849,9 +855,7 @@ pub mod pallet {
         /// It is allowed to call only accrue() and liquidate() and only if
         /// it fulfills conditions.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            if !Self::check_liquidation_available()
-                .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT))?
-            {
+            if !Self::check_liquidation_available() {
                 return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT).into();
             }
             match call {
@@ -925,8 +929,8 @@ pub mod pallet {
         /// Checks if liquidation is available now.
         /// Returns `false` if liquidation took place this block since only one liquidation per
         /// block is allowed.
-        fn check_liquidation_available() -> Result<bool, DispatchError> {
-            Ok(!LiquidatedThisBlock::<T>::get())
+        fn check_liquidation_available() -> bool {
+            !LiquidatedThisBlock::<T>::get()
         }
 
         /// Checks whether a Collateralized Debt Position (CDP) is currently considered safe based on its debt and collateral.
