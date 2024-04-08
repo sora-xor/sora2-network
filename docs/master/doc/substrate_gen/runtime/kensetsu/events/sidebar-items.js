@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["CDPClosed","CDPCreated","CollateralDeposit","CollateralRiskParametersUpdated","DebtIncreased","DebtPayment","Donation","KusdHardCapUpdated","Liquidated","LiquidationPenaltyUpdated","ProfitWithdrawn"]};

@@ -1303,6 +1303,12 @@
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
 <a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1354,6 +1360,7 @@
 
 <span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode};
+<span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
 <span class="kw">use </span>common::prelude::{
     Balance, EnsureDEXManager, Fixed, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
@@ -1362,7 +1369,7 @@
 <span class="kw">use </span>common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SwapChunk, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 <span class="kw">use </span>frame_support::pallet_prelude::DispatchResult;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -1373,7 +1380,6 @@
 <span class="kw">use </span>sp_runtime::traits::Zero;
 <span class="kw">use </span>sp_runtime::DispatchError;
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
-<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec;
 <span class="kw">use </span>sp_std::vec::Vec;
 
@@ -2380,12 +2386,15 @@
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>quotation = DiscreteQuotation::new();
+
         <span class="kw">if </span>amount.amount().is_zero() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>((VecDeque::new(), Weight::zero()));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((quotation, Weight::zero()));
         }
 
         <span class="kw">let </span>samples_count = <span class="kw">if </span>recommended_samples_count &lt; <span class="number">1 </span>{
@@ -2408,10 +2417,15 @@
         <span class="comment">// in XST
         </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
-        <span class="comment">// todo fix (m.tagirov)
-        </span><span class="kw">let </span><span class="kw-2">mut </span>monolith = SwapChunk::new(input_amount, output_amount, fee.get_xst());
+        <span class="kw">let </span><span class="kw-2">mut </span>monolith = SwapChunk::new(input_amount, output_amount, fee);
 
-        <span class="kw">let </span>limit = T::GetSyntheticBaseBuySellLimit::get();
+        <span class="comment">// Get max amount for the limit
+        </span><span class="kw">let </span>limit = T::GetSyntheticBaseBuySellLimit::get();
+        quotation.limits.max_amount = <span class="kw">if </span>input_asset_id == synthetic_base_asset_id {
+            <span class="prelude-val">Some</span>(SideAmount::Input(limit))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>(SideAmount::Output(limit))
+        };
 
         <span class="comment">// If amount exceeds the limit, it is necessary to round the amount to the limit.
         </span><span class="kw">if </span>input_asset_id == synthetic_base_asset_id {
@@ -2433,13 +2447,14 @@
             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>chunk = monolith
+            .clone()
             .rescale_by_ratio(ratio)
             .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>chunks: VecDeque&lt;SwapChunk&lt;Balance&gt;&gt; = <span class="macro">vec!</span>[chunk; samples_count - <span class="number">1</span>].into();
+        quotation.chunks = <span class="macro">vec!</span>[chunk.clone(); samples_count - <span class="number">1</span>].into();
 
         <span class="comment">// add remaining values as the last chunk to not loss the liquidity on the rounding
-        </span>chunks.push_back(SwapChunk::new(
+        </span>quotation.chunks.push_back(SwapChunk::new(
             monolith.input.saturating_sub(
                 chunk
                     .input
@@ -2452,15 +2467,12 @@
                     .checked_mul(samples_count <span class="kw">as </span>Balance - <span class="number">1</span>)
                     .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
             ),
-            monolith.fee.saturating_sub(
-                chunk
-                    .fee
-                    .checked_mul(samples_count <span class="kw">as </span>Balance - <span class="number">1</span>)
-                    .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
-            ),
+            monolith
+                .fee
+                .subtract(chunk.fee.saturating_mul_usize(samples_count - <span class="number">1</span>)),
         ));
 
-        <span class="prelude-val">Ok</span>((chunks, <span class="self">Self</span>::step_quote_weight(samples_count)))
+        <span class="prelude-val">Ok</span>((quotation, <span class="self">Self</span>::step_quote_weight(samples_count)))
     }
 
     <span class="kw">fn </span>exchange(

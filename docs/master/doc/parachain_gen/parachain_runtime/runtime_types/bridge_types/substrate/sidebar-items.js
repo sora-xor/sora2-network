@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ParachainAppCall","XCMAppTransferStatus"],"struct":["BridgeMessage","Commitment"]};

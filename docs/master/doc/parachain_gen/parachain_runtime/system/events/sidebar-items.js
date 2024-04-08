@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["CodeUpdated","ExtrinsicFailed","ExtrinsicSuccess","KilledAccount","NewAccount","Remarked"]};

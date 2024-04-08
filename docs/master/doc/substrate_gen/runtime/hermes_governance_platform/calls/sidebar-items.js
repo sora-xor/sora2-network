@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["ChangeMinHermesForCreatingPoll","ChangeMinHermesForVoting","CreatePoll","TransactionApi","Vote","WithdrawFundsCreator","WithdrawFundsVoter"]};

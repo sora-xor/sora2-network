@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["CancelReason","OrderAmount","OrderBookStatus","OrderBookTechStatus"],"struct":["OrderBookId"]};

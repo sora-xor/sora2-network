@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["AssetIdExtraAssetRecordArg","FilterMode","LiquiditySourceType","Oracle","PriceVariant","RewardReason","TechAccountId","TechAssetId","TechPurpose"],"mod":["_allowed_deprecated"],"struct":["AssetId32","AssetName","AssetSymbol","BoundedString","ContentSource","CrowdloanTag","DEXInfo","Description","LiquiditySourceId","SymbolName","TradingPair"]};

@@ -1173,6 +1173,12 @@
 <a href="#1158" id="1158">1158</a>
 <a href="#1159" id="1159">1159</a>
 <a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1217,10 +1223,10 @@
 <span class="kw">use </span>frame_system::RawOrigin;
 <span class="comment">//FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
-</span><span class="kw">use </span><span class="kw">crate</span>::primitives::{Balance, SwapChunk};
+</span><span class="kw">use </span><span class="kw">crate</span>::alt::DiscreteQuotation;
+<span class="kw">use </span><span class="kw">crate</span>::primitives::Balance;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
-<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="doccomment">/// Check on origin that it is a DEX owner.
@@ -1364,7 +1370,7 @@
 }
 
 <span class="doccomment">/// Indicates that particular object can be used to perform exchanges.
-</span><span class="kw">pub trait </span>LiquiditySource&lt;TargetId, AccountId, AssetId: Ord, Amount, Error&gt; {
+</span><span class="kw">pub trait </span>LiquiditySource&lt;TargetId, AccountId, AssetId: Ord + Clone, Amount, Error&gt; {
     <span class="doccomment">/// Check if liquidity source provides an exchange from given input asset to output asset.
     </span><span class="kw">fn </span>can_exchange(
         target_id: <span class="kw-2">&amp;</span>TargetId,
@@ -1390,7 +1396,7 @@
         amount: QuoteAmount&lt;Amount&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Amount&gt;&gt;, Weight), Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetId, Amount&gt;, Weight), Error&gt;;
 
     <span class="doccomment">/// Perform exchange based on desired amount.
     </span><span class="kw">fn </span>exchange(
@@ -1510,7 +1516,7 @@
     <span class="kw">fn </span>disable_symbol(_symbol: <span class="kw-2">&amp;</span>Symbol) {}
 }
 
-<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId: Ord&gt;
+<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId: Ord + Clone&gt;
     LiquiditySource&lt;DEXId, AccountId, AssetId, Fixed, DispatchError&gt; <span class="kw">for </span>()
 {
     <span class="kw">fn </span>can_exchange(
@@ -1538,7 +1544,7 @@
         _amount: QuoteAmount&lt;Fixed&gt;,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Fixed&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetId, Fixed&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1590,7 +1596,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId: Ord&gt;
+<span class="kw">impl</span>&lt;DEXId, AccountId, AssetId: Ord + Clone&gt;
     LiquiditySource&lt;DEXId, AccountId, AssetId, Balance, DispatchError&gt; <span class="kw">for </span>()
 {
     <span class="kw">fn </span>can_exchange(
@@ -1618,7 +1624,7 @@
         _amount: QuoteAmount&lt;Balance&gt;,
         _recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetId, Balance&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Err</span>(DispatchError::CannotLookup)
     }
 
@@ -1670,9 +1676,15 @@
     }
 }
 
-<span class="kw">pub trait </span>LiquidityRegistry&lt;DEXId, AccountId, AssetId: Ord, LiquiditySourceIndex, Amount, Error&gt;:
-    LiquiditySource&lt;LiquiditySourceId&lt;DEXId, LiquiditySourceIndex&gt;, AccountId, AssetId, Amount, Error&gt;
-<span class="kw">where
+<span class="kw">pub trait </span>LiquidityRegistry&lt;
+    DEXId,
+    AccountId,
+    AssetId: Ord + Clone,
+    LiquiditySourceIndex,
+    Amount,
+    Error,
+&gt;:
+    LiquiditySource&lt;LiquiditySourceId&lt;DEXId, LiquiditySourceIndex&gt;, AccountId, AssetId, Amount, Error&gt; <span class="kw">where
     </span>DEXId: PartialEq + Clone + Copy,
     LiquiditySourceIndex: PartialEq + Clone + Copy,
 {

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["Bonded","Chilled","EraPaid","ForceEra","Kicked","OldSlashingReportDiscarded","PayoutStarted","Rewarded","SlashReported","Slashed","StakersElected","StakingElectionFailed","Unbonded","ValidatorPrefsSet","Withdrawn"]};

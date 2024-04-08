@@ -550,6 +550,8 @@
 <a href="#535" id="535">535</a>
 <a href="#536" id="536">536</a>
 <a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -601,7 +603,8 @@
 <span class="kw">pub type </span>UserOrders&lt;OrderId, MaxOpenedLimitOrdersPerUser&gt; =
     BoundedVec&lt;OrderId, MaxOpenedLimitOrdersPerUser&gt;;
 
-<span class="attr">#[derive(
+<span class="doccomment">/// The public status of the order book that defines the list of allowed operations with the order book.
+</span><span class="attr">#[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 </span><span class="kw">pub enum </span>OrderBookStatus {
@@ -618,7 +621,8 @@
     </span>Stop,
 }
 
-<span class="attr">#[derive(
+<span class="doccomment">/// The internal tech status of the order book which indicates an opportunity to change the attributes or public status.
+</span><span class="attr">#[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 </span><span class="kw">pub enum </span>OrderBookTechStatus {

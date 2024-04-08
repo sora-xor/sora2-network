@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["SyntheticExistence","SyntheticQuoteDirection"],"struct":["BaseInput","SyntheticInput","SyntheticOutput","SyntheticQuote"]};

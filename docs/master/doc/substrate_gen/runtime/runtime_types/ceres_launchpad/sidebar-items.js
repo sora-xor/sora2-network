@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["pallet"],"struct":["ContributionInfo","ContributorsVesting","ILOInfo","TeamVesting"]};

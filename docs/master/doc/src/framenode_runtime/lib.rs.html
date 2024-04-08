@@ -3427,6 +3427,37 @@
 <a href="#3412" id="3412">3412</a>
 <a href="#3413" id="3413">3413</a>
 <a href="#3414" id="3414">3414</a>
+<a href="#3415" id="3415">3415</a>
+<a href="#3416" id="3416">3416</a>
+<a href="#3417" id="3417">3417</a>
+<a href="#3418" id="3418">3418</a>
+<a href="#3419" id="3419">3419</a>
+<a href="#3420" id="3420">3420</a>
+<a href="#3421" id="3421">3421</a>
+<a href="#3422" id="3422">3422</a>
+<a href="#3423" id="3423">3423</a>
+<a href="#3424" id="3424">3424</a>
+<a href="#3425" id="3425">3425</a>
+<a href="#3426" id="3426">3426</a>
+<a href="#3427" id="3427">3427</a>
+<a href="#3428" id="3428">3428</a>
+<a href="#3429" id="3429">3429</a>
+<a href="#3430" id="3430">3430</a>
+<a href="#3431" id="3431">3431</a>
+<a href="#3432" id="3432">3432</a>
+<a href="#3433" id="3433">3433</a>
+<a href="#3434" id="3434">3434</a>
+<a href="#3435" id="3435">3435</a>
+<a href="#3436" id="3436">3436</a>
+<a href="#3437" id="3437">3437</a>
+<a href="#3438" id="3438">3438</a>
+<a href="#3439" id="3439">3439</a>
+<a href="#3440" id="3440">3440</a>
+<a href="#3441" id="3441">3441</a>
+<a href="#3442" id="3442">3442</a>
+<a href="#3443" id="3443">3443</a>
+<a href="#3444" id="3444">3444</a>
+<a href="#3445" id="3445">3445</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3710,6 +3741,18 @@
 </span><span class="kw">pub const </span>FARMING_VESTING_COEFF: u32 = <span class="number">3</span>;
 <span class="kw">pub const </span>FARMING_VESTING_FREQUENCY: BlockNumber = <span class="number">6 </span>* HOURS;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
+</span><span class="macro">parameter_types! </span>{
+    <span class="kw">pub const </span>BondingDuration: sp_staking::EraIndex = <span class="number">1</span>; <span class="comment">// 1 era for unbonding (6 hours).
+    </span><span class="kw">pub const </span>SlashDeferDuration: sp_staking::EraIndex = <span class="number">0</span>; <span class="comment">// no slash cancellation on testnets expected.
+</span>}
+
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;private-net&quot;</span>))]
+</span><span class="macro">parameter_types! </span>{
+    <span class="kw">pub const </span>BondingDuration: sp_staking::EraIndex = <span class="number">28</span>; <span class="comment">// 28 eras for unbonding (7 days).
+    </span><span class="kw">pub const </span>SlashDeferDuration: sp_staking::EraIndex = <span class="number">27</span>; <span class="comment">// 27 eras in which slashes can be cancelled (slightly less than 7 days).
+</span>}
+
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>BlockHashCount: BlockNumber = <span class="number">250</span>;
     <span class="kw">pub const </span>Version: RuntimeVersion = VERSION;
@@ -3717,11 +3760,9 @@
     <span class="kw">pub const </span>EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS <span class="kw">as </span>u64;
     <span class="kw">pub const </span>ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     <span class="kw">pub const </span>SessionsPerEra: sp_staking::SessionIndex = <span class="number">6</span>; <span class="comment">// 6 hours
-    </span><span class="kw">pub const </span>BondingDuration: sp_staking::EraIndex = <span class="number">28</span>; <span class="comment">// 28 eras for unbonding (7 days).
     </span><span class="kw">pub const </span>ReportLongevity: u64 =
         BondingDuration::get() <span class="kw">as </span>u64 * SessionsPerEra::get() <span class="kw">as </span>u64 * EpochDuration::get();
-    <span class="kw">pub const </span>SlashDeferDuration: sp_staking::EraIndex = <span class="number">27</span>; <span class="comment">// 27 eras in which slashes can be cancelled (slightly less than 7 days).
-    </span><span class="kw">pub const </span>MaxNominatorRewardedPerValidator: u32 = <span class="number">256</span>;
+    <span class="kw">pub const </span>MaxNominatorRewardedPerValidator: u32 = <span class="number">256</span>;
     <span class="kw">pub const </span>ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / <span class="number">4</span>;
     <span class="kw">pub const </span>MaxIterations: u32 = <span class="number">10</span>;
     <span class="comment">// 0.05%. The higher the value, the more strict solution acceptance becomes.
@@ -5017,7 +5058,8 @@
     <span class="kw">type </span>Scheduler = Scheduler;
     <span class="kw">type </span>RewardDoublingAssets = FarmingRewardDoublingAssets;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
-    <span class="kw">type </span>WeightInfo = ();
+    <span class="kw">type </span>WeightInfo = farming::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
 }
 
 <span class="kw">impl </span>pswap_distribution::Config <span class="kw">for </span>Runtime {
@@ -5391,6 +5433,22 @@
     <span class="kw">type </span>UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     <span class="kw">type </span>UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     <span class="kw">type </span>WeightInfo = kensetsu::weights::SubstrateWeight&lt;Runtime&gt;;
+}
+
+<span class="macro">parameter_types! </span>{
+    <span class="kw">pub </span>ApolloOffchainWorkerTxPriority: TransactionPriority =
+        Perbill::from_percent(<span class="number">10</span>) * TransactionPriority::max_value();
+    <span class="kw">pub </span>ApolloOffchainWorkerTxLongevity: TransactionLongevity = <span class="number">5</span>; <span class="comment">// set 100 for release
+</span>}
+
+<span class="kw">impl </span>apollo_platform::Config <span class="kw">for </span>Runtime {
+    <span class="kw">const </span>BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = <span class="number">15 </span>* MINUTES;
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    <span class="kw">type </span>PriceTools = PriceTools;
+    <span class="kw">type </span>LiquidityProxyPallet = LiquidityProxy;
+    <span class="kw">type </span>UnsignedPriority = ApolloOffchainWorkerTxPriority;
+    <span class="kw">type </span>UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
+    <span class="kw">type </span>WeightInfo = apollo_platform::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -5839,7 +5897,7 @@
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">39</span>,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">40</span>,
         Identity: pallet_identity::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">41</span>,
-        Farming: farming::{Pallet, Storage} = <span class="number">42</span>,
+        Farming: farming::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">42</span>,
         XSTPool: xst::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">43</span>,
         PriceTools: price_tools::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">44</span>,
         CeresStaking: ceres_staking::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">45</span>,
@@ -5915,6 +5973,8 @@
         </span>Faucet: faucet::{Pallet, Call, Config&lt;T&gt;, Event&lt;T&gt;} = <span class="number">80</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
         </span>QaTools: qa_tools::{Pallet, Call, Event&lt;T&gt;} = <span class="number">112</span>,
+
+        ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
     }
 }
 
@@ -6337,7 +6397,7 @@
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 <span class="bool-val">false</span>,
                 <span class="bool-val">true</span>,
-            ).ok().map(|(quote_info, <span class="kw">_</span>)| liquidity_proxy_runtime_api::SwapOutcomeInfo::&lt;Balance, AssetId&gt; {
+            ).ok().map(|(quote_info, <span class="kw">_</span>, <span class="kw">_</span>)| liquidity_proxy_runtime_api::SwapOutcomeInfo::&lt;Balance, AssetId&gt; {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(<span class="number">0</span>),
                 fee: quote_info.outcome.fee,
@@ -6658,6 +6718,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, band, Band);
             <span class="macro">list_benchmark!</span>(list, extra, xst, XSTPoolBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, oracle_proxy, OracleProxy);
+            <span class="macro">list_benchmark!</span>(list, extra, apollo_platform, ApolloPlatform);
             <span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
@@ -6762,6 +6823,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, xst, XSTPoolBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             <span class="macro">add_benchmark!</span>(params, batches, oracle_proxy, OracleProxy);
+            <span class="macro">add_benchmark!</span>(params, batches, apollo_platform, ApolloPlatform);
             <span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge

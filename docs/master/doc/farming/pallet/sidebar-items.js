@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error"],"struct":["Pallet"],"trait":["Config"],"type":["Module","PoolFarmers","Pools"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_lp_min_xor_for_bonus_reward"],"struct":["DefaultLpMinXorForBonusReward","Pallet"],"trait":["Config"],"type":["LpMinXorForBonusReward","Module","PoolFarmers","Pools"]};

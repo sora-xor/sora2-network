@@ -1,4 +1,5 @@
 (function() {var implementors = {
+"apollo_platform":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"apollo_platform/pallet/enum.Error.html\" title=\"enum apollo_platform::pallet::Error\">Error</a>&lt;T&gt;"]],
 "assets":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"assets/pallet/enum.Error.html\" title=\"enum assets::pallet::Error\">Error</a>&lt;T&gt;"]],
 "band":[["impl&lt;T, I&gt; PalletError for <a class=\"enum\" href=\"band/pallet/enum.Error.html\" title=\"enum band::pallet::Error\">Error</a>&lt;T, I&gt;"]],
 "bridge_inbound_channel":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"bridge_inbound_channel/pallet/enum.Error.html\" title=\"enum bridge_inbound_channel::pallet::Error\">Error</a>&lt;T&gt;"]],

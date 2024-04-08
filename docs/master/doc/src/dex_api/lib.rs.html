@@ -577,14 +577,14 @@
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
 
-</span><span class="kw">use </span>common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
+</span><span class="kw">use </span>common::alt::DiscreteQuotation;
+<span class="kw">use </span>common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 <span class="kw">use </span>common::{
     DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, SwapChunk,
+    LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::weights::Weight;
-<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="kw">mod </span>benchmarking;
@@ -674,7 +674,7 @@
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(VecDeque&lt;SwapChunk&lt;Balance&gt;&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>step_quote {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {

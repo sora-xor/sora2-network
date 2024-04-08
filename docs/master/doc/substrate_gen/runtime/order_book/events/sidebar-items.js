@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["AlignmentFailure","ExpirationFailure","LimitOrderCanceled","LimitOrderConvertedToMarketOrder","LimitOrderExecuted","LimitOrderFilled","LimitOrderIsSplitIntoMarketOrderAndLimitOrder","LimitOrderPlaced","LimitOrderUpdated","MarketOrderExecuted","OrderBookCreated","OrderBookDeleted","OrderBookStatusChanged","OrderBookUpdated"]};

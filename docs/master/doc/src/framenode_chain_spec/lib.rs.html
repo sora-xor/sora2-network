@@ -2557,6 +2557,33 @@
 <a href="#2542" id="2542">2542</a>
 <a href="#2543" id="2543">2543</a>
 <a href="#2544" id="2544">2544</a>
+<a href="#2545" id="2545">2545</a>
+<a href="#2546" id="2546">2546</a>
+<a href="#2547" id="2547">2547</a>
+<a href="#2548" id="2548">2548</a>
+<a href="#2549" id="2549">2549</a>
+<a href="#2550" id="2550">2550</a>
+<a href="#2551" id="2551">2551</a>
+<a href="#2552" id="2552">2552</a>
+<a href="#2553" id="2553">2553</a>
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2599,8 +2626,8 @@
 </span><span class="kw">use </span>common::prelude::{Balance, DEXInfo, FixedWrapper};
 <span class="kw">use </span>common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KUSD, PSWAP, TBCD,
-    USDT, VAL, XOR, XST, XSTUSD,
+    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KUSD,
+    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_support::sp_runtime::Percent;
 <span class="kw">use </span>framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -3776,7 +3803,12 @@
         tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), PSWAP, initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), ceres, initial_faucet_balance));
-        tokens_endowed_accounts.push((faucet_account_id, HERMES_ASSET_ID, initial_faucet_balance));
+        tokens_endowed_accounts.push((
+            faucet_account_id.clone(),
+            HERMES_ASSET_ID,
+            initial_faucet_balance,
+        ));
+        tokens_endowed_accounts.push((faucet_account_id, APOLLO_ASSET_ID, initial_faucet_balance));
         FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }
@@ -4011,6 +4043,17 @@
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(<span class="string">b&quot;HMX&quot;</span>.to_vec()),
                     AssetName(<span class="string">b&quot;Hermes&quot;</span>.to_vec()),
+                    <span class="number">18</span>,
+                    Balance::zero(),
+                    <span class="bool-val">true</span>,
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                ),
+                (
+                    APOLLO_ASSET_ID,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(<span class="string">b&quot;APOLLO&quot;</span>.to_vec()),
+                    AssetName(<span class="string">b&quot;Apollo&quot;</span>.to_vec()),
                     <span class="number">18</span>,
                     Balance::zero(),
                     <span class="bool-val">true</span>,
@@ -4674,6 +4717,17 @@
             assets_and_permissions_account_id.clone(),
             AssetSymbol(<span class="string">b&quot;CERES&quot;</span>.to_vec()),
             AssetName(<span class="string">b&quot;Ceres&quot;</span>.to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            <span class="bool-val">true</span>,
+            <span class="prelude-val">None</span>,
+            <span class="prelude-val">None</span>,
+        ),
+        (
+            APOLLO_ASSET_ID.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(<span class="string">b&quot;APOLLO&quot;</span>.to_vec()),
+            AssetName(<span class="string">b&quot;Apollo&quot;</span>.to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             <span class="bool-val">true</span>,
