@@ -49,11 +49,12 @@ use common::prelude::{
     Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 use common::{
-    balance, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo,
-    DexIdOf, DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves,
-    LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason,
-    TradingPair, TradingPairSourceManager, Vesting,
+    balance, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol,
+    BalancePrecision, BuyBackHandler, ContentSource, DEXInfo, Description, DexIdOf,
+    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
+    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
+    TradingPairSourceManager, Vesting,
 };
 use core::marker::PhantomData;
 use fallible_iterator::FallibleIterator as _;
@@ -266,8 +267,8 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
     ) -> Result<(), DispatchError> {
         ensure!(
-            !assets::Pallet::<T>::is_non_divisible(input_asset_id)
-                && !assets::Pallet::<T>::is_non_divisible(output_asset_id),
+            !T::AssetInfoProvider::is_non_divisible(input_asset_id)
+                && !T::AssetInfoProvider::is_non_divisible(output_asset_id),
             Error::<T>::UnableToSwapIndivisibleAssets
         );
         Ok(())
@@ -1982,7 +1983,7 @@ impl<T: Config> Pallet<T> {
         ));
 
         let caller_output_asset_balance =
-            assets::Pallet::<T>::total_balance(&output_asset_id, &sender)?;
+            T::AssetInfoProvider::total_balance(&output_asset_id, &sender)?;
         let remainder_per_receiver: Balance = if caller_output_asset_balance < out_amount {
             let remainder = out_amount.saturating_sub(caller_output_asset_balance);
             remainder / num_of_receivers + remainder % num_of_receivers
@@ -2077,7 +2078,7 @@ impl<T: Config> Pallet<T> {
                     outcome_asset_reuse,
                 } = swap_batch_info;
 
-                let balance = assets::Pallet::<T>::free_balance(&asset_id, &sender)?;
+                let balance = T::AssetInfoProvider::free_balance(&asset_id, &sender)?;
 
                 if balance < outcome_asset_reuse {
                     fail!(Error::<T>::InsufficientBalance);
@@ -2357,6 +2358,16 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
