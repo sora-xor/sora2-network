@@ -127,6 +127,7 @@ impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -172,6 +173,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {

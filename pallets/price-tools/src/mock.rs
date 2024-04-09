@@ -269,6 +269,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 pub struct TradingPair;

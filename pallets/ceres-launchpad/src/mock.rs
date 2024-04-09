@@ -172,6 +172,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pool_xyk::Config for Runtime {
@@ -226,6 +227,7 @@ impl ceres_token_locker::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
