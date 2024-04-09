@@ -1947,6 +1947,8 @@ parameter_types! {
     pub const KenAssetId: AssetId = common::KEN;
     pub const KusdAssetId: AssetId = common::KUSD;
 
+    pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+
     // 1 day = 86_400_000
     // TODO set 86_400_000
     pub const AccrueInterestPeriod: Moment = 30_000;
@@ -1969,6 +1971,7 @@ impl kensetsu::Config for Runtime {
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
     type AccrueInterestPeriod = AccrueInterestPeriod;

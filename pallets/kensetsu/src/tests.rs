@@ -708,7 +708,8 @@ fn borrow_with_ken_incentivization() {
             total_kusd_supply,
             initial_total_kusd_supply + to_borrow + borrow_tax
         );
-        let demeter_farming_amount = INCENTIVE_REMINT_PERCENT * ken_buyback_amount;
+        let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
+        let demeter_farming_amount = remint_percent * ken_buyback_amount;
         assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
     });
 }

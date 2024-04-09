@@ -46,7 +46,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
-use sp_arithmetic::{FixedU128, Perbill, Percent};
+use sp_arithmetic::{FixedU128, Perbill};
 
 #[cfg(test)]
 mod mock;
@@ -62,9 +62,6 @@ pub mod weights;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
-
-/// Percent of bought KEN token that goes to Demeter farming
-pub const INCENTIVE_REMINT_PERCENT: Percent = Percent::from_percent(80);
 
 /// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
 const VALIDATION_ERROR_ACCRUE: u8 = 1;
@@ -253,6 +250,10 @@ pub mod pallet {
         type KusdAssetId: Get<Self::AssetId>;
         type PriceTools: PriceToolsProvider<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+
+        /// Percent of KEN that is reminted and goes to Demeter farming incentivization
+        #[pallet::constant]
+        type KenIncentiveRemintPercent: Get<Percent>;
 
         /// Maximum number of CDP that one user can create
         #[pallet::constant]
@@ -1005,7 +1006,8 @@ pub mod pallet {
         ) -> DispatchResult {
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
-            // stablecoin minted is taxed by 1% to buy back and burn KEN, the tax increases debt
+            // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
+            // increases debt
             let borrow_tax = Self::borrow_tax() * will_to_borrow_amount;
             Self::incentivize_ken_token(borrow_tax)?;
             let borrow_amount_with_tax = will_to_borrow_amount
@@ -1364,7 +1366,7 @@ pub mod pallet {
                     &technical_account_id,
                     swap_outcome.amount,
                 )?;
-                let to_remint = INCENTIVE_REMINT_PERCENT * swap_outcome.amount;
+                let to_remint = T::KenIncentiveRemintPercent::get() * swap_outcome.amount;
                 Self::mint_treasury(&T::KenAssetId::get(), to_remint)?;
             }
 

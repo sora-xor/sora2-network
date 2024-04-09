@@ -47,6 +47,7 @@ use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
+use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
 use sp_core::{ConstU32, H256};
 use sp_runtime::{
@@ -212,6 +213,8 @@ parameter_types! {
     pub const KenAssetId: AssetId = KEN;
     pub const KusdAssetId: AssetId = KUSD;
 
+    pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+
     // 1 day
     pub const AccrueInterestPeriod: Moment = 86_400_000;
 
@@ -235,6 +238,7 @@ impl kensetsu::Config for TestRuntime {
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceToolsMock;
     type LiquidityProxy = MockLiquidityProxy;
+    type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
     type AccrueInterestPeriod = AccrueInterestPeriod;
