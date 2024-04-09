@@ -248,7 +248,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let account_id = Self::tech_account_id_to_account_id(tech_id)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Pallet::<T>::total_balance(asset_id, &account_id)
+        T::AssetInfoProvider::total_balance(asset_id, &account_id)
     }
 }
 
@@ -257,6 +257,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -302,6 +303,17 @@ pub mod pallet {
         /// Swap action.
         type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self::AssetId, Self>
             + Parameter;
+
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
