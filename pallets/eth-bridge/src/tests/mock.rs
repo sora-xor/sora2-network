@@ -366,7 +366,7 @@ impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type CurrencyId = <Runtime as common::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
@@ -398,7 +398,6 @@ impl assets::Config for Runtime {
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
-    type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -406,7 +405,6 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -414,6 +412,8 @@ impl assets::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = LiquiditySourceType;
+    type AssetId = common::AssetId32<PredefinedAssetId>;
+    type Currency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
@@ -477,6 +477,7 @@ impl crate::Config for Runtime {
     type WeightToFee = WeightToFixedFee;
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
