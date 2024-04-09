@@ -38,13 +38,12 @@ demeter-farming-platform = { path = "../demeter-farming-platform", default-featu
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-common = { path = "../../common", features = ["test"] }
 dex-api = { path = "../dex-api" }
 dex-manager = { path = "../dex-manager" }
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test", "private-net"] }
-framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "private-net"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "private-net", "test"] }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
-order-book = { path = "../order-book" }
+order-book = { path = "../order-book", features = ["test"] }
 qa-tools = { path = "../qa-tools" }
 technical = { path = "../technical" }
 permissions = { path = "../permissions" }
@@ -78,3 +77,5 @@ std = [
 try-runtime = ["frame-support/try-runtime"]
 
 wip = []
+
+test = ["common/test"]

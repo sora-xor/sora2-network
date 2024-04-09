@@ -2192,6 +2192,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Wrapper for `quote_single` to make possible call it from tests.
+    #[cfg(feature = "test")]
     pub fn test_quote(
         dex_id: T::DEXId,
         input_asset_id: &T::AssetId,
