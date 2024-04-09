@@ -237,7 +237,8 @@ impl<T: Config> Pallet<T> {
             RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
-        let available_rewards = Assets::<T>::free_balance(asset_id, &source_account)?;
+        let available_rewards =
+            <T as Config>::AssetInfoProvider::free_balance(asset_id, &source_account)?;
         if available_rewards.is_zero() {
             fail!(Error::<T>::RewardsSupplyShortage);
         }
@@ -480,6 +481,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -506,6 +508,16 @@ pub mod pallet {
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.

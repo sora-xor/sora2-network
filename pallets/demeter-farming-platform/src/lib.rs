@@ -479,7 +479,8 @@ pub mod pallet {
             if !is_farm {
                 ensure!(
                     pooled_tokens
-                        <= T::AssetInfoProvider::free_balance(&pool_asset, &user).unwrap_or(0),
+                        <= <T as Config>::AssetInfoProvider::free_balance(&pool_asset, &user)
+                            .unwrap_or(0),
                     Error::<T>::InsufficientFunds
                 );
 
