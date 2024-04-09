@@ -35,9 +35,10 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
-    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
+    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, AssetName, BalancePrecision,
+    BuyBackHandler, ContentSource, Description, DexInfoProvider, EnsureDEXManager, Fixed,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned,
+    PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -168,7 +169,8 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-        let base_total = Assets::<T>::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
+        let base_total =
+            T::AssetInfoProvider::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
         if base_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
                 dex_id.clone(),
@@ -226,7 +228,8 @@ impl<T: Config> Pallet<T> {
             // Get state of incentive availability and corresponding definitions.
             let incentive_asset_id = T::GetIncentiveAssetId::get();
             let pool_tokens_total = T::PoolXykPallet::total_issuance(&pool_account)?;
-            let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
+            let incentive_total =
+                T::AssetInfoProvider::free_balance(&incentive_asset_id, &fees_account_id)?;
             if incentive_total == 0 || pool_tokens_total == 0 {
                 Self::deposit_event(Event::<T>::NothingToDistribute(
                     dex_id.clone(),
@@ -438,7 +441,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, DEXInfo, XykPool};
+    use common::{AccountIdOf, AssetSymbol, DEXInfo, XykPool};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
@@ -446,9 +449,7 @@ pub mod pallet {
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + common::Config + assets::Config + technical::Config
-    {
+    pub trait Config: frame_system::Config + common::Config + technical::Config {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<Self::AssetId>;
@@ -469,6 +470,16 @@ pub mod pallet {
         type PoolXykPallet: XykPool<Self::AccountId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
