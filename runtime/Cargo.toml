@@ -51,6 +51,7 @@ parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", d
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
+apollo-platform = { path = "../pallets/apollo-platform", default-features = false, optional = true }
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 band = { path = "../pallets/band", default-features = false }
@@ -170,7 +171,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 [dev-dependencies]
-env_logger = "0.9.0"
+env_logger = "0.10.0"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 tokio = { version = "1.19.2", features = ["macros"] }
 sp-tracing = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -180,6 +181,7 @@ frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git"
 default = ["std", "build-wasm-binary"]
 
 std = [
+    "apollo-platform/std",
     "assets-runtime-api/std",
     "assets/std",
     "band/std",
@@ -327,9 +329,10 @@ wip = [
     "pallet-beefy-mmr",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test"]
+ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
 
 runtime-benchmarks = [
+    "apollo-platform/runtime-benchmarks",
     "assets/runtime-benchmarks",
     "band/runtime-benchmarks",
     "ceres-governance-platform/runtime-benchmarks",
@@ -402,6 +405,7 @@ build-wasm-binary = []
 
 try-runtime = [
     "frame-try-runtime",
+    "apollo-platform/try-runtime",
     "assets/try-runtime",
     "band/try-runtime",
     "bridge-multisig/try-runtime",

@@ -160,6 +160,14 @@ benchmarks! {
     }: {
         Pallet::<T>::vest_account_rewards(accounts);
     }
+
+    set_lp_min_xor_for_bonus_reward{
+        let root = RawOrigin::Root;
+        let balance = balance!(10000000);
+    }: {
+       Pallet::<T>::set_lp_min_xor_for_bonus_reward(root.into(), balance).unwrap();
+    }
+
 }
 
 #[cfg(test)]
@@ -176,6 +184,7 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_refresh_pool());
             assert_ok!(Pallet::<Runtime>::test_benchmark_prepare_accounts_for_vesting());
             assert_ok!(Pallet::<Runtime>::test_benchmark_vest_account_rewards());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_set_lp_min_xor_for_bonus_reward());
         });
     }
 }
