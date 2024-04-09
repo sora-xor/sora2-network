@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 74,
+    spec_version: 75,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 74,
+    transaction_version: 75,
     state_version: 0,
 };
 
@@ -1976,12 +1976,14 @@ impl kensetsu::Config for Runtime {
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "ready-to-test")] // Apollo
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
     pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 5; // set 100 for release
 }
 
+#[cfg(feature = "ready-to-test")] // Apollo
 impl apollo_platform::Config for Runtime {
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
@@ -2515,6 +2517,7 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
+        #[cfg(feature = "ready-to-test")] // Apollo
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
     }
 }
@@ -3259,6 +3262,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
+            #[cfg(feature = "ready-to-test")] // Apollo
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
@@ -3364,6 +3368,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
+            #[cfg(feature = "ready-to-test")] // Apollo
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
