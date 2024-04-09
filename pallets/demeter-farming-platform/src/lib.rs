@@ -67,7 +67,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
-    use common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
+    use common::prelude::{
+        AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+        Description, FixedWrapper,
+    };
     use common::{balance, XykPool};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
@@ -83,7 +86,7 @@ pub mod pallet {
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config
+        frame_system::Config + technical::Config + ceres_liquidity_locker::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -96,6 +99,17 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -465,7 +479,8 @@ pub mod pallet {
             // Transfer pooled_tokens
             if !is_farm {
                 ensure!(
-                    pooled_tokens <= Assets::<T>::free_balance(&pool_asset, &user).unwrap_or(0),
+                    pooled_tokens
+                        <= T::AssetInfoProvider::free_balance(&pool_asset, &user).unwrap_or(0),
                     Error::<T>::InsufficientFunds
                 );
 
