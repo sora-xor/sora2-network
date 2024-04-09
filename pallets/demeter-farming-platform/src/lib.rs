@@ -82,7 +82,6 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"deofarms");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config

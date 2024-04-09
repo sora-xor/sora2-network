@@ -341,7 +341,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -1029,7 +1028,6 @@ pub mod pallet {
                 Error::<T>::TokenIsAlreadyAdded
             );
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             let (_, _, precision, ..) = T::AssetInfoProvider::get_asset_info(&asset_id);
             RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
             RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);

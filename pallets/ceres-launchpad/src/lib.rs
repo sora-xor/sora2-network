@@ -97,7 +97,6 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

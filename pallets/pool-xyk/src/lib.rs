@@ -794,7 +794,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -879,7 +878,6 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_a)
                     && !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_b),
@@ -923,7 +921,6 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_a)
                     && !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_b),
@@ -965,7 +962,6 @@ pub mod pallet {
                     ManagementMode::Public,
                 )?;
 
-                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
                     !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
                         && !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_b),

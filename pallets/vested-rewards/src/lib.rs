@@ -489,7 +489,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_std::collections::btree_map::BTreeMap;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

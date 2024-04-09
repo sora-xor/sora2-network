@@ -58,7 +58,6 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crstlock");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
