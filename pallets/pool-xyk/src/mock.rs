@@ -348,6 +348,7 @@ impl Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[allow(non_snake_case)]

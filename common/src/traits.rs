@@ -1092,7 +1092,7 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         unimplemented!()
     }
 
-    fn get_asset_owner(asset_id: &AssetId) -> Result<AccountId, DispatchError> {
+    fn get_asset_owner(_asset_id: &AssetId) -> Result<AccountId, DispatchError> {
         unimplemented!()
     }
 }
