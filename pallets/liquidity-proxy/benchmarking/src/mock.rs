@@ -177,6 +177,7 @@ impl liquidity_proxy::Config for Runtime {
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
     type MaxAdditionalDataLengthSwapTransferBatch = ConstU32<2000>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {

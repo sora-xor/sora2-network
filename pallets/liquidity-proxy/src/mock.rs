@@ -208,6 +208,7 @@ impl Config for Runtime {
     type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
