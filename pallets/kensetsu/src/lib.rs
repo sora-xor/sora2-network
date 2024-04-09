@@ -639,7 +639,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
             ensure!(
-                T::AssetInfoProvider::asset_exists(&collateral_asset_id),
+                <T as Config>::AssetInfoProvider::asset_exists(&collateral_asset_id),
                 Error::<T>::WrongAssetId
             );
             Self::upsert_collateral_info(&collateral_asset_id, new_risk_parameters)?;
@@ -917,7 +917,8 @@ pub mod pallet {
 
         /// Ensures that new emission will not exceed system KUSD hard cap
         fn ensure_protocol_cap(new_emission: Balance) -> DispatchResult {
-            let current_supply = T::AssetInfoProvider::total_issuance(&T::KusdAssetId::get())?;
+            let current_supply =
+                <T as Config>::AssetInfoProvider::total_issuance(&T::KusdAssetId::get())?;
             ensure!(
                 current_supply
                     .checked_add(new_emission)
@@ -1275,10 +1276,14 @@ pub mod pallet {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            let kusd_balance_before =
-                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let collateral_balance_before =
-                T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
+            let kusd_balance_before = <T as Config>::AssetInfoProvider::free_balance(
+                &T::KusdAssetId::get(),
+                &treasury_account_id,
+            )?;
+            let collateral_balance_before = <T as Config>::AssetInfoProvider::free_balance(
+                &cdp.collateral_asset_id,
+                &treasury_account_id,
+            )?;
 
             T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
@@ -1290,10 +1295,14 @@ pub mod pallet {
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )?;
 
-            let kusd_balance_after =
-                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let collateral_balance_after =
-                T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
+            let kusd_balance_after = <T as Config>::AssetInfoProvider::free_balance(
+                &T::KusdAssetId::get(),
+                &treasury_account_id,
+            )?;
+            let collateral_balance_after = <T as Config>::AssetInfoProvider::free_balance(
+                &cdp.collateral_asset_id,
+                &treasury_account_id,
+            )?;
             // This value may differ from `desired_kusd_amount`, so this is calculation of actual
             // amount swapped.
             let kusd_swapped = kusd_balance_after
@@ -1315,8 +1324,10 @@ pub mod pallet {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            let protocol_positive_balance =
-                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
+            let protocol_positive_balance = <T as Config>::AssetInfoProvider::free_balance(
+                &T::KusdAssetId::get(),
+                &treasury_account_id,
+            )?;
             let to_burn = if amount <= protocol_positive_balance {
                 amount
             } else {

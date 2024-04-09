@@ -568,7 +568,7 @@ pub mod pallet {
             let origin_check_result = T::PermittedCreateOrigin::ensure_origin(origin)?;
             let maybe_who = match origin_check_result {
                 Either::Left(who) => {
-                    if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                    if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                         // nft
                         // ensure the user has nft
                         ensure!(
