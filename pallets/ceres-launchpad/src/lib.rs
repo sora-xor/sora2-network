@@ -449,14 +449,19 @@ pub mod pallet {
 
             ensure!(
                 CeresBurnFeeAmount::<T>::get()
-                    <= T::AssetInfoProvider::free_balance(&CeresAssetIdOf::<T>::get(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
             let total_tokens = tokens_for_liquidity + tokens_for_ilo;
             ensure!(
-                total_tokens <= T::AssetInfoProvider::free_balance(&asset_id, &user).unwrap_or(0),
+                total_tokens
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughTokens
             );
 
@@ -533,8 +538,11 @@ pub mod pallet {
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
-                    <= T::AssetInfoProvider::free_balance(&CeresAssetIdOf::<T>::get(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
@@ -834,7 +842,8 @@ pub mod pallet {
 
                 ensure!(
                     tokens_to_lock
-                        <= T::AssetInfoProvider::free_balance(&asset_id, &user).unwrap_or(0),
+                        <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                            .unwrap_or(0),
                     Error::<T>::NotEnoughTeamTokensToLock
                 );
 
@@ -1114,7 +1123,8 @@ pub mod pallet {
                 VestedRewards::<T>::claim_rewards(RawOrigin::Signed(pallet_account.clone()).into());
 
             let pswap_rewards =
-                T::AssetInfoProvider::free_balance(&PSWAP.into(), &pallet_account).unwrap_or(0);
+                <T as Config>::AssetInfoProvider::free_balance(&PSWAP.into(), &pallet_account)
+                    .unwrap_or(0);
 
             // Claim PSWAP rewards
             Assets::<T>::transfer_from(
