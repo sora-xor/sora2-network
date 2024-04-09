@@ -38,7 +38,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{CheckedMul, Zero};
 use sp_runtime::{SaturatedConversion, Saturating};
 
-/// GTC Limit Order
+/// GTD (good till date) Limit Order
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct LimitOrder<T>

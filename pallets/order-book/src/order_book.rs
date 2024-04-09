@@ -651,12 +651,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     Some(OrderAmount::Quote(
                         self.tick_size.copy_divisibility(desired_amount_in),
                     )),
+                    true,
                 )?,
                 PriceVariant::Sell => self.sum_market(
                     data.get_aggregated_bids(&self.order_book_id).iter().rev(),
                     Some(OrderAmount::Base(
                         self.step_lot_size.copy_divisibility(desired_amount_in),
                     )),
+                    true,
                 )?,
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
@@ -665,12 +667,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                     Some(OrderAmount::Base(
                         self.step_lot_size.copy_divisibility(desired_amount_out),
                     )),
+                    true,
                 )?,
                 PriceVariant::Sell => self.sum_market(
                     data.get_aggregated_bids(&self.order_book_id).iter().rev(),
                     Some(OrderAmount::Quote(
                         self.tick_size.copy_divisibility(desired_amount_out),
                     )),
+                    true,
                 )?,
             },
         };
@@ -699,13 +703,15 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     /// Summarizes and returns `base` and `quote` volumes of market depth.
-    /// If `target_depth` is defined, it counts `base` and `quote` volumes under the limit and
-    /// checks if there is enough volume,
+    /// If `target_amount` is defined, it counts `base` and `quote` volumes under the limit and checks if there is enough volume,
     /// Otherwise returns the sum of whole market depth.
+    /// If `filled_target` is true and market has not enough liquidity, it returns an error,
+    /// Otherwise returns as much liquidity as it can, i.e. the sum of whole market depth.
     pub fn sum_market<'a>(
         &self,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
-        target_depth: Option<OrderAmount>,
+        target_amount: Option<OrderAmount>,
+        filled_target: bool,
     ) -> Result<(OrderAmount, OrderAmount), DispatchError> {
         let mut market_base_volume = OrderVolume::zero();
         let mut market_quote_volume = OrderVolume::zero();
@@ -717,8 +723,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 .checked_mul(base_volume)
                 .ok_or(Error::<T>::AmountCalculationFailed)?;
 
-            if let Some(target_depth) = target_depth {
-                match target_depth {
+            if let Some(target_amount) = target_amount {
+                match target_amount {
                     OrderAmount::Base(base_target) => {
                         if market_base_volume
                             .checked_add(base_volume)
@@ -784,7 +790,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         ensure!(
-            target_depth.is_none() || enough_liquidity,
+            target_amount.is_none() || enough_liquidity || !filled_target,
             Error::<T>::NotEnoughLiquidityInOrderBook
         );
 

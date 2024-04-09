@@ -42,8 +42,8 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
+use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild};
-use frame_support::{ensure, parameter_types};
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
@@ -88,14 +88,14 @@ pub struct MockLiquidityProxy;
 impl MockLiquidityProxy {
     const EXCHANGE_TECH_ACCOUNT: AccountId = AccountId32::new([33u8; 32]);
 
-    /// Sets output amount in KUSD, mints this amount to LiquidityProxy account
-    /// This amount will be used in the next exchange
-    pub fn set_output_amount_for_the_next_exchange(output_amount_kusd: Balance) {
+    /// Sets output amount in KUSD and input amount in any token, mints output KUSD amount to
+    /// LiquidityProxy account. These amounts will be used in the next exchange.
+    pub fn set_amounts_for_the_next_exchange(amount: Balance) {
         assets::Pallet::<TestRuntime>::update_balance(
             RuntimeOrigin::root(),
             Self::EXCHANGE_TECH_ACCOUNT,
             KUSD,
-            output_amount_kusd.try_into().unwrap(),
+            amount.try_into().unwrap(),
         )
         .expect("must succeed");
     }
@@ -129,16 +129,14 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 
     /// Mocks liquidity provider exchange
     /// output_asset_id - must be KUSD
-    /// output_amount - is equal to KUSD LiquidityProxy tech account balance. This amount might be
-    /// set with associated function:
-    /// MockLiquidityProxy::set_output_amount_for_the_next_exchange(balance)
+    /// Use MockLiquidityProxy::set_amounts_for_the_next_exchange() prior to this method.
     fn exchange(
         _dex_id: DEXId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        amount: SwapAmount<common::Balance>,
+        _amount: SwapAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id != KUSD {
@@ -146,35 +144,21 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
                 "Wrong asset id for MockLiquidityProxy, KUSD only supported",
             ))
         } else {
-            match amount {
-                SwapAmount::WithDesiredInput { .. } => unimplemented!(),
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out,
-                    max_amount_in,
-                } => {
-                    assets::Pallet::<TestRuntime>::transfer_from(
-                        input_asset_id,
-                        sender,
-                        &Self::EXCHANGE_TECH_ACCOUNT,
-                        max_amount_in,
-                    )?;
-                    let out_amount = assets::Pallet::<TestRuntime>::free_balance(
-                        &KUSD,
-                        &Self::EXCHANGE_TECH_ACCOUNT,
-                    )?;
-                    ensure!(
-                        desired_amount_out <= out_amount,
-                        DispatchError::Other("Not enough liquidity")
-                    );
-                    assets::Pallet::<TestRuntime>::transfer_from(
-                        output_asset_id,
-                        &Self::EXCHANGE_TECH_ACCOUNT,
-                        receiver,
-                        out_amount,
-                    )?;
-                    Ok(SwapOutcome::new(out_amount, Default::default()))
-                }
-            }
+            let swap_amount =
+                assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)?;
+            assets::Pallet::<TestRuntime>::transfer_from(
+                input_asset_id,
+                sender,
+                &Self::EXCHANGE_TECH_ACCOUNT,
+                swap_amount,
+            )?;
+            assets::Pallet::<TestRuntime>::transfer_from(
+                output_asset_id,
+                &Self::EXCHANGE_TECH_ACCOUNT,
+                receiver,
+                swap_amount,
+            )?;
+            Ok(SwapOutcome::new(swap_amount, Default::default()))
         }
     }
 }

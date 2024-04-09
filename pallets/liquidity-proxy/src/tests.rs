@@ -34,7 +34,7 @@ use crate::weights::WeightInfo;
 use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{
-    AssetName, AssetSymbol, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapVariant,
+    AssetName, AssetSymbol, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
 };
 use common::{
     assert_approx_eq_abs, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler,
@@ -861,17 +861,9 @@ fn test_swap_weight_considers_available_sources() {
         // 2) MockPool
         let swap_weight_without_path = swap_base_weight
             .saturating_add(exchange_base_weight)
-            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
-            .saturating_add(quote_single_weight); // WithDesiredOutput
+            .saturating_add(quote_single_weight.saturating_mul(1)); // for each available path
         assert_eq!(
-            LiquidityProxy::swap_weight(
-                &DEX_D_ID,
-                &ETH,
-                &XST,
-                SwapVariant::WithDesiredOutput,
-                &Vec::new(),
-                &FilterMode::Disabled,
-            ),
+            LiquidityProxy::swap_weight(&DEX_D_ID, &ETH, &XST, &Vec::new(), &FilterMode::Disabled,),
             swap_weight_without_path
                 .saturating_add(multicollateral_weight)
                 .saturating_add(Weight::zero()) // `MockSource`s are not counted
@@ -881,17 +873,9 @@ fn test_swap_weight_considers_available_sources() {
         // 1) Multicollateral + MockPool(1-3)
         let swap_weight_without_path = swap_base_weight
             .saturating_add(exchange_base_weight)
-            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
-            .saturating_add(quote_single_weight); // WithDesiredOutput
+            .saturating_add(quote_single_weight.saturating_mul(1)); // for each available path
         assert_eq!(
-            LiquidityProxy::swap_weight(
-                &DEX_A_ID,
-                &DOT,
-                &XOR,
-                SwapVariant::WithDesiredOutput,
-                &Vec::new(),
-                &FilterMode::Disabled,
-            ),
+            LiquidityProxy::swap_weight(&DEX_A_ID, &DOT, &XOR, &Vec::new(), &FilterMode::Disabled,),
             swap_weight_without_path.saturating_add(multicollateral_weight)
         );
 
@@ -903,14 +887,7 @@ fn test_swap_weight_considers_available_sources() {
             .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
             .saturating_add(Weight::zero()); // WithDesiredInput
         assert_eq!(
-            LiquidityProxy::swap_weight(
-                &DEX_A_ID,
-                &DOT,
-                &XOR,
-                SwapVariant::WithDesiredInput,
-                &Vec::new(),
-                &FilterMode::Disabled,
-            ),
+            LiquidityProxy::swap_weight(&DEX_A_ID, &DOT, &XOR, &Vec::new(), &FilterMode::Disabled,),
             swap_weight_without_path.saturating_add(multicollateral_weight)
         );
 
@@ -927,14 +904,12 @@ fn test_swap_weight_considers_available_sources() {
 
         let swap_weight_without_path = swap_base_weight
             .saturating_add(exchange_base_weight)
-            .saturating_add(quote_single_weight.saturating_mul(2)) // for each available path
-            .saturating_add(quote_single_weight); // WithDesiredOutput
+            .saturating_add(quote_single_weight.saturating_mul(2)); // for each available path
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_A_ID,
                 &XSTUSD,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::new(),
                 &FilterMode::Disabled,
             ),
@@ -983,14 +958,12 @@ fn test_swap_weight_filters_sources() {
         // 2) MockPool
         let swap_weight_without_path = swap_base_weight
             .saturating_add(exchange_base_weight)
-            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
-            .saturating_add(quote_single_weight); // WithDesiredOutput
+            .saturating_add(quote_single_weight.saturating_mul(1)); // for each available path
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_D_ID,
                 &ETH,
                 &XST,
-                SwapVariant::WithDesiredOutput,
                 &Vec::from([
                     LiquiditySourceType::MockPool,
                     LiquiditySourceType::MulticollateralBondingCurvePool
@@ -1006,7 +979,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_D_ID,
                 &ETH,
                 &XST,
-                SwapVariant::WithDesiredOutput,
                 &Vec::from([LiquiditySourceType::MockPool]),
                 &FilterMode::AllowSelected,
             ),
@@ -1019,7 +991,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_D_ID,
                 &ETH,
                 &XST,
-                SwapVariant::WithDesiredOutput,
                 &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
                 &FilterMode::ForbidSelected,
             ),
@@ -1032,7 +1003,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_D_ID,
                 &ETH,
                 &XST,
-                SwapVariant::WithDesiredOutput,
                 &Vec::new(),
                 &FilterMode::AllowSelected,
             ),
@@ -1043,14 +1013,12 @@ fn test_swap_weight_filters_sources() {
         // 1) Multicollateral + MockPool(1-3)
         let swap_weight_without_path = swap_base_weight
             .saturating_add(exchange_base_weight)
-            .saturating_add(quote_single_weight.saturating_mul(1)) // for each available path
-            .saturating_add(quote_single_weight); // WithDesiredOutput
+            .saturating_add(quote_single_weight.saturating_mul(1)); // for each available path
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_A_ID,
                 &DOT,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::new(),
                 &FilterMode::ForbidSelected,
             ),
@@ -1062,7 +1030,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_A_ID,
                 &DOT,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
                 &FilterMode::ForbidSelected,
             ),
@@ -1079,14 +1046,12 @@ fn test_swap_weight_filters_sources() {
         // 1) Multicollateral
         let swap_weight_without_path = swap_base_weight
             .saturating_add(exchange_base_weight)
-            .saturating_add(quote_single_weight.saturating_mul(2)) // for each available path
-            .saturating_add(quote_single_weight); // WithDesiredOutput
+            .saturating_add(quote_single_weight.saturating_mul(2)); // for each available path
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_A_ID,
                 &XSTUSD,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::new(),
                 &FilterMode::ForbidSelected,
             ),
@@ -1099,7 +1064,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_A_ID,
                 &XSTUSD,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::from([LiquiditySourceType::XSTPool]),
                 &FilterMode::AllowSelected,
             ),
@@ -1110,7 +1074,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_A_ID,
                 &XSTUSD,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
                 &FilterMode::AllowSelected,
             ),
@@ -1121,7 +1084,6 @@ fn test_swap_weight_filters_sources() {
                 &DEX_A_ID,
                 &XSTUSD,
                 &XOR,
-                SwapVariant::WithDesiredOutput,
                 &Vec::new(),
                 &FilterMode::AllowSelected,
             ),
@@ -1214,6 +1176,119 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
                 FilterMode::Disabled,
             ),
             Error::<Runtime>::UnableToSwapIndivisibleAssets
+        );
+    });
+}
+
+#[test]
+fn test_swap_with_desired_output_returns_precise_amount() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&XOR, &alice()).unwrap();
+        let desired_amount_out = balance!(52.789948793749670063);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            XOR,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in: balance!(10000.0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            initial_balance + desired_amount_out
+        );
+    });
+}
+
+#[test]
+fn test_swap_with_multi_steps_desired_output_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&KSM, &alice()).unwrap();
+        let desired_amount_out = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            KSM,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in: balance!(10000.0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            initial_balance + desired_amount_out
+        );
+    });
+}
+
+#[test]
+fn test_swap_with_desired_input_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&USDT, &alice()).unwrap();
+        let desired_amount_in = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out: balance!(0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            initial_balance - desired_amount_in
+        );
+    });
+}
+
+#[test]
+fn test_swap_with_multi_steps_desired_input_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&KSM, &alice()).unwrap();
+        let desired_amount_in = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            KSM,
+            USDT,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out: balance!(0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            initial_balance - desired_amount_in
         );
     });
 }
