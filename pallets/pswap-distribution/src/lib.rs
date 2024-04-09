@@ -168,8 +168,10 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-        let base_total =
-            T::AssetInfoProvider::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
+        let base_total = <T as Config>::AssetInfoProvider::free_balance(
+            &dex_info.base_asset_id,
+            &fees_account_id,
+        )?;
         if base_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
                 dex_id.clone(),
@@ -227,8 +229,10 @@ impl<T: Config> Pallet<T> {
             // Get state of incentive availability and corresponding definitions.
             let incentive_asset_id = T::GetIncentiveAssetId::get();
             let pool_tokens_total = T::PoolXykPallet::total_issuance(&pool_account)?;
-            let incentive_total =
-                T::AssetInfoProvider::free_balance(&incentive_asset_id, &fees_account_id)?;
+            let incentive_total = <T as Config>::AssetInfoProvider::free_balance(
+                &incentive_asset_id,
+                &fees_account_id,
+            )?;
             if incentive_total == 0 || pool_tokens_total == 0 {
                 Self::deposit_event(Event::<T>::NothingToDistribute(
                     dex_id.clone(),
