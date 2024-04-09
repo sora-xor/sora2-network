@@ -13,7 +13,9 @@ mod tests;
 mod benchmarking;
 
 use codec::{Decode, Encode};
-use common::TradingPairSourceManager;
+use common::{
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, TradingPairSourceManager,
+};
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -119,10 +121,21 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
+    type Assets<T> = assets::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
     type TokenLocker<T> = ceres_token_locker::Pallet<T>;
@@ -438,13 +451,19 @@ pub mod pallet {
 
             ensure!(
                 CeresBurnFeeAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get(), &user).unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
             let total_tokens = tokens_for_liquidity + tokens_for_ilo;
             ensure!(
-                total_tokens <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total_tokens
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughTokens
             );
 
@@ -521,7 +540,11 @@ pub mod pallet {
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
-                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get(), &user).unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
@@ -820,7 +843,9 @@ pub mod pallet {
                     .unwrap_or(0);
 
                 ensure!(
-                    tokens_to_lock <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                    tokens_to_lock
+                        <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                            .unwrap_or(0),
                     Error::<T>::NotEnoughTeamTokensToLock
                 );
 

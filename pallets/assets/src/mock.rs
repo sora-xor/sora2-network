@@ -118,7 +118,6 @@ impl crate::Config for Runtime {
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -126,7 +125,6 @@ impl crate::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = MockLiquidityProxy;
-    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -134,6 +132,8 @@ impl crate::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetId = AssetId;
+    type Currency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
@@ -144,7 +144,7 @@ impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as Config>::AssetId;
+    type CurrencyId = <Runtime as common::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();

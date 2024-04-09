@@ -118,6 +118,7 @@ impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -135,7 +136,6 @@ impl assets::Config for Runtime {
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -143,7 +143,6 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -151,6 +150,8 @@ impl assets::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetId = AssetId;
+    type Currency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {

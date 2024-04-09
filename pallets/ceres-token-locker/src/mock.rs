@@ -103,6 +103,7 @@ impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -119,7 +120,6 @@ impl assets::Config for Runtime {
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -127,7 +127,6 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -135,6 +134,8 @@ impl assets::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
+    type Currency = currencies::Pallet<Runtime>;
+    type AssetId = AssetId;
 }
 
 impl permissions::Config for Runtime {
