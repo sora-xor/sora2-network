@@ -301,6 +301,7 @@ impl technical::Config for Test {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Test>;
 }
 
 pub fn new_tester(inbound_channel: H160, outbound_channel: H160) -> sp_io::TestExternalities {

@@ -202,6 +202,7 @@ impl technical::Config for Test {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Test>;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
