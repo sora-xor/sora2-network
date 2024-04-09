@@ -379,13 +379,16 @@ pub mod pallet {
             risk_parameters: CollateralRiskParameters,
         },
         KusdHardCapUpdated {
-            hard_cap: Balance,
+            new_hard_cap: Balance,
+            old_hard_cap: Balance,
         },
         BorrowTaxUpdated {
-            borrow_tax: Percent,
+            old_borrow_tax: Percent,
+            new_borrow_tax: Percent,
         },
         LiquidationPenaltyUpdated {
-            liquidation_penalty: Percent,
+            new_liquidation_penalty: Percent,
+            old_liquidation_penalty: Percent,
         },
         ProfitWithdrawn {
             amount: Balance,
@@ -677,13 +680,11 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            KusdHardCap::<T>::mutate({
-                |hard_cap| {
-                    *hard_cap = new_hard_cap;
-                }
-            });
+            let old_hard_cap = KusdHardCap::<T>::get();
+            KusdHardCap::<T>::set(new_hard_cap);
             Self::deposit_event(Event::KusdHardCapUpdated {
-                hard_cap: new_hard_cap,
+                new_hard_cap,
+                old_hard_cap,
             });
             Ok(())
         }
@@ -699,9 +700,11 @@ pub mod pallet {
         pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
+            let old_borrow_tax = BorrowTax::<T>::get();
             BorrowTax::<T>::set(new_borrow_tax);
             Self::deposit_event(Event::BorrowTaxUpdated {
-                borrow_tax: new_borrow_tax,
+                new_borrow_tax,
+                old_borrow_tax,
             });
 
             Ok(())
@@ -721,9 +724,11 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
+            let old_liquidation_penalty = LiquidationPenalty::<T>::get();
             LiquidationPenalty::<T>::set(new_liquidation_penalty);
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
-                liquidation_penalty: new_liquidation_penalty,
+                new_liquidation_penalty,
+                old_liquidation_penalty,
             });
 
             Ok(())

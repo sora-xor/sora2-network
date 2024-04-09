@@ -1809,15 +1809,22 @@ fn test_update_hard_cap_only_risk_manager() {
 fn test_update_hard_cap_sunny_day() {
     new_test_ext().execute_with(|| {
         set_up_risk_manager();
-        let hard_cap = balance!(100);
+        let new_hard_cap = balance!(100);
 
         assert_ok!(KensetsuPallet::update_hard_cap_total_supply(
             risk_manager(),
-            hard_cap
+            new_hard_cap
         ));
 
-        System::assert_has_event(Event::KusdHardCapUpdated { hard_cap }.into());
-        assert_eq!(hard_cap, KusdHardCap::<TestRuntime>::get());
+        let old_hard_cap = balance!(0);
+        System::assert_has_event(
+            Event::KusdHardCapUpdated {
+                new_hard_cap,
+                old_hard_cap,
+            }
+            .into(),
+        );
+        assert_eq!(new_hard_cap, KusdHardCap::<TestRuntime>::get());
     });
 }
 
@@ -1861,9 +1868,11 @@ fn test_update_borrow_tax_sunny_day() {
             new_borrow_tax
         ));
 
+        let old_borrow_tax = Percent::default();
         System::assert_has_event(
             Event::BorrowTaxUpdated {
-                borrow_tax: new_borrow_tax,
+                new_borrow_tax,
+                old_borrow_tax,
             }
             .into(),
         );
@@ -1906,21 +1915,23 @@ fn test_update_liquidation_penalty_only_risk_manager() {
 fn test_update_liquidation_penalty_sunny_day() {
     new_test_ext().execute_with(|| {
         set_up_risk_manager();
-        let liquidation_penalty = Percent::from_percent(10);
+        let new_liquidation_penalty = Percent::from_percent(10);
 
         assert_ok!(KensetsuPallet::update_liquidation_penalty(
             risk_manager(),
-            liquidation_penalty
+            new_liquidation_penalty
         ));
 
+        let old_liquidation_penalty = Percent::default();
         System::assert_has_event(
             Event::LiquidationPenaltyUpdated {
-                liquidation_penalty,
+                new_liquidation_penalty,
+                old_liquidation_penalty,
             }
             .into(),
         );
         assert_eq!(
-            liquidation_penalty,
+            new_liquidation_penalty,
             LiquidationPenalty::<TestRuntime>::get()
         );
     });
