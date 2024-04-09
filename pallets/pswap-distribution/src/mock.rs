@@ -194,6 +194,7 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type PoolXykPallet = PoolXYK;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -306,6 +307,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
