@@ -972,6 +972,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -987,6 +988,7 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1023,6 +1025,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1082,6 +1085,7 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1463,6 +1467,7 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[cfg(feature = "private-net")]
@@ -1619,6 +1624,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1706,6 +1712,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1758,6 +1765,7 @@ impl vested_rewards::Config for Runtime {
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl price_tools::Config for Runtime {
@@ -1839,6 +1847,7 @@ impl ceres_launchpad::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ceres_launchpad::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
@@ -1863,6 +1872,7 @@ impl ceres_token_locker::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_token_locker::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {
@@ -1883,6 +1893,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
     type WeightInfo = demeter_farming_platform::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -1928,6 +1939,7 @@ impl hermes_governance_platform::Config for Runtime {
     type TitleLimit = TitleLimit;
     type DescriptionLimit = DescriptionLimit;
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[cfg(feature = "wip")] // kensetsu

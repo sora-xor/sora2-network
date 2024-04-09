@@ -317,8 +317,11 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesVotingAmount::<T>::get()
-                    <= T::AssetInfoProvider::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &T::HermesAssetId::get().into(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForVoting
             );
 
@@ -388,8 +391,11 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesAmountForCreatingPoll::<T>::get()
-                    <= T::AssetInfoProvider::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &T::HermesAssetId::get().into(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
 

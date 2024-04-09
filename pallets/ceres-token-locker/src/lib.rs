@@ -213,7 +213,9 @@ pub mod pallet {
             let total = number_of_tokens + fee;
 
             ensure!(
-                total <= T::AssetInfoProvider::free_balance(&asset_id, &user).unwrap_or(0),
+                total
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughFunds
             );
 
