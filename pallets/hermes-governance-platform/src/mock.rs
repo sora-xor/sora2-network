@@ -127,6 +127,7 @@ impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -143,7 +144,6 @@ impl assets::Config for Runtime {
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -151,7 +151,6 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -159,6 +158,8 @@ impl assets::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetId = AssetId;
+    type Currency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
@@ -172,6 +173,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {
