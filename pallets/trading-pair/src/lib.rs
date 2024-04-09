@@ -59,7 +59,6 @@ mod mock;
 mod tests;
 
 pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
-type Assets<T> = assets::Pallet<T>;
 
 pub use weights::WeightInfo;
 
@@ -211,8 +210,8 @@ impl<T: Config> Pallet<T> {
                 || base_asset_id == dex_info.synthetic_base_asset_id,
             Error::<T>::ForbiddenBaseAssetId
         );
-        Assets::<T>::ensure_asset_exists(&base_asset_id)?;
-        Assets::<T>::ensure_asset_exists(&target_asset_id)?;
+        T::AssetInfoProvider::ensure_asset_exists(&base_asset_id)?;
+        T::AssetInfoProvider::ensure_asset_exists(&target_asset_id)?;
 
         let trading_pair = TradingPair::<T> {
             base_asset_id,
@@ -257,7 +256,9 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{DEXInfo, DexIdOf};
+    use common::{
+        AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description, DexIdOf,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -270,6 +271,16 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        /// to retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
