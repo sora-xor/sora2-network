@@ -207,6 +207,7 @@ impl Config for Runtime {
     type BuyBackHandler = BuyBackHandlerImpl;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 pub struct BuyBackHandlerImpl;
