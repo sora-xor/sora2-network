@@ -489,7 +489,6 @@ try-runtime = [
 ]
 
 test = [
-    "common/test",
     "framenode-chain-spec/test",
     "liquidity-proxy/test",
     "order-book/test",
