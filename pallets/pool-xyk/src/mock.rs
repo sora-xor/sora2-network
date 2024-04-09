@@ -154,6 +154,8 @@ impl trading_pair::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetId = AssetId;
+    type Currency = currencies::Pallet<Runtime>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -172,7 +174,7 @@ impl orml_tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type CurrencyId = <Runtime as common::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
@@ -205,7 +207,6 @@ impl assets::Config for Runtime {
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
     type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
@@ -213,7 +214,6 @@ impl assets::Config for Runtime {
     type GetBuyBackAccountId = GetBuyBackAccountId;
     type GetBuyBackDexId = GetBuyBackDexId;
     type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -267,6 +267,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -347,6 +348,7 @@ impl Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[allow(non_snake_case)]
