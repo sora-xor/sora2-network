@@ -3463,6 +3463,7 @@
 <a href="#3448" id="3448">3448</a>
 <a href="#3449" id="3449">3449</a>
 <a href="#3450" id="3450">3450</a>
+<a href="#3451" id="3451">3451</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5413,7 +5414,7 @@
 
     <span class="comment">// 1 day = 86_400_000
     // TODO set 86_400_000
-    </span><span class="kw">pub const </span>AccrueInterestPeriod: Moment = <span class="number">30_000</span>;
+    </span><span class="kw">pub const </span>AccrueInterestPeriod: Moment = <span class="number">300_000</span>;
 
     <span class="comment">// Not as important as some essential transactions (e.g. im_online or similar ones)
     </span><span class="kw">pub </span>KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -5427,6 +5428,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
 </span><span class="kw">impl </span>kensetsu::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
     <span class="kw">type </span>AssetInfoProvider = Assets;
     <span class="kw">type </span>TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     <span class="kw">type </span>KusdAssetId = KusdAssetId;

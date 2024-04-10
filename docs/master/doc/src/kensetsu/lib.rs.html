@@ -1482,6 +1482,82 @@
 <a href="#1467" id="1467">1467</a>
 <a href="#1468" id="1468">1468</a>
 <a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1519,7 +1595,7 @@
 //! deposit or lock amount of the token in CDP as collateral. Then the individual is allowed to
 //! borrow new minted Kensetsu USD (KUSD) in amount up to value of collateral corrected by
 //! `liquidation_ratio` coefficient. The debt in KUSD is a subject of `stability_fee` interest rate.
-//! Collateral may be unlocked only when the debt and the interest are payed back. If the value of
+//! Collateral may be unlocked only when the debt and the interest are paid back. If the value of
 //! collateral has changed in a way that it does not secure the debt, the collateral is liquidated
 //! to cover the debt and the interest.
 
@@ -1553,6 +1629,8 @@
 <span class="kw">const </span>VALIDATION_ERROR_ACCRUE_NO_DEBT: u8 = <span class="number">2</span>;
 <span class="kw">const </span>VALIDATION_ERROR_CHECK_SAFE: u8 = <span class="number">3</span>;
 <span class="kw">const </span>VALIDATION_ERROR_CDP_SAFE: u8 = <span class="number">4</span>;
+<span class="doccomment">/// Liquidation limit reached
+</span><span class="kw">const </span>VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = <span class="number">5</span>;
 
 <span class="doccomment">/// Risk management parameters for the specific collateral type.
 </span><span class="attr">#[derive(
@@ -1568,7 +1646,7 @@
     <span class="doccomment">/// The max amount of collateral can be liquidated in one round
     </span><span class="kw">pub </span>max_liquidation_lot: Balance,
 
-    <span class="doccomment">/// Protocol Interest rate per second
+    <span class="doccomment">/// Protocol Interest rate per millisecond
     </span><span class="kw">pub </span>stability_fee_rate: FixedU128,
 
     <span class="doccomment">/// Minimal deposit in collateral AssetId.
@@ -1624,14 +1702,15 @@
         PriceVariant, DAI,
     };
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span>frame_support::traits::Randomness;
     <span class="kw">use </span>frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>pallet_timestamp <span class="kw">as </span>timestamp;
-    <span class="kw">use </span>sp_arithmetic::traits::{CheckedMul, Saturating};
+    <span class="kw">use </span>sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
     <span class="kw">use </span>sp_arithmetic::Percent;
     <span class="kw">use </span>sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    <span class="kw">use </span>sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One, Zero};
-    <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
+    <span class="kw">use </span>sp_runtime::traits::CheckedConversion;
+    <span class="kw">use </span>sp_std::collections::{btree_set::BTreeSet, vec_deque::VecDeque};
     <span class="kw">use </span>sp_std::vec::Vec;
 
     <span class="doccomment">/// CDP id type
@@ -1647,6 +1726,12 @@
 
     <span class="attr">#[pallet::hooks]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Hooks&lt;BlockNumberFor&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+        <span class="doccomment">/// Resets liquidation flag.
+        </span><span class="kw">fn </span>on_initialize(_now: T::BlockNumber) -&gt; Weight {
+            LiquidatedThisBlock::&lt;T&gt;::put(<span class="bool-val">false</span>);
+            T::DbWeight::get().writes(<span class="number">1</span>)
+        }
+
         <span class="doccomment">/// Main off-chain worker procedure.
         ///
         /// Accrues fees and calls liquidations
@@ -1658,13 +1743,14 @@
             <span class="kw">let </span>now = Timestamp::&lt;T&gt;::get();
             <span class="kw">let </span>outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
             <span class="kw">let </span><span class="kw-2">mut </span>collaterals_to_update = BTreeSet::new();
-            <span class="kw">for </span>(collateral_asset_id, collateral_info) <span class="kw">in </span>&lt;CollateralInfos&lt;T&gt;&gt;::iter() {
+            <span class="kw">for </span>(collateral_asset_id, collateral_info) <span class="kw">in </span>CollateralInfos::&lt;T&gt;::iter() {
                 <span class="kw">if </span>collateral_info.last_fee_update_time &lt;= outdated_timestamp {
                     collaterals_to_update.insert(collateral_asset_id);
                 }
             }
+            <span class="kw">let </span><span class="kw-2">mut </span>unsafe_cdp_ids = VecDeque::&lt;CdpId&gt;::new();
             <span class="comment">// TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
-            </span><span class="kw">for </span>(cdp_id, cdp) <span class="kw">in </span>&lt;CDPDepository&lt;T&gt;&gt;::iter() {
+            </span><span class="kw">for </span>(cdp_id, cdp) <span class="kw">in </span>CDPDepository::&lt;T&gt;::iter() {
                 <span class="comment">// Debt recalculation with interest
                 </span><span class="kw">if </span>collaterals_to_update.contains(<span class="kw-2">&amp;</span>cdp.collateral_asset_id) {
                     <span class="macro">debug!</span>(<span class="string">&quot;Accrue for CDP {:?}&quot;</span>, cdp_id);
@@ -1685,27 +1771,59 @@
                     cdp.collateral_amount,
                     cdp.collateral_asset_id,
                 ) {
-                    <span class="prelude-val">Ok</span>(cdp_is_safe) =&gt; {
-                        <span class="kw">if </span>!cdp_is_safe {
-                            <span class="macro">debug!</span>(<span class="string">&quot;Liquidation of CDP {:?}&quot;</span>, cdp_id);
-                            <span class="kw">let </span>call = Call::&lt;T&gt;::liquidate { cdp_id };
-                            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                                SubmitTransaction::&lt;T, Call&lt;T&gt;&gt;::submit_unsigned_transaction(
-                                    call.into(),
-                                )
-                            {
-                                <span class="macro">warn!</span>(
-                                    <span class="string">&quot;Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}&quot;</span>,
-                                    cdp_id, err
-                                );
-                            }
-                        }
+                    <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) =&gt; {}
+                    <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>) =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;CDP {:?} unsafe&quot;</span>, cdp_id);
+                        unsafe_cdp_ids.push_back(cdp_id);
                     }
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="macro">warn!</span>(
                             <span class="string">&quot;Failed in offchain_worker check cdp {:?} safety: {:?}&quot;</span>,
                             cdp_id, err
                         );
+                    }
+                }
+            }
+            <span class="kw">if </span>!unsafe_cdp_ids.is_empty() {
+                <span class="comment">// Randomly choose one of CDPs to liquidate.
+                // This CDP id can be predicted and manipulated in front-running attack. It is a
+                // known problem. The purpose of the code is not to protect from the attack but to
+                // make choosing of CDP to liquidate more &#39;fair&#39; then incremental order.
+                </span><span class="kw">let </span>(randomness, <span class="kw">_</span>) = T::Randomness::random(<span class="kw-2">&amp;</span><span class="string">b&quot;kensetsu&quot;</span>[..]);
+                <span class="kw">match </span>randomness {
+                    <span class="prelude-val">Some</span>(randomness) =&gt; {
+                        <span class="kw">match </span>u32::decode(<span class="kw-2">&amp;mut </span>randomness.as_ref()) {
+                            <span class="prelude-val">Ok</span>(random_number) =&gt; {
+                                <span class="comment">// Random bias by modulus operation is acceptable here
+                                </span><span class="kw">let </span>random_id = random_number <span class="kw">as </span>usize % unsafe_cdp_ids.len();
+                                unsafe_cdp_ids
+                                    .get(random_id)
+                                    .map_or_else(
+                                        || {
+                                            <span class="macro">warn!</span>(<span class="string">&quot;Failed to get random cdp_id {}.&quot;</span>, random_id);
+                                        },
+                                        |cdp_id| {
+                                        <span class="macro">debug!</span>(<span class="string">&quot;Liquidation of CDP {:?}&quot;</span>, cdp_id);
+                                        <span class="kw">let </span>call = Call::&lt;T&gt;::liquidate { cdp_id: <span class="kw-2">*</span>cdp_id };
+                                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                                            SubmitTransaction::&lt;T, Call&lt;T&gt;&gt;::submit_unsigned_transaction(
+                                                call.into(),
+                                            )
+                                        {
+                                            <span class="macro">warn!</span>(
+                                                <span class="string">&quot;Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}&quot;</span>,
+                                                cdp_id, err
+                                            );
+                                        }
+                                    });
+                            }
+                            <span class="prelude-val">Err</span>(error) =&gt; {
+                                <span class="macro">warn!</span>(<span class="string">&quot;Failed to get randomness during liquidation: {}&quot;</span>, error);
+                            }
+                        }
+                    }
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="macro">warn!</span>(<span class="string">&quot;No randomness provided.&quot;</span>);
                     }
                 }
             }
@@ -1721,6 +1839,7 @@
         + SendTransactionTypes&lt;Call&lt;<span class="self">Self</span>&gt;&gt;
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
+        <span class="kw">type </span>Randomness: Randomness&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Hash&gt;, <span class="self">Self</span>::BlockNumber&gt;;
         <span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
             <span class="self">Self</span>::AssetId,
             <span class="self">Self</span>::AccountId,
@@ -1760,6 +1879,18 @@
     }
 
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
+
+    <span class="doccomment">/// Default value for LiquidatedThisBlock storage
+    </span><span class="attr">#[pallet::type_value]
+    </span><span class="kw">pub fn </span>DefaultLiquidatedThisBlock() -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="doccomment">/// Flag indicates that liquidation took place in this block. Only one liquidation per block is
+    /// allowed, the flag is dropped every block.
+    </span><span class="attr">#[pallet::storage]
+    #[pallet::getter(<span class="kw">fn </span>liquidated_this_block)]
+    </span><span class="kw">pub type </span>LiquidatedThisBlock&lt;T&gt; = StorageValue&lt;<span class="kw">_</span>, bool, ValueQuery, DefaultLiquidatedThisBlock&gt;;
 
     <span class="doccomment">/// System bad debt, the amount of KUSD not secured with collateral.
     </span><span class="attr">#[pallet::storage]
@@ -1889,6 +2020,8 @@
         AccrueWrongTime,
         <span class="doccomment">/// Liquidation lot set in risk parameters is zero, cannot liquidate
         </span>ZeroLiquidationLot,
+        <span class="doccomment">/// Liquidation limit reached
+        </span>LiquidationLimit,
     }
 
     <span class="attr">#[pallet::call]
@@ -2028,6 +2161,10 @@
         </span><span class="attr">#[pallet::call_index(<span class="number">5</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::liquidate())]
         </span><span class="kw">pub fn </span>liquidate(_origin: OriginFor&lt;T&gt;, cdp_id: CdpId) -&gt; DispatchResult {
+            <span class="macro">ensure!</span>(
+                <span class="self">Self</span>::check_liquidation_available(),
+                Error::&lt;T&gt;::LiquidationLimit
+            );
             <span class="kw">let </span>cdp = <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
                 !<span class="self">Self</span>::check_cdp_is_safe(cdp.debt, cdp.collateral_amount, cdp.collateral_asset_id)<span class="question-mark">?</span>,
@@ -2081,6 +2218,7 @@
                 )<span class="question-mark">?</span>;
             };
             <span class="self">Self</span>::decrease_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, kusd_supply_change)<span class="question-mark">?</span>;
+            LiquidatedThisBlock::&lt;T&gt;::put(<span class="bool-val">true</span>);
             <span class="self">Self</span>::deposit_event(Event::Liquidated {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
@@ -2277,6 +2415,9 @@
         <span class="doccomment">/// It is allowed to call only accrue() and liquidate() and only if
         /// it fulfills conditions.
         </span><span class="kw">fn </span>validate_unsigned(_source: TransactionSource, call: <span class="kw-2">&amp;</span><span class="self">Self</span>::Call) -&gt; TransactionValidity {
+            <span class="kw">if </span>!<span class="self">Self</span>::check_liquidation_available() {
+                <span class="kw">return </span>InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT).into();
+            }
             <span class="kw">match </span>call {
                 <span class="comment">// TODO spamming with accrue calls, add some filter to not call too often
                 // https://github.com/sora-xor/sora2-network/issues/878
@@ -2345,6 +2486,13 @@
             <span class="prelude-val">Ok</span>(())
         }
 
+        <span class="doccomment">/// Checks if liquidation is available now.
+        /// Returns `false` if liquidation took place this block since only one liquidation per
+        /// block is allowed.
+        </span><span class="kw">fn </span>check_liquidation_available() -&gt; bool {
+            !LiquidatedThisBlock::&lt;T&gt;::get()
+        }
+
         <span class="doccomment">/// Checks whether a Collateralized Debt Position (CDP) is currently considered safe based on its debt and collateral.
         /// The function evaluates the safety of a CDP based on predefined liquidation ratios and collateral values,
         /// providing an indication of its current safety status.
@@ -2359,25 +2507,29 @@
             collateral: Balance,
             collateral_asset_id: AssetIdOf&lt;T&gt;,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DispatchError&gt; {
-            <span class="kw">let </span>liquidation_ratio = <span class="self">Self</span>::collateral_infos(collateral_asset_id)
-                .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?
-                </span>.risk_parameters
-                .liquidation_ratio;
-            <span class="comment">// DAI is assumed as $1
-            </span><span class="kw">let </span>collateral_reference_price =
-                FixedU128::from_inner(T::PriceTools::get_average_price(
-                    <span class="kw-2">&amp;</span>collateral_asset_id,
-                    <span class="kw-2">&amp;</span>DAI.into(),
-                    PriceVariant::Sell,
-                )<span class="question-mark">?</span>);
-            <span class="kw">let </span>collateral_volume = collateral_reference_price
-                .checked_mul(<span class="kw-2">&amp;</span>FixedU128::from_inner(collateral))
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-            <span class="kw">let </span>max_safe_debt = FixedU128::from_perbill(liquidation_ratio)
-                .checked_mul(<span class="kw-2">&amp;</span>collateral_volume)
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-            <span class="kw">let </span>debt = FixedU128::from_inner(debt);
-            <span class="prelude-val">Ok</span>(debt &lt;= max_safe_debt)
+            <span class="kw">if </span>debt == Balance::zero() {
+                <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>liquidation_ratio = <span class="self">Self</span>::collateral_infos(collateral_asset_id)
+                    .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?
+                    </span>.risk_parameters
+                    .liquidation_ratio;
+                <span class="comment">// DAI is assumed as $1
+                </span><span class="kw">let </span>collateral_reference_price =
+                    FixedU128::from_inner(T::PriceTools::get_average_price(
+                        <span class="kw-2">&amp;</span>collateral_asset_id,
+                        <span class="kw-2">&amp;</span>DAI.into(),
+                        PriceVariant::Sell,
+                    )<span class="question-mark">?</span>);
+                <span class="kw">let </span>collateral_volume = collateral_reference_price
+                    .checked_mul(<span class="kw-2">&amp;</span>FixedU128::from_inner(collateral))
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                <span class="kw">let </span>max_safe_debt = FixedU128::from_perbill(liquidation_ratio)
+                    .checked_mul(<span class="kw-2">&amp;</span>collateral_volume)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                <span class="kw">let </span>debt = FixedU128::from_inner(debt);
+                <span class="prelude-val">Ok</span>(debt &lt;= max_safe_debt)
+            }
         }
 
         <span class="doccomment">/// Ensures that new emission will not exceed collateral hard cap
@@ -2474,7 +2626,7 @@
             <span class="self">Self</span>::ensure_protocol_cap(will_to_borrow_amount)<span class="question-mark">?</span>;
             <span class="self">Self</span>::mint_to(who, will_to_borrow_amount)<span class="question-mark">?</span>;
             <span class="self">Self</span>::update_cdp_debt(cdp_id, new_debt)<span class="question-mark">?</span>;
-            &lt;CollateralInfos&lt;T&gt;&gt;::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+            CollateralInfos::&lt;T&gt;::try_mutate(cdp.collateral_asset_id, |collateral_info| {
                 <span class="kw">let </span>collateral_info = collateral_info
                     .as_mut()
                     .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
@@ -2532,7 +2684,7 @@
         /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
         </span><span class="kw">fn </span>cover_bad_debt(from: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;, kusd_amount: Balance) -&gt; DispatchResult {
-            <span class="kw">let </span>bad_debt = &lt;BadDebt&lt;T&gt;&gt;::get();
+            <span class="kw">let </span>bad_debt = BadDebt::&lt;T&gt;::get();
             <span class="kw">let </span>to_cover_debt = <span class="kw">if </span>kusd_amount &lt;= bad_debt {
                 kusd_amount
             } <span class="kw">else </span>{
@@ -2547,7 +2699,7 @@
                 bad_debt
             };
             <span class="self">Self</span>::burn_from(from, to_cover_debt)<span class="question-mark">?</span>;
-            &lt;BadDebt&lt;T&gt;&gt;::try_mutate(|bad_debt| {
+            BadDebt::&lt;T&gt;::try_mutate(|bad_debt| {
                 <span class="kw-2">*</span>bad_debt = bad_debt
                     .checked_sub(to_cover_debt)
                     .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
@@ -2568,7 +2720,7 @@
             collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;CollateralInfo&lt;T::Moment&gt;, DispatchError&gt; {
             <span class="kw">let </span>collateral_info =
-                &lt;CollateralInfos&lt;T&gt;&gt;::try_mutate(collateral_asset_id, |collateral_info| {
+                CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |collateral_info| {
                     <span class="kw">let </span>collateral_info = collateral_info
                         .as_mut()
                         .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
@@ -2627,7 +2779,7 @@
                 .checked_add(stability_fee)
                 .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
             <span class="self">Self</span>::increase_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, stability_fee)<span class="question-mark">?</span>;
-            cdp = &lt;CDPDepository&lt;T&gt;&gt;::try_mutate(cdp_id, |cdp| {
+            cdp = CDPDepository::&lt;T&gt;::try_mutate(cdp_id, |cdp| {
                 <span class="kw">let </span>cdp = cdp.as_mut().ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
                 cdp.debt = new_debt;
                 cdp.interest_coefficient = new_coefficient;
@@ -2635,7 +2787,7 @@
                     cdp.clone(),
                 )
             })<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>new_bad_debt = &lt;BadDebt&lt;T&gt;&gt;::get();
+            <span class="kw">let </span><span class="kw-2">mut </span>new_bad_debt = BadDebt::&lt;T&gt;::get();
             <span class="kw">if </span>new_bad_debt &gt; <span class="number">0 </span>{
                 <span class="kw">if </span>stability_fee &lt;= new_bad_debt {
                     new_bad_debt = new_bad_debt
@@ -2648,7 +2800,7 @@
                         .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                     new_bad_debt = <span class="macro">balance!</span>(<span class="number">0</span>);
                 };
-                &lt;BadDebt&lt;T&gt;&gt;::try_mutate(|bad_debt| {
+                BadDebt::&lt;T&gt;::try_mutate(|bad_debt| {
                     <span class="kw-2">*</span>bad_debt = new_bad_debt;
                     DispatchResult::Ok(())
                 })<span class="question-mark">?</span>;
@@ -2863,11 +3015,11 @@
 
         <span class="doccomment">/// Removes CDP entry from the storage
         </span><span class="kw">fn </span>delete_cdp(cdp_id: CdpId) -&gt; DispatchResult {
-            <span class="kw">let </span>cdp = &lt;CDPDepository&lt;T&gt;&gt;::take(cdp_id).ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>cdp_ids) = &lt;CdpOwnerIndex&lt;T&gt;&gt;::take(<span class="kw-2">&amp;</span>cdp.owner) {
+            <span class="kw">let </span>cdp = CDPDepository::&lt;T&gt;::take(cdp_id).ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>cdp_ids) = CdpOwnerIndex::&lt;T&gt;::take(<span class="kw-2">&amp;</span>cdp.owner) {
                 cdp_ids.retain(|<span class="kw-2">&amp;</span>x| x != cdp_id);
                 <span class="kw">if </span>!cdp_ids.is_empty() {
-                    &lt;CdpOwnerIndex&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>cdp.owner, cdp_ids);
+                    CdpOwnerIndex::&lt;T&gt;::insert(<span class="kw-2">&amp;</span>cdp.owner, cdp_ids);
                 }
             }
             <span class="self">Self</span>::deposit_event(Event::CDPClosed {
@@ -2919,7 +3071,7 @@
             collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
             new_risk_parameters: CollateralRiskParameters,
         ) -&gt; DispatchResult {
-            &lt;CollateralInfos&lt;T&gt;&gt;::try_mutate(collateral_asset_id, |option_collateral_info| {
+            CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |option_collateral_info| {
                 <span class="kw">match </span>option_collateral_info {
                     <span class="prelude-val">Some</span>(collateral_info) =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>new_info =
@@ -2944,7 +3096,7 @@
         </span><span class="kw">pub fn </span>get_account_cdp_ids(
             account_id: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;CdpId&gt;, DispatchError&gt; {
-            <span class="prelude-val">Ok</span>(&lt;CDPDepository&lt;T&gt;&gt;::iter()
+            <span class="prelude-val">Ok</span>(CDPDepository::&lt;T&gt;::iter()
                 .filter(|(<span class="kw">_</span>, cdp)| cdp.owner == <span class="kw-2">*</span>account_id)
                 .map(|(cdp_id, <span class="kw">_</span>)| cdp_id)
                 .collect())
