@@ -146,11 +146,11 @@ pub mod pallet {
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedDiv, CheckedMul};
+    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    use sp_runtime::traits::CheckedConversion;
-    use sp_std::collections::{btree_set::BTreeSet, vec_deque::VecDeque};
+    use sp_runtime::traits::{CheckedConversion, One, Zero};
+    use sp_std::collections::vec_deque::VecDeque;
     use sp_std::vec::Vec;
 
     /// CDP id type
