@@ -35,7 +35,7 @@
 //! deposit or lock amount of the token in CDP as collateral. Then the individual is allowed to
 //! borrow new minted Kensetsu USD (KUSD) in amount up to value of collateral corrected by
 //! `liquidation_ratio` coefficient. The debt in KUSD is a subject of `stability_fee` interest rate.
-//! Collateral may be unlocked only when the debt and the interest are payed back. If the value of
+//! Collateral may be unlocked only when the debt and the interest are paid back. If the value of
 //! collateral has changed in a way that it does not secure the debt, the collateral is liquidated
 //! to cover the debt and the interest.
 
@@ -69,6 +69,8 @@ const VALIDATION_ERROR_ACCRUE: u8 = 1;
 const VALIDATION_ERROR_ACCRUE_NO_DEBT: u8 = 2;
 const VALIDATION_ERROR_CHECK_SAFE: u8 = 3;
 const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
+/// Liquidation limit reached
+const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
 /// Risk management parameters for the specific collateral type.
 #[derive(
@@ -84,7 +86,7 @@ pub struct CollateralRiskParameters {
     /// The max amount of collateral can be liquidated in one round
     pub max_liquidation_lot: Balance,
 
-    /// Protocol Interest rate per second
+    /// Protocol Interest rate per millisecond
     pub stability_fee_rate: FixedU128,
 
     /// Minimal deposit in collateral AssetId.
@@ -140,14 +142,15 @@ pub mod pallet {
         PriceVariant, DAI,
     };
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::Randomness;
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedMul, Saturating};
+    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One, Zero};
-    use sp_std::collections::btree_set::BTreeSet;
+    use sp_runtime::traits::CheckedConversion;
+    use sp_std::collections::{btree_set::BTreeSet, vec_deque::VecDeque};
     use sp_std::vec::Vec;
 
     /// CDP id type
@@ -163,6 +166,12 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        /// Resets liquidation flag.
+        fn on_initialize(_now: T::BlockNumber) -> Weight {
+            LiquidatedThisBlock::<T>::put(false);
+            T::DbWeight::get().writes(1)
+        }
+
         /// Main off-chain worker procedure.
         ///
         /// Accrues fees and calls liquidations
@@ -174,13 +183,14 @@ pub mod pallet {
             let now = Timestamp::<T>::get();
             let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
             let mut collaterals_to_update = BTreeSet::new();
-            for (collateral_asset_id, collateral_info) in <CollateralInfos<T>>::iter() {
+            for (collateral_asset_id, collateral_info) in CollateralInfos::<T>::iter() {
                 if collateral_info.last_fee_update_time <= outdated_timestamp {
                     collaterals_to_update.insert(collateral_asset_id);
                 }
             }
+            let mut unsafe_cdp_ids = VecDeque::<CdpId>::new();
             // TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
-            for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
+            for (cdp_id, cdp) in CDPDepository::<T>::iter() {
                 // Debt recalculation with interest
                 if collaterals_to_update.contains(&cdp.collateral_asset_id) {
                     debug!("Accrue for CDP {:?}", cdp_id);
@@ -201,27 +211,59 @@ pub mod pallet {
                     cdp.collateral_amount,
                     cdp.collateral_asset_id,
                 ) {
-                    Ok(cdp_is_safe) => {
-                        if !cdp_is_safe {
-                            debug!("Liquidation of CDP {:?}", cdp_id);
-                            let call = Call::<T>::liquidate { cdp_id };
-                            if let Err(err) =
-                                SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
-                                    call.into(),
-                                )
-                            {
-                                warn!(
-                                    "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
-                                    cdp_id, err
-                                );
-                            }
-                        }
+                    Ok(true) => {}
+                    Ok(false) => {
+                        debug!("CDP {:?} unsafe", cdp_id);
+                        unsafe_cdp_ids.push_back(cdp_id);
                     }
                     Err(err) => {
                         warn!(
                             "Failed in offchain_worker check cdp {:?} safety: {:?}",
                             cdp_id, err
                         );
+                    }
+                }
+            }
+            if !unsafe_cdp_ids.is_empty() {
+                // Randomly choose one of CDPs to liquidate.
+                // This CDP id can be predicted and manipulated in front-running attack. It is a
+                // known problem. The purpose of the code is not to protect from the attack but to
+                // make choosing of CDP to liquidate more 'fair' then incremental order.
+                let (randomness, _) = T::Randomness::random(&b"kensetsu"[..]);
+                match randomness {
+                    Some(randomness) => {
+                        match u32::decode(&mut randomness.as_ref()) {
+                            Ok(random_number) => {
+                                // Random bias by modulus operation is acceptable here
+                                let random_id = random_number as usize % unsafe_cdp_ids.len();
+                                unsafe_cdp_ids
+                                    .get(random_id)
+                                    .map_or_else(
+                                        || {
+                                            warn!("Failed to get random cdp_id {}.", random_id);
+                                        },
+                                        |cdp_id| {
+                                        debug!("Liquidation of CDP {:?}", cdp_id);
+                                        let call = Call::<T>::liquidate { cdp_id: *cdp_id };
+                                        if let Err(err) =
+                                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
+                                                call.into(),
+                                            )
+                                        {
+                                            warn!(
+                                                "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
+                                                cdp_id, err
+                                            );
+                                        }
+                                    });
+                            }
+                            Err(error) => {
+                                warn!("Failed to get randomness during liquidation: {}", error);
+                            }
+                        }
+                    }
+                    None => {
+                        warn!("No randomness provided.");
                     }
                 }
             }
@@ -237,6 +279,7 @@ pub mod pallet {
         + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -276,6 +319,18 @@ pub mod pallet {
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
+
+    /// Default value for LiquidatedThisBlock storage
+    #[pallet::type_value]
+    pub fn DefaultLiquidatedThisBlock() -> bool {
+        false
+    }
+
+    /// Flag indicates that liquidation took place in this block. Only one liquidation per block is
+    /// allowed, the flag is dropped every block.
+    #[pallet::storage]
+    #[pallet::getter(fn liquidated_this_block)]
+    pub type LiquidatedThisBlock<T> = StorageValue<_, bool, ValueQuery, DefaultLiquidatedThisBlock>;
 
     /// System bad debt, the amount of KUSD not secured with collateral.
     #[pallet::storage]
@@ -406,6 +461,8 @@ pub mod pallet {
         AccrueWrongTime,
         /// Liquidation lot set in risk parameters is zero, cannot liquidate
         ZeroLiquidationLot,
+        /// Liquidation limit reached
+        LiquidationLimit,
         /// Wrong borrow amounts
         WrongBorrowAmounts,
     }
@@ -563,6 +620,10 @@ pub mod pallet {
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+            ensure!(
+                Self::check_liquidation_available(),
+                Error::<T>::LiquidationLimit
+            );
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(
                 !Self::check_cdp_is_safe(cdp.debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
@@ -616,6 +677,7 @@ pub mod pallet {
                 )?;
             };
             Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, kusd_supply_change)?;
+            LiquidatedThisBlock::<T>::put(true);
             Self::deposit_event(Event::Liquidated {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
@@ -812,6 +874,9 @@ pub mod pallet {
         /// It is allowed to call only accrue() and liquidate() and only if
         /// it fulfills conditions.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if !Self::check_liquidation_available() {
+                return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT).into();
+            }
             match call {
                 // TODO spamming with accrue calls, add some filter to not call too often
                 // https://github.com/sora-xor/sora2-network/issues/878
@@ -880,8 +945,23 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Gets max amount of debt when liquidation is not triggered.
-        fn get_max_safe_debt(
+        /// Checks if liquidation is available now.
+        /// Returns `false` if liquidation took place this block since only one liquidation per
+        /// block is allowed.
+        fn check_liquidation_available() -> bool {
+            !LiquidatedThisBlock::<T>::get()
+        }
+
+        /// Checks whether a Collateralized Debt Position (CDP) is currently considered safe based on its debt and collateral.
+        /// The function evaluates the safety of a CDP based on predefined liquidation ratios and collateral values,
+        /// providing an indication of its current safety status.
+        ///
+        /// ## Parameters
+        ///
+        /// - `debt`: The current debt amount in the CDP.
+        /// - `collateral`: The current collateral amount in the CDP.
+        /// - `collateral_asset_id`: The asset ID associated with the collateral in the CDP.
+        pub(crate) fn get_max_safe_debt(
             collateral: Balance,
             collateral_asset_id: AssetIdOf<T>,
         ) -> Result<Balance, DispatchError> {
@@ -919,8 +999,12 @@ pub mod pallet {
             collateral: Balance,
             collateral_asset_id: AssetIdOf<T>,
         ) -> Result<bool, DispatchError> {
-            let max_safe_debt = Self::get_max_safe_debt(collateral, collateral_asset_id)?;
-            Ok(debt <= max_safe_debt)
+            if debt == Balance::zero() {
+                Ok(true)
+            } else {
+                let max_safe_debt = Self::get_max_safe_debt(collateral, collateral_asset_id)?;
+                Ok(debt <= max_safe_debt)
+            }
         }
 
         /// Ensures that new emission will not exceed collateral hard cap
@@ -1029,7 +1113,7 @@ pub mod pallet {
             Self::ensure_protocol_cap(borrow_amount)?;
             Self::mint_to(who, borrow_amount)?;
             Self::update_cdp_debt(cdp_id, new_debt)?;
-            <CollateralInfos<T>>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+            CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
                 let collateral_info = collateral_info
                     .as_mut()
                     .ok_or(Error::<T>::CollateralInfoNotFound)?;
@@ -1087,7 +1171,7 @@ pub mod pallet {
         /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
         fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
-            let bad_debt = <BadDebt<T>>::get();
+            let bad_debt = BadDebt::<T>::get();
             let to_cover_debt = if kusd_amount <= bad_debt {
                 kusd_amount
             } else {
@@ -1102,7 +1186,7 @@ pub mod pallet {
                 bad_debt
             };
             Self::burn_from(from, to_cover_debt)?;
-            <BadDebt<T>>::try_mutate(|bad_debt| {
+            BadDebt::<T>::try_mutate(|bad_debt| {
                 *bad_debt = bad_debt
                     .checked_sub(to_cover_debt)
                     .ok_or(Error::<T>::ArithmeticError)?;
@@ -1123,7 +1207,7 @@ pub mod pallet {
             collateral_asset_id: &AssetIdOf<T>,
         ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
             let collateral_info =
-                <CollateralInfos<T>>::try_mutate(collateral_asset_id, |collateral_info| {
+                CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
                     let collateral_info = collateral_info
                         .as_mut()
                         .ok_or(Error::<T>::CollateralInfoNotFound)?;
@@ -1182,7 +1266,7 @@ pub mod pallet {
                 .checked_add(stability_fee)
                 .ok_or(Error::<T>::ArithmeticError)?;
             Self::increase_collateral_kusd_supply(&cdp.collateral_asset_id, stability_fee)?;
-            cdp = <CDPDepository<T>>::try_mutate(cdp_id, |cdp| {
+            cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = new_debt;
                 cdp.interest_coefficient = new_coefficient;
@@ -1190,7 +1274,7 @@ pub mod pallet {
                     cdp.clone(),
                 )
             })?;
-            let mut new_bad_debt = <BadDebt<T>>::get();
+            let mut new_bad_debt = BadDebt::<T>::get();
             if new_bad_debt > 0 {
                 if stability_fee <= new_bad_debt {
                     new_bad_debt = new_bad_debt
@@ -1203,7 +1287,7 @@ pub mod pallet {
                         .ok_or(Error::<T>::ArithmeticError)?;
                     new_bad_debt = balance!(0);
                 };
-                <BadDebt<T>>::try_mutate(|bad_debt| {
+                BadDebt::<T>::try_mutate(|bad_debt| {
                     *bad_debt = new_bad_debt;
                     DispatchResult::Ok(())
                 })?;
@@ -1418,11 +1502,11 @@ pub mod pallet {
 
         /// Removes CDP entry from the storage
         fn delete_cdp(cdp_id: CdpId) -> DispatchResult {
-            let cdp = <CDPDepository<T>>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            if let Some(mut cdp_ids) = <CdpOwnerIndex<T>>::take(&cdp.owner) {
+            let cdp = CDPDepository::<T>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            if let Some(mut cdp_ids) = CdpOwnerIndex::<T>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
-                    <CdpOwnerIndex<T>>::insert(&cdp.owner, cdp_ids);
+                    CdpOwnerIndex::<T>::insert(&cdp.owner, cdp_ids);
                 }
             }
             Self::deposit_event(Event::CDPClosed {
@@ -1474,7 +1558,7 @@ pub mod pallet {
             collateral_asset_id: &AssetIdOf<T>,
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
-            <CollateralInfos<T>>::try_mutate(collateral_asset_id, |option_collateral_info| {
+            CollateralInfos::<T>::try_mutate(collateral_asset_id, |option_collateral_info| {
                 match option_collateral_info {
                     Some(collateral_info) => {
                         let mut new_info =
@@ -1499,7 +1583,7 @@ pub mod pallet {
         pub fn get_account_cdp_ids(
             account_id: &AccountIdOf<T>,
         ) -> Result<Vec<CdpId>, DispatchError> {
-            Ok(<CDPDepository<T>>::iter()
+            Ok(CDPDepository::<T>::iter()
                 .filter(|(_, cdp)| cdp.owner == *account_id)
                 .map(|(cdp_id, _)| cdp_id)
                 .collect())
