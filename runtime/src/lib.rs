@@ -1961,6 +1961,7 @@ parameter_types! {
 #[cfg(feature = "wip")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KusdAssetId = KusdAssetId;
