@@ -143,11 +143,10 @@ pub mod pallet {
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedMul, Saturating};
+    use sp_arithmetic::traits::CheckedMul;
     use sp_arithmetic::Percent;
     use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
     use sp_runtime::traits::{CheckedConversion, CheckedDiv, CheckedSub, One, Zero};
-    use sp_std::collections::btree_set::BTreeSet;
     use sp_std::vec::Vec;
 
     /// CDP id type
@@ -171,18 +170,8 @@ pub mod pallet {
                 "Entering off-chain worker, block number is {:?}",
                 block_number
             );
-            let now = Timestamp::<T>::get();
-            let outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
-            let mut collaterals_to_update = BTreeSet::new();
-            for (collateral_asset_id, collateral_info) in <CollateralInfos<T>>::iter() {
-                if collateral_info.last_fee_update_time <= outdated_timestamp {
-                    collaterals_to_update.insert(collateral_asset_id);
-                }
-            }
-            // TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
-                // Debt recalculation with interest
-                if collaterals_to_update.contains(&cdp.collateral_asset_id) {
+                if let Ok(true) = Self::is_accruable(&cdp_id) {
                     debug!("Accrue for CDP {:?}", cdp_id);
                     let call = Call::<T>::accrue { cdp_id };
                     if let Err(err) =
@@ -259,13 +248,13 @@ pub mod pallet {
         #[pallet::constant]
         type MaxRiskManagementTeamSize: Get<u32>;
 
-        /// Accrue() for a single CDP can be called once per this period
-        #[pallet::constant]
-        type AccrueInterestPeriod: Get<Self::Moment>;
-
         /// A configuration for base priority of unsigned transactions.
         #[pallet::constant]
         type UnsignedPriority: Get<TransactionPriority>;
+
+        /// Minimal uncollected fee in KUSD that triggers offchain worker to call accrue.
+        #[pallet::constant]
+        type MinimalStabilityFeeAccrue: Get<Balance>;
 
         /// A configuration for longevity of unsigned transactions.
         #[pallet::constant]
@@ -397,7 +386,8 @@ pub mod pallet {
         /// Risk management team size exceeded
         TooManyManagers,
         OperationNotPermitted,
-        NoDebt,
+        /// Uncollected stability fee is too small for accrue
+        UncollectedStabilityFeeTooSmall,
         CDPsPerUserLimitReached,
         HardCapSupply,
         BalanceNotEnough,
@@ -617,7 +607,10 @@ pub mod pallet {
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
-            ensure!(Self::is_accruable(&cdp_id)?, Error::<T>::NoDebt);
+            ensure!(
+                Self::is_accruable(&cdp_id)?,
+                Error::<T>::UncollectedStabilityFeeTooSmall
+            );
             Self::accrue_internal(cdp_id)?;
             Ok(())
         }
@@ -790,12 +783,9 @@ pub mod pallet {
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
 
-        /// It is allowed to call only accrue() and liquidate() and only if
-        /// it fulfills conditions.
+        /// It is allowed to call accrue() and liquidate() only if it fulfills conditions.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
-                // TODO spamming with accrue calls, add some filter to not call too often
-                // https://github.com/sora-xor/sora2-network/issues/878
                 Call::accrue { cdp_id } => {
                     if Self::is_accruable(cdp_id)
                         .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE))?
@@ -839,7 +829,7 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Ensures that `who` is a risk manager
+        /// Ensures that `who` is a risk manager.
         /// Risk manager can set protocol risk parameters.
         fn ensure_risk_manager(who: &AccountIdOf<T>) -> DispatchResult {
             if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
@@ -849,7 +839,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Ensures that `who` is a protocol owner
+        /// Ensures that `who` is a protocol owner.
         /// Protocol owner can withdraw profit from the protocol.
         fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
             // TODO ensure it is a risk management responsibility
@@ -1073,47 +1063,74 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Returns true if CDP has debt.
+        /// Returns true if CDP has debt and uncollected stability fee is more than threshold.
         fn is_accruable(cdp_id: &CdpId) -> Result<bool, DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            Ok(cdp.debt > 0)
+            if cdp.debt > 0 {
+                let uncollected_stability_fee = Self::calculate_stability_fee(*cdp_id)?;
+                Ok(uncollected_stability_fee >= T::MinimalStabilityFeeAccrue::get())
+            } else {
+                Ok(false)
+            }
         }
 
         /// Recalculates collateral interest coefficient with the current timestamp
+        fn calculate_collateral_interest_coefficient(
+            collateral_asset_id: &AssetIdOf<T>,
+        ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
+            let mut collateral_info = <CollateralInfos<T>>::get(collateral_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let now = Timestamp::<T>::get();
+            ensure!(
+                now >= collateral_info.last_fee_update_time,
+                Error::<T>::AccrueWrongTime
+            );
+
+            // do not update if time is the same
+            if now > collateral_info.last_fee_update_time {
+                let time_passed = now
+                    .checked_sub(&collateral_info.last_fee_update_time)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                let new_coefficient = compound(
+                    collateral_info.interest_coefficient.into_inner(),
+                    collateral_info.risk_parameters.stability_fee_rate,
+                    time_passed
+                        .checked_into::<u64>()
+                        .ok_or(Error::<T>::ArithmeticError)?,
+                )
+                .map_err(|_| Error::<T>::ArithmeticError)?;
+                collateral_info.last_fee_update_time = now;
+                collateral_info.interest_coefficient = FixedU128::from_inner(new_coefficient);
+            }
+            Ok(collateral_info)
+        }
+
+        /// Recalculates and updates collateral interest coefficient with the current timestamp
         fn update_collateral_interest_coefficient(
             collateral_asset_id: &AssetIdOf<T>,
         ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
-            let collateral_info =
-                <CollateralInfos<T>>::try_mutate(collateral_asset_id, |collateral_info| {
-                    let collateral_info = collateral_info
-                        .as_mut()
-                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                    let now = Timestamp::<T>::get();
-                    ensure!(
-                        now >= collateral_info.last_fee_update_time,
-                        Error::<T>::AccrueWrongTime
-                    );
-                    // do not update if time is the same
-                    if now > collateral_info.last_fee_update_time {
-                        let time_passed = now
-                            .checked_sub(&collateral_info.last_fee_update_time)
-                            .ok_or(Error::<T>::ArithmeticError)?;
-                        let new_coefficient = compound(
-                            collateral_info.interest_coefficient.into_inner(),
-                            collateral_info.risk_parameters.stability_fee_rate,
-                            time_passed
-                                .checked_into::<u64>()
-                                .ok_or(Error::<T>::ArithmeticError)?,
-                        )
-                        .map_err(|_| Error::<T>::ArithmeticError)?;
-                        collateral_info.last_fee_update_time = now;
-                        collateral_info.interest_coefficient =
-                            FixedU128::from_inner(new_coefficient);
-                    }
-                    Ok::<CollateralInfo<T::Moment>, DispatchError>(collateral_info.clone())
-                })?;
+            let updated_collateral_info =
+                Self::calculate_collateral_interest_coefficient(collateral_asset_id)?;
+            <CollateralInfos<T>>::set(collateral_asset_id, Some(updated_collateral_info.clone()));
+            Ok(updated_collateral_info)
+        }
 
-            Ok(collateral_info)
+        /// Calculates stability fee for the CDP for the current time.
+        fn calculate_stability_fee(cdp_id: CdpId) -> Result<Balance, DispatchError> {
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let collateral_info =
+                Self::calculate_collateral_interest_coefficient(&cdp.collateral_asset_id)?;
+            let interest_coefficient = collateral_info.interest_coefficient;
+            let interest_percent = interest_coefficient
+                .checked_sub(&cdp.interest_coefficient)
+                .ok_or(Error::<T>::ArithmeticError)?
+                .checked_div(&cdp.interest_coefficient)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            let stability_fee = FixedU128::from_inner(cdp.debt)
+                .checked_mul(&interest_percent)
+                .ok_or(Error::<T>::ArithmeticError)?
+                .into_inner();
+            Ok(stability_fee)
         }
 
         /// Accrues interest on a Collateralized Debt Position (CDP) and updates relevant parameters.
@@ -1129,15 +1146,7 @@ pub mod pallet {
             let collateral_info =
                 Self::update_collateral_interest_coefficient(&cdp.collateral_asset_id)?;
             let new_coefficient = collateral_info.interest_coefficient;
-            let interest_percent = (new_coefficient
-                .checked_sub(&cdp.interest_coefficient)
-                .ok_or(Error::<T>::ArithmeticError)?)
-            .checked_div(&cdp.interest_coefficient)
-            .ok_or(Error::<T>::ArithmeticError)?;
-            let mut stability_fee = FixedU128::from_inner(cdp.debt)
-                .checked_mul(&interest_percent)
-                .ok_or(Error::<T>::ArithmeticError)?
-                .into_inner();
+            let mut stability_fee = Self::calculate_stability_fee(cdp_id)?;
             let new_debt = cdp
                 .debt
                 .checked_add(stability_fee)
