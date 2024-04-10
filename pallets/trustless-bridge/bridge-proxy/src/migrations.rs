@@ -60,6 +60,50 @@ pub mod init {
         }
     }
 
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::mock::{new_tester, AssetId, Test};
+        use common::{balance, DAI, XOR};
+
+        frame_support::parameter_types! {
+            pub const HashiBridgeNetworkId: GenericNetworkId = GenericNetworkId::EVMLegacy(0);
+
+            pub AssetsList: Vec<(AssetId, Balance)> = vec![
+                (DAI, balance!(100)),
+                (XOR, balance!(1000)),
+            ];
+        }
+
+        #[test]
+        fn init_locked_assets_test() {
+            new_tester().execute_with(|| {
+                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 0);
+                InitLockedAssets::<Test, AssetsList, HashiBridgeNetworkId>::on_runtime_upgrade();
+                assert_eq!(
+                    crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), DAI),
+                    balance!(100)
+                );
+                assert_eq!(
+                    crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), XOR),
+                    balance!(1000)
+                );
+                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 1);
+            });
+        }
+    }
+}
+
+pub mod generic_account_v2 {
+    use core::marker::PhantomData;
+
+    use assets::AssetIdOf;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::traits::StorageVersion;
+    use sp_core::Get;
+
+    use crate::*;
+
     pub struct LiberlandGenericAccount<T>(PhantomData<T>);
 
     impl<T: Config> OnRuntimeUpgrade for LiberlandGenericAccount<T> {
@@ -154,39 +198,6 @@ pub mod init {
                 OldGenericAccount::Unknown => GenericAccount::Unknown,
                 OldGenericAccount::Root => GenericAccount::Root,
             }
-        }
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use crate::mock::{new_tester, AssetId, Test};
-        use common::{balance, DAI, XOR};
-
-        frame_support::parameter_types! {
-            pub const HashiBridgeNetworkId: GenericNetworkId = GenericNetworkId::EVMLegacy(0);
-
-            pub AssetsList: Vec<(AssetId, Balance)> = vec![
-                (DAI, balance!(100)),
-                (XOR, balance!(1000)),
-            ];
-        }
-
-        #[test]
-        fn init_locked_assets_test() {
-            new_tester().execute_with(|| {
-                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 0);
-                InitLockedAssets::<Test, AssetsList, HashiBridgeNetworkId>::on_runtime_upgrade();
-                assert_eq!(
-                    crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), DAI),
-                    balance!(100)
-                );
-                assert_eq!(
-                    crate::LockedAssets::<Test>::get(GenericNetworkId::EVMLegacy(0), XOR),
-                    balance!(1000)
-                );
-                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 1);
-            });
         }
     }
 }
