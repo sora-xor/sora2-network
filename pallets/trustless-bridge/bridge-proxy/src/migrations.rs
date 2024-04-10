@@ -60,6 +60,103 @@ pub mod init {
         }
     }
 
+    pub struct LiberlandGenericAccount<T>(PhantomData<T>);
+
+    impl<T: Config> OnRuntimeUpgrade for LiberlandGenericAccount<T> {
+        fn on_runtime_upgrade() -> frame_support::weights::Weight {
+            if StorageVersion::get::<Pallet<T>>() >= StorageVersion::new(2) {
+                frame_support::log::error!(
+                    "Expected storage version less than 2, found {:?}, skipping migration",
+                    StorageVersion::get::<Pallet<T>>()
+                );
+                return frame_support::weights::Weight::zero();
+            }
+
+            frame_support::log::info!("Migrating BridgeProxy to v2");
+
+            let mut reads_writes = 0;
+
+            Transactions::<T>::translate(
+                |(_, _), _, bridge_request: OldBridgeRequest<AssetIdOf<T>>| {
+                    reads_writes += 1;
+                    Some(bridge_request.into())
+                },
+            );
+
+            StorageVersion::new(2).put::<Pallet<T>>();
+
+            T::DbWeight::get().reads_writes(reads_writes, reads_writes + 1)
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(0),
+                "Wrong storage version before upgrade"
+            );
+            Ok(Vec::new())
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
+                "Wrong storage version after upgrade"
+            );
+            Ok(())
+        }
+    }
+
+    #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+    #[scale_info(skip_type_params(T))]
+    pub struct OldBridgeRequest<AssetId> {
+        source: OldGenericAccount,
+        dest: OldGenericAccount,
+        asset_id: AssetId,
+        amount: Balance,
+        status: MessageStatus,
+        start_timepoint: GenericTimepoint,
+        end_timepoint: GenericTimepoint,
+        direction: MessageDirection,
+    }
+
+    impl<AssetId> Into<BridgeRequest<AssetId>> for OldBridgeRequest<AssetId> {
+        fn into(self) -> BridgeRequest<AssetId> {
+            BridgeRequest {
+                source: self.source.into(),
+                dest: self.dest.into(),
+                asset_id: self.asset_id,
+                amount: self.amount,
+                status: self.status,
+                start_timepoint: self.start_timepoint,
+                end_timepoint: self.end_timepoint,
+                direction: self.direction,
+            }
+        }
+    }
+
+    #[allow(clippy::large_enum_variant)]
+    #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    pub enum OldGenericAccount {
+        EVM(H160),
+        Sora(MainnetAccountId),
+        Parachain(xcm::VersionedMultiLocation),
+        Unknown,
+        Root,
+    }
+
+    impl Into<GenericAccount> for OldGenericAccount {
+        fn into(self) -> GenericAccount {
+            match self {
+                OldGenericAccount::EVM(account) => GenericAccount::EVM(account),
+                OldGenericAccount::Sora(account) => GenericAccount::Sora(account),
+                OldGenericAccount::Parachain(account) => GenericAccount::Parachain(account),
+                OldGenericAccount::Unknown => GenericAccount::Unknown,
+                OldGenericAccount::Root => GenericAccount::Root,
+            }
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -76,7 +173,7 @@ pub mod init {
         }
 
         #[test]
-        fn test() {
+        fn init_locked_assets_test() {
             new_tester().execute_with(|| {
                 assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 0);
                 InitLockedAssets::<Test, AssetsList, HashiBridgeNetworkId>::on_runtime_upgrade();

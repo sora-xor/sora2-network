@@ -28,6 +28,9 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 eth-app = { path = "../eth-app", default-features = false }
 erc20-app = { path = "../erc20-app", default-features = false }
 
+# delete after migration LiberlandGenericAccount pass
+xcm = { git = "https://github.com/paritytech/polkadot.git", branch = "release-v0.9.38", default-features = false }
+
 [dev-dependencies]
 common = { path = "../../../common", features = ["test"] }
 
@@ -60,6 +63,8 @@ std = [
     "traits/std",
     "technical/std",
     "permissions/std",
+    # delete after migration LiberlandGenericAccount pass
+    "xcm/std",
 ]
 
 runtime-benchmarks = [
