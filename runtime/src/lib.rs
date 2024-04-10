@@ -1951,7 +1951,7 @@ parameter_types! {
 
     // 1 day = 86_400_000
     // TODO set 86_400_000
-    pub const AccrueInterestPeriod: Moment = 30_000;
+    pub const AccrueInterestPeriod: Moment = 300_000;
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1965,6 +1965,7 @@ parameter_types! {
 #[cfg(feature = "wip")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
