@@ -40,7 +40,7 @@ use common::{
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use kensetsu::{CdpId, CollateralInfos, CollateralRiskParameters};
+use kensetsu::{BorrowTax, CdpId, CollateralInfos, CollateralRiskParameters, Event};
 use price_tools::AVG_BLOCK_SPAN;
 use sp_arithmetic::{Perbill, Percent};
 use sp_core::Get;
@@ -379,13 +379,26 @@ benchmarks! {
     }
 
     update_borrow_tax {
+        let new_borrow_tax = Percent::from_percent(1);
         kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
             .expect("Must set risk manager");
     }:{
         kensetsu::Pallet::<T>::update_borrow_tax(
             RawOrigin::Signed(risk_manager::<T>()).into(),
-            Percent::from_percent(1)
+            new_borrow_tax
         ).unwrap();
+    }
+    verify {
+        let old_borrow_tax = Percent::default();
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::BorrowTaxUpdated {
+                    new_borrow_tax,
+                    old_borrow_tax,
+                }
+            ).into()
+        );
+        assert_eq!(new_borrow_tax, BorrowTax::<T>::get());
     }
 
     update_liquidation_penalty {
