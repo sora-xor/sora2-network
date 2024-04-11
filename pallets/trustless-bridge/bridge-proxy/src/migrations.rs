@@ -76,7 +76,7 @@ pub mod init {
         }
 
         #[test]
-        fn init_locked_assets_test() {
+        fn test() {
             new_tester().execute_with(|| {
                 assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 0);
                 InitLockedAssets::<Test, AssetsList, HashiBridgeNetworkId>::on_runtime_upgrade();
