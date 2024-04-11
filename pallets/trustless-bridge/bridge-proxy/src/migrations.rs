@@ -104,6 +104,8 @@ pub mod generic_account_v2 {
 
     use crate::*;
 
+    /// Migrate old bridge requests to new format  
+    /// Old format did not contain Liberland types
     pub struct LiberlandGenericAccount<T>(PhantomData<T>);
 
     impl<T: Config> OnRuntimeUpgrade for LiberlandGenericAccount<T> {
@@ -184,6 +186,12 @@ pub mod generic_account_v2 {
         }
     }
 
+    #[cfg(test)]
+    impl<AssetId> codec::EncodeLike<BridgeRequest<AssetId>> for OldBridgeRequest<AssetId> where
+        AssetId: Encode
+    {
+    }
+
     #[allow(clippy::large_enum_variant)]
     #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
     pub enum OldGenericAccount {
@@ -203,6 +211,106 @@ pub mod generic_account_v2 {
                 OldGenericAccount::Unknown => GenericAccount::Unknown,
                 OldGenericAccount::Root => GenericAccount::Root,
             }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::mock::{new_tester, AssetId, Test};
+        use sp_keyring::AccountKeyring as Keyring;
+
+        #[test]
+        fn test() {
+            new_tester().execute_with(|| {
+                StorageVersion::new(1).put::<Pallet<Test>>();
+                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 1);
+
+                // Create old bridge request
+                let old_bridge_request = OldBridgeRequest {
+                    source: OldGenericAccount::Parachain(xcm::VersionedMultiLocation::V3(
+                        xcm::v3::MultiLocation::here(),
+                    )),
+                    dest: OldGenericAccount::Sora(MainnetAccountId::new([0; 32])),
+                    asset_id: AssetId::default(),
+                    amount: 100,
+                    status: MessageStatus::Done,
+                    start_timepoint: GenericTimepoint::Sora(0),
+                    end_timepoint: GenericTimepoint::Sora(0),
+                    direction: MessageDirection::Inbound,
+                };
+
+                // Create some correct bridge request that should not be changed
+                let some_correct_bridge_request = BridgeRequest {
+                    source: GenericAccount::Parachain(xcm::VersionedMultiLocation::V3(
+                        xcm::v3::MultiLocation::here(),
+                    )),
+                    dest: GenericAccount::Sora(MainnetAccountId::new([3; 32])),
+                    asset_id: AssetId::default(),
+                    amount: 5000,
+                    status: MessageStatus::Done,
+                    start_timepoint: GenericTimepoint::Sora(1),
+                    end_timepoint: GenericTimepoint::Sora(2),
+                    direction: MessageDirection::Outbound,
+                };
+
+                let network_id = GenericNetworkId::Sub(bridge_types::SubNetworkId::Rococo);
+                let account: mock::AccountId = Keyring::Alice.into();
+                let message_id = H256([1; 32]);
+                let correct_request_message_id = H256([2; 32]);
+
+                // Insert old bridge request
+                crate::Transactions::<Test>::insert(
+                    (network_id, account.clone()),
+                    message_id,
+                    old_bridge_request.clone(),
+                );
+
+                // Insert correct bridge request for further check if it is correct as well
+                crate::Transactions::<Test>::set(
+                    (network_id, account.clone()),
+                    correct_request_message_id,
+                    Some(some_correct_bridge_request.clone()),
+                );
+
+                // Assert that old bridge request is corrupted
+                assert!(crate::Transactions::<Test>::get(
+                    (network_id, account.clone()),
+                    message_id
+                )
+                .is_none());
+
+                // Assert that correct bridge request is correct
+                assert_eq!(
+                    crate::Transactions::<Test>::get(
+                        (network_id, account.clone()),
+                        correct_request_message_id
+                    ),
+                    Some(some_correct_bridge_request.clone())
+                );
+
+                // Migrate
+                LiberlandGenericAccount::<Test>::on_runtime_upgrade();
+
+                // Check that old bridge request is now correct
+                let new_bridge_request: BridgeRequest<_> = old_bridge_request.into();
+                assert_eq!(
+                    crate::Transactions::<Test>::get((network_id, account.clone()), message_id),
+                    Some(new_bridge_request.clone())
+                );
+
+                // Check that correct bridge request is still correct
+                assert_eq!(
+                    crate::Transactions::<Test>::get(
+                        (network_id, account),
+                        correct_request_message_id
+                    ),
+                    Some(some_correct_bridge_request)
+                );
+
+                // Check that storage version is correct
+                assert_eq!(StorageVersion::get::<crate::Pallet<Test>>(), 2);
+            });
         }
     }
 }
