@@ -1380,13 +1380,13 @@ fn test_accrue_no_debt() {
 #[test]
 fn test_accrue_wrong_time() {
     new_test_ext().execute_with(|| {
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
             balance!(0),
         );
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
 

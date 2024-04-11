@@ -1182,16 +1182,6 @@ pub mod pallet {
             Ok(collateral_info)
         }
 
-        /// Recalculates and updates collateral interest coefficient with the current timestamp
-        fn update_collateral_interest_coefficient(
-            collateral_asset_id: &AssetIdOf<T>,
-        ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
-            let updated_collateral_info =
-                Self::calculate_collateral_interest_coefficient(collateral_asset_id)?;
-            <CollateralInfos<T>>::set(collateral_asset_id, Some(updated_collateral_info.clone()));
-            Ok(updated_collateral_info)
-        }
-
         /// Calculates stability fee for the CDP for the current time.
         fn calculate_stability_fee(cdp_id: CdpId) -> Result<Balance, DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
@@ -1221,7 +1211,7 @@ pub mod pallet {
         {
             let mut cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             let collateral_info =
-                Self::update_collateral_interest_coefficient(&cdp.collateral_asset_id)?;
+                Self::calculate_collateral_interest_coefficient(&cdp.collateral_asset_id)?;
             let new_coefficient = collateral_info.interest_coefficient;
             let mut stability_fee = Self::calculate_stability_fee(cdp_id)?;
             let new_debt = cdp
@@ -1525,7 +1515,7 @@ pub mod pallet {
                 match option_collateral_info {
                     Some(collateral_info) => {
                         let mut new_info =
-                            Self::update_collateral_interest_coefficient(collateral_asset_id)?;
+                            Self::calculate_collateral_interest_coefficient(collateral_asset_id)?;
                         new_info.risk_parameters = new_risk_parameters;
                         *collateral_info = new_info;
                     }

@@ -118,21 +118,18 @@ pub fn set_xor_as_collateral_type(
     stability_fee_rate: FixedU128,
     minimal_collateral_deposit: Balance,
 ) {
-    CollateralInfos::<TestRuntime>::set(
+    set_up_risk_manager();
+    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        risk_manager(),
         XOR,
-        Some(CollateralInfo {
-            risk_parameters: CollateralRiskParameters {
-                hard_cap,
-                max_liquidation_lot: balance!(1000),
-                liquidation_ratio,
-                stability_fee_rate,
-                minimal_collateral_deposit,
-            },
-            kusd_supply: balance!(0),
-            last_fee_update_time: 0,
-            interest_coefficient: FixedU128::one(),
-        }),
-    );
+        CollateralRiskParameters {
+            hard_cap,
+            max_liquidation_lot: balance!(1000),
+            liquidation_ratio,
+            stability_fee_rate,
+            minimal_collateral_deposit,
+        }
+    ));
     KusdHardCap::<TestRuntime>::set(hard_cap);
 }
 
