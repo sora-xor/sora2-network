@@ -127,15 +127,20 @@ pub mod generic_account_v2 {
                 },
             );
 
+            frame_support::log::info!(
+                "BridgeProxy Migration to v2: {:?} BridgeRequests translated",
+                reads_writes
+            );
+
             StorageVersion::new(2).put::<Pallet<T>>();
 
-            T::DbWeight::get().reads_writes(reads_writes, reads_writes + 1)
+            T::DbWeight::get().reads_writes(reads_writes, reads_writes)
         }
 
         #[cfg(feature = "try-runtime")]
         fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
             frame_support::ensure!(
-                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(0),
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version before upgrade"
             );
             Ok(Vec::new())
