@@ -453,6 +453,7 @@ pub mod pallet {
         TooManyManagers,
         OperationNotPermitted,
         NoDebt,
+        /// Too many CDPs per user
         CDPsPerUserLimitReached,
         HardCapSupply,
         BalanceNotEnough,
@@ -462,27 +463,38 @@ pub mod pallet {
         ZeroLiquidationLot,
         /// Liquidation limit reached
         LiquidationLimit,
+        /// Wrong borrow amounts
+        WrongBorrowAmounts,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Creates a Collateralized Debt Position (CDP) allowing users to lock collateral assets and borrow against them.
+        /// Creates a Collateralized Debt Position (CDP).
+        /// The extrinsic combines depositing collateral and borrowing.
+        /// Borrow amount will be as max as possible in the range
+        /// `[borrow_amount_min, borrow_amount_max]` in order to confrom the slippage tolerance.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
         /// - `collateral_asset_id`: The identifier of the asset used as collateral.
         /// - `collateral_amount`: The amount of collateral to be deposited.
-        /// - `borrow_amount`: The amount the user wants to borrow.
+        /// - `borrow_amount_min`: The minimum amount the user wants to borrow.
+        /// - `borrow_amount_max`: The maximum amount the user wants to borrow.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::create_cdp())]
         pub fn create_cdp(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
-            borrow_amount: Balance,
+            borrow_amount_min: Balance,
+            borrow_amount_max: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(
+                borrow_amount_min <= borrow_amount_max,
+                Error::<T>::WrongBorrowAmounts
+            );
             let collateral_info = Self::collateral_infos(collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
             let interest_coefficient = collateral_info.interest_coefficient;
@@ -510,8 +522,8 @@ pub mod pallet {
             if collateral_amount > 0 {
                 Self::deposit_internal(&who, cdp_id, collateral_amount)?;
             }
-            if borrow_amount > 0 {
-                Self::borrow_internal(&who, cdp_id, borrow_amount)?;
+            if borrow_amount_max > 0 {
+                Self::borrow_internal(&who, cdp_id, borrow_amount_min, borrow_amount_max)?;
             }
             Ok(())
         }
@@ -560,21 +572,28 @@ pub mod pallet {
         }
 
         /// Borrows funds against a Collateralized Debt Position (CDP).
-        ///
+        /// Borrow amount will be as max as possible in the range
+        /// `[borrow_amount_min, borrow_amount_max]` in order to confrom the slippage tolerance.
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to borrow against.
-        /// - `will_to_borrow_amount`: The amount the user intends to borrow.
+        /// - `borrow_amount_min`: The minimum amount the user wants to borrow.
+        /// - `borrow_amount_max`: The maximum amount the user wants to borrow.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
             origin: OriginFor<T>,
             cdp_id: CdpId,
-            will_to_borrow_amount: Balance,
+            borrow_amount_min: Balance,
+            borrow_amount_max: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::borrow_internal(&who, cdp_id, will_to_borrow_amount)
+            ensure!(
+                borrow_amount_min <= borrow_amount_max,
+                Error::<T>::WrongBorrowAmounts
+            );
+            Self::borrow_internal(&who, cdp_id, borrow_amount_min, borrow_amount_max)
         }
 
         /// Repays debt against a Collateralized Debt Position (CDP).
@@ -649,7 +668,7 @@ pub mod pallet {
                 // There is more KUSD than to cover debt and penalty, leftover goes to cdp.owner
                 let leftover = proceeds
                     .checked_sub(cdp.debt)
-                    .ok_or(Error::<T>::CDPNotFound)?;
+                    .ok_or(Error::<T>::ArithmeticError)?;
                 assets::Pallet::<T>::transfer_from(
                     &T::KusdAssetId::get(),
                     &technical_account_id,
@@ -914,7 +933,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Ensures that `who` is a protocol owner
+        /// Ensures that `who` is a protocol owner.
         /// Protocol owner can withdraw profit from the protocol.
         fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
             // TODO ensure it is a risk management responsibility
@@ -942,6 +961,39 @@ pub mod pallet {
         /// - `debt`: The current debt amount in the CDP.
         /// - `collateral`: The current collateral amount in the CDP.
         /// - `collateral_asset_id`: The asset ID associated with the collateral in the CDP.
+        pub(crate) fn get_max_safe_debt(
+            collateral: Balance,
+            collateral_asset_id: AssetIdOf<T>,
+        ) -> Result<Balance, DispatchError> {
+            let liquidation_ratio = Self::collateral_infos(collateral_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?
+                .risk_parameters
+                .liquidation_ratio;
+            // DAI is assumed as $1
+            let collateral_reference_price =
+                FixedU128::from_inner(T::PriceTools::get_average_price(
+                    &collateral_asset_id,
+                    &DAI.into(),
+                    PriceVariant::Sell,
+                )?);
+            let collateral_volume = collateral_reference_price
+                .checked_mul(&FixedU128::from_inner(collateral))
+                .ok_or(Error::<T>::ArithmeticError)?;
+            let res = FixedU128::from_perbill(liquidation_ratio)
+                .checked_mul(&collateral_volume)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            Ok(res.into_inner())
+        }
+
+        /// Checks whether a Collateralized Debt Position (CDP) is currently considered safe based on its debt and collateral.
+        /// The function evaluates the safety of a CDP based on predefined liquidation ratios and collateral values,
+        /// providing an indication of its current safety status.
+        ///
+        /// ## Parameters
+        ///
+        /// - `debt`: The current debt amount in the CDP.
+        /// - `collateral`: The current collateral amount in the CDP.
+        /// - `collateral_asset_id`: The asset ID associated with the collateral in the CDP.
         pub(crate) fn check_cdp_is_safe(
             debt: Balance,
             collateral: Balance,
@@ -950,24 +1002,7 @@ pub mod pallet {
             if debt == Balance::zero() {
                 Ok(true)
             } else {
-                let liquidation_ratio = Self::collateral_infos(collateral_asset_id)
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?
-                    .risk_parameters
-                    .liquidation_ratio;
-                // DAI is assumed as $1
-                let collateral_reference_price =
-                    FixedU128::from_inner(T::PriceTools::get_average_price(
-                        &collateral_asset_id,
-                        &DAI.into(),
-                        PriceVariant::Sell,
-                    )?);
-                let collateral_volume = collateral_reference_price
-                    .checked_mul(&FixedU128::from_inner(collateral))
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                let max_safe_debt = FixedU128::from_perbill(liquidation_ratio)
-                    .checked_mul(&collateral_volume)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                let debt = FixedU128::from_inner(debt);
+                let max_safe_debt = Self::get_max_safe_debt(collateral, collateral_asset_id)?;
                 Ok(debt <= max_safe_debt)
             }
         }
@@ -1041,7 +1076,8 @@ pub mod pallet {
         }
 
         /// Handles the internal borrowing operation within a Collateralized Debt Position (CDP).
-        ///
+        /// Borrow amount will be as max as possible in the range
+        /// `[borrow_amount_min, borrow_amount_max]` in order to confrom the slippage tolerance.
         /// ## Parameters
         ///
         /// - `who`: The account ID initiating the borrowing operation.
@@ -1050,21 +1086,32 @@ pub mod pallet {
         fn borrow_internal(
             who: &AccountIdOf<T>,
             cdp_id: CdpId,
-            will_to_borrow_amount: Balance,
+            borrow_amount_min: Balance,
+            borrow_amount_max: Balance,
         ) -> DispatchResult {
             let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
-            let new_debt = cdp
-                .debt
-                .checked_add(will_to_borrow_amount)
+            let max_safe_debt =
+                Self::get_max_safe_debt(cdp.collateral_amount, cdp.collateral_asset_id)?;
+            let borrow_amount_safe = max_safe_debt
+                .checked_sub(cdp.debt)
                 .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(
-                Self::check_cdp_is_safe(new_debt, cdp.collateral_amount, cdp.collateral_asset_id)?,
+                borrow_amount_min <= borrow_amount_safe,
                 Error::<T>::CDPUnsafe
             );
-            Self::ensure_collateral_cap(cdp.collateral_asset_id, will_to_borrow_amount)?;
-            Self::ensure_protocol_cap(will_to_borrow_amount)?;
-            Self::mint_to(who, will_to_borrow_amount)?;
+            let borrow_amount = if borrow_amount_max <= borrow_amount_safe {
+                borrow_amount_max
+            } else {
+                borrow_amount_safe
+            };
+            let new_debt = cdp
+                .debt
+                .checked_add(borrow_amount)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            Self::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount)?;
+            Self::ensure_protocol_cap(borrow_amount)?;
+            Self::mint_to(who, borrow_amount)?;
             Self::update_cdp_debt(cdp_id, new_debt)?;
             CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
                 let collateral_info = collateral_info
@@ -1072,7 +1119,7 @@ pub mod pallet {
                     .ok_or(Error::<T>::CollateralInfoNotFound)?;
                 collateral_info.kusd_supply = collateral_info
                     .kusd_supply
-                    .checked_add(will_to_borrow_amount)
+                    .checked_add(borrow_amount)
                     .ok_or(Error::<T>::ArithmeticError)?;
                 DispatchResult::Ok(())
             })?;
@@ -1080,7 +1127,7 @@ pub mod pallet {
                 cdp_id,
                 owner: who.clone(),
                 collateral_asset_id: cdp.collateral_asset_id,
-                amount: will_to_borrow_amount,
+                amount: borrow_amount,
             });
 
             Ok(())
