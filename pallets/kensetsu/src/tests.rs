@@ -175,7 +175,7 @@ fn test_create_cdp_sunny_day() {
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
                 debt_asset_id: KUSD,
-                vault_type: VaultType::V2,
+                cdp_type: CdpType::V2,
             }
             .into(),
         );

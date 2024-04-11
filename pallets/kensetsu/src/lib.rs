@@ -75,7 +75,7 @@ const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 #[derive(
     Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, scale_info::TypeInfo,
 )]
-pub enum VaultType {
+pub enum CdpType {
     /// Pays stability fee in underlying collateral, cannot be liquidated.
     V1,
     /// Pays stability fee in stable coins, can be liquidated.
@@ -395,7 +395,7 @@ pub mod pallet {
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
             debt_asset_id: AssetIdOf<T>,
-            vault_type: VaultType,
+            cdp_type: CdpType,
         },
         CDPClosed {
             cdp_id: CdpId,
@@ -538,7 +538,7 @@ pub mod pallet {
                 owner: who.clone(),
                 collateral_asset_id,
                 debt_asset_id: T::KusdAssetId::get(),
-                vault_type: VaultType::V2,
+                cdp_type: CdpType::V2,
             });
             if collateral_amount > 0 {
                 Self::deposit_internal(&who, cdp_id, collateral_amount)?;
