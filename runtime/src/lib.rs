@@ -1956,11 +1956,14 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
 
+    pub const KenAssetId: AssetId = common::KEN;
     pub const KusdAssetId: AssetId = common::KUSD;
+
+    pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 day = 86_400_000
     // TODO set 86_400_000
-    pub const AccrueInterestPeriod: Moment = 30_000;
+    pub const AccrueInterestPeriod: Moment = 300_000;
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1974,11 +1977,14 @@ parameter_types! {
 #[cfg(feature = "wip")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
     type AccrueInterestPeriod = AccrueInterestPeriod;
