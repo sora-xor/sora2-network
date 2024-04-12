@@ -37,10 +37,10 @@ docker build -t runtime-upgrade .
 #### Run Docker Image
 
 ```bash
-docker run --rm runtime-upgrade --node-url ws://127.0.0.1:9944 --uri //Alice --wasm-file-path /path/to/wasm-filedoc
+docker run --rm -v /host/path/to/wasm-file:/container/path/to/wasm-file runtime-upgrade --node-url ws://127.0.0.1:9944 --uri //Alice --wasm-file-path /container/path/to/wasm-file
 ```
 
-### Arguments
+## Arguments
 
 ```
 usage: Runtime Upgrade [-h] [--node-url NODE_URL] --wasm-file-path WASM_FILE_PATH
