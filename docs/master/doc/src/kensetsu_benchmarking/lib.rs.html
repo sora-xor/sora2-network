@@ -438,6 +438,41 @@
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -475,12 +510,12 @@
 <span class="kw">use </span>codec::Decode;
 <span class="kw">use </span>common::{
     balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
-    KUSD, XOR,
+    KEN, KUSD, XOR,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::RawOrigin;
 <span class="kw">use </span>hex_literal::hex;
-<span class="kw">use </span>kensetsu::{CdpId, CollateralInfos, CollateralRiskParameters};
+<span class="kw">use </span>kensetsu::{BorrowTax, CdpId, CollateralInfos, CollateralRiskParameters, Event};
 <span class="kw">use </span>price_tools::AVG_BLOCK_SPAN;
 <span class="kw">use </span>sp_arithmetic::{Perbill, Percent};
 <span class="kw">use </span>sp_core::Get;
@@ -533,6 +568,7 @@
     kensetsu::Pallet::&lt;T&gt;::create_cdp(
         RawOrigin::Signed(caller::&lt;T&gt;()).into(),
         XOR.into(),
+        <span class="macro">balance!</span>(<span class="number">0</span>),
         <span class="macro">balance!</span>(<span class="number">0</span>),
         <span class="macro">balance!</span>(<span class="number">0</span>),
     )
@@ -619,9 +655,17 @@
         RawOrigin::Signed(caller::&lt;T&gt;()).into(),
         DEXId::Polkaswap.into(),
         XOR.into(),
+        KEN.into(),
+    )
+    .expect(<span class="string">&quot;Must register trading pair KEN/XOR&quot;</span>);
+    initialize_xyk_pool::&lt;T&gt;(KEN.into());
+    trading_pair::Pallet::&lt;T&gt;::register(
+        RawOrigin::Signed(caller::&lt;T&gt;()).into(),
+        DEXId::Polkaswap.into(),
+        XOR.into(),
         KUSD.into(),
     )
-    .expect(<span class="string">&quot;Must register trading pair&quot;</span>);
+    .expect(<span class="string">&quot;Must register trading pair KUSD/XOR&quot;</span>);
     initialize_xyk_pool::&lt;T&gt;(KUSD.into());
     price_tools::Pallet::&lt;T&gt;::register_asset(<span class="kw-2">&amp;</span>KUSD.into()).unwrap();
     <span class="kw">for _ in </span><span class="number">1</span>..=AVG_BLOCK_SPAN {
@@ -648,12 +692,12 @@
     create_cdp {
         kensetsu::Pallet::&lt;T&gt;::add_risk_manager(RawOrigin::Root.into(), risk_manager::&lt;T&gt;())
             .expect(<span class="string">&quot;Must set risk manager&quot;</span>);
+        initialize_liquidity_sources::&lt;T&gt;();
+        set_xor_as_collateral_type::&lt;T&gt;();
         kensetsu::Pallet::&lt;T&gt;::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             Balance::MAX,
         ).expect(<span class="string">&quot;Shall update hard cap&quot;</span>);
-        initialize_liquidity_sources::&lt;T&gt;();
-        set_xor_as_collateral_type::&lt;T&gt;();
         <span class="kw">let </span>collateral = <span class="macro">balance!</span>(<span class="number">10</span>);
         <span class="kw">let </span>debt = <span class="macro">balance!</span>(<span class="number">1</span>);
         assets::Pallet::&lt;T&gt;::update_balance(
@@ -668,6 +712,7 @@
             RawOrigin::Signed(caller::&lt;T&gt;()).into(),
             XOR.into(),
             collateral,
+            debt,
             debt
         ).unwrap();
     }
@@ -702,18 +747,19 @@
             .expect(<span class="string">&quot;Must set risk manager&quot;</span>);
         initialize_liquidity_sources::&lt;T&gt;();
         set_xor_as_collateral_type::&lt;T&gt;();
-        <span class="kw">let </span>cdp_id = create_cdp_with_xor::&lt;T&gt;();
-        <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">10</span>);
-        deposit_xor_collateral::&lt;T&gt;(cdp_id, amount);
-        <span class="kw">let </span>debt = <span class="macro">balance!</span>(<span class="number">1</span>);
         kensetsu::Pallet::&lt;T&gt;::update_hard_cap_total_supply(
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             Balance::MAX,
         ).expect(<span class="string">&quot;Shall update hard cap&quot;</span>);
+        <span class="kw">let </span>cdp_id = create_cdp_with_xor::&lt;T&gt;();
+        <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">10</span>);
+        deposit_xor_collateral::&lt;T&gt;(cdp_id, amount);
+        <span class="kw">let </span>debt = <span class="macro">balance!</span>(<span class="number">1</span>);
     }: {
         kensetsu::Pallet::&lt;T&gt;::borrow(
             RawOrigin::Signed(caller::&lt;T&gt;()).into(),
             cdp_id,
+            debt,
             debt
         ).unwrap();
     }
@@ -731,7 +777,7 @@
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             Balance::MAX,
         ).expect(<span class="string">&quot;Shall update hard cap&quot;</span>);
-        kensetsu::Pallet::&lt;T&gt;::borrow(RawOrigin::Signed(caller::&lt;T&gt;()).into(), cdp_id, debt)
+        kensetsu::Pallet::&lt;T&gt;::borrow(RawOrigin::Signed(caller::&lt;T&gt;()).into(), cdp_id, debt, debt)
             .expect(<span class="string">&quot;Shall borrow&quot;</span>);
     }: {
         kensetsu::Pallet::&lt;T&gt;::repay_debt(
@@ -754,7 +800,7 @@
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             Balance::MAX,
         ).expect(<span class="string">&quot;Shall update hard cap&quot;</span>);
-        kensetsu::Pallet::&lt;T&gt;::borrow(RawOrigin::Signed(caller::&lt;T&gt;()).into(), cdp_id, debt)
+        kensetsu::Pallet::&lt;T&gt;::borrow(RawOrigin::Signed(caller::&lt;T&gt;()).into(), cdp_id, debt, debt)
             .expect(<span class="string">&quot;Shall borrow&quot;</span>);
         make_cdps_unsafe::&lt;T&gt;();
     }: {
@@ -778,6 +824,7 @@
             RawOrigin::Signed(caller::&lt;T&gt;()).into(),
             cdp_id,
             debt,
+            debt
         ).expect(<span class="string">&quot;Shall borrow&quot;</span>);
     }: {
         kensetsu::Pallet::&lt;T&gt;::accrue(RawOrigin::Signed(caller::&lt;T&gt;()).into(), cdp_id).unwrap();
@@ -808,6 +855,29 @@
             RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
             <span class="macro">balance!</span>(<span class="number">1000</span>)
         ).unwrap();
+    }
+
+    update_borrow_tax {
+        <span class="kw">let </span>new_borrow_tax = Percent::from_percent(<span class="number">1</span>);
+        kensetsu::Pallet::&lt;T&gt;::add_risk_manager(RawOrigin::Root.into(), risk_manager::&lt;T&gt;())
+            .expect(<span class="string">&quot;Must set risk manager&quot;</span>);
+    }:{
+        kensetsu::Pallet::&lt;T&gt;::update_borrow_tax(
+            RawOrigin::Signed(risk_manager::&lt;T&gt;()).into(),
+            new_borrow_tax
+        ).unwrap();
+    }
+    verify {
+        <span class="kw">let </span>old_borrow_tax = Percent::default();
+        frame_system::Pallet::&lt;T&gt;::assert_has_event(
+            &lt;T <span class="kw">as </span>kensetsu::Config&gt;::RuntimeEvent::from(
+                Event::&lt;T&gt;::BorrowTaxUpdated {
+                    new_borrow_tax,
+                    old_borrow_tax,
+                }
+            ).into()
+        );
+        <span class="macro">assert_eq!</span>(new_borrow_tax, BorrowTax::&lt;T&gt;::get());
     }
 
     update_liquidation_penalty {

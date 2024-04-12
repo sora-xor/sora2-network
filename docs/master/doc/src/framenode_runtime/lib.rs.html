@@ -3464,6 +3464,11 @@
 <a href="#3449" id="3449">3449</a>
 <a href="#3450" id="3450">3450</a>
 <a href="#3451" id="3451">3451</a>
+<a href="#3452" id="3452">3452</a>
+<a href="#3453" id="3453">3453</a>
+<a href="#3454" id="3454">3454</a>
+<a href="#3455" id="3455">3455</a>
+<a href="#3456" id="3456">3456</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5410,7 +5415,10 @@
                 .expect(<span class="string">&quot;Failed to get ordinary account id for technical account id.&quot;</span>)
     };
 
+    <span class="kw">pub const </span>KenAssetId: AssetId = common::KEN;
     <span class="kw">pub const </span>KusdAssetId: AssetId = common::KUSD;
+
+    <span class="kw">pub </span>GetKenIncentiveRemintPercent: Percent = Percent::from_percent(<span class="number">80</span>);
 
     <span class="comment">// 1 day = 86_400_000
     // TODO set 86_400_000
@@ -5431,9 +5439,11 @@
     <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
     <span class="kw">type </span>AssetInfoProvider = Assets;
     <span class="kw">type </span>TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    <span class="kw">type </span>KenAssetId = KenAssetId;
     <span class="kw">type </span>KusdAssetId = KusdAssetId;
     <span class="kw">type </span>PriceTools = PriceTools;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
+    <span class="kw">type </span>KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     <span class="kw">type </span>MaxCdpsPerOwner = ConstU32&lt;<span class="number">100</span>&gt;;
     <span class="kw">type </span>MaxRiskManagementTeamSize = ConstU32&lt;<span class="number">100</span>&gt;;
     <span class="kw">type </span>AccrueInterestPeriod = AccrueInterestPeriod;
