@@ -106,6 +106,9 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -198,6 +201,9 @@
     }
 }
 
-<span class="kw">pub type </span>Migrations = (RegisterKensetsuTokens&lt;Runtime&gt;,);
+<span class="kw">pub type </span>Migrations = (
+    RegisterKensetsuTokens&lt;Runtime&gt;,
+    bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount&lt;Runtime&gt;,
+);
 </code></pre></div>
 </section></main></body></html>
