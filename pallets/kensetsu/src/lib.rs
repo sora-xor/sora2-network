@@ -46,8 +46,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
-use sp_arithmetic::FixedU128;
-use sp_arithmetic::Perbill;
+use sp_arithmetic::{FixedU128, Perbill};
 
 #[cfg(test)]
 mod mock;
@@ -71,6 +70,16 @@ const VALIDATION_ERROR_CHECK_SAFE: u8 = 3;
 const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
 /// Liquidation limit reached
 const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
+
+#[derive(
+    Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, scale_info::TypeInfo,
+)]
+pub enum CdpType {
+    /// Pays stability fee in underlying collateral, cannot be liquidated.
+    V1,
+    /// Pays stability fee in stable coins, can be liquidated.
+    V2,
+}
 
 /// Risk management parameters for the specific collateral type.
 #[derive(
@@ -290,9 +299,14 @@ pub mod pallet {
             Description,
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
+        type KenAssetId: Get<Self::AssetId>;
         type KusdAssetId: Get<Self::AssetId>;
         type PriceTools: PriceToolsProvider<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+
+        /// Percent of KEN that is reminted and goes to Demeter farming incentivization
+        #[pallet::constant]
+        type KenIncentiveRemintPercent: Get<Percent>;
 
         /// Maximum number of CDP that one user can create
         #[pallet::constant]
@@ -350,6 +364,11 @@ pub mod pallet {
     pub type KusdHardCap<T> = StorageValue<_, Balance, ValueQuery>;
 
     /// Risk parameter
+    /// Borrows tax to buy back and burn KEN
+    #[pallet::storage]
+    #[pallet::getter(fn borrow_tax)]
+    pub type BorrowTax<T> = StorageValue<_, Percent, ValueQuery>;
+
     /// Liquidation penalty
     #[pallet::storage]
     #[pallet::getter(fn liquidation_penalty)]
@@ -384,11 +403,16 @@ pub mod pallet {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
+            debt_asset_id: AssetIdOf<T>,
+            cdp_type: CdpType,
         },
         CDPClosed {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
+            /// Amount of collateral returned to the CDP owner. 0 means the collateral was
+            /// liquidated.
+            collateral_amount: Balance,
         },
         CollateralDeposit {
             cdp_id: CdpId,
@@ -399,14 +423,14 @@ pub mod pallet {
         DebtIncreased {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
-            collateral_asset_id: AssetIdOf<T>,
-            // KUSD amount borrowed
+            debt_asset_id: AssetIdOf<T>,
+            /// Amount borrowed in debt asset id.
             amount: Balance,
         },
         DebtPayment {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
-            collateral_asset_id: AssetIdOf<T>,
+            debt_asset_id: AssetIdOf<T>,
             // KUSD amount paid off
             amount: Balance,
         },
@@ -415,6 +439,7 @@ pub mod pallet {
             // what was liquidated
             collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
+            debt_asset_id: AssetIdOf<T>,
             // KUSD amount from liquidation to cover debt
             proceeds: Balance,
             // liquidation penalty
@@ -424,16 +449,25 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             risk_parameters: CollateralRiskParameters,
         },
-        KusdHardCapUpdated {
-            hard_cap: Balance,
+        DebtTokenHardCapUpdated {
+            debt_asset_id: AssetIdOf<T>,
+            new_hard_cap: Balance,
+            old_hard_cap: Balance,
+        },
+        BorrowTaxUpdated {
+            old_borrow_tax: Percent,
+            new_borrow_tax: Percent,
         },
         LiquidationPenaltyUpdated {
-            liquidation_penalty: Percent,
+            new_liquidation_penalty: Percent,
+            old_liquidation_penalty: Percent,
         },
         ProfitWithdrawn {
+            debt_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
         Donation {
+            debt_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
     }
@@ -518,6 +552,8 @@ pub mod pallet {
                 cdp_id,
                 owner: who.clone(),
                 collateral_asset_id,
+                debt_asset_id: T::KusdAssetId::get(),
+                cdp_type: CdpType::V2,
             });
             if collateral_amount > 0 {
                 Self::deposit_internal(&who, cdp_id, collateral_amount)?;
@@ -544,12 +580,6 @@ pub mod pallet {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             Self::repay_debt_internal(cdp_id, cdp.debt)?;
-            technical::Pallet::<T>::transfer_out(
-                &cdp.collateral_asset_id,
-                &T::TreasuryTechAccount::get(),
-                &who,
-                cdp.collateral_amount,
-            )?;
             Self::delete_cdp(cdp_id)
         }
 
@@ -682,6 +712,7 @@ pub mod pallet {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
                 collateral_amount: collateral_liquidated,
+                debt_asset_id: T::KusdAssetId::get(),
                 proceeds,
                 penalty,
             });
@@ -746,14 +777,34 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            KusdHardCap::<T>::mutate({
-                |hard_cap| {
-                    *hard_cap = new_hard_cap;
-                }
+            let old_hard_cap = KusdHardCap::<T>::get();
+            KusdHardCap::<T>::set(new_hard_cap);
+            Self::deposit_event(Event::DebtTokenHardCapUpdated {
+                debt_asset_id: T::KusdAssetId::get(),
+                new_hard_cap,
+                old_hard_cap,
             });
-            Self::deposit_event(Event::KusdHardCapUpdated {
-                hard_cap: new_hard_cap,
+            Ok(())
+        }
+
+        /// Updates the borrow tax applied during borrow.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `new_borrow_tax`: The new borrow tax percentage to be set.
+        #[pallet::call_index(9)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_borrow_tax())]
+        pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::ensure_risk_manager(&who)?;
+            let old_borrow_tax = BorrowTax::<T>::get();
+            BorrowTax::<T>::set(new_borrow_tax);
+            Self::deposit_event(Event::BorrowTaxUpdated {
+                new_borrow_tax,
+                old_borrow_tax,
             });
+
             Ok(())
         }
 
@@ -763,7 +814,7 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_liquidation_penalty`: The new liquidation penalty percentage to be set.
-        #[pallet::call_index(9)]
+        #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
         pub fn update_liquidation_penalty(
             origin: OriginFor<T>,
@@ -771,22 +822,23 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            LiquidationPenalty::<T>::mutate(|liquidation_penalty| {
-                *liquidation_penalty = new_liquidation_penalty;
-            });
+            let old_liquidation_penalty = LiquidationPenalty::<T>::get();
+            LiquidationPenalty::<T>::set(new_liquidation_penalty);
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
-                liquidation_penalty: new_liquidation_penalty,
+                new_liquidation_penalty,
+                old_liquidation_penalty,
             });
 
             Ok(())
         }
+
         /// Withdraws protocol profit in the form of stablecoin (KUSD).
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
-        #[pallet::call_index(10)]
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -798,6 +850,7 @@ pub mod pallet {
                 kusd_amount,
             )?;
             Self::deposit_event(Event::ProfitWithdrawn {
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
             });
 
@@ -810,12 +863,13 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to donate to cover bad debt.
-        #[pallet::call_index(11)]
+        #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::cover_bad_debt(&who, kusd_amount)?;
             Self::deposit_event(Event::Donation {
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
             });
 
@@ -828,7 +882,7 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `account_id`: The account ID to be added as a risk manager.
-        #[pallet::call_index(12)]
+        #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
         pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
@@ -848,7 +902,7 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `account_id`: The account ID to be removed from the set of risk managers.
-        #[pallet::call_index(13)]
+        #[pallet::call_index(14)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
         pub fn remove_risk_manager(
             origin: OriginFor<T>,
@@ -936,8 +990,6 @@ pub mod pallet {
         /// Ensures that `who` is a protocol owner.
         /// Protocol owner can withdraw profit from the protocol.
         fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
-            // TODO ensure it is a risk management responsibility
-            // https://github.com/sora-xor/sora2-network#workspaces/kensetsu-6571e4321e07d3000e7a777b/issues/zh/5
             if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
                 return Err(Error::<T>::OperationNotPermitted.into());
             }
@@ -1093,24 +1145,57 @@ pub mod pallet {
             ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
             let max_safe_debt =
                 Self::get_max_safe_debt(cdp.collateral_amount, cdp.collateral_asset_id)?;
-            let borrow_amount_safe = max_safe_debt
+            let borrow_amount_safe_with_tax = max_safe_debt
                 .checked_sub(cdp.debt)
                 .ok_or(Error::<T>::ArithmeticError)?;
+
+            let borrow_amount_safe = FixedU128::from_inner(borrow_amount_safe_with_tax)
+                .checked_div(&(FixedU128::one() + FixedU128::from(Self::borrow_tax())))
+                .ok_or(Error::<T>::ArithmeticError)?
+                .into_inner();
+            let borrow_tax_safe = borrow_amount_safe_with_tax
+                .checked_sub(borrow_amount_safe)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
+            let borrow_tax_min = Self::borrow_tax() * borrow_amount_min;
+            let borrow_amount_min_with_tax = borrow_amount_min
+                .checked_add(borrow_tax_min)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
+            let borrow_tax_max = Self::borrow_tax() * borrow_amount_max;
+            let borrow_amount_max_with_tax = borrow_amount_max
+                .checked_add(borrow_tax_max)
+                .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(
-                borrow_amount_min <= borrow_amount_safe,
+                borrow_amount_min_with_tax <= borrow_amount_safe,
                 Error::<T>::CDPUnsafe
             );
-            let borrow_amount = if borrow_amount_max <= borrow_amount_safe {
-                borrow_amount_max
-            } else {
-                borrow_amount_safe
-            };
+
+            let (borrow_amount, borrow_tax, borrow_amount_with_tax) =
+                if borrow_amount_max_with_tax <= borrow_amount_safe_with_tax {
+                    (
+                        borrow_amount_max,
+                        borrow_tax_max,
+                        borrow_amount_max_with_tax,
+                    )
+                } else {
+                    (
+                        borrow_amount_safe,
+                        borrow_tax_safe,
+                        borrow_amount_safe_with_tax,
+                    )
+                };
+
+            // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
+            // increases debt
+            Self::incentivize_ken_token(borrow_tax)?;
             let new_debt = cdp
                 .debt
-                .checked_add(borrow_amount)
+                .checked_add(borrow_amount_with_tax)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            Self::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount)?;
-            Self::ensure_protocol_cap(borrow_amount)?;
+
+            Self::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount_with_tax)?;
+            Self::ensure_protocol_cap(borrow_amount_with_tax)?;
             Self::mint_to(who, borrow_amount)?;
             Self::update_cdp_debt(cdp_id, new_debt)?;
             CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
@@ -1119,15 +1204,15 @@ pub mod pallet {
                     .ok_or(Error::<T>::CollateralInfoNotFound)?;
                 collateral_info.kusd_supply = collateral_info
                     .kusd_supply
-                    .checked_add(borrow_amount)
+                    .checked_add(borrow_amount_with_tax)
                     .ok_or(Error::<T>::ArithmeticError)?;
                 DispatchResult::Ok(())
             })?;
             Self::deposit_event(Event::DebtIncreased {
                 cdp_id,
                 owner: who.clone(),
-                collateral_asset_id: cdp.collateral_asset_id,
-                amount: borrow_amount,
+                debt_asset_id: T::KusdAssetId::get(),
+                amount: borrow_amount_with_tax,
             });
 
             Ok(())
@@ -1155,7 +1240,7 @@ pub mod pallet {
             Self::deposit_event(Event::DebtPayment {
                 cdp_id,
                 owner: cdp.owner,
-                collateral_asset_id: cdp.collateral_asset_id,
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: to_cover_debt,
             });
 
@@ -1292,18 +1377,14 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
-            Self::mint_treasury(stability_fee)?;
+            Self::mint_treasury(&T::KusdAssetId::get(), stability_fee)?;
 
             Ok(cdp)
         }
 
         /// Mint token to protocol technical account
-        fn mint_treasury(amount: Balance) -> DispatchResult {
-            technical::Pallet::<T>::mint(
-                &T::KusdAssetId::get(),
-                &T::TreasuryTechAccount::get(),
-                amount,
-            )?;
+        fn mint_treasury(asset_id: &T::AssetId, amount: Balance) -> DispatchResult {
+            technical::Pallet::<T>::mint(asset_id, &T::TreasuryTechAccount::get(), amount)?;
             Ok(())
         }
 
@@ -1432,6 +1513,39 @@ pub mod pallet {
             Ok((collateral_liquidated, proceeds, penalty))
         }
 
+        /// Buys back KEN token with stablecoin and burns. Then 80% of burned is reminted for
+        /// incentivization with Demeter farming for XOR/KUSD liquidity providers.
+        ///
+        /// ## Parameters
+        /// - borrow_tax_kusd - borrow tax from borrowing amount.
+        fn incentivize_ken_token(borrow_tax_kusd: Balance) -> DispatchResult {
+            if borrow_tax_kusd > 0 {
+                Self::mint_treasury(&T::KusdAssetId::get(), borrow_tax_kusd)?;
+                let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                    &T::TreasuryTechAccount::get(),
+                )?;
+                let swap_outcome = T::LiquidityProxy::exchange(
+                    DEXId::Polkaswap.into(),
+                    &technical_account_id,
+                    &technical_account_id,
+                    &T::KusdAssetId::get(),
+                    &T::KenAssetId::get(),
+                    SwapAmount::with_desired_input(borrow_tax_kusd, balance!(0)),
+                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                )?;
+                assets::Pallet::<T>::burn_from(
+                    &T::KenAssetId::get(),
+                    &technical_account_id,
+                    &technical_account_id,
+                    swap_outcome.amount,
+                )?;
+                let to_remint = T::KenIncentiveRemintPercent::get() * swap_outcome.amount;
+                Self::mint_treasury(&T::KenAssetId::get(), to_remint)?;
+            }
+
+            Ok(())
+        }
+
         /// Cover CDP debt with protocol balance
         /// If protocol balance is less than amount to cover, it is a bad debt
         fn cover_with_protocol(amount: Balance) -> DispatchResult {
@@ -1500,9 +1614,16 @@ pub mod pallet {
             })
         }
 
-        /// Removes CDP entry from the storage
+        /// Removes CDP entry from the storage and sends collateral to the owner.
         fn delete_cdp(cdp_id: CdpId) -> DispatchResult {
             let cdp = CDPDepository::<T>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let transfer_out = cdp.collateral_amount;
+            technical::Pallet::<T>::transfer_out(
+                &cdp.collateral_asset_id,
+                &T::TreasuryTechAccount::get(),
+                &cdp.owner,
+                transfer_out,
+            )?;
             if let Some(mut cdp_ids) = CdpOwnerIndex::<T>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
@@ -1513,6 +1634,7 @@ pub mod pallet {
                 cdp_id,
                 owner: cdp.owner,
                 collateral_asset_id: cdp.collateral_asset_id,
+                collateral_amount: transfer_out,
             });
             Ok(())
         }
