@@ -30,7 +30,7 @@ def get_keypair_using_args(args):
 def send_extrinsic(substrate_provider: SubstrateInterface, keypair: Keypair, call: GenericCall):
     extrinsic = substrate_provider.create_signed_extrinsic(call=call, keypair=keypair)
     try:
-        receipt = substrate_provider.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        receipt = substrate_provider.submit_extrinsic(extrinsic, wait_for_finalization=True)
         log_receipt(receipt)
     except SubstrateRequestException as e:
         print(f'Error in send_extrinsic: {e}')
@@ -46,7 +46,7 @@ def log_receipt(receipt):
         for event in receipt.triggered_events:
             print(f'* {event.value}')
     else:
-        print('⚠️ Extrinsic Failed: ', receipt.error_message)
+        raise Exception('⚠️ Extrinsic Failed: ', receipt.error_message)
     
 
 def get_new_code_from_wasm_file(wasm_file_path):
