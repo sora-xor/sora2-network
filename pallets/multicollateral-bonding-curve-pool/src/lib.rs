@@ -210,7 +210,7 @@ pub mod pallet {
         type BuyBackTBCDPercent: Get<Fixed>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
-        /// to retrieve asset info
+        /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,

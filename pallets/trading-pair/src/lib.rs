@@ -270,7 +270,7 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
-        /// to retrieve asset info
+        /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,

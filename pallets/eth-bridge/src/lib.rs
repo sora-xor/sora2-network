@@ -380,7 +380,7 @@ pub mod pallet {
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
 
-        /// to retrieve asset info
+        /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,

@@ -303,7 +303,7 @@ pub mod pallet {
         type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self::AssetId, Self>
             + Parameter;
 
-        /// to retrieve asset info
+        /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
