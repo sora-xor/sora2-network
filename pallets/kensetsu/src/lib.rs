@@ -71,6 +71,16 @@ const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
 /// Liquidation limit reached
 const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
+#[derive(
+    Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, scale_info::TypeInfo,
+)]
+pub enum CdpType {
+    /// Pays stability fee in underlying collateral, cannot be liquidated.
+    V1,
+    /// Pays stability fee in stable coins, can be liquidated.
+    V2,
+}
+
 /// Risk management parameters for the specific collateral type.
 #[derive(
     Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord, Copy,
@@ -393,11 +403,16 @@ pub mod pallet {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
+            debt_asset_id: AssetIdOf<T>,
+            cdp_type: CdpType,
         },
         CDPClosed {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
             collateral_asset_id: AssetIdOf<T>,
+            /// Amount of collateral returned to the CDP owner. 0 means the collateral was
+            /// liquidated.
+            collateral_amount: Balance,
         },
         CollateralDeposit {
             cdp_id: CdpId,
@@ -408,14 +423,14 @@ pub mod pallet {
         DebtIncreased {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
-            collateral_asset_id: AssetIdOf<T>,
-            // KUSD amount borrowed
+            debt_asset_id: AssetIdOf<T>,
+            /// Amount borrowed in debt asset id.
             amount: Balance,
         },
         DebtPayment {
             cdp_id: CdpId,
             owner: AccountIdOf<T>,
-            collateral_asset_id: AssetIdOf<T>,
+            debt_asset_id: AssetIdOf<T>,
             // KUSD amount paid off
             amount: Balance,
         },
@@ -424,6 +439,7 @@ pub mod pallet {
             // what was liquidated
             collateral_asset_id: AssetIdOf<T>,
             collateral_amount: Balance,
+            debt_asset_id: AssetIdOf<T>,
             // KUSD amount from liquidation to cover debt
             proceeds: Balance,
             // liquidation penalty
@@ -433,7 +449,8 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             risk_parameters: CollateralRiskParameters,
         },
-        KusdHardCapUpdated {
+        DebtTokenHardCapUpdated {
+            debt_asset_id: AssetIdOf<T>,
             new_hard_cap: Balance,
             old_hard_cap: Balance,
         },
@@ -446,9 +463,11 @@ pub mod pallet {
             old_liquidation_penalty: Percent,
         },
         ProfitWithdrawn {
+            debt_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
         Donation {
+            debt_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
     }
@@ -533,6 +552,8 @@ pub mod pallet {
                 cdp_id,
                 owner: who.clone(),
                 collateral_asset_id,
+                debt_asset_id: T::KusdAssetId::get(),
+                cdp_type: CdpType::V2,
             });
             if collateral_amount > 0 {
                 Self::deposit_internal(&who, cdp_id, collateral_amount)?;
@@ -559,12 +580,6 @@ pub mod pallet {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             Self::repay_debt_internal(cdp_id, cdp.debt)?;
-            technical::Pallet::<T>::transfer_out(
-                &cdp.collateral_asset_id,
-                &T::TreasuryTechAccount::get(),
-                &who,
-                cdp.collateral_amount,
-            )?;
             Self::delete_cdp(cdp_id)
         }
 
@@ -697,6 +712,7 @@ pub mod pallet {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
                 collateral_amount: collateral_liquidated,
+                debt_asset_id: T::KusdAssetId::get(),
                 proceeds,
                 penalty,
             });
@@ -763,7 +779,8 @@ pub mod pallet {
             Self::ensure_risk_manager(&who)?;
             let old_hard_cap = KusdHardCap::<T>::get();
             KusdHardCap::<T>::set(new_hard_cap);
-            Self::deposit_event(Event::KusdHardCapUpdated {
+            Self::deposit_event(Event::DebtTokenHardCapUpdated {
+                debt_asset_id: T::KusdAssetId::get(),
                 new_hard_cap,
                 old_hard_cap,
             });
@@ -833,6 +850,7 @@ pub mod pallet {
                 kusd_amount,
             )?;
             Self::deposit_event(Event::ProfitWithdrawn {
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
             });
 
@@ -851,6 +869,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::cover_bad_debt(&who, kusd_amount)?;
             Self::deposit_event(Event::Donation {
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
             });
 
@@ -1192,7 +1211,7 @@ pub mod pallet {
             Self::deposit_event(Event::DebtIncreased {
                 cdp_id,
                 owner: who.clone(),
-                collateral_asset_id: cdp.collateral_asset_id,
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: borrow_amount_with_tax,
             });
 
@@ -1221,7 +1240,7 @@ pub mod pallet {
             Self::deposit_event(Event::DebtPayment {
                 cdp_id,
                 owner: cdp.owner,
-                collateral_asset_id: cdp.collateral_asset_id,
+                debt_asset_id: T::KusdAssetId::get(),
                 amount: to_cover_debt,
             });
 
@@ -1595,9 +1614,16 @@ pub mod pallet {
             })
         }
 
-        /// Removes CDP entry from the storage
+        /// Removes CDP entry from the storage and sends collateral to the owner.
         fn delete_cdp(cdp_id: CdpId) -> DispatchResult {
             let cdp = CDPDepository::<T>::take(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let transfer_out = cdp.collateral_amount;
+            technical::Pallet::<T>::transfer_out(
+                &cdp.collateral_asset_id,
+                &T::TreasuryTechAccount::get(),
+                &cdp.owner,
+                transfer_out,
+            )?;
             if let Some(mut cdp_ids) = CdpOwnerIndex::<T>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
@@ -1608,6 +1634,7 @@ pub mod pallet {
                 cdp_id,
                 owner: cdp.owner,
                 collateral_asset_id: cdp.collateral_asset_id,
+                collateral_amount: transfer_out,
             });
             Ok(())
         }

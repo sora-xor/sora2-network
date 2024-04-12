@@ -174,6 +174,8 @@ fn test_create_cdp_sunny_day() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
+                cdp_type: CdpType::V2,
             }
             .into(),
         );
@@ -190,7 +192,7 @@ fn test_create_cdp_sunny_day() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: debt,
             }
             .into(),
@@ -273,8 +275,9 @@ fn test_close_cdp_outstanding_debt() {
             FixedU128::from_float(0.0),
             balance!(0),
         );
+        let collateral = balance!(10);
         let debt = balance!(1);
-        let cdp_id = create_cdp_for_xor(alice(), balance!(10), debt);
+        let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         assert_balance(&alice_account_id(), &XOR, balance!(0));
         assert_balance(&alice_account_id(), &KUSD, debt);
 
@@ -284,7 +287,7 @@ fn test_close_cdp_outstanding_debt() {
             Event::DebtPayment {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: debt,
             }
             .into(),
@@ -294,6 +297,7 @@ fn test_close_cdp_outstanding_debt() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
+                collateral_amount: collateral,
             }
             .into(),
         );
@@ -314,7 +318,8 @@ fn test_close_cdp_sunny_day() {
             FixedU128::from_float(0.0),
             balance!(0),
         );
-        let cdp_id = create_cdp_for_xor(alice(), balance!(10), balance!(0));
+        let collateral = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), collateral, balance!(0));
         assert_balance(&alice_account_id(), &XOR, balance!(0));
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
@@ -324,6 +329,7 @@ fn test_close_cdp_sunny_day() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
+                collateral_amount: collateral,
             }
             .into(),
         );
@@ -656,7 +662,7 @@ fn test_borrow_zero_amount() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: debt,
             }
             .into(),
@@ -694,7 +700,7 @@ fn test_borrow_sunny_day() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: to_borrow,
             }
             .into(),
@@ -732,7 +738,7 @@ fn test_borrow_max_amount() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: expected_debt,
             }
             .into(),
@@ -779,7 +785,7 @@ fn borrow_with_ken_incentivization() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: to_borrow + borrow_tax,
             }
             .into(),
@@ -892,7 +898,7 @@ fn test_repay_debt_amount_less_debt() {
             Event::DebtPayment {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: to_repay,
             }
             .into(),
@@ -928,7 +934,7 @@ fn test_repay_debt_amount_eq_debt() {
             Event::DebtPayment {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: debt,
             }
             .into(),
@@ -972,7 +978,7 @@ fn test_repay_debt_amount_gt_debt() {
             Event::DebtPayment {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: debt,
             }
             .into(),
@@ -1009,7 +1015,7 @@ fn test_repay_debt_zero_amount() {
             Event::DebtPayment {
                 cdp_id,
                 owner: alice_account_id(),
-                collateral_asset_id: XOR,
+                debt_asset_id: KUSD,
                 amount: balance!(0),
             }
             .into(),
@@ -1162,6 +1168,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral_liquidated,
+                debt_asset_id: KUSD,
                 proceeds: liquidation_income - penalty,
                 penalty,
             }
@@ -1224,6 +1231,7 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral_liquidated,
+                debt_asset_id: KUSD,
                 proceeds: liquidation_income - penalty,
                 penalty,
             }
@@ -1285,6 +1293,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral_liquidated,
+                debt_asset_id: KUSD,
                 proceeds: liquidation_income - penalty,
                 penalty,
             }
@@ -1345,6 +1354,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral,
+                debt_asset_id: KUSD,
                 proceeds: liquidation_income - penalty,
                 penalty,
             }
@@ -1355,6 +1365,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
+                collateral_amount: balance!(0),
             }
             .into(),
         );
@@ -1419,6 +1430,7 @@ fn test_liquidate_kusd_bad_debt() {
                 cdp_id,
                 collateral_asset_id: XOR,
                 collateral_amount: collateral,
+                debt_asset_id: KUSD,
                 proceeds: liquidation_income - penalty,
                 penalty,
             }
@@ -1429,6 +1441,7 @@ fn test_liquidate_kusd_bad_debt() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
+                collateral_amount: balance!(0),
             }
             .into(),
         );
@@ -1920,7 +1933,8 @@ fn test_update_hard_cap_sunny_day() {
 
         let old_hard_cap = balance!(0);
         System::assert_has_event(
-            Event::KusdHardCapUpdated {
+            Event::DebtTokenHardCapUpdated {
+                debt_asset_id: KUSD,
                 new_hard_cap,
                 old_hard_cap,
             }
@@ -2075,7 +2089,13 @@ fn test_donate_no_bad_debt() {
 
         assert_ok!(KensetsuPallet::donate(alice(), donation));
 
-        System::assert_has_event(Event::Donation { amount: donation }.into());
+        System::assert_has_event(
+            Event::Donation {
+                debt_asset_id: KUSD,
+                amount: donation,
+            }
+            .into(),
+        );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
         assert_balance(&tech_account_id(), &KUSD, donation);
         assert_bad_debt(balance!(0));
@@ -2103,7 +2123,13 @@ fn test_donate_donation_less_bad_debt() {
 
         assert_ok!(KensetsuPallet::donate(alice(), donation));
 
-        System::assert_has_event(Event::Donation { amount: donation }.into());
+        System::assert_has_event(
+            Event::Donation {
+                debt_asset_id: KUSD,
+                amount: donation,
+            }
+            .into(),
+        );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(initial_bad_debt - donation);
@@ -2131,7 +2157,13 @@ fn test_donate_donation_eq_bad_debt() {
 
         assert_ok!(KensetsuPallet::donate(alice(), donation));
 
-        System::assert_has_event(Event::Donation { amount: donation }.into());
+        System::assert_has_event(
+            Event::Donation {
+                debt_asset_id: KUSD,
+                amount: donation,
+            }
+            .into(),
+        );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
@@ -2159,7 +2191,13 @@ fn test_donate_donation_gt_bad_debt() {
 
         assert_ok!(KensetsuPallet::donate(alice(), donation));
 
-        System::assert_has_event(Event::Donation { amount: donation }.into());
+        System::assert_has_event(
+            Event::Donation {
+                debt_asset_id: KUSD,
+                amount: donation,
+            }
+            .into(),
+        );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
         assert_balance(&tech_account_id(), &KUSD, donation - initial_bad_debt);
         assert_bad_debt(balance!(0));
@@ -2182,7 +2220,13 @@ fn test_donate_zero_amount() {
 
         assert_ok!(KensetsuPallet::donate(alice(), donation));
 
-        System::assert_has_event(Event::Donation { amount: donation }.into());
+        System::assert_has_event(
+            Event::Donation {
+                debt_asset_id: KUSD,
+                amount: donation,
+            }
+            .into(),
+        );
     });
 }
 
@@ -2256,6 +2300,7 @@ fn test_withdraw_profit_sunny_day() {
 
         System::assert_has_event(
             Event::ProfitWithdrawn {
+                debt_asset_id: KUSD,
                 amount: to_withdraw,
             }
             .into(),
@@ -2283,6 +2328,7 @@ fn test_withdraw_profit_zero_amount() {
 
         System::assert_has_event(
             Event::ProfitWithdrawn {
+                debt_asset_id: KUSD,
                 amount: to_withdraw,
             }
             .into(),
