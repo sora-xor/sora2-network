@@ -95,6 +95,7 @@ fn create_cdp_with_xor<T: Config>() -> CdpId {
         XOR.into(),
         balance!(0),
         balance!(0),
+        balance!(0),
     )
     .expect("Shall create CDP");
     kensetsu::NextCDPId::<T>::get()
@@ -236,6 +237,7 @@ benchmarks! {
             RawOrigin::Signed(caller::<T>()).into(),
             XOR.into(),
             collateral,
+            debt,
             debt
         ).unwrap();
     }
@@ -282,6 +284,7 @@ benchmarks! {
         kensetsu::Pallet::<T>::borrow(
             RawOrigin::Signed(caller::<T>()).into(),
             cdp_id,
+            debt,
             debt
         ).unwrap();
     }
@@ -299,7 +302,7 @@ benchmarks! {
             RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
-        kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt)
+        kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt, debt)
             .expect("Shall borrow");
     }: {
         kensetsu::Pallet::<T>::repay_debt(
@@ -322,7 +325,7 @@ benchmarks! {
             RawOrigin::Signed(risk_manager::<T>()).into(),
             Balance::MAX,
         ).expect("Shall update hard cap");
-        kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt)
+        kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt, debt)
             .expect("Shall borrow");
         make_cdps_unsafe::<T>();
     }: {
@@ -346,6 +349,7 @@ benchmarks! {
             RawOrigin::Signed(caller::<T>()).into(),
             cdp_id,
             debt,
+            debt
         ).expect("Shall borrow");
     }: {
         kensetsu::Pallet::<T>::accrue(RawOrigin::Signed(caller::<T>()).into(), cdp_id).unwrap();

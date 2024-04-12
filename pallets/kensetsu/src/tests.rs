@@ -55,11 +55,23 @@ type System = frame_system::Pallet<TestRuntime>;
 fn test_create_cdp_only_signed_origin() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            KensetsuPallet::create_cdp(RuntimeOrigin::none(), XOR, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(
+                RuntimeOrigin::none(),
+                XOR,
+                balance!(0),
+                balance!(0),
+                balance!(0)
+            ),
             BadOrigin
         );
         assert_noop!(
-            KensetsuPallet::create_cdp(RuntimeOrigin::root(), XOR, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(
+                RuntimeOrigin::root(),
+                XOR,
+                balance!(0),
+                balance!(0),
+                balance!(0)
+            ),
             BadOrigin
         );
     });
@@ -71,7 +83,7 @@ fn test_create_cdp_only_signed_origin() {
 fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0), balance!(0)),
             KensetsuError::CollateralInfoNotFound
         );
     });
@@ -90,7 +102,7 @@ fn test_create_cdp_overflow_error() {
         NextCDPId::<TestRuntime>::set(CdpId::MAX);
 
         assert_noop!(
-            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0), balance!(0)),
             KensetsuError::ArithmeticError
         );
     });
@@ -109,8 +121,26 @@ fn test_create_cdp_collateral_below_minimal() {
         );
 
         assert_noop!(
-            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(0), balance!(0)),
             KensetsuError::CollateralBelowMinimal
+        );
+    });
+}
+
+/// Test create_cdp call with wrong parameters: min_borrow_amount > max_borrow_amount
+#[test]
+fn test_create_cdp_wrong_parameters() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+
+        assert_noop!(
+            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), balance!(100), balance!(10)),
+            KensetsuError::WrongBorrowAmounts
         );
     });
 }
@@ -130,7 +160,13 @@ fn test_create_cdp_sunny_day() {
         );
         set_balance(alice_account_id(), collateral);
 
-        assert_ok!(KensetsuPallet::create_cdp(alice(), XOR, collateral, debt),);
+        assert_ok!(KensetsuPallet::create_cdp(
+            alice(),
+            XOR,
+            collateral,
+            debt,
+            debt
+        ));
         let cdp_id = 1;
 
         System::assert_has_event(
@@ -468,11 +504,11 @@ fn test_borrow_only_signed_origin() {
         let cdp_id = 1;
 
         assert_noop!(
-            KensetsuPallet::borrow(RuntimeOrigin::none(), cdp_id, balance!(0)),
+            KensetsuPallet::borrow(RuntimeOrigin::none(), cdp_id, balance!(0), balance!(0)),
             BadOrigin
         );
         assert_noop!(
-            KensetsuPallet::borrow(RuntimeOrigin::root(), cdp_id, balance!(0)),
+            KensetsuPallet::borrow(RuntimeOrigin::root(), cdp_id, balance!(0), balance!(0)),
             BadOrigin
         );
     });
@@ -492,7 +528,7 @@ fn test_borrow_only_owner() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
         assert_noop!(
-            KensetsuPallet::borrow(bob(), cdp_id, balance!(0)),
+            KensetsuPallet::borrow(bob(), cdp_id, balance!(0), balance!(0)),
             KensetsuError::OperationNotPermitted
         );
     });
@@ -505,29 +541,8 @@ fn test_borrow_cdp_does_not_exist() {
         let cdp_id = 1;
 
         assert_noop!(
-            KensetsuPallet::borrow(alice(), cdp_id, balance!(0)),
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(0), balance!(0)),
             KensetsuError::CDPNotFound
-        );
-    });
-}
-
-/// CDP with debt as MAX_INT exists, borrow from CDP must result in overflow error.
-#[test]
-fn test_borrow_cdp_overflow() {
-    new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(
-            Balance::MAX,
-            Perbill::from_percent(100),
-            FixedU128::from_float(0.0),
-            balance!(0),
-        );
-        // due to cast to i128 in update_balance() u128::MAX is done with 2 x i128::MAX
-        let max_i128_amount = Balance::MAX / 2;
-        let cdp_id = create_cdp_for_xor(alice(), max_i128_amount, max_i128_amount);
-
-        assert_noop!(
-            KensetsuPallet::borrow(alice(), cdp_id, u128::MAX),
-            KensetsuError::ArithmeticError
         );
     });
 }
@@ -546,7 +561,7 @@ fn test_borrow_cdp_unsafe() {
         let cdp_id = create_cdp_for_xor(alice(), amount, balance!(0));
 
         assert_noop!(
-            KensetsuPallet::borrow(alice(), cdp_id, amount),
+            KensetsuPallet::borrow(alice(), cdp_id, amount, amount),
             KensetsuError::CDPUnsafe
         );
     });
@@ -566,7 +581,7 @@ fn test_borrow_cdp_type_hard_cap() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
         assert_noop!(
-            KensetsuPallet::borrow(alice(), cdp_id, balance!(20)),
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(20), balance!(20)),
             KensetsuError::HardCapSupply
         );
     });
@@ -591,8 +606,27 @@ fn test_borrow_protocol_hard_cap() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
         assert_noop!(
-            KensetsuPallet::borrow(alice(), cdp_id, balance!(20)),
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(20), balance!(20)),
             KensetsuError::HardCapSupply
+        );
+    });
+}
+
+/// Test borrow call with wrong parameters: min_borrow_amount > max_borrow_amount
+#[test]
+fn test_borrow_wrong_parameters() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+        assert_noop!(
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(100), balance!(20)),
+            KensetsuError::WrongBorrowAmounts
         );
     });
 }
@@ -611,7 +645,12 @@ fn test_borrow_zero_amount() {
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
 
-        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, balance!(0)));
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            balance!(0),
+            balance!(0)
+        ));
 
         System::assert_has_event(
             Event::DebtIncreased {
@@ -644,7 +683,12 @@ fn test_borrow_sunny_day() {
         let initial_total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(initial_total_kusd_supply, balance!(0));
 
-        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, to_borrow));
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            to_borrow,
+            to_borrow
+        ));
 
         System::assert_has_event(
             Event::DebtIncreased {
@@ -662,6 +706,44 @@ fn test_borrow_sunny_day() {
         assert_balance(&alice_account_id(), &KUSD, to_borrow);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + to_borrow);
+    });
+}
+
+/// CDP with collateral exists, call borrow with borrow_amount_max as u128::MAX.
+/// Tx must succeed, max safe debt to CDP added, KUSD minted to the caller.
+#[test]
+fn test_borrow_max_amount() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+        let initial_total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(initial_total_kusd_supply, balance!(0));
+
+        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, 0, Balance::MAX,));
+
+        // expected debt is collateral * liquidation ratio = 100 * 50% = 50
+        let expected_debt = balance!(50);
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                collateral_asset_id: XOR,
+                amount: expected_debt,
+            }
+            .into(),
+        );
+        let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
+        assert_eq!(collateral_info.kusd_supply, expected_debt);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, expected_debt);
+        assert_balance(&alice_account_id(), &KUSD, expected_debt);
+        let total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(total_kusd_supply, initial_total_kusd_supply + expected_debt);
     });
 }
 
@@ -686,7 +768,12 @@ fn borrow_with_ken_incentivization() {
         let ken_buyback_amount = balance!(1);
         MockLiquidityProxy::set_amounts_for_the_next_exchange(KEN, ken_buyback_amount);
 
-        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, to_borrow));
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            to_borrow,
+            to_borrow
+        ));
 
         System::assert_has_event(
             Event::DebtIncreased {
@@ -731,7 +818,12 @@ fn test_borrow_cdp_accrue() {
         let initial_total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(initial_total_kusd_supply, balance!(10));
 
-        assert_ok!(KensetsuPallet::borrow(alice(), cdp_id, balance!(0)));
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            balance!(0),
+            balance!(0)
+        ));
 
         // interest is 10*10%*1 = 1,
         // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
