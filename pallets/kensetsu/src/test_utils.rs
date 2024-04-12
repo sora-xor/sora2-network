@@ -36,7 +36,7 @@ use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use sp_arithmetic::Perbill;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::traits::Zero;
 use sp_runtime::AccountId32;
 
 type AccountId = AccountId32;
