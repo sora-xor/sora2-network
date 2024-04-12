@@ -1944,7 +1944,10 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
 
+    pub const KenAssetId: AssetId = common::KEN;
     pub const KusdAssetId: AssetId = common::KUSD;
+
+    pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 day = 86_400_000
     // TODO set 86_400_000
@@ -1965,9 +1968,11 @@ impl kensetsu::Config for Runtime {
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
     type AccrueInterestPeriod = AccrueInterestPeriod;
