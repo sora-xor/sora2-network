@@ -76,9 +76,9 @@ const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 )]
 pub enum CdpType {
     /// Pays stability fee in underlying collateral, cannot be liquidated.
-    V1,
+    Type1,
     /// Pays stability fee in stable coins, can be liquidated.
-    V2,
+    Type2,
 }
 
 /// Risk management parameters for the specific collateral type.
@@ -544,7 +544,7 @@ pub mod pallet {
                 owner: who.clone(),
                 collateral_asset_id,
                 debt_asset_id: T::KusdAssetId::get(),
-                cdp_type: CdpType::V2,
+                cdp_type: CdpType::Type2,
             });
             if collateral_amount > 0 {
                 Self::deposit_internal(&who, cdp_id, collateral_amount)?;
@@ -1209,7 +1209,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Repays debt
+        /// Repays debt.
         /// Burns KUSD amount from CDP owner, updates CDP balances.
         ///
         /// ## Parameters
@@ -1577,9 +1577,7 @@ pub mod pallet {
         /// Increments CDP Id counter, changes storage state.
         fn increment_cdp_id() -> Result<CdpId, DispatchError> {
             NextCDPId::<T>::try_mutate(|cdp_id| {
-                *cdp_id = cdp_id
-                    .checked_add(1)
-                    .ok_or(crate::pallet::Error::<T>::ArithmeticError)?;
+                *cdp_id = cdp_id.checked_add(1).ok_or(Error::<T>::ArithmeticError)?;
                 Ok(*cdp_id)
             })
         }
@@ -1607,7 +1605,7 @@ pub mod pallet {
 
         /// Updates CDP debt balance
         fn update_cdp_debt(cdp_id: CdpId, debt: Balance) -> DispatchResult {
-            crate::pallet::CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
+            CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = debt;
                 Ok(())
