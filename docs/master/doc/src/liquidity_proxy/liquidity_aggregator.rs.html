@@ -2594,7 +2594,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::prelude::{OutcomeFee, QuoteAmount};
+<span class="kw">use </span>common::prelude::{OutcomeFee, SwapAmount};
 <span class="kw">use </span>frame_support::RuntimeDebug;
 <span class="kw">use </span>sp_std::vec::Vec;
 
@@ -2621,7 +2621,7 @@
 )]
 </span><span class="kw">pub struct </span>AggregatedSwapOutcome&lt;AssetId: Ord, LiquiditySourceType, AmountType&gt; {
     <span class="doccomment">/// A distribution of amounts each liquidity sources gets to swap in the entire trade
-    </span><span class="kw">pub </span>distribution: Vec&lt;(LiquiditySourceType, QuoteAmount&lt;AmountType&gt;)&gt;,
+    </span><span class="kw">pub </span>distribution: Vec&lt;(LiquiditySourceType, SwapAmount&lt;AmountType&gt;)&gt;,
     <span class="doccomment">/// The best possible output/input amount for a given trade and a set of liquidity sources
     </span><span class="kw">pub </span>amount: AmountType,
     <span class="doccomment">/// Total fee amount, nominated in XOR
@@ -2632,7 +2632,7 @@
     AggregatedSwapOutcome&lt;AssetId, LiquiditySourceIdType, AmountType&gt;
 {
     <span class="kw">pub fn </span>new(
-        distribution: Vec&lt;(LiquiditySourceIdType, QuoteAmount&lt;AmountType&gt;)&gt;,
+        distribution: Vec&lt;(LiquiditySourceIdType, SwapAmount&lt;AmountType&gt;)&gt;,
         amount: AmountType,
         fee: OutcomeFee&lt;AssetId, AmountType&gt;,
     ) -&gt; <span class="self">Self </span>{
@@ -2812,7 +2812,7 @@
             };
             distribution.push((
                 source.clone(),
-                QuoteAmount::with_variant(<span class="self">self</span>.variant, desired_part),
+                SwapAmount::with_variant(<span class="self">self</span>.variant, desired_part, result_part),
             ));
             result_amount = result_amount.checked_add(result_part)<span class="question-mark">?</span>;
             fee = fee.merge(total.fee);
@@ -2875,7 +2875,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::liquidity_aggregator::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
-    <span class="kw">use </span>common::prelude::{OutcomeFee, QuoteAmount, SwapVariant};
+    <span class="kw">use </span>common::prelude::{OutcomeFee, SwapAmount, SwapVariant};
     <span class="kw">use </span>common::{balance, LiquiditySourceType, XOR, XST};
     <span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 
@@ -3640,7 +3640,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">120</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">120</span>),
                     Default::default()
@@ -3659,7 +3659,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">220</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">220</span>),
                     Default::default()
@@ -3682,11 +3682,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">100</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">220</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">320</span>),
@@ -3710,11 +3710,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">190</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">220</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">410</span>),
@@ -3739,15 +3739,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">190</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">85</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">220</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">495</span>),
@@ -3775,15 +3775,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">190</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">170</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">220</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">580</span>),
@@ -3803,7 +3803,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">8</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">8</span>),
                     Default::default()
@@ -3822,7 +3822,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">18</span>),
                     Default::default()
@@ -3845,11 +3845,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">10</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">28</span>),
@@ -3873,11 +3873,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">21</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">39</span>),
@@ -3901,11 +3901,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>), <span class="macro">balance!</span>(<span class="number">33</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">51</span>),
@@ -3933,15 +3933,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>), <span class="macro">balance!</span>(<span class="number">33</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">12.5</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">63.5</span>),
@@ -3966,15 +3966,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>), <span class="macro">balance!</span>(<span class="number">33</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">25</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">76</span>),
@@ -4176,7 +4176,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">120</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">120</span>),
                     Default::default()
@@ -4195,7 +4195,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">224</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">224</span>),
                     Default::default()
@@ -4218,11 +4218,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>), <span class="macro">balance!</span>(<span class="number">80</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">324</span>),
@@ -4246,11 +4246,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">18</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">18</span>), <span class="macro">balance!</span>(<span class="number">172</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">416</span>),
@@ -4275,15 +4275,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">208</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">6</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">6</span>), <span class="macro">balance!</span>(<span class="number">51</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">503</span>),
@@ -4311,15 +4311,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">208</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">16</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">16</span>), <span class="macro">balance!</span>(<span class="number">136</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">588</span>),
@@ -4342,7 +4342,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">8</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">8</span>),
                     Default::default()
@@ -4361,7 +4361,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>), <span class="macro">balance!</span>(<span class="number">13</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">13</span>),
                     Default::default()
@@ -4384,11 +4384,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">60</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">60</span>), <span class="macro">balance!</span>(<span class="number">6</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">23</span>),
@@ -4415,11 +4415,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>), <span class="macro">balance!</span>(<span class="number">15.5</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">32.5</span>),
@@ -4447,15 +4447,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">175</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">175</span>), <span class="macro">balance!</span>(<span class="number">18.5</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">40</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">40</span>), <span class="macro">balance!</span>(<span class="number">5</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">40.5</span>),
@@ -4486,15 +4486,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">175</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">175</span>), <span class="macro">balance!</span>(<span class="number">18.5</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">140</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">140</span>), <span class="macro">balance!</span>(<span class="number">17.5</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">53</span>),
@@ -4517,7 +4517,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">120</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">120</span>),
                     Default::default()
@@ -4536,7 +4536,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">224</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">224</span>),
                     Default::default()
@@ -4559,11 +4559,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>), <span class="macro">balance!</span>(<span class="number">80</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">324</span>),
@@ -4588,15 +4588,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">190</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>), <span class="macro">balance!</span>(<span class="number">68</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">502</span>),
@@ -4627,15 +4627,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">23</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">23</span>), <span class="macro">balance!</span>(<span class="number">214</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">15</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">15</span>), <span class="macro">balance!</span>(<span class="number">127.5</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">585.5</span>),
@@ -4658,7 +4658,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">8</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">8</span>),
                     Default::default()
@@ -4681,11 +4681,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">10</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">1</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">18</span>),
@@ -4712,11 +4712,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">110</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">110</span>), <span class="macro">balance!</span>(<span class="number">11.1</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">28.1</span>),
@@ -4741,15 +4741,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>), <span class="macro">balance!</span>(<span class="number">33</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">10</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">1.25</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">51.25</span>),
@@ -4777,15 +4777,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">300</span>), <span class="macro">balance!</span>(<span class="number">33</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">110</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">110</span>), <span class="macro">balance!</span>(<span class="number">13.75</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">63.75</span>),
@@ -4816,15 +4816,15 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">360</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">360</span>), <span class="macro">balance!</span>(<span class="number">40.8</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">150</span>), <span class="macro">balance!</span>(<span class="number">18.75</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">190</span>), <span class="macro">balance!</span>(<span class="number">17</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">76.55</span>),
@@ -4844,7 +4844,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10</span>), <span class="macro">balance!</span>(<span class="number">100</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">100</span>),
                     OutcomeFee::xor(<span class="macro">balance!</span>(<span class="number">1</span>))
@@ -4860,7 +4860,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>))
+                        SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">20</span>), <span class="macro">balance!</span>(<span class="number">190</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">190</span>),
                     OutcomeFee::xor(<span class="macro">balance!</span>(<span class="number">1.9</span>))
@@ -4884,11 +4884,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">8</span>), <span class="macro">balance!</span>(<span class="number">80</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">22</span>), <span class="macro">balance!</span>(<span class="number">244</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">324</span>),
@@ -4908,7 +4908,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">10</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">10</span>),
                     OutcomeFee::xor(<span class="macro">balance!</span>(<span class="number">1</span>))
@@ -4924,7 +4924,7 @@
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                        SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">21</span>))
                     )],
                     <span class="macro">balance!</span>(<span class="number">21</span>),
                     OutcomeFee::xor(<span class="macro">balance!</span>(<span class="number">2</span>))
@@ -4948,11 +4948,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">100</span>), <span class="macro">balance!</span>(<span class="number">10</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">200</span>), <span class="macro">balance!</span>(<span class="number">18.05</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">28.05</span>),
@@ -4982,11 +4982,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">0.05</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">0.05</span>), <span class="macro">balance!</span>(<span class="number">0.5</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10.6</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">10.6</span>), <span class="macro">balance!</span>(<span class="number">127.2</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">127.7</span>),
@@ -5019,11 +5019,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">0.005</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">0.005</span>), <span class="macro">balance!</span>(<span class="number">0.0005</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">101.58</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">101.58</span>), <span class="macro">balance!</span>(<span class="number">8.465</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">8.4655</span>),
@@ -5053,11 +5053,11 @@
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">0.065</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">0.065</span>), <span class="macro">balance!</span>(<span class="number">0.0065</span>))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">101.52</span>))
+                            SwapAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">101.52</span>), <span class="macro">balance!</span>(<span class="number">8.46</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">8.4665</span>),
@@ -5092,18 +5092,18 @@
             aggregator.aggregate_swap_outcome(<span class="macro">balance!</span>(<span class="number">1.5</span>)).unwrap(),
             (
                 SwapInfo::from([
-                    (LiquiditySourceType::XSTPool, (<span class="macro">balance!</span>(<span class="number">1</span>), <span class="macro">balance!</span>(<span class="number">10</span>))),
-                    (LiquiditySourceType::XYKPool, (<span class="macro">balance!</span>(<span class="number">0.5</span>), <span class="macro">balance!</span>(<span class="number">4</span>)))
+                    (LiquiditySourceType::XYKPool, (<span class="macro">balance!</span>(<span class="number">0.5</span>), <span class="macro">balance!</span>(<span class="number">4</span>))),
+                    (LiquiditySourceType::XSTPool, (<span class="macro">balance!</span>(<span class="number">1</span>), <span class="macro">balance!</span>(<span class="number">10</span>)))
                 ]),
                 AggregatedSwapOutcome::new(
                     <span class="macro">vec!</span>[
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">0.5</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">0.5</span>), <span class="macro">balance!</span>(<span class="number">4</span>))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">1</span>))
+                            SwapAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">1</span>), <span class="macro">balance!</span>(<span class="number">10</span>))
                         )
                     ],
                     <span class="macro">balance!</span>(<span class="number">14</span>),
