@@ -487,3 +487,9 @@ try-runtime = [
     "bridge-data-signer/try-runtime",
     "multisig-verifier/try-runtime",
 ]
+
+test = [
+    "framenode-chain-spec/test",
+    "liquidity-proxy/test",
+    "order-book/test",
+]

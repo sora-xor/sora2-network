@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(any(test, feature = "runtime-benchmarks"))]
-
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(not(test))]
 use crate as order_book_imported;
