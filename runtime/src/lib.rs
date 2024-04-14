@@ -161,8 +161,8 @@ pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
 pub use {
-    assets, dex_api, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book,
-    trading_pair, xst,
+    assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
+    order_book, trading_pair, xst,
 };
 
 #[cfg(feature = "wip")] // kensetsu
