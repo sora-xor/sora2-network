@@ -368,7 +368,7 @@ pub mod pallet {
     #[pallet::storage]
     pub type NextCDPId<T> = StorageValue<_, CdpId, ValueQuery>;
 
-    /// Storage of all CDPs, where key is an unique CDP identifier
+    /// Storage of all CDPs, where key is a unique CDP identifier
     #[pallet::storage]
     #[pallet::getter(fn cdp)]
     pub type CDPDepository<T: Config> =
@@ -478,11 +478,7 @@ pub mod pallet {
         OperationNotPermitted,
         /// Uncollected stability fee is too small for accrue
         UncollectedStabilityFeeTooSmall,
-        /// Too many CDPs per user
-        CDPsPerUserLimitReached,
         HardCapSupply,
-        BalanceNotEnough,
-        WrongCollateralAssetId,
         AccrueWrongTime,
         /// Liquidation lot set in risk parameters is zero, cannot liquidate
         ZeroLiquidationLot,
@@ -1284,6 +1280,11 @@ pub mod pallet {
         }
 
         /// Recalculates collateral interest coefficient with the current timestamp
+        ///
+        /// Note:
+        /// In the case of update this code do not forget to update front-end logic:
+        /// `sora2-substrate-js-library/packages/util/src/kensetsu/index.ts`
+        /// function `updateCollateralInterestCoefficient`
         fn calculate_collateral_interest_coefficient(
             collateral_asset_id: &AssetIdOf<T>,
         ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
@@ -1315,6 +1316,11 @@ pub mod pallet {
         }
 
         /// Calculates stability fee for the CDP for the current time.
+        ///
+        /// Note:
+        /// In the case of update this code do not forget to update front-end logic:
+        /// `sora2-substrate-js-library/packages/util/src/kensetsu/index.ts`
+        /// function `calcNewDebt`
         fn calculate_stability_fee(cdp_id: CdpId) -> Result<Balance, DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             let collateral_info =
