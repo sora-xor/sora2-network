@@ -1233,6 +1233,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "xcm",
 ]
 
 [[package]]
@@ -5959,10 +5960,13 @@ dependencies = [
  "fallible-iterator 0.2.0",
  "frame-support",
  "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
  "hex-literal",
  "itertools",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -5972,6 +5976,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pswap-distribution",
+ "qa-tools",
  "scale-info",
  "serde",
  "sp-arithmetic",

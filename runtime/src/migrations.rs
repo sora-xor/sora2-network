@@ -90,4 +90,7 @@ impl<T: assets::Config + technical::Config> OnRuntimeUpgrade for RegisterKensets
     }
 }
 
-pub type Migrations = (RegisterKensetsuTokens<Runtime>,);
+pub type Migrations = (
+    RegisterKensetsuTokens<Runtime>,
+    bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount<Runtime>,
+);
