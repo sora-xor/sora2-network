@@ -161,8 +161,8 @@ pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
 pub use {
-    assets, dex_api, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book,
-    trading_pair, xst,
+    assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
+    order_book, trading_pair, xst,
 };
 
 #[cfg(feature = "wip")] // kensetsu
@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 75,
+    spec_version: 76,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 75,
+    transaction_version: 76,
     state_version: 0,
 };
 
