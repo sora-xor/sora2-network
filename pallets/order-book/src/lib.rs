@@ -64,7 +64,7 @@ pub mod weights;
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
 pub mod test_utils;
 
 pub mod cache_data_layer;

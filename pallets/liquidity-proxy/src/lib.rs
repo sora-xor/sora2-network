@@ -34,9 +34,11 @@
 
 extern crate core;
 
-mod liquidity_aggregator;
+pub mod liquidity_aggregator;
 #[cfg(test)]
 mod mock;
+#[cfg(test)]
+mod new_tests;
 #[cfg(test)]
 mod test_utils;
 #[cfg(test)]
@@ -543,18 +545,13 @@ impl<T: Config> Pallet<T> {
                 .into_iter()
                 .filter(|(_src, part_amount)| part_amount.amount() > balance!(0))
                 .map(|(src, part_amount)| {
-                    let part_amount = part_amount.amount();
-                    let part_limit = (FixedWrapper::from(part_amount) / amount.amount()
-                        * amount.limit())
-                    .try_into_balance()
-                    .map_err(|_| Error::CalculationError::<T>)?;
                     T::LiquidityRegistry::exchange(
                         sender,
                         receiver,
                         &src,
                         input_asset_id,
                         output_asset_id,
-                        amount.copy_direction(part_amount, part_limit),
+                        part_amount,
                     )
                     .map(|(outcome, weight)| {
                         total_weight = total_weight.saturating_add(weight);
@@ -830,7 +827,7 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         distribution: &Vec<(
             LiquiditySourceId<T::DEXId, LiquiditySourceType>,
-            QuoteAmount<Balance>,
+            SwapAmount<Balance>,
         )>,
         outcome_amount: u128,
         outcome_without_impact: u128,
@@ -881,7 +878,10 @@ impl<T: Config> Pallet<T> {
                 .into_bits()
                 .try_into()
                 .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                Ok::<_, Error<T>>((market, amount.copy_direction(adjusted_amount)))
+                Ok::<_, Error<T>>((
+                    market,
+                    QuoteAmount::with_variant(amount.variant(), adjusted_amount),
+                ))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -979,7 +979,10 @@ impl<T: Config> Pallet<T> {
             };
             return Ok((
                 AggregatedSwapOutcome::new(
-                    vec![(src.clone(), amount)],
+                    vec![(
+                        src.clone(),
+                        SwapAmount::with_variant(amount.variant(), amount.amount(), outcome.amount),
+                    )],
                     outcome.amount,
                     outcome.fee,
                 ),
@@ -1647,15 +1650,36 @@ impl<T: Config> Pallet<T> {
                         best = outcome_primary.amount + outcome_secondary.amount;
                         total_fee = outcome_primary.fee.merge(outcome_secondary.fee);
                         distr = vec![
-                            (primary_source_id.clone(), amount_primary),
-                            (secondary_source_id.clone(), amount_secondary),
+                            (
+                                primary_source_id.clone(),
+                                SwapAmount::with_variant(
+                                    amount_primary.variant(),
+                                    amount_primary.amount(),
+                                    outcome_primary.amount,
+                                ),
+                            ),
+                            (
+                                secondary_source_id.clone(),
+                                SwapAmount::with_variant(
+                                    amount_secondary.variant(),
+                                    amount_secondary.amount(),
+                                    outcome_secondary.amount,
+                                ),
+                            ),
                         ];
                         Ok(())
                     })
                 } else {
                     best = outcome_primary.amount;
                     total_fee = outcome_primary.fee;
-                    distr = vec![(primary_source_id.clone(), amount_primary)];
+                    distr = vec![(
+                        primary_source_id.clone(),
+                        SwapAmount::with_variant(
+                            amount_primary.variant(),
+                            amount_primary.amount(),
+                            outcome_primary.amount,
+                        ),
+                    )];
                     Ok(())
                 }
             });
@@ -1678,7 +1702,10 @@ impl<T: Config> Pallet<T> {
             if is_better(outcome.amount, best) {
                 best = outcome.amount;
                 total_fee = outcome.fee.clone();
-                distr = vec![(secondary_source_id.clone(), amount.clone())];
+                distr = vec![(
+                    secondary_source_id.clone(),
+                    SwapAmount::with_variant(amount.variant(), amount.amount(), outcome.amount),
+                )];
                 if !skip_info {
                     let (input_amount, output_amount) =
                         amount.place_input_and_output(outcome.clone());
@@ -2161,6 +2188,30 @@ impl<T: Config> Pallet<T> {
             max_input_amount,
         )?;
         Ok((adar_commission, executed_batch_input_amount, total_weight))
+    }
+
+    /// Wrapper for `quote_single` to make possible call it from tests.
+    #[cfg(feature = "test")]
+    pub fn test_quote(
+        dex_id: T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
+    ) -> Result<AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>, DispatchError>
+    {
+        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        Pallet::<T>::quote_single(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            filter,
+            true,
+            deduce_fee,
+        )
+        .map(|(aggregated_swap_outcome, _, _, _)| aggregated_swap_outcome)
     }
 }
 
