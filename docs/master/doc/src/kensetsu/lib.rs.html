@@ -2896,7 +2896,7 @@
                 .checked_add(borrow_tax_max)
                 .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
-                borrow_amount_min_with_tax &lt;= borrow_amount_safe,
+                borrow_amount_min_with_tax &lt;= borrow_amount_safe_with_tax,
                 Error::&lt;T&gt;::CDPUnsafe
             );
 
