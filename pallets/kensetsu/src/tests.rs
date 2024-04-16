@@ -807,6 +807,65 @@ fn borrow_with_ken_incentivization() {
     });
 }
 
+/// @given: XOR is set as collateral and collateral amount is 100 XOR and borrow tax is 1%
+/// @when: user borrows as max KUSD against XOR as possible
+/// @then: debt is 100 KUSD,
+#[test]
+fn borrow_max_with_ken_incentivization() {
+    new_test_ext().execute_with(|| {
+        set_borrow_tax(Percent::from_percent(1));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(100),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+        let to_borrow_min = balance!(99);
+        let to_borrow_max = balance!(100);
+        // user receives
+        let actual_loan = 99009900990099009900;
+        let borrow_tax = 990099009900990100;
+        // user debt + tax equals the value of collateral
+        assert_eq!(actual_loan + borrow_tax, balance!(100));
+        let initial_total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(initial_total_kusd_supply, balance!(0));
+        let ken_buyback_amount = borrow_tax;
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(KEN, ken_buyback_amount);
+
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            to_borrow_min,
+            to_borrow_max
+        ));
+
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                debt_asset_id: KUSD,
+                amount: actual_loan + borrow_tax,
+            }
+            .into(),
+        );
+
+        let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
+        assert_eq!(collateral_info.kusd_supply, actual_loan + borrow_tax);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, actual_loan + borrow_tax);
+        assert_balance(&alice_account_id(), &KUSD, actual_loan);
+        let total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(
+            total_kusd_supply,
+            initial_total_kusd_supply + actual_loan + borrow_tax
+        );
+        let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
+        let demeter_farming_amount = remint_percent * ken_buyback_amount;
+        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+    });
+}
+
 /// CDP with collateral and debt exists, call borrow with 0 KUSD amount to trigger accrue().
 /// Tx must succeed, debt will increase on accrued interest, KUSD minted to tech account.
 #[test]

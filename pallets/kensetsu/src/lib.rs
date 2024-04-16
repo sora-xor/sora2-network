@@ -1154,7 +1154,7 @@ pub mod pallet {
                 .checked_add(borrow_tax_max)
                 .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(
-                borrow_amount_min_with_tax <= borrow_amount_safe,
+                borrow_amount_min_with_tax <= borrow_amount_safe_with_tax,
                 Error::<T>::CDPUnsafe
             );
 
