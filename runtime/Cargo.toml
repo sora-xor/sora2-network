@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.2.2"
+version = "3.3.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -488,8 +488,4 @@ try-runtime = [
     "multisig-verifier/try-runtime",
 ]
 
-test = [
-    "framenode-chain-spec/test",
-    "liquidity-proxy/test",
-    "order-book/test",
-]
+test = ["framenode-chain-spec/test", "liquidity-proxy/test", "order-book/test"]
