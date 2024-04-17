@@ -157,7 +157,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
     use sp_arithmetic::Percent;
-    use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
+    use sp_core::bounded::BoundedBTreeSet;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
     use sp_std::vec::Vec;
@@ -298,10 +298,6 @@ pub mod pallet {
         #[pallet::constant]
         type KenIncentiveRemintPercent: Get<Percent>;
 
-        /// Maximum number of CDP that one user can create
-        #[pallet::constant]
-        type MaxCdpsPerOwner: Get<u32>;
-
         /// Maximum number of risk manager team members
         #[pallet::constant]
         type MaxRiskManagementTeamSize: Get<u32>;
@@ -374,11 +370,11 @@ pub mod pallet {
     pub type CDPDepository<T: Config> =
         StorageMap<_, Identity, CdpId, CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>>;
 
-    /// Index links owner to CDP ids, not needed by protocol, but used by front-end
+    /// Index links owner to CDP ids, not needed by the protocol, but used by front-end.
     #[pallet::storage]
+    #[pallet::unbounded]
     #[pallet::getter(fn cdp_owner_index)]
-    pub type CdpOwnerIndex<T: Config> =
-        StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
+    pub type CdpOwnerIndex<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Vec<CdpId>>;
 
     /// Accounts of risk management team
     #[pallet::storage]
@@ -471,8 +467,6 @@ pub mod pallet {
         CollateralBelowMinimal,
         CDPSafe,
         CDPUnsafe,
-        /// Too many CDPs per user
-        CDPLimitPerUser,
         /// Risk management team size exceeded
         TooManyManagers,
         OperationNotPermitted,
@@ -1596,8 +1590,8 @@ pub mod pallet {
             cdp: CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
         ) -> DispatchResult {
             CDPDepository::<T>::insert(cdp_id, cdp);
-            CdpOwnerIndex::<T>::try_append(owner, cdp_id)
-                .map_err(|_| Error::<T>::CDPLimitPerUser.into())
+            CdpOwnerIndex::<T>::append(owner, cdp_id);
+            Ok(())
         }
 
         /// Updates CDP collateral balance

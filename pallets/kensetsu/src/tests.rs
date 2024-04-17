@@ -42,7 +42,6 @@ use common::{balance, AssetId32, Balance, KEN, KUSD, XOR};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
-use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -210,7 +209,7 @@ fn test_create_cdp_sunny_day() {
         assert_eq!(cdp.debt, debt);
         assert_eq!(
             KensetsuPallet::cdp_owner_index(alice_account_id()),
-            Some(BoundedVec::try_from(vec![1]).unwrap())
+            Some(vec![1])
         );
     });
 }
@@ -356,13 +355,13 @@ fn test_multiple_cdp_close() {
         // 2 CDPs by user Alice
         assert_eq!(
             KensetsuPallet::cdp_owner_index(alice_account_id()),
-            Some(BoundedVec::try_from(vec![cdp_id_1, cdp_id_2]).unwrap())
+            Some(vec![cdp_id_1, cdp_id_2])
         );
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_1));
         assert_eq!(
             KensetsuPallet::cdp_owner_index(alice_account_id()),
-            Some(BoundedVec::try_from(vec![cdp_id_2]).unwrap())
+            Some(vec![cdp_id_2])
         );
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_2));
