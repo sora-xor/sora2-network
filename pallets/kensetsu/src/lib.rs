@@ -197,7 +197,7 @@ pub mod pallet {
                     if let Err(err) =
                         SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
                     {
-                        warn!(
+                        debug!(
                             "Failed in offchain_worker send accrue(cdp_id: {:?}): {:?}",
                             cdp_id, err
                         );
@@ -249,7 +249,7 @@ pub mod pallet {
                                                 call.into(),
                                             )
                                         {
-                                            warn!(
+                                            debug!(
                                                 "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
                                                 cdp_id, err
                                             );
