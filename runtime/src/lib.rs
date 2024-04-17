@@ -2217,10 +2217,7 @@ impl bridge_proxy::Config for Runtime {
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
 
-    #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
     type LiberlandApp = SubstrateBridgeApp;
-    #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
-    type LiberlandApp = ();
 
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
@@ -2345,7 +2342,6 @@ impl parachain_bridge_app::Config for Runtime {
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
 impl substrate_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
@@ -2500,7 +2496,6 @@ construct_runtime! {
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
-        #[cfg(feature = "ready-to-test")] // Generic Substrate Bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
@@ -3293,7 +3288,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
-            #[cfg(feature = "wip")] // Liberland bridge
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
@@ -3399,7 +3393,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
-            #[cfg(feature = "wip")] // Liberland bridge
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
