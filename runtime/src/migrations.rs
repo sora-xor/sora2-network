@@ -28,5 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::*;
+
 pub type Migrations =
     (bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount<Runtime>,);
