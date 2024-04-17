@@ -3461,13 +3461,6 @@
 <a href="#3446" id="3446">3446</a>
 <a href="#3447" id="3447">3447</a>
 <a href="#3448" id="3448">3448</a>
-<a href="#3449" id="3449">3449</a>
-<a href="#3450" id="3450">3450</a>
-<a href="#3451" id="3451">3451</a>
-<a href="#3452" id="3452">3452</a>
-<a href="#3453" id="3453">3453</a>
-<a href="#3454" id="3454">3454</a>
-<a href="#3455" id="3455">3455</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3635,7 +3628,7 @@
     order_book, trading_pair, xst,
 };
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
 </span><span class="kw">pub use </span>kensetsu;
 
 <span class="doccomment">/// An index to a block.
@@ -5400,7 +5393,7 @@
     <span class="kw">type </span>WeightInfo = hermes_governance_platform::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
 </span><span class="macro">parameter_types! </span>{
     <span class="kw">pub </span>KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
@@ -5431,7 +5424,7 @@
     </span><span class="kw">pub </span>KensetsuOffchainWorkerTxLongevity: TransactionLongevity = <span class="number">5</span>;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
 </span><span class="kw">impl </span>kensetsu::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
@@ -5686,10 +5679,7 @@
     <span class="kw">type </span>HashiBridge = EthBridge;
     <span class="kw">type </span>ParachainApp = ParachainBridgeApp;
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Generic Susbtrate Bridge
-    </span><span class="kw">type </span>LiberlandApp = SubstrateBridgeApp;
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// Generic Susbtrate Bridge
-    </span><span class="kw">type </span>LiberlandApp = ();
+    <span class="kw">type </span>LiberlandApp = SubstrateBridgeApp;
 
     <span class="kw">type </span>TimepointProvider = GenericTimepointProvider;
     <span class="kw">type </span>ReferencePriceProvider =
@@ -5814,8 +5804,7 @@
     <span class="kw">type </span>WeightInfo = <span class="kw">crate</span>::weights::parachain_bridge_app::WeightInfo&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Generic Susbtrate Bridge
-</span><span class="kw">impl </span>substrate_bridge_app::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>substrate_bridge_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OutboundChannel = SubstrateBridgeOutboundChannel;
     <span class="kw">type </span>CallOrigin =
@@ -5932,7 +5921,7 @@
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">56</span>,
         OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
         </span>Kensetsu: kensetsu::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
 
         <span class="comment">// Leaf provider should be placed before any pallet which is uses it
@@ -5969,8 +5958,7 @@
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event&lt;T&gt;, Call, ValidateUnsigned} = <span class="number">110</span>,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event&lt;T&gt;, Call} = <span class="number">111</span>,
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Generic Substrate Bridge
-        </span>SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event&lt;T&gt;, Call} = <span class="number">113</span>,
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event&lt;T&gt;, Call} = <span class="number">113</span>,
 
         <span class="comment">// Trustless bridges
         // Beefy pallets should be placed after channels
@@ -6695,7 +6683,7 @@
             <span class="kw">use </span>frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             <span class="kw">use </span>frame_support::traits::StorageInfoTrait;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
             </span><span class="kw">use </span>kensetsu_benchmarking::Pallet <span class="kw">as </span>KensetsuBench;
             <span class="kw">use </span>liquidity_proxy_benchmarking::Pallet <span class="kw">as </span>LiquidityProxyBench;
             <span class="kw">use </span>pool_xyk_benchmarking::Pallet <span class="kw">as </span>XYKPoolBench;
@@ -6713,7 +6701,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, farming, Farming);
             <span class="macro">list_benchmark!</span>(list, extra, iroha_migration, IrohaMigration);
             <span class="macro">list_benchmark!</span>(list, extra, dex_api, DEXAPI);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
             </span><span class="macro">list_benchmark!</span>(list, extra, kensetsu, KensetsuBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, liquidity_proxy, LiquidityProxyBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -6762,8 +6750,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             <span class="macro">list_benchmark!</span>(list, extra, parachain_bridge_app, ParachainBridgeApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Liberland bridge
-            </span><span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_app, SubstrateBridgeApp);
+            <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             <span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
             <span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
 
@@ -6777,7 +6764,7 @@
         ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;frame_benchmarking::BenchmarkBatch&gt;, sp_runtime::RuntimeString&gt; {
             <span class="kw">use </span>frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
             </span><span class="kw">use </span>kensetsu_benchmarking::Pallet <span class="kw">as </span>KensetsuBench;
             <span class="kw">use </span>liquidity_proxy_benchmarking::Pallet <span class="kw">as </span>LiquidityProxyBench;
             <span class="kw">use </span>pool_xyk_benchmarking::Pallet <span class="kw">as </span>XYKPoolBench;
@@ -6786,7 +6773,7 @@
             <span class="kw">use </span>demeter_farming_platform_benchmarking::Pallet <span class="kw">as </span>DemeterFarmingPlatformBench;
             <span class="kw">use </span>xst_benchmarking::Pallet <span class="kw">as </span>XSTPoolBench;
             <span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
             </span><span class="kw">impl </span>kensetsu_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>liquidity_proxy_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pool_xyk_benchmarking::Config <span class="kw">for </span>Runtime {}
@@ -6819,7 +6806,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, farming, Farming);
             <span class="macro">add_benchmark!</span>(params, batches, iroha_migration, IrohaMigration);
             <span class="macro">add_benchmark!</span>(params, batches, dex_api, DEXAPI);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
             </span><span class="macro">add_benchmark!</span>(params, batches, kensetsu, KensetsuBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, liquidity_proxy, LiquidityProxyBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -6868,8 +6855,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             <span class="macro">add_benchmark!</span>(params, batches, parachain_bridge_app, ParachainBridgeApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Liberland bridge
-            </span><span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_app, SubstrateBridgeApp);
+            <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             <span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
             <span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
 

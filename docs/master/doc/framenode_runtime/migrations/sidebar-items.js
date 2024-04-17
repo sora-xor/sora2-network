@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RegisterKensetsuTokens"],"type":["Migrations"]};
+window.SIDEBAR_ITEMS = {"type":["Migrations"]};
