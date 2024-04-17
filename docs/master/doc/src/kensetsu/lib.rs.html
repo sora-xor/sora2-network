@@ -1727,6 +1727,10 @@
 <a href="#1712" id="1712">1712</a>
 <a href="#1713" id="1713">1713</a>
 <a href="#1714" id="1714">1714</a>
+<a href="#1715" id="1715">1715</a>
+<a href="#1716" id="1716">1716</a>
+<a href="#1717" id="1717">1717</a>
+<a href="#1718" id="1718">1718</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1805,9 +1809,9 @@
 )]
 </span><span class="kw">pub enum </span>CdpType {
     <span class="doccomment">/// Pays stability fee in underlying collateral, cannot be liquidated.
-    </span>V1,
+    </span>Type1,
     <span class="doccomment">/// Pays stability fee in stable coins, can be liquidated.
-    </span>V2,
+    </span>Type2,
 }
 
 <span class="doccomment">/// Risk management parameters for the specific collateral type.
@@ -1884,11 +1888,11 @@
     <span class="kw">use </span>frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>pallet_timestamp <span class="kw">as </span>timestamp;
-    <span class="kw">use </span>sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero};
+    <span class="kw">use </span>sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
     <span class="kw">use </span>sp_arithmetic::Percent;
     <span class="kw">use </span>sp_core::bounded::{BoundedBTreeSet, BoundedVec};
-    <span class="kw">use </span>sp_runtime::traits::CheckedConversion;
-    <span class="kw">use </span>sp_std::collections::{btree_set::BTreeSet, vec_deque::VecDeque};
+    <span class="kw">use </span>sp_runtime::traits::{CheckedConversion, One, Zero};
+    <span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
     <span class="kw">use </span>sp_std::vec::Vec;
 
     <span class="doccomment">/// CDP id type
@@ -1918,19 +1922,9 @@
                 <span class="string">&quot;Entering off-chain worker, block number is {:?}&quot;</span>,
                 block_number
             );
-            <span class="kw">let </span>now = Timestamp::&lt;T&gt;::get();
-            <span class="kw">let </span>outdated_timestamp = now.saturating_sub(T::AccrueInterestPeriod::get());
-            <span class="kw">let </span><span class="kw-2">mut </span>collaterals_to_update = BTreeSet::new();
-            <span class="kw">for </span>(collateral_asset_id, collateral_info) <span class="kw">in </span>CollateralInfos::&lt;T&gt;::iter() {
-                <span class="kw">if </span>collateral_info.last_fee_update_time &lt;= outdated_timestamp {
-                    collaterals_to_update.insert(collateral_asset_id);
-                }
-            }
             <span class="kw">let </span><span class="kw-2">mut </span>unsafe_cdp_ids = VecDeque::&lt;CdpId&gt;::new();
-            <span class="comment">// TODO optimize CDP accrue (https://github.com/sora-xor/sora2-network/issues/878)
-            </span><span class="kw">for </span>(cdp_id, cdp) <span class="kw">in </span>CDPDepository::&lt;T&gt;::iter() {
-                <span class="comment">// Debt recalculation with interest
-                </span><span class="kw">if </span>collaterals_to_update.contains(<span class="kw-2">&amp;</span>cdp.collateral_asset_id) {
+            <span class="kw">for </span>(cdp_id, cdp) <span class="kw">in </span>&lt;CDPDepository&lt;T&gt;&gt;::iter() {
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) = <span class="self">Self</span>::is_accruable(<span class="kw-2">&amp;</span>cdp_id) {
                     <span class="macro">debug!</span>(<span class="string">&quot;Accrue for CDP {:?}&quot;</span>, cdp_id);
                     <span class="kw">let </span>call = Call::&lt;T&gt;::accrue { cdp_id };
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
@@ -2045,13 +2039,13 @@
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>MaxRiskManagementTeamSize: Get&lt;u32&gt;;
 
-        <span class="doccomment">/// Accrue() for a single CDP can be called once per this period
-        </span><span class="attr">#[pallet::constant]
-        </span><span class="kw">type </span>AccrueInterestPeriod: Get&lt;<span class="self">Self</span>::Moment&gt;;
-
         <span class="doccomment">/// A configuration for base priority of unsigned transactions.
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>UnsignedPriority: Get&lt;TransactionPriority&gt;;
+
+        <span class="doccomment">/// Minimal uncollected fee in KUSD that triggers offchain worker to call accrue.
+        </span><span class="attr">#[pallet::constant]
+        </span><span class="kw">type </span>MinimalStabilityFeeAccrue: Get&lt;Balance&gt;;
 
         <span class="doccomment">/// A configuration for longevity of unsigned transactions.
         </span><span class="attr">#[pallet::constant]
@@ -2107,7 +2101,7 @@
     </span><span class="attr">#[pallet::storage]
     </span><span class="kw">pub type </span>NextCDPId&lt;T&gt; = StorageValue&lt;<span class="kw">_</span>, CdpId, ValueQuery&gt;;
 
-    <span class="doccomment">/// Storage of all CDPs, where key is an unique CDP identifier
+    <span class="doccomment">/// Storage of all CDPs, where key is a unique CDP identifier
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>cdp)]
     </span><span class="kw">pub type </span>CDPDepository&lt;T: Config&gt; =
@@ -2215,12 +2209,9 @@
         <span class="doccomment">/// Risk management team size exceeded
         </span>TooManyManagers,
         OperationNotPermitted,
-        NoDebt,
-        <span class="doccomment">/// Too many CDPs per user
-        </span>CDPsPerUserLimitReached,
+        <span class="doccomment">/// Uncollected stability fee is too small for accrue
+        </span>UncollectedStabilityFeeTooSmall,
         HardCapSupply,
-        BalanceNotEnough,
-        WrongCollateralAssetId,
         AccrueWrongTime,
         <span class="doccomment">/// Liquidation lot set in risk parameters is zero, cannot liquidate
         </span>ZeroLiquidationLot,
@@ -2282,7 +2273,7 @@
                 owner: who.clone(),
                 collateral_asset_id,
                 debt_asset_id: T::KusdAssetId::get(),
-                cdp_type: CdpType::V2,
+                cdp_type: CdpType::Type2,
             });
             <span class="kw">if </span>collateral_amount &gt; <span class="number">0 </span>{
                 <span class="self">Self</span>::deposit_internal(<span class="kw-2">&amp;</span>who, cdp_id, collateral_amount)<span class="question-mark">?</span>;
@@ -2458,7 +2449,10 @@
         </span><span class="attr">#[pallet::call_index(<span class="number">6</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::accrue())]
         </span><span class="kw">pub fn </span>accrue(_origin: OriginFor&lt;T&gt;, cdp_id: CdpId) -&gt; DispatchResult {
-            <span class="macro">ensure!</span>(<span class="self">Self</span>::is_accruable(<span class="kw-2">&amp;</span>cdp_id)<span class="question-mark">?</span>, Error::&lt;T&gt;::NoDebt);
+            <span class="macro">ensure!</span>(
+                <span class="self">Self</span>::is_accruable(<span class="kw-2">&amp;</span>cdp_id)<span class="question-mark">?</span>,
+                Error::&lt;T&gt;::UncollectedStabilityFeeTooSmall
+            );
             <span class="self">Self</span>::accrue_internal(cdp_id)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(())
         }
@@ -2654,16 +2648,13 @@
     </span><span class="kw">impl</span>&lt;T: Config&gt; ValidateUnsigned <span class="kw">for </span>Pallet&lt;T&gt; {
         <span class="kw">type </span>Call = Call&lt;T&gt;;
 
-        <span class="doccomment">/// It is allowed to call only accrue() and liquidate() and only if
-        /// it fulfills conditions.
+        <span class="doccomment">/// It is allowed to call accrue() and liquidate() only if it fulfills conditions.
         </span><span class="kw">fn </span>validate_unsigned(_source: TransactionSource, call: <span class="kw-2">&amp;</span><span class="self">Self</span>::Call) -&gt; TransactionValidity {
             <span class="kw">if </span>!<span class="self">Self</span>::check_liquidation_available() {
                 <span class="kw">return </span>InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT).into();
             }
             <span class="kw">match </span>call {
-                <span class="comment">// TODO spamming with accrue calls, add some filter to not call too often
-                // https://github.com/sora-xor/sora2-network/issues/878
-                </span>Call::accrue { cdp_id } =&gt; {
+                Call::accrue { cdp_id } =&gt; {
                     <span class="kw">if </span><span class="self">Self</span>::is_accruable(cdp_id)
                         .map_err(|<span class="kw">_</span>| InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE))<span class="question-mark">?
                     </span>{
@@ -2706,7 +2697,7 @@
     }
 
     <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-        <span class="doccomment">/// Ensures that `who` is a risk manager
+        <span class="doccomment">/// Ensures that `who` is a risk manager.
         /// Risk manager can set protocol risk parameters.
         </span><span class="kw">fn </span>ensure_risk_manager(who: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;) -&gt; DispatchResult {
             <span class="kw">if </span>!<span class="self">Self</span>::risk_managers().map_or(<span class="bool-val">false</span>, |risk_managers| risk_managers.contains(who)) {
@@ -2947,7 +2938,7 @@
             <span class="prelude-val">Ok</span>(())
         }
 
-        <span class="doccomment">/// Repays debt
+        <span class="doccomment">/// Repays debt.
         /// Burns KUSD amount from CDP owner, updates CDP balances.
         ///
         /// ## Parameters
@@ -3010,47 +3001,74 @@
             <span class="prelude-val">Ok</span>(())
         }
 
-        <span class="doccomment">/// Returns true if CDP has debt.
+        <span class="doccomment">/// Returns true if CDP has debt and uncollected stability fee is more than threshold.
         </span><span class="kw">fn </span>is_accruable(cdp_id: <span class="kw-2">&amp;</span>CdpId) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DispatchError&gt; {
             <span class="kw">let </span>cdp = <span class="self">Self</span>::cdp(cdp_id).ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(cdp.debt &gt; <span class="number">0</span>)
+            <span class="kw">if </span>cdp.debt &gt; <span class="number">0 </span>{
+                <span class="kw">let </span>uncollected_stability_fee = <span class="self">Self</span>::calculate_stability_fee(<span class="kw-2">*</span>cdp_id)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(uncollected_stability_fee &gt;= T::MinimalStabilityFeeAccrue::get())
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
+            }
         }
 
         <span class="doccomment">/// Recalculates collateral interest coefficient with the current timestamp
-        </span><span class="kw">fn </span>update_collateral_interest_coefficient(
+        ///
+        /// Note:
+        /// In the case of update this code do not forget to update front-end logic:
+        /// `sora2-substrate-js-library/packages/util/src/kensetsu/index.ts`
+        /// function `updateCollateralInterestCoefficient`
+        </span><span class="kw">fn </span>calculate_collateral_interest_coefficient(
             collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;CollateralInfo&lt;T::Moment&gt;, DispatchError&gt; {
-            <span class="kw">let </span>collateral_info =
-                CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |collateral_info| {
-                    <span class="kw">let </span>collateral_info = collateral_info
-                        .as_mut()
-                        .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>now = Timestamp::&lt;T&gt;::get();
-                    <span class="macro">ensure!</span>(
-                        now &gt;= collateral_info.last_fee_update_time,
-                        Error::&lt;T&gt;::AccrueWrongTime
-                    );
-                    <span class="comment">// do not update if time is the same
-                    </span><span class="kw">if </span>now &gt; collateral_info.last_fee_update_time {
-                        <span class="kw">let </span>time_passed = now
-                            .checked_sub(<span class="kw-2">&amp;</span>collateral_info.last_fee_update_time)
-                            .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-                        <span class="kw">let </span>new_coefficient = compound(
-                            collateral_info.interest_coefficient.into_inner(),
-                            collateral_info.risk_parameters.stability_fee_rate,
-                            time_passed
-                                .checked_into::&lt;u64&gt;()
-                                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
-                        )
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-                        collateral_info.last_fee_update_time = now;
-                        collateral_info.interest_coefficient =
-                            FixedU128::from_inner(new_coefficient);
-                    }
-                    <span class="prelude-val">Ok</span>::&lt;CollateralInfo&lt;T::Moment&gt;, DispatchError&gt;(collateral_info.clone())
-                })<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>collateral_info = CollateralInfos::&lt;T&gt;::get(collateral_asset_id)
+                .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
+            <span class="kw">let </span>now = Timestamp::&lt;T&gt;::get();
+            <span class="macro">ensure!</span>(
+                now &gt;= collateral_info.last_fee_update_time,
+                Error::&lt;T&gt;::AccrueWrongTime
+            );
 
+            <span class="comment">// do not update if time is the same
+            </span><span class="kw">if </span>now &gt; collateral_info.last_fee_update_time {
+                <span class="kw">let </span>time_passed = now
+                    .checked_sub(<span class="kw-2">&amp;</span>collateral_info.last_fee_update_time)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                <span class="kw">let </span>new_coefficient = compound(
+                    collateral_info.interest_coefficient.into_inner(),
+                    collateral_info.risk_parameters.stability_fee_rate,
+                    time_passed
+                        .checked_into::&lt;u64&gt;()
+                        .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
+                )
+                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                collateral_info.last_fee_update_time = now;
+                collateral_info.interest_coefficient = FixedU128::from_inner(new_coefficient);
+            }
             <span class="prelude-val">Ok</span>(collateral_info)
+        }
+
+        <span class="doccomment">/// Calculates stability fee for the CDP for the current time.
+        ///
+        /// Note:
+        /// In the case of update this code do not forget to update front-end logic:
+        /// `sora2-substrate-js-library/packages/util/src/kensetsu/index.ts`
+        /// function `calcNewDebt`
+        </span><span class="kw">fn </span>calculate_stability_fee(cdp_id: CdpId) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+            <span class="kw">let </span>cdp = <span class="self">Self</span>::cdp(cdp_id).ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
+            <span class="kw">let </span>collateral_info =
+                <span class="self">Self</span>::calculate_collateral_interest_coefficient(<span class="kw-2">&amp;</span>cdp.collateral_asset_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>interest_coefficient = collateral_info.interest_coefficient;
+            <span class="kw">let </span>interest_percent = interest_coefficient
+                .checked_sub(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?
+                </span>.checked_div(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+            <span class="kw">let </span>stability_fee = FixedU128::from_inner(cdp.debt)
+                .checked_mul(<span class="kw-2">&amp;</span>interest_percent)
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?
+                </span>.into_inner();
+            <span class="prelude-val">Ok</span>(stability_fee)
         }
 
         <span class="doccomment">/// Accrues interest on a Collateralized Debt Position (CDP) and updates relevant parameters.
@@ -3064,17 +3082,9 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cdp = <span class="self">Self</span>::cdp(cdp_id).ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
             <span class="kw">let </span>collateral_info =
-                <span class="self">Self</span>::update_collateral_interest_coefficient(<span class="kw-2">&amp;</span>cdp.collateral_asset_id)<span class="question-mark">?</span>;
+                <span class="self">Self</span>::calculate_collateral_interest_coefficient(<span class="kw-2">&amp;</span>cdp.collateral_asset_id)<span class="question-mark">?</span>;
             <span class="kw">let </span>new_coefficient = collateral_info.interest_coefficient;
-            <span class="kw">let </span>interest_percent = (new_coefficient
-                .checked_sub(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>)
-            .checked_div(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
-            .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>stability_fee = FixedU128::from_inner(cdp.debt)
-                .checked_mul(<span class="kw-2">&amp;</span>interest_percent)
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?
-                </span>.into_inner();
+            <span class="kw">let </span><span class="kw-2">mut </span>stability_fee = <span class="self">Self</span>::calculate_stability_fee(cdp_id)<span class="question-mark">?</span>;
             <span class="kw">let </span>new_debt = cdp
                 .debt
                 .checked_add(stability_fee)
@@ -3306,9 +3316,7 @@
         <span class="doccomment">/// Increments CDP Id counter, changes storage state.
         </span><span class="kw">fn </span>increment_cdp_id() -&gt; <span class="prelude-ty">Result</span>&lt;CdpId, DispatchError&gt; {
             NextCDPId::&lt;T&gt;::try_mutate(|cdp_id| {
-                <span class="kw-2">*</span>cdp_id = cdp_id
-                    .checked_add(<span class="number">1</span>)
-                    .ok_or(<span class="kw">crate</span>::pallet::Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                <span class="kw-2">*</span>cdp_id = cdp_id.checked_add(<span class="number">1</span>).ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>cdp_id)
             })
         }
@@ -3336,7 +3344,7 @@
 
         <span class="doccomment">/// Updates CDP debt balance
         </span><span class="kw">fn </span>update_cdp_debt(cdp_id: CdpId, debt: Balance) -&gt; DispatchResult {
-            <span class="kw">crate</span>::pallet::CDPDepository::&lt;T&gt;::try_mutate(cdp_id, |cdp| {
+            CDPDepository::&lt;T&gt;::try_mutate(cdp_id, |cdp| {
                 <span class="kw">let </span>cdp = cdp.as_mut().ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
                 cdp.debt = debt;
                 <span class="prelude-val">Ok</span>(())
@@ -3413,7 +3421,7 @@
                 <span class="kw">match </span>option_collateral_info {
                     <span class="prelude-val">Some</span>(collateral_info) =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>new_info =
-                            <span class="self">Self</span>::update_collateral_interest_coefficient(collateral_asset_id)<span class="question-mark">?</span>;
+                            <span class="self">Self</span>::calculate_collateral_interest_coefficient(collateral_asset_id)<span class="question-mark">?</span>;
                         new_info.risk_parameters = new_risk_parameters;
                         <span class="kw-2">*</span>collateral_info = new_info;
                     }
