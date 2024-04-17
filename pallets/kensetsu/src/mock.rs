@@ -246,7 +246,7 @@ impl kensetsu::Config for TestRuntime {
     type PriceTools = MockPriceTools;
     type LiquidityProxy = MockLiquidityProxy;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
-    type MaxCdpsPerOwner = ConstU32<100>;
+    type MaxCdpsPerOwner = ConstU32<10000>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = ConstU64<100>;
