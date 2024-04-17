@@ -1949,9 +1949,8 @@ parameter_types! {
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
-    // 1 day = 86_400_000
-    // TODO set 86_400_000
-    pub const AccrueInterestPeriod: Moment = 300_000;
+    // 1 Kensetsu dollar of uncollected stability fee triggers accrue
+    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1975,7 +1974,7 @@ impl kensetsu::Config for Runtime {
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
-    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;

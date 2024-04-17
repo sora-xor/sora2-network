@@ -222,12 +222,8 @@ parameter_types! {
     };
     pub const KenAssetId: AssetId = KEN;
     pub const KusdAssetId: AssetId = KUSD;
-
     pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
-
-    // 1 day
-    pub const AccrueInterestPeriod: Moment = 86_400_000;
-
+    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 }
 
 mock_assets_config!(TestRuntime);
@@ -252,7 +248,7 @@ impl kensetsu::Config for TestRuntime {
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<100>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
-    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = ConstU64<100>;
     type UnsignedLongevity = ConstU64<100>;
     type WeightInfo = ();
