@@ -165,7 +165,7 @@ pub use {
     order_book, trading_pair, xst,
 };
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 pub use kensetsu;
 
 /// An index to a block.
@@ -1930,7 +1930,7 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 parameter_types! {
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
@@ -1961,7 +1961,7 @@ parameter_types! {
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
 }
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
@@ -2458,7 +2458,7 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -3220,7 +3220,7 @@ impl_runtime_apis! {
             use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
 
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3238,7 +3238,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
             list_benchmark!(list, extra, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             list_benchmark!(list, extra, kensetsu, KensetsuBench::<Runtime>);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3301,7 +3301,7 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3310,7 +3310,7 @@ impl_runtime_apis! {
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
             use order_book_benchmarking::Pallet as OrderBookBench;
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             impl kensetsu_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
@@ -3343,7 +3343,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             add_benchmark!(params, batches, kensetsu, KensetsuBench::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);

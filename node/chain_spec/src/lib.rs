@@ -1014,9 +1014,9 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
-    #[cfg(feature = "wip")] // kensetsu
+    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    #[cfg(feature = "wip")] // kensetsu
+    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     let mut tech_accounts = vec![
@@ -1074,7 +1074,7 @@ fn testnet_genesis(
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
@@ -1103,7 +1103,7 @@ fn testnet_genesis(
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
         (xst_pool_permissioned_account_id.clone(), 0),
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         (kensetsu_treasury_account_id.clone(), 0),
     ]
     .into_iter()
@@ -1414,7 +1414,7 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "wip")] // kensetsu
+                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     KEN.into(),
                     assets_and_permissions_account_id.clone(),
@@ -1426,7 +1426,7 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "wip")] // kensetsu
+                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     KUSD.into(),
                     assets_and_permissions_account_id.clone(),
@@ -1557,7 +1557,7 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // kensetsu
+                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
@@ -1926,9 +1926,9 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
-    #[cfg(feature = "wip")] // kensetsu
+    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    #[cfg(feature = "wip")] // kensetsu
+    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     let mut tech_accounts = vec![
@@ -1986,7 +1986,7 @@ fn mainnet_genesis(
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
         ),
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
@@ -2099,7 +2099,7 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             KEN.into(),
             assets_and_permissions_account_id.clone(),
@@ -2111,7 +2111,7 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             KUSD.into(),
             assets_and_permissions_account_id.clone(),
@@ -2334,7 +2334,7 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // kensetsu
+                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
@@ -2357,7 +2357,7 @@ fn mainnet_genesis(
                 (mbc_pool_free_reserves_account_id.clone(), 0),
                 (market_maker_rewards_account_id.clone(), 0),
                 (xst_pool_permissioned_account_id.clone(), 0),
-                #[cfg(feature = "wip")] // kensetsu
+                #[cfg(feature = "ready-to-test")] // kensetsu
                 (kensetsu_treasury_account_id.clone(), 0),
             ]
             .into_iter()
