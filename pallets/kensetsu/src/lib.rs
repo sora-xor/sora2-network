@@ -83,7 +83,18 @@ pub enum CdpType {
 
 /// Risk management parameters for the specific collateral type.
 #[derive(
-    Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord, Copy,
+    Debug,
+    Default,
+    Clone,
+    Encode,
+    Decode,
+    MaxEncodedLen,
+    TypeInfo,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Copy,
 )]
 pub struct CollateralRiskParameters {
     /// Hard cap of total KUSD issued for the collateral.
@@ -516,6 +527,8 @@ pub mod pallet {
                 borrow_amount_min <= borrow_amount_max,
                 Error::<T>::WrongBorrowAmounts
             );
+
+            // checks minimal collateral deposit requirement
             let collateral_info = Self::collateral_infos(collateral_asset_id)
                 .ok_or(Error::<T>::CollateralInfoNotFound)?;
             let interest_coefficient = collateral_info.interest_coefficient;
@@ -523,6 +536,7 @@ pub mod pallet {
                 collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
                 Error::<T>::CollateralBelowMinimal
             );
+
             let cdp_id = Self::increment_cdp_id()?;
             Self::insert_cdp(
                 &who,
@@ -542,12 +556,15 @@ pub mod pallet {
                 debt_asset_id: T::KusdAssetId::get(),
                 cdp_type: CdpType::Type2,
             });
+
             if collateral_amount > 0 {
                 Self::deposit_internal(&who, cdp_id, collateral_amount)?;
             }
+
             if borrow_amount_max > 0 {
                 Self::borrow_internal(&who, cdp_id, borrow_amount_min, borrow_amount_max)?;
             }
+
             Ok(())
         }
 
@@ -740,10 +757,6 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_risk_manager(&who)?;
-            ensure!(
-                T::AssetInfoProvider::asset_exists(&collateral_asset_id),
-                Error::<T>::WrongAssetId
-            );
             Self::upsert_collateral_info(&collateral_asset_id, new_risk_parameters)?;
             Self::deposit_event(Event::CollateralRiskParametersUpdated {
                 collateral_asset_id,
@@ -1684,6 +1697,19 @@ pub mod pallet {
             collateral_asset_id: &AssetIdOf<T>,
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
+            ensure!(
+                T::AssetInfoProvider::asset_exists(collateral_asset_id),
+                Error::<T>::WrongAssetId
+            );
+            ensure!(
+                *collateral_asset_id != T::KusdAssetId::get(),
+                Error::<T>::WrongAssetId
+            );
+            ensure!(
+                *collateral_asset_id != T::KenAssetId::get(),
+                Error::<T>::WrongAssetId
+            );
+
             CollateralInfos::<T>::try_mutate(collateral_asset_id, |option_collateral_info| {
                 match option_collateral_info {
                     Some(collateral_info) => {

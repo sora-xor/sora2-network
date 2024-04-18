@@ -753,9 +753,9 @@ fn test_borrow_max_amount() {
     });
 }
 
-/// @given: XOR is set as collateral and borrow tax is 1%
-/// @when: user borrows KUSD against XOR
-/// @then: debt is increased additionally by 1% of borrow tax, this amount is used to buy back KEN
+/// @given: XOR is set as collateral and borrow tax is 1%.
+/// @when: user borrows KUSD against XOR.
+/// @then: debt is increased additionally by 1% of borrow tax, this amount is used to buy back KEN.
 #[test]
 fn borrow_with_ken_incentivization() {
     new_test_ext().execute_with(|| {
@@ -807,9 +807,9 @@ fn borrow_with_ken_incentivization() {
     });
 }
 
-/// @given: XOR is set as collateral and collateral amount is 100 XOR and borrow tax is 1%
-/// @when: user borrows as max KUSD against XOR as possible
-/// @then: debt is 100 KUSD,
+/// @given: XOR is set as collateral and collateral amount is 100 XOR and borrow tax is 1%.
+/// @when: user borrows as max KUSD against XOR as possible.
+/// @then: debt is 100 KUSD.
 #[test]
 fn borrow_max_with_ken_incentivization() {
     new_test_ext().execute_with(|| {
@@ -904,7 +904,7 @@ fn test_borrow_cdp_accrue() {
     });
 }
 
-/// only by Signed Origin account can repay_debt
+/// Only by Signed Origin account can repay_debt
 #[test]
 fn test_repay_debt_only_signed_origin() {
     new_test_ext().execute_with(|| {
@@ -1153,8 +1153,8 @@ fn test_liquidate_cdp_safe() {
     });
 }
 
-/// Given: CDP with collateral 10000 XOR and it is unsafe
-/// @When: Liquidation triggered that sell 1000 XOR and doesn't change debt
+/// Given: CDP with collateral 10000 XOR and it is unsafe.
+/// @When: Liquidation triggered that sell 1000 XOR and doesn't change debt.
 /// Success, debt increased and KUSD is minted to tech treasury account.
 #[test]
 fn test_liquidate_accrue() {
@@ -1376,7 +1376,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
     });
 }
 
-// Given: Unsafe CDP
+// Given: Unsafe CDP.
 // Liquidation of all the collateral, debt is covered.
 // CDP is closed, no bad debt, liquidation penalty is a profit.
 #[test]
@@ -1523,9 +1523,9 @@ fn test_liquidate_kusd_bad_debt() {
     });
 }
 
-/// Given: CDP is unsafe and risk parameters liquidation lot is 0
-/// @When: Liquidation triggered
-/// @Then: Error ZeroLiquidationLot returned
+/// Given: CDP is unsafe and risk parameters liquidation lot is 0.
+/// @When: Liquidation triggered.
+/// @Then: Error ZeroLiquidationLot returned.
 #[test]
 fn test_liquidate_zero_lot() {
     new_test_ext().execute_with(|| {
@@ -1631,9 +1631,9 @@ fn test_accrue_overflow() {
     });
 }
 
-/// Given: CDP with debt, protocol has no bad debt
-/// When: accrue is called
-/// Then: interest is counted as CDP debt and goes to protocol profit
+/// Given: CDP with debt, protocol has no bad debt.
+/// When: accrue is called.
+/// Then: interest is counted as CDP debt and goes to protocol profit.
 #[test]
 fn test_accrue_profit() {
     new_test_ext().execute_with(|| {
@@ -1665,8 +1665,8 @@ fn test_accrue_profit() {
     });
 }
 
-/// Given: CDP with debt, was updated this time, protocol has no bad debt
-/// When: accrue is called again with the same time
+/// Given: CDP with debt, was updated this time, protocol has no bad debt.
+/// When: accrue is called again with the same time.
 /// Then: failed, minimal threshold is not satisfied.
 #[test]
 fn test_accrue_profit_same_time() {
@@ -1692,9 +1692,9 @@ fn test_accrue_profit_same_time() {
     });
 }
 
-/// Given: CDP with debt, protocol has bad debt and interest accrued < bad debt
-/// When: accrue is called
-/// Then: interest covers the part of bad debt
+/// Given: CDP with debt, protocol has bad debt and interest accrued < bad debt.
+/// When: accrue is called.
+/// Then: interest covers the part of bad debt.
 #[test]
 fn test_accrue_interest_less_bad_debt() {
     new_test_ext().execute_with(|| {
@@ -1730,9 +1730,9 @@ fn test_accrue_interest_less_bad_debt() {
     });
 }
 
-/// Given: CDP with debt, protocol has bad debt and interest accrued == bad debt
-/// When: accrue is called
-/// Then: interest covers the part of bad debt
+/// Given: CDP with debt, protocol has bad debt and interest accrued == bad debt.
+/// When: accrue is called.
+/// Then: interest covers the part of bad debt.
 #[test]
 fn test_accrue_interest_eq_bad_debt() {
     new_test_ext().execute_with(|| {
@@ -1767,9 +1767,9 @@ fn test_accrue_interest_eq_bad_debt() {
     });
 }
 
-/// Given: CDP with debt, protocol has bad debt and interest accrued > bad debt
-/// When: accrue is called
-/// Then: interest covers the bad debt and leftover goes to protocol profit
+/// Given: CDP with debt, protocol has bad debt and interest accrued > bad debt.
+/// When: accrue is called.
+/// Then: interest covers the bad debt and leftover goes to protocol profit.
 #[test]
 fn test_accrue_interest_gt_bad_debt() {
     new_test_ext().execute_with(|| {
@@ -1809,13 +1809,7 @@ fn test_accrue_interest_gt_bad_debt() {
 #[test]
 fn test_update_collateral_risk_parameters_only_signed_origin() {
     new_test_ext().execute_with(|| {
-        let parameters = CollateralRiskParameters {
-            hard_cap: balance!(100),
-            liquidation_ratio: Perbill::from_percent(50),
-            max_liquidation_lot: balance!(100),
-            stability_fee_rate: FixedU128::from_float(0.1),
-            minimal_collateral_deposit: balance!(0),
-        };
+        let parameters = CollateralRiskParameters::default();
 
         assert_noop!(
             KensetsuPallet::update_collateral_risk_parameters(
@@ -1840,13 +1834,7 @@ fn test_update_collateral_risk_parameters_only_signed_origin() {
 #[test]
 fn test_update_collateral_risk_parameters_only_risk_manager() {
     new_test_ext().execute_with(|| {
-        let parameters = CollateralRiskParameters {
-            hard_cap: balance!(100),
-            liquidation_ratio: Perbill::from_percent(50),
-            max_liquidation_lot: balance!(100),
-            stability_fee_rate: FixedU128::from_float(0.1),
-            minimal_collateral_deposit: balance!(0),
-        };
+        let parameters = CollateralRiskParameters::default();
 
         assert_noop!(
             KensetsuPallet::update_collateral_risk_parameters(alice(), XOR, parameters),
@@ -1860,13 +1848,7 @@ fn test_update_collateral_risk_parameters_only_risk_manager() {
 fn test_update_collateral_risk_parameters_wrong_asset_id() {
     new_test_ext().execute_with(|| {
         set_up_risk_manager();
-        let parameters = CollateralRiskParameters {
-            hard_cap: balance!(100),
-            liquidation_ratio: Perbill::from_percent(50),
-            max_liquidation_lot: balance!(100),
-            stability_fee_rate: FixedU128::from_float(0.1),
-            minimal_collateral_deposit: balance!(0),
-        };
+        let parameters = CollateralRiskParameters::default();
         let wrong_asset_id = AssetId32::from_bytes(hex!(
             "0000000000000000000000000000000000000000000000000000000007654321"
         ));
@@ -1882,9 +1864,29 @@ fn test_update_collateral_risk_parameters_wrong_asset_id() {
     });
 }
 
-/// Given: risk parameters were set
-/// When: update risk parameters
-/// Then: risk parameters are changed, event is emitted, interest coefficient is changed
+/// KEN, KUSD cannot be used as collateral.
+#[test]
+fn test_update_collateral_risk_parameters_kusd_wrong_asset_id() {
+    new_test_ext().execute_with(|| {
+        set_up_risk_manager();
+        let parameters = CollateralRiskParameters::default();
+
+        for wrong_asset_id in [KUSD, KEN] {
+            assert_noop!(
+                KensetsuPallet::update_collateral_risk_parameters(
+                    risk_manager(),
+                    wrong_asset_id,
+                    parameters
+                ),
+                KensetsuError::WrongAssetId
+            );
+        }
+    });
+}
+
+/// Given: risk parameters were set.
+/// When: update risk parameters.
+/// Then: risk parameters are changed, event is emitted, interest coefficient is changed.
 #[test]
 fn test_update_collateral_risk_parameters_no_rate_change() {
     new_test_ext().execute_with(|| {
