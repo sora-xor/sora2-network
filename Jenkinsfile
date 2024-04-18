@@ -1,4 +1,4 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@feature/dops-3156/runtime_upgrade') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
