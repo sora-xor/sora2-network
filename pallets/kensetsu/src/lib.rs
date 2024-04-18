@@ -71,6 +71,14 @@ const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
 /// Liquidation limit reached
 const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
+/// Parameters of the tokens created by the protocol.
+pub struct StablecoinParameters {
+    /// Maximum amount of tokens issued by the system.
+    pub hard_cap: Balance,
+    /// Symbol of the rate on the Oracle the stablecoin pegged to. 'DAI' pegged to USD.
+    pub peg_symbol: String,
+}
+
 #[derive(
     Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, scale_info::TypeInfo,
 )]
@@ -140,7 +148,7 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     pub collateral_asset_id: AssetId,
     pub collateral_amount: Balance,
 
-    /// normalized outstanding debt in KUSD
+    /// Normalized outstanding debt in KUSD
     pub debt: Balance,
 
     /// Interest accrued for CDP.
