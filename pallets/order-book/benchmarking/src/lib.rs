@@ -222,8 +222,8 @@ mod benchmarks_inner {
         }
 
         delete_orderbook {
-            let settings = FillSettings::<T>::max();
-            let order_book_id = periphery::delete_orderbook::init(settings.clone());
+            let settings = FillSettings::<T>::regular();
+            let order_book_id = periphery::delete_orderbook::init(settings);
         }: {
             OrderBookPallet::<T>::delete_orderbook(
                 RawOrigin::Root.into(),
@@ -231,7 +231,7 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            periphery::delete_orderbook::verify(settings, order_book_id);
+            periphery::delete_orderbook::verify::<T>(order_book_id);
         }
 
         update_orderbook {
@@ -302,8 +302,8 @@ mod benchmarks_inner {
         }
 
         place_limit_order_without_cross_spread {
-            let settings = FillSettings::<T>::max();
-            let context = periphery::place_limit_order::init(settings.clone());
+            let settings = FillSettings::<T>::regular();
+            let context = periphery::place_limit_order::init(settings);
         }: {
             OrderBookPallet::<T>::place_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -315,12 +315,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            periphery::place_limit_order::verify(settings, context);
+            periphery::place_limit_order::verify(context);
         }
 
         cancel_limit_order_first_expiration {
-            let settings = FillSettings::<T>::max();
-            let context = periphery::cancel_limit_order::init(settings.clone(), true);
+            let settings = FillSettings::<T>::regular();
+            let context = periphery::cancel_limit_order::init(settings, true);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -329,12 +329,12 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            periphery::cancel_limit_order::verify(settings, context);
+            periphery::cancel_limit_order::verify(context);
         }
 
         cancel_limit_order_last_expiration {
-            let settings = FillSettings::<T>::max();
-            let context = periphery::cancel_limit_order::init(settings.clone(), false);
+            let settings = FillSettings::<T>::regular();
+            let context = periphery::cancel_limit_order::init(settings, false);
         }: {
             OrderBookPallet::<T>::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -343,26 +343,26 @@ mod benchmarks_inner {
             ).unwrap();
         }
         verify {
-            periphery::cancel_limit_order::verify(settings, context);
+            periphery::cancel_limit_order::verify(context);
         }
 
         execute_market_order {
-            let settings = FillSettings::<T>::max();
-            let context = periphery::execute_market_order_scattered::init(settings);
+            let settings = FillSettings::<T>::regular();
+            let context = periphery::execute_market_order::init(settings);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
                 context.order_book_id,
-                context.side,
+                context.direction,
                 *context.amount.balance()
             ).unwrap();
         }
         verify {
-            periphery::execute_market_order_scattered::verify(context);
+            periphery::execute_market_order::verify(context);
         }
 
         quote {
-            let settings = FillSettings::<T>::max();
+            let settings = FillSettings::<T>::regular();
             let context = periphery::quote::init(settings);
         }: {
             OrderBookPallet::<T>::quote(
@@ -379,13 +379,8 @@ mod benchmarks_inner {
         }
 
         step_quote {
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
-                dex_id: DEX.into(),
-                base: VAL.into(),
-                quote: XOR.into(),
-            };
-
-            create_and_fill_order_book::<T>(order_book_id);
+            let settings = FillSettings::<T>::regular();
+            let context = periphery::quote::init(settings);
         }: {
             OrderBookPallet::<T>::step_quote(
                 &DEX.into(),
@@ -402,10 +397,8 @@ mod benchmarks_inner {
         }
 
         exchange {
-            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            let mut settings = FillSettings::<T>::max();
-            settings.executed_orders_limit = e;
-            let context = periphery::exchange_scattered::init(settings);
+            let settings = FillSettings::<T>::regular();
+            let context = periphery::exchange::init(settings);
         }: {
             OrderBookPallet::<T>::exchange(
                 &context.caller,
@@ -413,18 +406,16 @@ mod benchmarks_inner {
                 &context.order_book_id.dex_id,
                 &context.order_book_id.base,
                 &context.order_book_id.quote,
-                SwapAmount::with_desired_output(
-                    context.expected_out, context.expected_in + balance!(1.5)
-                ),
+                context.swap_amount,
             )
             .unwrap();
         }
         verify {
-            periphery::exchange_scattered::verify(context);
+            periphery::exchange::verify(context);
         }
 
         align_single_order {
-            let settings = FillSettings::<T>::max();
+            let settings = FillSettings::<T>::regular();
             let context = periphery::align_single_order::init(settings);
 
             let mut data = order_book_imported::storage_data_layer::StorageDataLayer::<T>::new();
@@ -588,22 +579,22 @@ mod benchmarks_inner {
         #[extra]
         execute_market_order_1 {
             use periphery::execute_market_order::{init, Context};
-            let Context { caller, order_book_id: id, amount, side, .. } =
+            let Context { caller, order_book_id: id, amount, direction, .. } =
                 init::<T>(preset_1::<T>());
         }: {
             OrderBookPallet::<T>::execute_market_order(
-                RawOrigin::Signed(caller).into(), id, side, *amount.balance()
+                RawOrigin::Signed(caller).into(), id, direction, *amount.balance()
             ).unwrap();
         }
 
         #[extra]
         execute_market_order_2 {
             use periphery::execute_market_order::{init, Context};
-            let Context { caller, order_book_id: id, amount, side, .. } =
+            let Context { caller, order_book_id: id, amount, direction, .. } =
                 init::<T>(preset_2::<T>());
         }: {
             OrderBookPallet::<T>::execute_market_order(
-                RawOrigin::Signed(caller).into(), id, side, *amount.balance()
+                RawOrigin::Signed(caller).into(), id, direction, *amount.balance()
             ).unwrap();
         }
 
@@ -611,7 +602,7 @@ mod benchmarks_inner {
         #[extra]
         quote_1 {
             use periphery::quote::{init, Context};
-            let Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee } =
+            let Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee, .. } =
                 init::<T>(preset_1::<T>());
         }: {
             OrderBookPallet::<T>::quote(&dex_id, &input_asset_id, &output_asset_id, amount, deduce_fee)
@@ -621,7 +612,7 @@ mod benchmarks_inner {
         #[extra]
         quote_2 {
             use periphery::quote::{init, Context};
-            let Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee } =
+            let Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee, .. } =
                 init::<T>(preset_2::<T>());
         }: {
             OrderBookPallet::<T>::quote(&dex_id, &input_asset_id, &output_asset_id, amount, deduce_fee)
@@ -632,28 +623,26 @@ mod benchmarks_inner {
         #[extra]
         exchange_1 {
             let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            use periphery::exchange_scattered::{init, Context};
-            let mut settings = preset_1::<T>();
-            settings.executed_orders_limit = e;
-            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
+            use periphery::exchange::{init, Context};
+            let settings = preset_1::<T>();
+            let Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_output(expected_out, expected_in + balance!(1.5)),
+                SwapAmount::with_desired_output(*output_amount.value().balance(), input_amount.value().balance() + balance!(1.5)),
             ).unwrap();
         }
 
         #[extra]
         exchange_2 {
             let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            use periphery::exchange_scattered::{init, Context};
-            let mut settings = preset_1::<T>();
-            settings.executed_orders_limit = e;
-            let Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
+            use periphery::exchange::{init, Context};
+            let settings = preset_1::<T>();
+            let Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_output(expected_out, expected_in + balance!(1.5)),
+                SwapAmount::with_desired_output(*output_amount.value().balance(), input_amount.value().balance() + balance!(1.5)),
             ).unwrap();
         }
     }

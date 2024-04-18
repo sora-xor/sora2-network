@@ -64,11 +64,11 @@ code_template_execute = """
         #[extra]
         execute_market_order_{} {{
             use periphery::execute_market_order::{{init, Context}};
-            let Context {{ caller, order_book_id: id, amount, side, .. }} =
+            let Context {{ caller, order_book_id: id, amount, direction, .. }} =
                 init::<T>(preset_{}::<T>());
         }}: {{
             OrderBookPallet::<T>::execute_market_order(
-                RawOrigin::Signed(caller).into(), id, side, *amount.balance()
+                RawOrigin::Signed(caller).into(), id, direction, *amount.balance()
             ).unwrap();
         }}
 """
@@ -77,7 +77,7 @@ code_template_quote = """
         #[extra]
         quote_{} {{
             use periphery::quote::{{init, Context}};
-            let Context {{ dex_id, input_asset_id, output_asset_id, amount, deduce_fee }} =
+            let Context {{ dex_id, input_asset_id, output_asset_id, amount, deduce_fee, .. }} =
                 init::<T>(preset_{}::<T>());
         }}: {{
             OrderBookPallet::<T>::quote(&dex_id, &input_asset_id, &output_asset_id, amount, deduce_fee)
@@ -89,14 +89,13 @@ code_template_exchange = """
         #[extra]
         exchange_{} {{
             let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            use periphery::exchange_scattered::{{init, Context}};
-            let mut settings = preset_1::<T>();
-            settings.executed_orders_limit = e;
-            let Context {{ caller, order_book_id: id, expected_in, expected_out, .. }} = init(settings);
+            use periphery::exchange::{{init, Context}};
+            let settings = preset_1::<T>();
+            let Context {{ caller, order_book_id: id, input_amount, output_amount, .. }} = init(settings);
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
-                SwapAmount::with_desired_output(expected_out, expected_in + balance!(1.5)),
+                SwapAmount::with_desired_output(*output_amount.value().balance(), input_amount.value().balance() + balance!(1.5)),
             ).unwrap();
         }}
 """
