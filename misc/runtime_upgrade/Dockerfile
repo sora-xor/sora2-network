@@ -2,6 +2,7 @@ FROM python:3.11-alpine3.19
 
 WORKDIR /app
 COPY ./misc/runtime_upgrade/main.py \
+    ./framenode_runtime.compact.compressed.wasm \
     ./misc/runtime_upgrade/requirements.txt /app/
 
 ENV PYTHONFAULTHANDLER=1
