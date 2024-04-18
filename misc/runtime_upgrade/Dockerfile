@@ -1,15 +1,21 @@
-FROM python:3.11-slim
+FROM python:3.11-alpine3.19
 
 WORKDIR /app
+COPY ./misc/runtime_upgrade/main.py \
+    ./misc/runtime_upgrade/requirements.txt /app/
 
-RUN adduser --system --no-create-home nonroot
+ENV PYTHONFAULTHANDLER=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONHASHSEED=random
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PIP_NO_CACHE_DIR=off
+ENV PIP_DISABLE_PIP_VERSION_CHECK=on
+ENV PIP_DEFAULT_TIMEOUT=100
 
-COPY requirements.txt .
+RUN pip3 install -r requirements.txt &&\
+    adduser -DH appuser && \
+    chown -R appuser:appuser /app
 
-RUN pip install --no-cache-dir -r requirements.txt
+USER appuser
 
-COPY main.py .
-
-USER nonroot
-
-ENTRYPOINT  ["python", "main.py"]
+CMD ["python", "main.py"]
