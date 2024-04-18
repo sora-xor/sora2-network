@@ -431,6 +431,7 @@ try-runtime = [
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
     "parachain-bridge-app/try-runtime",
+    "substrate-bridge-app/try-runtime",
     "substrate-bridge-channel/try-runtime",
     "bridge-types/try-runtime",
     "farming/try-runtime",
@@ -486,6 +487,7 @@ try-runtime = [
     "pallet-beefy-mmr/try-runtime",
     "bridge-data-signer/try-runtime",
     "multisig-verifier/try-runtime",
+    "qa-tools/try-runtime",
 ]
 
 test = ["framenode-chain-spec/test", "liquidity-proxy/test", "order-book/test"]
