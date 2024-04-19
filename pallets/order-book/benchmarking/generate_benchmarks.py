@@ -65,7 +65,7 @@ code_template_execute = """
         execute_market_order_{} {{
             use periphery::execute_market_order::{{init, Context}};
             let Context {{ caller, order_book_id: id, amount, direction, .. }} =
-                init::<T>(preset_{}::<T>());
+                init::<T>(preset_{}::<T>(), AmountVariant::Max);
         }}: {{
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, direction, *amount.balance()
@@ -88,10 +88,9 @@ code_template_quote = """
 code_template_exchange = """
         #[extra]
         exchange_{} {{
-            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
             use periphery::exchange::{{init, Context}};
             let settings = preset_1::<T>();
-            let Context {{ caller, order_book_id: id, input_amount, output_amount, .. }} = init(settings);
+            let Context {{ caller, order_book_id: id, input_amount, output_amount, .. }} = init(settings, AmountVariant::Max);
         }} : {{
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

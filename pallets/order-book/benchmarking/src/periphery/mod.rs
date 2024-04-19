@@ -51,7 +51,10 @@ use frame_system::RawOrigin;
 use order_book_benchmarking_imported::Config;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{
-    test_utils::{accounts, fill_tools::FillSettings},
+    test_utils::{
+        accounts,
+        fill_tools::{AmountVariant, FillSettings},
+    },
     CancelReason, Event, LimitOrder, LimitOrders, MarketRole, MomentOf, OrderAmount, OrderBook,
     OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
 };
@@ -270,11 +273,16 @@ pub(crate) mod execute_market_order {
 
     pub(crate) fn init_inner<T: Config + trading_pair::Config>(
         settings: FillSettings<T>,
+        market_order_amount_variant: AmountVariant,
     ) -> Context<T> {
         let caller = accounts::alice::<T>();
         let is_divisible = false;
-        let (order_book_id, info, expected_executed_orders) =
-            market_order_execution(settings.clone(), caller.clone(), is_divisible);
+        let (order_book_id, info, expected_executed_orders) = market_order_execution(
+            market_order_amount_variant,
+            settings.clone(),
+            caller.clone(),
+            is_divisible,
+        );
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -300,10 +308,13 @@ pub(crate) mod execute_market_order {
         }
     }
 
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+    pub fn init<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+        market_order_amount_variant: AmountVariant,
+    ) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        init_inner(settings)
+        init_inner(settings, market_order_amount_variant)
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
@@ -401,16 +412,21 @@ pub(crate) mod exchange {
         pub caller_quote_balance: Balance,
         pub average_price: OrderPrice,
         pub direction: PriceVariant,
-        pub swap_amount: SwapAmount<Balance>,
+        pub max_swap_amount: SwapAmount<Balance>,
     }
 
     pub(crate) fn init_inner<T: Config + trading_pair::Config>(
         settings: FillSettings<T>,
+        exchange_amount_variant: AmountVariant,
     ) -> Context<T> {
         let caller = accounts::alice::<T>();
         let is_divisible = true;
-        let (order_book_id, info, _) =
-            market_order_execution(settings.clone(), caller.clone(), is_divisible);
+        let (order_book_id, info, _) = market_order_execution(
+            exchange_amount_variant,
+            settings.clone(),
+            caller.clone(),
+            is_divisible,
+        );
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -424,7 +440,7 @@ pub(crate) mod exchange {
             )
             .unwrap();
         let expected_orders = settings.max_side_orders() as usize;
-        let (expected_bids, expected_asks, swap_amount) = match info.direction {
+        let (expected_bids, expected_asks, max_swap_amount) = match info.direction {
             PriceVariant::Buy => (
                 0,
                 expected_orders,
@@ -459,14 +475,17 @@ pub(crate) mod exchange {
             caller_quote_balance,
             average_price: info.average_price,
             direction: info.direction,
-            swap_amount,
+            max_swap_amount,
         }
     }
 
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+    pub fn init<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+        exchange_amount_variant: AmountVariant,
+    ) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        init_inner(settings)
+        init_inner(settings, exchange_amount_variant)
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
@@ -480,7 +499,7 @@ pub(crate) mod exchange {
             caller_quote_balance,
             average_price,
             direction,
-            swap_amount: _,
+            max_swap_amount: _,
         } = context;
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {

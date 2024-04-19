@@ -33,7 +33,7 @@ use super::*;
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::Runtime;
-use order_book::test_utils::fill_tools::FillSettings;
+use order_book::test_utils::fill_tools::{AmountVariant, FillSettings};
 #[allow(unused)]
 use periphery::presets::*;
 use sp_std::vec::Vec;
@@ -92,7 +92,7 @@ fn test_benchmark_cancel() {
 fn test_benchmark_execute_market_order() {
     ext().execute_with(|| {
         let settings = FillSettings::<Runtime>::regular();
-        let context = periphery::execute_market_order::init(settings);
+        let context = periphery::execute_market_order::init(settings, AmountVariant::Max);
 
         OrderBookPallet::<Runtime>::execute_market_order(
             RawOrigin::Signed(context.caller.clone()).into(),
@@ -125,13 +125,16 @@ fn test_benchmark_quote() {
     })
 }
 
-#[test]
-fn test_benchmark_exchange() {
+fn test_benchmark_exchange(executed_orders: u32) {
     ext().execute_with(|| {
-        use common::LiquiditySource;
+        use common::prelude::SwapAmount;
+        use common::{balance, LiquiditySource};
 
-        let settings = FillSettings::<Runtime>::regular();
-        let context = periphery::exchange::init(settings);
+        let order_amount = balance!(1);
+        let swap_amount = order_amount * executed_orders as u128;
+
+        let settings = FillSettings::<Runtime>::regular_with_custom_amount(order_amount);
+        let context = periphery::exchange::init(settings, AmountVariant::Custom(swap_amount));
 
         let (_outcome, _) = OrderBookPallet::<Runtime>::exchange(
             &context.caller,
@@ -139,12 +142,26 @@ fn test_benchmark_exchange() {
             &context.order_book_id.dex_id,
             &context.order_book_id.base,
             &context.order_book_id.quote,
-            context.swap_amount,
+            SwapAmount::with_desired_input(swap_amount, balance!(0)),
         )
         .unwrap();
 
         periphery::exchange::verify(context);
     })
+}
+
+#[test]
+fn test_benchmark_exchange_max_orders() {
+    test_benchmark_exchange(
+        <Runtime as order_book_imported::Config>::SOFT_MIN_MAX_RATIO
+            .try_into()
+            .unwrap(),
+    );
+}
+
+#[test]
+fn test_benchmark_exchange_one_order() {
+    test_benchmark_exchange(1);
 }
 
 #[test]

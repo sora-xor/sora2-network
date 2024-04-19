@@ -189,6 +189,16 @@ impl<T: Config> FillSettings<T> {
         )
     }
 
+    pub fn regular_with_custom_amount(custom_amount: Balance) -> Self {
+        Self::new(
+            200,
+            10,
+            <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            <T as Config>::MaxExpiringOrdersPerBlock::get(),
+            AmountVariant::Custom(custom_amount),
+        )
+    }
+
     pub fn max_side_orders(&self) -> u128 {
         (self.max_orders_per_price * self.max_side_price_count) as u128
     }

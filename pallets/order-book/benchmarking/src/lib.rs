@@ -146,7 +146,7 @@ mod benchmarks_inner {
 
     use super::*;
     use order_book_imported::cache_data_layer::CacheDataLayer;
-    use order_book_imported::test_utils::fill_tools::FillSettings;
+    use order_book_imported::test_utils::fill_tools::{AmountVariant, FillSettings};
     use order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     use order_book_imported::{
         CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
@@ -348,7 +348,7 @@ mod benchmarks_inner {
 
         execute_market_order {
             let settings = FillSettings::<T>::regular();
-            let context = periphery::execute_market_order::init(settings);
+            let context = periphery::execute_market_order::init(settings, AmountVariant::Max);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -386,7 +386,7 @@ mod benchmarks_inner {
                 &DEX.into(),
                 &VAL.into(),
                 &XOR.into(),
-                QuoteAmount::with_desired_output(balance!(2500)),
+                QuoteAmount::with_desired_input(balance!(1000)),
                 10,
                 true
             )
@@ -397,8 +397,13 @@ mod benchmarks_inner {
         }
 
         exchange {
-            let settings = FillSettings::<T>::regular();
-            let context = periphery::exchange::init(settings);
+            let e in 1u32 .. <T as order_book_imported::Config>::SOFT_MIN_MAX_RATIO.try_into().unwrap();
+
+            let order_amount = balance!(1);
+            let swap_amount = order_amount * e as u128;
+
+            let settings = FillSettings::<T>::regular_with_custom_amount(order_amount);
+            let context = periphery::exchange::init(settings, AmountVariant::Custom(swap_amount));
         }: {
             OrderBookPallet::<T>::exchange(
                 &context.caller,
@@ -406,7 +411,7 @@ mod benchmarks_inner {
                 &context.order_book_id.dex_id,
                 &context.order_book_id.base,
                 &context.order_book_id.quote,
-                context.swap_amount,
+                SwapAmount::with_desired_input(swap_amount, balance!(0)),
             )
             .unwrap();
         }
@@ -580,7 +585,7 @@ mod benchmarks_inner {
         execute_market_order_1 {
             use periphery::execute_market_order::{init, Context};
             let Context { caller, order_book_id: id, amount, direction, .. } =
-                init::<T>(preset_1::<T>());
+                init::<T>(preset_1::<T>(), AmountVariant::Max);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, direction, *amount.balance()
@@ -591,7 +596,7 @@ mod benchmarks_inner {
         execute_market_order_2 {
             use periphery::execute_market_order::{init, Context};
             let Context { caller, order_book_id: id, amount, direction, .. } =
-                init::<T>(preset_2::<T>());
+                init::<T>(preset_2::<T>(), AmountVariant::Max);
         }: {
             OrderBookPallet::<T>::execute_market_order(
                 RawOrigin::Signed(caller).into(), id, direction, *amount.balance()
@@ -622,10 +627,9 @@ mod benchmarks_inner {
 
         #[extra]
         exchange_1 {
-            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
             use periphery::exchange::{init, Context};
             let settings = preset_1::<T>();
-            let Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings);
+            let Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings, AmountVariant::Max);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,
@@ -635,10 +639,9 @@ mod benchmarks_inner {
 
         #[extra]
         exchange_2 {
-            let e in 1u32 .. <T as order_book_imported::Config>::HARD_MIN_MAX_RATIO.try_into().unwrap();
             use periphery::exchange::{init, Context};
             let settings = preset_1::<T>();
-            let Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings);
+            let Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings, AmountVariant::Max);
         } : {
             OrderBookPallet::<T>::exchange(
                 &caller, &caller, &id.dex_id, &id.base, &id.quote,

@@ -52,7 +52,7 @@ use order_book_imported::test_utils::accounts;
 use order_book_imported::test_utils::fill_tools::{
     bid_prices_iterator, fill_expiration_schedule, fill_order_book_side,
     fill_order_book_worst_case, fill_price, fill_user_orders, lifespans_iterator, users_iterator,
-    FillSettings,
+    AmountVariant, FillSettings,
 };
 use order_book_imported::{
     cache_data_layer::CacheDataLayer, traits::DataLayer, DealInfo, LimitOrder, MomentOf, OrderBook,
@@ -81,7 +81,6 @@ fn prepare_order_execute_worst_case<T: Config>(
     Peekable<impl Iterator<Item = T::AccountId>>,
     Peekable<impl Iterator<Item = u64>>,
     PriceVariant,
-    usize,
 ) {
     let orders_amount = fill_settings.amount_variant.calculate_amount(order_book);
     let orders_side = PriceVariant::Buy;
@@ -120,16 +119,8 @@ fn prepare_order_execute_worst_case<T: Config>(
         &mut lifespans,
     );
 
-    let expected_executed_orders =
-        (order_book.max_lot_size.balance() / orders_amount.balance()) as usize;
-
     assert!(limited_users.next().is_none(), "did not place all orders");
-    (
-        users,
-        lifespans,
-        orders_side.switched(),
-        expected_executed_orders,
-    )
+    (users, lifespans, orders_side.switched())
 }
 
 /// Prepare benchmark for `place_limit_order` extrinsic. Benchmark only considers placing limit
@@ -519,6 +510,7 @@ pub fn quote<T: Config>(
 /// Prepare worst-case scenario for market order execution (`swap`/`exchange`). In particular, execution of
 /// max possible orders # with partial execution of an order at the end.
 ///
+/// - `amount_variant` - setting for the amount of the market order.
 /// - `fill_settings` - settings for the benchmark; should be within storage constraints.
 /// - `author` - the account from which the order is going to be executed. It should not be from
 /// `test_utils::generate_account`.
@@ -526,6 +518,7 @@ pub fn quote<T: Config>(
 ///
 /// Returns parameters necessary for the order execution. `OrderVolume` is in base asset.
 pub fn market_order_execution<T: Config + trading_pair::Config>(
+    amount_variant: AmountVariant,
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     is_divisible: bool,
@@ -596,28 +589,36 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
     let mut data_layer = CacheDataLayer::<T>::new();
     let max_side_orders = fill_settings.max_side_orders();
 
-    let (_, _, direction, expected_executed_orders) =
-        prepare_order_execute_worst_case::<T>(&mut data_layer, &mut order_book, fill_settings);
+    let limit_order_amount = fill_settings.amount_variant.calculate_amount(&order_book);
+    let market_order_amount = amount_variant.calculate_amount(&order_book);
+    let expected_executed_orders =
+        (market_order_amount.balance() / limit_order_amount.balance()) as usize;
 
-    let amount = order_book.max_lot_size;
+    let (_, _, direction) =
+        prepare_order_execute_worst_case::<T>(&mut data_layer, &mut order_book, fill_settings);
 
     let (input, output, quote_amount) = match direction {
         PriceVariant::Buy => (
             &order_book_id.quote,
             &order_book_id.base,
-            QuoteAmount::with_desired_output(*amount.balance()),
+            QuoteAmount::with_desired_output(*market_order_amount.balance()),
         ),
         PriceVariant::Sell => (
             &order_book_id.base,
             &order_book_id.quote,
-            QuoteAmount::with_desired_input(*amount.balance()),
+            QuoteAmount::with_desired_input(*market_order_amount.balance()),
         ),
     };
     let info = order_book
         .calculate_deal(input, output, quote_amount, &mut data_layer)
         .unwrap();
 
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
+    assets::Pallet::<T>::mint_unchecked(
+        &order_book_id.base,
+        &author,
+        *market_order_amount.balance(),
+    )
+    .unwrap();
 
     debug!("Committing data...");
     data_layer.commit();
