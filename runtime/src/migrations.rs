@@ -38,4 +38,5 @@ pub type Migrations =
 pub type Migrations = (
     bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount<Runtime>,
     kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,
+    kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount<Runtime>,
 );
