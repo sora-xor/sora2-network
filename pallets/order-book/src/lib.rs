@@ -126,6 +126,9 @@ pub mod pallet {
         /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
         /// During update of parameters, the limits must satisfy this ratio.
         const HARD_MIN_MAX_RATIO: usize;
+        /// The number of executed limit orders by one market orders.
+        /// It is used to estimate the weight of `exchange` before calling.
+        const REGULAR_NUBMER_OF_EXECUTED_ORDERS: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -1763,9 +1766,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 
     fn exchange_weight() -> Weight {
-        // SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
-        // that can be executed by one market order
-        <T as Config>::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
+        <T as Config>::WeightInfo::exchange(
+            T::REGULAR_NUBMER_OF_EXECUTED_ORDERS.try_into().unwrap(),
+        )
     }
 
     fn check_rewards_weight() -> Weight {

@@ -114,7 +114,7 @@ pub fn lifespans_iterator<T: Config>(
 pub enum AmountVariant {
     /// Amount = min_lot_size
     Min,
-    /// Amount = 5 * min_lot_size
+    /// Amount = max_lot_size / REGULAR_NUBMER_OF_EXECUTED_ORDERS
     Regular,
     /// Amount = (min_lot_size + max_lot_size) / 2
     Average,
@@ -128,9 +128,9 @@ impl AmountVariant {
     pub fn calculate_amount<T: Config>(&self, order_book: &OrderBook<T>) -> OrderVolume {
         match self {
             Self::Min => sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size),
-            Self::Regular => sp_std::cmp::min(
-                order_book.min_lot_size * Scalar(5u128),
-                order_book.max_lot_size,
+            Self::Regular => order_book.step_lot_size.copy_divisibility(
+                order_book.max_lot_size.balance()
+                    / <T as Config>::REGULAR_NUBMER_OF_EXECUTED_ORDERS as u128,
             ),
             Self::Average => order_book.step_lot_size.copy_divisibility(
                 (order_book.min_lot_size.balance() + order_book.max_lot_size.balance()) / 2,
