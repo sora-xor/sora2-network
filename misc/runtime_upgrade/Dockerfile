@@ -13,10 +13,11 @@ ENV PIP_NO_CACHE_DIR=off
 ENV PIP_DISABLE_PIP_VERSION_CHECK=on
 ENV PIP_DEFAULT_TIMEOUT=100
 
-RUN pip3 install -r requirements.txt &&\
+RUN mv ./framenode_runtime.compact.compressed.wasm wasm.wasm &&\
+    pip3 install -r requirements.txt &&\
     adduser -DH appuser && \
     chown -R appuser:appuser /app
 
 USER appuser
 
-CMD ["python", "main.py"]
+ENTRYPOINT ["python", "main.py"]
