@@ -516,7 +516,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
                 let bridge_account = Self::bridge_tech_account(network_id);
                 technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
             }
-            bridge_types::types::AssetKind::Sidechain | bridge_types::types::AssetKind::Native => {
+            bridge_types::types::AssetKind::Sidechain => {
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
                 assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, who, *amount)?;
@@ -538,7 +538,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
                 let bridge_account = Self::bridge_tech_account(network_id);
                 technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
             }
-            bridge_types::types::AssetKind::Sidechain | bridge_types::types::AssetKind::Native => {
+            bridge_types::types::AssetKind::Sidechain => {
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
                 assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, who, *amount)?;
@@ -587,7 +587,7 @@ impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
                         .ok_or(Error::<T>::Overflow)?;
                     Ok(())
                 }
-                AssetKind::Sidechain | AssetKind::Native => {
+                AssetKind::Sidechain => {
                     *locked_amount = locked_amount
                         .checked_sub(*amount)
                         .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
@@ -644,7 +644,7 @@ impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
                         .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
                     Ok(())
                 }
-                AssetKind::Sidechain | AssetKind::Native => {
+                AssetKind::Sidechain => {
                     *locked_amount = locked_amount
                         .checked_add(*amount)
                         .ok_or(Error::<T>::Overflow)?;

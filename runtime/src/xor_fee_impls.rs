@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
-use bridge_types::traits::EVMBridgeWithdrawFee;
-use bridge_types::GenericNetworkId;
+#[cfg(feature = "wip")] // EVM bridge
+use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 use common::LiquidityProxyTrait;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
@@ -56,7 +56,7 @@ impl RuntimeCall {
     }
 
     #[cfg(not(feature = "wip"))] // EVM bridge
-    pub fn additional_evm_fee(&self, who: &AccountId) -> DispatchResult {
+    pub fn additional_evm_fee(&self, _who: &AccountId) -> DispatchResult {
         Ok(())
     }
 
@@ -394,6 +394,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
 
             }
         }
+        #[cfg(feature = "wip")] // EVM bridge
         call.withdraw_evm_fee_nested(who)?;
         Ok((
             fee_source.clone(),
