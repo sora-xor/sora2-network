@@ -1191,6 +1191,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "xcm",
 ]
 
 [[package]]
@@ -3686,7 +3687,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "3.2.2"
+version = "3.3.0"
 dependencies = [
  "ahash 0.8.5",
  "ansi_term",
@@ -3789,7 +3790,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "3.2.2"
+version = "3.3.0"
 dependencies = [
  "common",
  "faucet",
@@ -3819,7 +3820,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "3.2.2"
+version = "3.3.0"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -5848,10 +5849,13 @@ dependencies = [
  "fallible-iterator 0.2.0",
  "frame-support",
  "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
  "hex-literal",
  "itertools",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -5861,6 +5865,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pswap-distribution",
+ "qa-tools",
  "scale-info",
  "serde",
  "sp-arithmetic",

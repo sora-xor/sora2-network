@@ -180,7 +180,7 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::AssetId, bool, ValueQuery>;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]

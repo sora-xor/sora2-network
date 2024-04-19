@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::prelude::{OutcomeFee, QuoteAmount};
+use common::prelude::{OutcomeFee, SwapAmount};
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
 
@@ -56,7 +56,7 @@ type SwapInfo<LiquiditySourceType, AmountType> =
 )]
 pub struct AggregatedSwapOutcome<AssetId: Ord, LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
-    pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
+    pub distribution: Vec<(LiquiditySourceType, SwapAmount<AmountType>)>,
     /// The best possible output/input amount for a given trade and a set of liquidity sources
     pub amount: AmountType,
     /// Total fee amount, nominated in XOR
@@ -67,7 +67,7 @@ impl<AssetId: Ord, LiquiditySourceIdType, AmountType>
     AggregatedSwapOutcome<AssetId, LiquiditySourceIdType, AmountType>
 {
     pub fn new(
-        distribution: Vec<(LiquiditySourceIdType, QuoteAmount<AmountType>)>,
+        distribution: Vec<(LiquiditySourceIdType, SwapAmount<AmountType>)>,
         amount: AmountType,
         fee: OutcomeFee<AssetId, AmountType>,
     ) -> Self {
@@ -247,7 +247,7 @@ where
             };
             distribution.push((
                 source.clone(),
-                QuoteAmount::with_variant(self.variant, desired_part),
+                SwapAmount::with_variant(self.variant, desired_part, result_part),
             ));
             result_amount = result_amount.checked_add(result_part)?;
             fee = fee.merge(total.fee);
@@ -310,7 +310,7 @@ where
 mod tests {
     use crate::liquidity_aggregator::*;
     use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
-    use common::prelude::{OutcomeFee, QuoteAmount, SwapVariant};
+    use common::prelude::{OutcomeFee, SwapAmount, SwapVariant};
     use common::{balance, LiquiditySourceType, XOR, XST};
     use sp_std::collections::vec_deque::VecDeque;
 
@@ -1075,7 +1075,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(10))
+                        SwapAmount::with_desired_input(balance!(10), balance!(120))
                     )],
                     balance!(120),
                     Default::default()
@@ -1094,7 +1094,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        SwapAmount::with_desired_input(balance!(20), balance!(220))
                     )],
                     balance!(220),
                     Default::default()
@@ -1117,11 +1117,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(10))
+                            SwapAmount::with_desired_input(balance!(10), balance!(100))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(220))
                         )
                     ],
                     balance!(320),
@@ -1145,11 +1145,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(190))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(220))
                         )
                     ],
                     balance!(410),
@@ -1174,15 +1174,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(190))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(10))
+                            SwapAmount::with_desired_input(balance!(10), balance!(85))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(220))
                         )
                     ],
                     balance!(495),
@@ -1210,15 +1210,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(190))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(170))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(220))
                         )
                     ],
                     balance!(580),
@@ -1238,7 +1238,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(100))
+                        SwapAmount::with_desired_output(balance!(100), balance!(8))
                     )],
                     balance!(8),
                     Default::default()
@@ -1257,7 +1257,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        SwapAmount::with_desired_output(balance!(200), balance!(18))
                     )],
                     balance!(18),
                     Default::default()
@@ -1280,11 +1280,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(100))
+                            SwapAmount::with_desired_output(balance!(100), balance!(10))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(18))
                         )
                     ],
                     balance!(28),
@@ -1308,11 +1308,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(21))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(18))
                         )
                     ],
                     balance!(39),
@@ -1336,11 +1336,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(300))
+                            SwapAmount::with_desired_output(balance!(300), balance!(33))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(18))
                         )
                     ],
                     balance!(51),
@@ -1368,15 +1368,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(300))
+                            SwapAmount::with_desired_output(balance!(300), balance!(33))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(100))
+                            SwapAmount::with_desired_output(balance!(100), balance!(12.5))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(18))
                         )
                     ],
                     balance!(63.5),
@@ -1401,15 +1401,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(300))
+                            SwapAmount::with_desired_output(balance!(300), balance!(33))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(25))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(18))
                         )
                     ],
                     balance!(76),
@@ -1611,7 +1611,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(10))
+                        SwapAmount::with_desired_input(balance!(10), balance!(120))
                     )],
                     balance!(120),
                     Default::default()
@@ -1630,7 +1630,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        SwapAmount::with_desired_input(balance!(20), balance!(224))
                     )],
                     balance!(224),
                     Default::default()
@@ -1653,11 +1653,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(8))
+                            SwapAmount::with_desired_input(balance!(8), balance!(80))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(324),
@@ -1681,11 +1681,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(18))
+                            SwapAmount::with_desired_input(balance!(18), balance!(172))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(416),
@@ -1710,15 +1710,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(208))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(6))
+                            SwapAmount::with_desired_input(balance!(6), balance!(51))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(503),
@@ -1746,15 +1746,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(208))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(16))
+                            SwapAmount::with_desired_input(balance!(16), balance!(136))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(588),
@@ -1777,7 +1777,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(100))
+                        SwapAmount::with_desired_output(balance!(100), balance!(8))
                     )],
                     balance!(8),
                     Default::default()
@@ -1796,7 +1796,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(150))
+                        SwapAmount::with_desired_output(balance!(150), balance!(13))
                     )],
                     balance!(13),
                     Default::default()
@@ -1819,11 +1819,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(60))
+                            SwapAmount::with_desired_output(balance!(60), balance!(6))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(23),
@@ -1850,11 +1850,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(150))
+                            SwapAmount::with_desired_output(balance!(150), balance!(15.5))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(32.5),
@@ -1882,15 +1882,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(175))
+                            SwapAmount::with_desired_output(balance!(175), balance!(18.5))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(40))
+                            SwapAmount::with_desired_output(balance!(40), balance!(5))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(40.5),
@@ -1921,15 +1921,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(175))
+                            SwapAmount::with_desired_output(balance!(175), balance!(18.5))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(140))
+                            SwapAmount::with_desired_output(balance!(140), balance!(17.5))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(53),
@@ -1952,7 +1952,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(10))
+                        SwapAmount::with_desired_input(balance!(10), balance!(120))
                     )],
                     balance!(120),
                     Default::default()
@@ -1971,7 +1971,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        SwapAmount::with_desired_input(balance!(20), balance!(224))
                     )],
                     balance!(224),
                     Default::default()
@@ -1994,11 +1994,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(8))
+                            SwapAmount::with_desired_input(balance!(8), balance!(80))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(324),
@@ -2023,15 +2023,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(20))
+                            SwapAmount::with_desired_input(balance!(20), balance!(190))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(8))
+                            SwapAmount::with_desired_input(balance!(8), balance!(68))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(502),
@@ -2062,15 +2062,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(23))
+                            SwapAmount::with_desired_input(balance!(23), balance!(214))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(15))
+                            SwapAmount::with_desired_input(balance!(15), balance!(127.5))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(585.5),
@@ -2093,7 +2093,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::OrderBook,
-                        QuoteAmount::with_desired_output(balance!(100))
+                        SwapAmount::with_desired_output(balance!(100), balance!(8))
                     )],
                     balance!(8),
                     Default::default()
@@ -2116,11 +2116,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(10))
+                            SwapAmount::with_desired_output(balance!(10), balance!(1))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(18),
@@ -2147,11 +2147,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(110))
+                            SwapAmount::with_desired_output(balance!(110), balance!(11.1))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(28.1),
@@ -2176,15 +2176,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(300))
+                            SwapAmount::with_desired_output(balance!(300), balance!(33))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(10))
+                            SwapAmount::with_desired_output(balance!(10), balance!(1.25))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(51.25),
@@ -2212,15 +2212,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(300))
+                            SwapAmount::with_desired_output(balance!(300), balance!(33))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(110))
+                            SwapAmount::with_desired_output(balance!(110), balance!(13.75))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(63.75),
@@ -2251,15 +2251,15 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(360))
+                            SwapAmount::with_desired_output(balance!(360), balance!(40.8))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_output(balance!(150))
+                            SwapAmount::with_desired_output(balance!(150), balance!(18.75))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(190))
+                            SwapAmount::with_desired_output(balance!(190), balance!(17))
                         )
                     ],
                     balance!(76.55),
@@ -2279,7 +2279,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(10))
+                        SwapAmount::with_desired_input(balance!(10), balance!(100))
                     )],
                     balance!(100),
                     OutcomeFee::xor(balance!(1))
@@ -2295,7 +2295,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_input(balance!(20))
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
                     )],
                     balance!(190),
                     OutcomeFee::xor(balance!(1.9))
@@ -2319,11 +2319,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(8))
+                            SwapAmount::with_desired_input(balance!(8), balance!(80))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(22))
+                            SwapAmount::with_desired_input(balance!(22), balance!(244))
                         )
                     ],
                     balance!(324),
@@ -2343,7 +2343,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(100))
+                        SwapAmount::with_desired_output(balance!(100), balance!(10))
                     )],
                     balance!(10),
                     OutcomeFee::xor(balance!(1))
@@ -2359,7 +2359,7 @@ mod tests {
                 AggregatedSwapOutcome::new(
                     vec![(
                         LiquiditySourceType::XYKPool,
-                        QuoteAmount::with_desired_output(balance!(200))
+                        SwapAmount::with_desired_output(balance!(200), balance!(21))
                     )],
                     balance!(21),
                     OutcomeFee::xor(balance!(2))
@@ -2383,11 +2383,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(100))
+                            SwapAmount::with_desired_output(balance!(100), balance!(10))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(200))
+                            SwapAmount::with_desired_output(balance!(200), balance!(18.05))
                         )
                     ],
                     balance!(28.05),
@@ -2417,11 +2417,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(0.05))
+                            SwapAmount::with_desired_input(balance!(0.05), balance!(0.5))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_input(balance!(10.6))
+                            SwapAmount::with_desired_input(balance!(10.6), balance!(127.2))
                         )
                     ],
                     balance!(127.7),
@@ -2454,11 +2454,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(0.005))
+                            SwapAmount::with_desired_output(balance!(0.005), balance!(0.0005))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(101.58))
+                            SwapAmount::with_desired_output(balance!(101.58), balance!(8.465))
                         )
                     ],
                     balance!(8.4655),
@@ -2488,11 +2488,11 @@ mod tests {
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_output(balance!(0.065))
+                            SwapAmount::with_desired_output(balance!(0.065), balance!(0.0065))
                         ),
                         (
                             LiquiditySourceType::OrderBook,
-                            QuoteAmount::with_desired_output(balance!(101.52))
+                            SwapAmount::with_desired_output(balance!(101.52), balance!(8.46))
                         )
                     ],
                     balance!(8.4665),
@@ -2527,18 +2527,18 @@ mod tests {
             aggregator.aggregate_swap_outcome(balance!(1.5)).unwrap(),
             (
                 SwapInfo::from([
-                    (LiquiditySourceType::XSTPool, (balance!(1), balance!(10))),
-                    (LiquiditySourceType::XYKPool, (balance!(0.5), balance!(4)))
+                    (LiquiditySourceType::XYKPool, (balance!(0.5), balance!(4))),
+                    (LiquiditySourceType::XSTPool, (balance!(1), balance!(10)))
                 ]),
                 AggregatedSwapOutcome::new(
                     vec![
                         (
                             LiquiditySourceType::XYKPool,
-                            QuoteAmount::with_desired_input(balance!(0.5))
+                            SwapAmount::with_desired_input(balance!(0.5), balance!(4))
                         ),
                         (
                             LiquiditySourceType::XSTPool,
-                            QuoteAmount::with_desired_input(balance!(1))
+                            SwapAmount::with_desired_input(balance!(1), balance!(10))
                         )
                     ],
                     balance!(14),

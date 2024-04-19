@@ -35,8 +35,8 @@ use common::{AssetInfoProvider, Balance, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
-use sp_arithmetic::Perbill;
-use sp_runtime::traits::{One, Zero};
+use sp_arithmetic::{Perbill, Percent};
+use sp_runtime::traits::Zero;
 use sp_runtime::AccountId32;
 
 type AccountId = AccountId32;
@@ -71,7 +71,7 @@ pub fn bob() -> OriginFor<TestRuntime> {
 pub fn tech_account_id() -> AccountId {
     let tech_account = <TestRuntime as Config>::TreasuryTechAccount::get();
     technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account)
-        .expect("Must succeed")
+        .expect("Failed to get ordinary account id for technical account id.")
 }
 
 /// Returns Risk Manager account
@@ -104,6 +104,11 @@ pub fn assert_bad_debt(expected_amount: Balance) {
     assert_eq!(BadDebt::<TestRuntime>::get(), expected_amount);
 }
 
+/// Sets protocol borrow tax.
+pub fn set_borrow_tax(borrow_tax: Percent) {
+    BorrowTax::<TestRuntime>::set(borrow_tax);
+}
+
 /// Sets risk manager for protocol
 pub fn set_up_risk_manager() {
     KensetsuPallet::add_risk_manager(RuntimeOrigin::root(), risk_manager_account_id())
@@ -118,21 +123,18 @@ pub fn set_xor_as_collateral_type(
     stability_fee_rate: FixedU128,
     minimal_collateral_deposit: Balance,
 ) {
-    CollateralInfos::<TestRuntime>::set(
+    set_up_risk_manager();
+    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        risk_manager(),
         XOR,
-        Some(CollateralInfo {
-            risk_parameters: CollateralRiskParameters {
-                hard_cap,
-                max_liquidation_lot: balance!(1000),
-                liquidation_ratio,
-                stability_fee_rate,
-                minimal_collateral_deposit,
-            },
-            kusd_supply: balance!(0),
-            last_fee_update_time: 0,
-            interest_coefficient: FixedU128::one(),
-        }),
-    );
+        CollateralRiskParameters {
+            hard_cap,
+            max_liquidation_lot: balance!(1000),
+            liquidation_ratio,
+            stability_fee_rate,
+            minimal_collateral_deposit,
+        }
+    ));
     KusdHardCap::<TestRuntime>::set(hard_cap);
 }
 
@@ -158,7 +160,9 @@ pub fn create_cdp_for_xor(
     debt: Balance,
 ) -> CdpId {
     set_balance(alice_account_id(), collateral);
-    assert_ok!(KensetsuPallet::create_cdp(owner, XOR, collateral, debt));
+    assert_ok!(KensetsuPallet::create_cdp(
+        owner, XOR, collateral, debt, debt
+    ));
     NextCDPId::<TestRuntime>::get()
 }
 

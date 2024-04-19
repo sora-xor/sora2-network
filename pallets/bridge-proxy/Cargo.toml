@@ -25,6 +25,9 @@ technical = { path = "../technical", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 
+# delete after migration LiberlandGenericAccount pass
+xcm = { git = "https://github.com/paritytech/polkadot.git", branch = "release-v0.9.38", default-features = false }
+
 [dev-dependencies]
 common = { path = "../../common", features = ["test"] }
 
@@ -56,6 +59,8 @@ std = [
     "traits/std",
     "technical/std",
     "permissions/std",
+    # delete after migration LiberlandGenericAccount pass
+    "xcm/std",
 ]
 
 runtime-benchmarks = [
