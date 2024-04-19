@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 76,
+    spec_version: 77,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 76,
+    transaction_version: 77,
     state_version: 0,
 };
 
@@ -1974,8 +1974,8 @@ impl kensetsu::Config for Runtime {
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
-    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
+    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
 }
