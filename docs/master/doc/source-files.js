@@ -42,7 +42,7 @@ var sourcesIndex = JSON.parse('{\
 "iroha_migration":["",[],["lib.rs","weights.rs"]],\
 "iroha_migration_rpc":["",[],["lib.rs"]],\
 "iroha_migration_runtime_api":["",[],["lib.rs"]],\
-"kensetsu":["",[],["compounding.rs","lib.rs","weights.rs"]],\
+"kensetsu":["",[],["compounding.rs","lib.rs","migrations.rs","weights.rs"]],\
 "kensetsu_benchmarking":["",[],["lib.rs"]],\
 "liquidity_proxy":["",[],["lib.rs","liquidity_aggregator.rs","weights.rs"]],\
 "liquidity_proxy_benchmarking":["",[],["lib.rs"]],\
