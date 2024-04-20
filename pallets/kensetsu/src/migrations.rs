@@ -28,14 +28,30 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::*;
+pub mod init {
+    use crate::*;
+    use core::marker::PhantomData;
+    use frame_support::log::error;
+    use frame_support::pallet_prelude::Weight;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_core::Get;
 
-#[cfg(not(feature = "ready-to-test"))] // kensetsu
-pub type Migrations =
-    (bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount<Runtime>,);
+    pub struct RegisterTreasuryTechAccount<T>(PhantomData<T>);
 
-#[cfg(feature = "ready-to-test")] // kensetsu
-pub type Migrations = (
-    bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount<Runtime>,
-    kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,
-);
+    /// Registers Kensetsu Treasury technical account
+    impl<T: technical::Config + Config> OnRuntimeUpgrade for RegisterTreasuryTechAccount<T> {
+        fn on_runtime_upgrade() -> Weight {
+            let tech_account = <T>::TreasuryTechAccount::get();
+            match technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account) {
+                Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
+                Err(err) => {
+                    error!(
+                        "Failed to register technical account id: {:?}, error: {:?}",
+                        tech_account, err
+                    );
+                    <T as frame_system::Config>::DbWeight::get().reads(1)
+                }
+            }
+        }
+    }
+}
