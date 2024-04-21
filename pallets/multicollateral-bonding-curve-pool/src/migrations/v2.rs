@@ -1,9 +1,10 @@
 use crate::pallet;
+use crate::Config;
 use crate::Pallet;
 use common::balance;
 use common::FromGenericPair;
-use common::TradingPairSourceManager;
 use common::TBCD;
+use common::{AssetManager, TradingPairSourceManager};
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{
@@ -48,7 +49,7 @@ where
                         return <T as frame_system::Config>::DbWeight::get().reads(1);
                     }
                 };
-            if let Err(err) = assets::Pallet::<T>::register_asset_id(
+            if let Err(err) = T::AssetManager::register_asset_id(
                 assets_and_permissions_account_id.clone(),
                 TBCD.into(),
                 common::AssetSymbol(b"TBCD".to_vec()),
@@ -62,8 +63,8 @@ where
                 error!("Failed to register TBCD asset, error: {:?}", err);
                 return <T as frame_system::Config>::DbWeight::get().reads(1);
             }
-            if let Err(err) = assets::Pallet::<T>::mint_to(
-                &TBCD.into(),
+            if let Err(err) = T::AssetManager::mint_to(
+                TBCD.into(),
                 &assets_and_permissions_account_id,
                 &SORAMITSU_PAYMENT_ACCOUNT.into(),
                 balance!(1688406),
@@ -100,7 +101,7 @@ where
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         frame_support::ensure!(
-            assets::Pallet::<T>::ensure_asset_exists(&TBCD.into()).is_err(),
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into()).is_err(),
             "TBCD asset already registered"
         );
         frame_support::ensure!(
@@ -116,7 +117,7 @@ where
 
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-        assets::Pallet::<T>::ensure_asset_exists(&TBCD.into())?;
+        <T as Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into())?;
         frame_support::ensure!(
             crate::EnabledTargets::<T>::get().contains(&TBCD.into()),
             "TBCD pool is not initialized"

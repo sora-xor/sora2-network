@@ -28,7 +28,6 @@ sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 dex-api = { path = "../dex-api", default-features = false }
 permissions = { path = "../permissions", default-features = false }
@@ -53,6 +52,7 @@ price-tools = { path = "../price-tools" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 vested-rewards = { path = "../vested-rewards" }
+assets = { path = "../assets", default-features = false }
 
 [features]
 default = ['std']
