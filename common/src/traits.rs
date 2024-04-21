@@ -30,16 +30,24 @@
 
 use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
 use crate::{
-    Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PriceVariant,
-    PswapRemintInfo, RewardReason,
+    Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
+    PriceVariant, PswapRemintInfo, RewardReason,
 };
-use frame_support::dispatch::DispatchResult;
+
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use frame_support::Parameter;
+use frame_system::pallet_prelude::OriginFor;
 use frame_system::RawOrigin;
+use orml_traits::{
+    MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
+};
+use sp_core::{Get, H256};
+use sp_runtime::traits::Member;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
 use crate::alt::DiscreteQuotation;
@@ -522,9 +530,22 @@ pub trait LiquidityRegistry<
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 pub type DexIdOf<T> = <T as Config>::DEXId;
-
+pub type AssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
+    T,
+    AssetSymbol,
+    AssetName,
+    BalancePrecision,
+    ContentSource,
+    Description,
+>>::AssetId;
+pub type CurrencyIdOf<T> = <<T as Config>::MultiCurrency as MultiCurrency<
+    <T as frame_system::Config>::AccountId,
+>>::CurrencyId;
+pub type AmountOf<T> = <<T as Config>::MultiCurrency as MultiCurrencyExtended<
+    <T as frame_system::Config>::AccountId,
+>>::Amount;
 /// Common DEX trait. Used for DEX-related pallets.
-pub trait Config: frame_system::Config + currencies::Config {
+pub trait Config: frame_system::Config + currencies::Config + tokens::Config {
     /// DEX identifier.
     type DEXId: Parameter
         + MaybeSerializeDeserialize
@@ -538,6 +559,7 @@ pub trait Config: frame_system::Config + currencies::Config {
         + Eq
         + PartialEq
         + MaxEncodedLen;
+
     type LstId: Clone
         + Copy
         + Encode
@@ -546,6 +568,24 @@ pub trait Config: frame_system::Config + currencies::Config {
         + PartialEq
         + MaxEncodedLen
         + From<crate::primitives::LiquiditySourceType>;
+
+    type AssetManager: AssetManager<
+        Self,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        ContentSource,
+        Description,
+    >;
+
+    /// Currency to transfer, reserve/unreserve, lock/unlock assets
+    type MultiCurrency: MultiLockableCurrency<
+            Self::AccountId,
+            Moment = Self::BlockNumber,
+            CurrencyId = AssetIdOf<Self>,
+            Balance = Balance,
+        > + MultiReservableCurrency<Self::AccountId, CurrencyId = AssetIdOf<Self>, Balance = Balance>
+        + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:
@@ -1093,6 +1133,158 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 
     fn get_asset_owner(_asset_id: &AssetId) -> Result<AccountId, DispatchError> {
+        unimplemented!()
+    }
+}
+
+pub trait AssetManager<
+    T: Config,
+    AssetSymbol,
+    AssetName,
+    BalancePrecision,
+    ContentSource,
+    Description,
+>
+{
+    type AssetId: Parameter
+        + Member
+        + Copy
+        + MaybeSerializeDeserialize
+        + Ord
+        + Default
+        + From<AssetId32<PredefinedAssetId>>
+        + From<H256>
+        + Into<H256>
+        + Into<CurrencyIdOf<T>>
+        + Into<<T as tokens::Config>::CurrencyId>
+        + MaxEncodedLen;
+
+    type GetBaseAssetId: Get<Self::AssetId>;
+
+    //  /// DEX assets (currency) identifier.
+    // type AssetId: Parameter
+    //     + Member
+    //     + Copy
+    //     + MaybeSerializeDeserialize
+    //     + Ord
+    //     + Default
+    //     + Into<CurrencyIdOf<Self>>
+    //     + From<common::AssetId32<common::PredefinedAssetId>>
+    //     + From<H256>
+    //     + Into<H256>
+    //     + Into<<Self as tokens::Config>::CurrencyId>
+    //     + MaxEncodedLen;
+
+    fn register_asset_id(
+        account_id: T::AccountId,
+        asset_id: Self::AssetId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> DispatchResult;
+
+    fn burn_from(
+        asset_id: Self::AssetId,
+        issuer: &T::AccountId,
+        from: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult;
+
+    fn transfer_from(
+        asset_id: &Self::AssetId,
+        from: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult;
+
+    fn mint_to(
+        asset_id: Self::AssetId,
+        issuer: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult;
+
+    fn burn(
+        origin: OriginFor<T>,
+        asset_id: Self::AssetId,
+        amount: Balance,
+    ) -> DispatchResultWithPostInfo;
+
+    fn mint(
+        origin: OriginFor<T>,
+        asset_id: Self::AssetId,
+        to: T::AccountId,
+        amount: Balance,
+    ) -> DispatchResultWithPostInfo;
+}
+
+impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> for ()
+where
+    <T as tokens::Config>::CurrencyId: From<AssetId32<PredefinedAssetId>>,
+{
+    type AssetId = AssetId32<PredefinedAssetId>;
+    type GetBaseAssetId = ();
+
+    fn register_asset_id(
+        _account_id: T::AccountId,
+        _asset_id: Self::AssetId,
+        _symbol: AssetSymbol,
+        _name: AssetName,
+        _precision: BalancePrecision,
+        _initial_supply: Balance,
+        _is_mintable: bool,
+        _opt_content_src: Option<ContentSource>,
+        _opt_desc: Option<Description>,
+    ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn burn_from(
+        _asset_id: Self::AssetId,
+        _issuer: &<T as frame_system::Config>::AccountId,
+        _from: &<T as frame_system::Config>::AccountId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn transfer_from(
+        _asset_id: &Self::AssetId,
+        _from: &<T as frame_system::Config>::AccountId,
+        _to: &<T as frame_system::Config>::AccountId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn mint_to(
+        _asset_id: Self::AssetId,
+        _issuer: &<T as frame_system::Config>::AccountId,
+        _to: &<T as frame_system::Config>::AccountId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn burn(
+        _origin: OriginFor<T>,
+        _asset_id: Self::AssetId,
+        _amount: Balance,
+    ) -> DispatchResultWithPostInfo {
+        unimplemented!()
+    }
+
+    fn mint(
+        _origin: OriginFor<T>,
+        _asset_id: Self::AssetId,
+        _to: <T as frame_system::Config>::AccountId,
+        _amount: Balance,
+    ) -> DispatchResultWithPostInfo {
         unimplemented!()
     }
 }

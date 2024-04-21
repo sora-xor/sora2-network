@@ -32,10 +32,10 @@ use frame_support::dispatch;
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 
-use common::SwapRulesValidation;
-
-use crate::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, PolySwapActionStructOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, DEXIdOf, PolySwapActionStructOf, TechAccountIdOf};
 use crate::Config;
+
+use common::{AssetIdOf, SwapRulesValidation};
 
 use crate::operations::*;
 

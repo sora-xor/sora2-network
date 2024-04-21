@@ -33,11 +33,11 @@ use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 use sp_runtime::traits::Zero;
 
-use common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
-
 use crate::{to_balance, to_fixed_wrapper, AccountPools, PoolProviders, TotalIssuances};
 
-use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
+use common::prelude::{AssetIdOf, AssetInfoProvider, Balance, FixedWrapper};
+
+use crate::aliases::{AccountIdOf, TechAccountIdOf};
 use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 
 use crate::bounds::*;

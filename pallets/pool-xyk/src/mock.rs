@@ -155,6 +155,8 @@ impl trading_pair::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -317,6 +319,7 @@ impl xst::Config for Runtime {
     type Symbol = SymbolName;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_type_with_key! {
