@@ -20,4 +20,4 @@ RUN mv ./framenode_runtime.compact.compressed.wasm wasm.wasm &&\
 
 USER appuser
 
-ENTRYPOINT ["python", "main.py"]
+CMD ["python", "main.py"]
