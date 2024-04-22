@@ -1184,6 +1184,17 @@ pub trait AssetManager<
     //     + Into<H256>
     //     + Into<<Self as tokens::Config>::CurrencyId>
     //     + MaxEncodedLen;
+    fn register_from(
+        account_id: &T::AccountId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> Result<Self::AssetId, DispatchError>;
+
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
     fn register_asset_id(
@@ -1240,6 +1251,19 @@ where
 {
     type AssetId = AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = ();
+
+    fn register_from(
+        _account_id: &T::AccountId,
+        _symbol: AssetSymbol,
+        _name: AssetName,
+        _precision: BalancePrecision,
+        _initial_supply: Balance,
+        _is_mintable: bool,
+        _opt_content_src: Option<ContentSource>,
+        _opt_desc: Option<Description>,
+    ) -> Result<Self::AssetId, DispatchError> {
+        unimplemented!()
+    }
 
     fn gen_asset_id_from_any(_value: &impl Encode) -> Self::AssetId {
         unimplemented!()

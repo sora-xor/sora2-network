@@ -1064,6 +1064,28 @@ impl<T: Config>
         Self::gen_asset_id_from_any(value)
     }
 
+    fn register_from(
+        account_id: &T::AccountId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> Result<Self::AssetId, DispatchError> {
+        Self::register_from(
+            account_id,
+            symbol,
+            name,
+            precision,
+            initial_supply,
+            is_mintable,
+            opt_content_src,
+            opt_desc,
+        )
+    }
+
     fn register_asset_id(
         account_id: T::AccountId,
         asset_id: Self::AssetId,
