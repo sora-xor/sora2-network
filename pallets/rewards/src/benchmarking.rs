@@ -31,7 +31,8 @@
 use crate::{UmiNftReceivers, UmiNfts};
 use codec::Decode;
 use common::eth::EthAddress;
-use common::{balance, PSWAP, VAL};
+use common::AssetIdOf;
+use common::{balance, AssetInfoProvider, AssetManager, PSWAP, VAL};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -73,19 +74,19 @@ benchmarks! {
         add_rewards::<T>(1000);
         let reserves_acc = technical::Pallet::<T>::tech_account_id_to_account_id(&ReservesAcc::<T>::get()).unwrap();
 
-        let val_asset: T::AssetId = VAL.into();
-        let val_owner = assets::Pallet::<T>::asset_owner(&val_asset).unwrap();
-        assets::Pallet::<T>::mint_to(
-            &val_asset,
+        let val_asset: AssetIdOf<T> = VAL.into();
+        let val_owner = T::AssetInfoProvider::get_asset_owner(&val_asset).unwrap();
+        T::AssetManager::mint_to(
+            val_asset,
             &val_owner,
             &reserves_acc,
             balance!(50000),
         ).unwrap();
 
-        let pswap_asset: T::AssetId = PSWAP.into();
-        let pswap_owner = assets::Pallet::<T>::asset_owner(&pswap_asset).unwrap();
-        assets::Pallet::<T>::mint_to(
-            &pswap_asset,
+        let pswap_asset: AssetIdOf<T> = PSWAP.into();
+        let pswap_owner = T::AssetInfoProvider::get_asset_owner(&pswap_asset).unwrap();
+        T::AssetManager::mint_to(
+            pswap_asset,
             &pswap_owner,
             &reserves_acc,
             balance!(50000),
