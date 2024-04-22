@@ -7,7 +7,10 @@ use super::*;
 use codec::Decode;
 use common::fixnum::ops::CheckedAdd;
 use common::prelude::FixedWrapper;
-use common::{balance, AccountIdOf, AssetId32, PredefinedAssetId, CERES_ASSET_ID, PSWAP, XOR};
+use common::{
+    balance, AccountIdOf, AssetId32, AssetIdOf, AssetInfoProvider, AssetManager, PredefinedAssetId,
+    CERES_ASSET_ID, PSWAP, XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_support::PalletId;
 use frame_system::{EventRecord, RawOrigin};
@@ -17,7 +20,7 @@ use sp_runtime::traits::{AccountIdConversion, Saturating};
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresLaunchpad;
-use assets::Pallet as Assets;
+
 use frame_support::traits::Get;
 
 // Support Functions
@@ -36,7 +39,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     where_clause {
-        where T::AssetId: From<AssetId32<PredefinedAssetId>>
+        where AssetIdOf::<T>: From<AssetId32<PredefinedAssetId>>
     }
 
     create_ilo {
@@ -44,10 +47,10 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let current_timestamp = Timestamp::<T>::get();
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
@@ -92,17 +95,17 @@ benchmarks! {
         let current_timestamp = Timestamp::<T>::get();
         let funds_to_contribute = balance!(800);
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
@@ -158,17 +161,17 @@ benchmarks! {
         let current_timestamp = Timestamp::<T>::get();
         let funds_to_contribute = balance!(800);
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
@@ -230,17 +233,17 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let current_timestamp = Timestamp::<T>::get();
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
@@ -308,17 +311,17 @@ benchmarks! {
         let finish_timestamp = current_timestamp + 11u32.into();
         let funds_to_contribute = balance!(800);
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
@@ -391,17 +394,17 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let current_timestamp = Timestamp::<T>::get();
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             XOR.into(),
             caller.clone(),
@@ -488,24 +491,24 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let current_timestamp = Timestamp::<T>::get();
 
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             XOR.into(),
             caller.clone(),
             balance!(10000)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner).into(),
             PSWAP.into(),
             T::GetTechnicalAccountId::get(),

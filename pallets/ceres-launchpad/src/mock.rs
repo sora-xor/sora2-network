@@ -119,7 +119,6 @@ impl crate::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    type AssetManager = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -153,6 +152,8 @@ impl assets::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
