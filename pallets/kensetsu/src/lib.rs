@@ -1703,11 +1703,8 @@ pub mod pallet {
                 Error::<T>::WrongAssetId
             );
             ensure!(
-                *collateral_asset_id != T::KusdAssetId::get(),
-                Error::<T>::WrongAssetId
-            );
-            ensure!(
-                *collateral_asset_id != T::KenAssetId::get(),
+                (*collateral_asset_id != T::KusdAssetId::get())
+                    && (*collateral_asset_id != T::KenAssetId::get()),
                 Error::<T>::WrongAssetId
             );
 
