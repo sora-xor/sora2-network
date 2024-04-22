@@ -1184,6 +1184,7 @@ pub trait AssetManager<
     //     + Into<H256>
     //     + Into<<Self as tokens::Config>::CurrencyId>
     //     + MaxEncodedLen;
+    fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
     fn register_asset_id(
         account_id: T::AccountId,
@@ -1239,6 +1240,10 @@ where
 {
     type AssetId = AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = ();
+
+    fn gen_asset_id_from_any(_value: &impl Encode) -> Self::AssetId {
+        unimplemented!()
+    }
 
     fn register_asset_id(
         _account_id: T::AccountId,

@@ -1060,6 +1060,10 @@ impl<T: Config>
     type AssetId = T::AssetId;
     type GetBaseAssetId = T::GetBaseAssetId;
 
+    fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId {
+        Self::gen_asset_id_from_any(value)
+    }
+
     fn register_asset_id(
         account_id: T::AccountId,
         asset_id: Self::AssetId,
