@@ -119,6 +119,7 @@ impl crate::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type AssetManager = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
