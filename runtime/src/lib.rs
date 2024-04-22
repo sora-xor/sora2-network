@@ -1945,12 +1945,8 @@ parameter_types! {
     };
 
     pub const KenAssetId: AssetId = common::KEN;
-    pub const KusdAssetId: AssetId = common::KUSD;
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
-
-    // 1 Kensetsu dollar of uncollected stability fee triggers accrue
-    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1966,16 +1962,15 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type Oracle = OracleProxy;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
-    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
 }

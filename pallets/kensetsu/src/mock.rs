@@ -36,9 +36,10 @@ use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsProvider,
-    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
+    AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
+    PriceToolsProvider, PriceVariant, Rate, SymbolName, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD,
+    XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -181,6 +182,22 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     }
 }
 
+pub struct MockOracle;
+
+impl DataFeed<SymbolName, Rate, u64> for MockOracle {
+    fn quote(_symbol: &SymbolName) -> Result<Option<Rate>, DispatchError> {
+        todo!()
+    }
+
+    fn list_enabled_symbols() -> Result<Vec<(SymbolName, u64)>, DispatchError> {
+        todo!()
+    }
+
+    fn quote_unchecked(_symbol: &SymbolName) -> Option<Rate> {
+        unimplemented!();
+    }
+}
+
 frame_support::construct_runtime!(
     pub enum TestRuntime where
         Block = Block,
@@ -221,9 +238,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
     pub const KenAssetId: AssetId = KEN;
-    pub const KusdAssetId: AssetId = KUSD;
     pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
-    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 }
 
 mock_assets_config!(TestRuntime);
@@ -240,15 +255,14 @@ impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = MockRandomness;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = MockPriceTools;
     type LiquidityProxy = MockLiquidityProxy;
+    type Oracle = MockOracle;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
-    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = ConstU64<100>;
     type UnsignedLongevity = ConstU64<100>;
     type WeightInfo = ();

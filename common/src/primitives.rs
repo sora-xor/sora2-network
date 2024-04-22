@@ -650,6 +650,10 @@ impl SymbolName {
     pub fn usd() -> Self {
         Self::from_str("USD").expect("`USD` is a valid symbol name")
     }
+
+    pub fn dai() -> Self {
+        Self::from_str("DAI").expect("`DAI` is a valid symbol name")
+    }
 }
 
 impl FromStr for SymbolName {
