@@ -41,9 +41,9 @@
 
 pub use pallet::*;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::{balance, Balance};
+use common::AssetIdOf;
+use common::{balance, AssetManager, Balance};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
 use sp_arithmetic::{FixedU128, Perbill};
@@ -281,8 +281,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        assets::Config
-        + frame_system::Config
+        frame_system::Config
         + technical::Config
         + timestamp::Config
         + SendTransactionTypes<Call<Self>>
@@ -290,7 +289,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             AssetSymbol,
             AssetName,
@@ -299,10 +298,10 @@ pub mod pallet {
             Description,
         >;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
-        type KenAssetId: Get<Self::AssetId>;
-        type KusdAssetId: Get<Self::AssetId>;
-        type PriceTools: PriceToolsProvider<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type KenAssetId: Get<AssetIdOf<Self>>;
+        type KusdAssetId: Get<AssetIdOf<Self>>;
+        type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
 
         /// Percent of KEN that is reminted and goes to Demeter farming incentivization
         #[pallet::constant]
@@ -699,7 +698,7 @@ pub mod pallet {
                 let leftover = proceeds
                     .checked_sub(cdp.debt)
                     .ok_or(Error::<T>::ArithmeticError)?;
-                assets::Pallet::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &T::KusdAssetId::get(),
                     &technical_account_id,
                     &cdp.owner,
@@ -1356,7 +1355,7 @@ pub mod pallet {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = new_debt;
                 cdp.interest_coefficient = new_coefficient;
-                Ok::<CollateralizedDebtPosition<T::AccountId, T::AssetId>, DispatchError>(
+                Ok::<CollateralizedDebtPosition<T::AccountId, AssetIdOf<T>>, DispatchError>(
                     cdp.clone(),
                 )
             })?;
@@ -1384,7 +1383,7 @@ pub mod pallet {
         }
 
         /// Mint token to protocol technical account
-        fn mint_treasury(asset_id: &T::AssetId, amount: Balance) -> DispatchResult {
+        fn mint_treasury(asset_id: &AssetIdOf<T>, amount: Balance) -> DispatchResult {
             technical::Pallet::<T>::mint(asset_id, &T::TreasuryTechAccount::get(), amount)?;
             Ok(())
         }
@@ -1394,8 +1393,8 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            assets::Pallet::<T>::mint_to(
-                &T::KusdAssetId::get(),
+            T::AssetManager::mint_to(
+                T::KusdAssetId::get(),
                 &technical_account_id,
                 account,
                 amount,
@@ -1408,8 +1407,8 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            assets::Pallet::<T>::burn_from(
-                &T::KusdAssetId::get(),
+            T::AssetManager::burn_from(
+                T::KusdAssetId::get(),
                 &technical_account_id,
                 &technical_account_id,
                 to_burn,
@@ -1427,8 +1426,8 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            assets::Pallet::<T>::burn_from(
-                &T::KusdAssetId::get(),
+            T::AssetManager::burn_from(
+                T::KusdAssetId::get(),
                 &technical_account_id,
                 account,
                 amount,
@@ -1542,8 +1541,8 @@ pub mod pallet {
                     SwapAmount::with_desired_input(borrow_tax_kusd, balance!(0)),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
-                assets::Pallet::<T>::burn_from(
-                    &T::KenAssetId::get(),
+                T::AssetManager::burn_from(
+                    T::KenAssetId::get(),
                     &technical_account_id,
                     &technical_account_id,
                     swap_outcome.amount,
