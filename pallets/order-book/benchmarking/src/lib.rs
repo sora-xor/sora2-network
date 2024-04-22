@@ -57,8 +57,7 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use assets::AssetIdOf;
-use common::DEXId;
+use common::{AssetIdOf, DEXId};
 use frame_system::EventRecord;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
@@ -180,15 +179,15 @@ mod benchmarks_inner {
 
             let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
                 dex_id: DEX.into(),
-                base: nft,
+                base: nft.into(),
                 quote: XOR.into(),
             };
 
             TradingPair::<T>::register(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEX.into(),
-                order_book_id.quote,
-                order_book_id.base
+                order_book_id.quote.into(),
+                order_book_id.base.into(),
             ).unwrap();
         }: {
             OrderBookPallet::<T>::create_orderbook(

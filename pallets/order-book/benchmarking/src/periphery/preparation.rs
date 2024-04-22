@@ -42,9 +42,8 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, Scalar};
-use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
+use common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
@@ -219,7 +218,7 @@ fn prepare_order_execute_worst_case<T: Config>(
             frame_system::Pallet::<T>::block_number(),
         );
         // just in case
-        assets::Pallet::<T>::mint_unchecked(
+        T::AssetManager::mint_unchecked(
             &order_book.order_book_id.quote,
             &order.owner,
             *order.price.checked_mul(&order.amount).unwrap().balance(),
@@ -390,8 +389,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         quote: XOR.into(),
     };
 
-    assets::Pallet::<T>::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000))
-        .unwrap();
+    T::AssetManager::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000)).unwrap();
 
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Root.into(),
@@ -410,12 +408,8 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     // mint other base asset as well
     let mut users = users
         .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id_2.base,
-                user,
-                *order_amount_2.balance(),
-            )
-            .unwrap();
+            T::AssetManager::mint_unchecked(&order_book_id_2.base, user, *order_amount_2.balance())
+                .unwrap();
         })
         .peekable();
 
@@ -436,8 +430,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     debug!("Data committed!");
 
     let lifespan = to_fill.saturated_into::<MomentOf<T>>();
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *order_amount.balance())
-        .unwrap();
+    T::AssetManager::mint_unchecked(&order_book_id.base, &author, *order_amount.balance()).unwrap();
 
     let expected_user_orders = sp_std::cmp::min(
         fill_settings.max_orders_per_user - 1,
@@ -539,7 +532,7 @@ pub fn cancel_limit_order<T: Config>(
     // we are going to fill this lifespan, so skipping it for possible future use of the iter
     let mut _lifespans = lifespans.skip_while(|b| *b == to_fill);
 
-    assets::Pallet::<T>::mint_unchecked(
+    T::AssetManager::mint_unchecked(
         &order_book.order_book_id.quote,
         &author,
         *target_price.checked_mul(&order_amount).unwrap().balance(),
@@ -576,8 +569,7 @@ pub fn cancel_limit_order<T: Config>(
         quote: XOR.into(),
     };
 
-    assets::Pallet::<T>::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000))
-        .unwrap();
+    T::AssetManager::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000)).unwrap();
 
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Root.into(),
@@ -596,12 +588,8 @@ pub fn cancel_limit_order<T: Config>(
     // mint other base asset as well
     let mut users = users
         .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id_2.base,
-                user,
-                *order_amount_2.balance(),
-            )
-            .unwrap();
+            T::AssetManager::mint_unchecked(&order_book_id_2.base, user, *order_amount_2.balance())
+                .unwrap();
         })
         .peekable();
     fill_expiration_schedule(
@@ -629,7 +617,13 @@ pub fn cancel_limit_order<T: Config>(
 /// Prepare benchmark for `quote` extrinsic.
 pub fn quote<T: Config>(
     fill_settings: FillSettings<T>,
-) -> (T::DEXId, T::AssetId, T::AssetId, QuoteAmount<Balance>, bool) {
+) -> (
+    T::DEXId,
+    AssetIdOf<T>,
+    AssetIdOf<T>,
+    QuoteAmount<Balance>,
+    bool,
+) {
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
         base: VAL.into(),
@@ -726,7 +720,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         let creator = accounts::bob::<T>();
         frame_system::Pallet::<T>::inc_providers(&creator);
 
-        let nft = assets::Pallet::<T>::register_from(
+        let nft = T::AssetManager::register_from(
             &accounts::bob::<T>(),
             common::AssetSymbol(b"NFT".to_vec()),
             common::AssetName(b"Nft".to_vec()),
@@ -746,8 +740,8 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         trading_pair::Pallet::<T>::register(
             RawOrigin::Signed(creator).into(),
             DEX.into(),
-            id.quote,
-            id.base,
+            id.quote.into(),
+            id.base.into(),
         )
         .unwrap();
         OrderBookPallet::<T>::create_orderbook(
@@ -777,7 +771,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         scatter,
     );
 
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
+    T::AssetManager::mint_unchecked(&order_book_id.base, &author, *amount.balance()).unwrap();
 
     debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book);
