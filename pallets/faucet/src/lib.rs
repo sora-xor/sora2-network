@@ -33,7 +33,8 @@
 #![allow(clippy::all)]
 
 use common::{
-    balance, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL, XOR,
+    balance, AssetIdOf, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL,
+    XOR,
 };
 use frame_support::ensure;
 use hex_literal::hex;
@@ -49,7 +50,6 @@ mod tests;
 pub mod weights;
 pub use weights::WeightInfo;
 
-type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;
 type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
@@ -80,9 +80,7 @@ pub mod pallet {
     use super::*;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + rewards::Config + technical::Config
-    {
+    pub trait Config: frame_system::Config + rewards::Config + technical::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
     }
@@ -113,7 +111,7 @@ pub mod pallet {
         #[pallet::weight((WeightInfoOf::<T>::transfer(), Pays::No))]
         pub fn transfer(
             _origin: OriginFor<T>,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
             target: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
@@ -124,7 +122,10 @@ pub mod pallet {
             let reserves_tech_account_id = Self::reserves_account_id();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-            let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
+            let reserves_amount = <T as technical::Config>::AssetInfoProvider::total_balance(
+                &asset_id,
+                &reserves_account_id,
+            )?;
             ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
             technical::Pallet::<T>::transfer_out(
                 &asset_id,
@@ -211,7 +212,7 @@ pub mod pallet {
         Identity,
         T::AccountId,
         Blake2_256,
-        T::AssetId,
+        AssetIdOf<T>,
         (BlockNumberOf<T>, Balance),
     >;
 
@@ -248,7 +249,7 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn ensure_asset_supported(asset_id: T::AssetId) -> Result<(), Error<T>> {
+    fn ensure_asset_supported(asset_id: AssetIdOf<T>) -> Result<(), Error<T>> {
         let xor = XOR.into();
         let val = VAL.into();
         let pswap = PSWAP.into();
@@ -275,7 +276,7 @@ impl<T: Config> Pallet<T> {
     /// If new transfer is allowed, returns content to put in `Transfers` if the transfer is succeeded
     fn prepare_transfer(
         target: &T::AccountId,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf<T>,
         amount: Balance,
         current_block_number: BlockNumberOf<T>,
     ) -> Result<(BlockNumberOf<T>, Balance), Error<T>> {

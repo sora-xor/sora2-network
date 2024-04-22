@@ -64,6 +64,7 @@ use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
+use frame_system::pallet_prelude::OriginFor;
 use permissions::{Scope, BURN, MINT};
 use sp_core::hash::H512;
 use sp_core::H256;
@@ -1064,6 +1065,15 @@ impl<T: Config>
         Self::gen_asset_id_from_any(value)
     }
 
+    fn update_balance(
+        origin: OriginFor<T>,
+        who: T::AccountId,
+        currency_id: common::CurrencyIdOf<T>,
+        amount: AmountOf<T>,
+    ) -> DispatchResult {
+        Self::update_balance(origin, who, currency_id.into(), amount)
+    }
+
     fn register_from(
         account_id: &T::AccountId,
         symbol: AssetSymbol,
@@ -1135,19 +1145,50 @@ impl<T: Config>
     ) -> DispatchResult {
         Self::mint_to(&asset_id, issuer, to, amount)
     }
+
+    fn mint_unchecked(
+        asset_id: &Self::AssetId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::mint_unchecked(asset_id, to, amount)
+    }
+
     fn burn(
-        origin: frame_system::pallet_prelude::OriginFor<T>,
+        origin: OriginFor<T>,
         asset_id: Self::AssetId,
         amount: Balance,
     ) -> frame_support::dispatch::DispatchResultWithPostInfo {
         Self::burn(origin, asset_id, amount)
     }
     fn mint(
-        origin: frame_system::pallet_prelude::OriginFor<T>,
+        origin: OriginFor<T>,
         asset_id: Self::AssetId,
         to: T::AccountId,
         amount: Balance,
     ) -> frame_support::dispatch::DispatchResultWithPostInfo {
         Self::mint(origin, asset_id, to, amount)
+    }
+
+    fn register(
+        origin: OriginFor<T>,
+        symbol: AssetSymbol,
+        name: AssetName,
+        initial_supply: Balance,
+        is_mintable: bool,
+        is_indivisible: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> frame_support::dispatch::DispatchResultWithPostInfo {
+        Self::register(
+            origin,
+            symbol,
+            name,
+            initial_supply,
+            is_mintable,
+            is_indivisible,
+            opt_content_src,
+            opt_desc,
+        )
     }
 }

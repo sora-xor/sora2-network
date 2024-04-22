@@ -1195,6 +1195,13 @@ pub trait AssetManager<
         opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError>;
 
+    fn update_balance(
+        origin: OriginFor<T>,
+        who: T::AccountId,
+        currency_id: CurrencyIdOf<T>,
+        amount: AmountOf<T>,
+    ) -> DispatchResult;
+
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
     fn register_asset_id(
@@ -1230,6 +1237,12 @@ pub trait AssetManager<
         amount: Balance,
     ) -> DispatchResult;
 
+    fn mint_unchecked(
+        asset_id: &Self::AssetId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult;
+
     fn burn(
         origin: OriginFor<T>,
         asset_id: Self::AssetId,
@@ -1241,6 +1254,17 @@ pub trait AssetManager<
         asset_id: Self::AssetId,
         to: T::AccountId,
         amount: Balance,
+    ) -> DispatchResultWithPostInfo;
+
+    fn register(
+        origin: OriginFor<T>,
+        symbol: AssetSymbol,
+        name: AssetName,
+        initial_supply: Balance,
+        is_mintable: bool,
+        is_indivisible: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo;
 }
 
@@ -1262,6 +1286,15 @@ where
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError> {
+        unimplemented!()
+    }
+
+    fn update_balance(
+        _origin: OriginFor<T>,
+        _who: T::AccountId,
+        _currency_id: CurrencyIdOf<T>,
+        _amount: AmountOf<T>,
+    ) -> DispatchResult {
         unimplemented!()
     }
 
@@ -1310,6 +1343,14 @@ where
         unimplemented!()
     }
 
+    fn mint_unchecked(
+        _asset_id: &Self::AssetId,
+        _to: &T::AccountId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        unimplemented!()
+    }
+
     fn burn(
         _origin: OriginFor<T>,
         _asset_id: Self::AssetId,
@@ -1323,6 +1364,19 @@ where
         _asset_id: Self::AssetId,
         _to: <T as frame_system::Config>::AccountId,
         _amount: Balance,
+    ) -> DispatchResultWithPostInfo {
+        unimplemented!()
+    }
+
+    fn register(
+        _origin: OriginFor<T>,
+        _symbol: AssetSymbol,
+        _name: AssetName,
+        _initial_supply: Balance,
+        _is_mintable: bool,
+        _is_indivisible: bool,
+        _opt_content_src: Option<ContentSource>,
+        _opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo {
         unimplemented!()
     }
