@@ -544,6 +544,16 @@ pub type CurrencyIdOf<T> = <<T as Config>::MultiCurrency as MultiCurrency<
 pub type AmountOf<T> = <<T as Config>::MultiCurrency as MultiCurrencyExtended<
     <T as frame_system::Config>::AccountId,
 >>::Amount;
+
+pub type GetBaseAssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
+    T,
+    AssetSymbol,
+    AssetName,
+    BalancePrecision,
+    ContentSource,
+    Description,
+>>::GetBaseAssetId;
+
 /// Common DEX trait. Used for DEX-related pallets.
 pub trait Config: frame_system::Config + currencies::Config + tokens::Config {
     /// DEX identifier.

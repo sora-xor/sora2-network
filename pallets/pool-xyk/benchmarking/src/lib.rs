@@ -38,7 +38,7 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
+    balance, AssetManager, AssetName, AssetSymbol, DEXId, LiquiditySource,
     TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
@@ -82,7 +82,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     );
 
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
@@ -93,7 +93,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         None,
         None,
     );
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
@@ -108,8 +108,8 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
     T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), DOT.into()).unwrap();
 
-    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
-    Assets::<T>::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    T::AssetManager::mint_to(XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    T::AssetManager::mint_to(DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
 
     Ok(())
 }
@@ -145,8 +145,8 @@ benchmarks! {
             desired_amount_in: balance!(1000),
             min_amount_out: balance!(0),
         };
-        let initial_base_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
-        let initial_target_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
+        let initial_base_balance = <T as Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap();
+        let initial_target_balance = <T as Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap();
     }: {
         pool_xyk::Pallet::<T>::exchange(&caller,
         &caller,
@@ -158,11 +158,11 @@ benchmarks! {
 }
     verify {
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller).unwrap()),
+            Into::<u128>::into(<T as Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap()),
             Into::<u128>::into(initial_base_balance) - balance!(1000)
         );
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller).unwrap()),
+            Into::<u128>::into(<T as Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap()),
             Into::<u128>::into(initial_target_balance) + balance!(997.997997997997997997)
         );
     }
@@ -223,8 +223,8 @@ benchmarks! {
     deposit_liquidity {
         setup_benchmark::<T>()?;
         let caller = alice::<T>();
-        let initial_xor_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
-        let initial_dot_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
+        let initial_xor_balance = <T as Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap();
+        let initial_dot_balance = <T as Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
@@ -238,11 +238,11 @@ benchmarks! {
     verify {
         // adding in proportions same as existing, thus call withdraws full deposit
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
+            Into::<u128>::into(T::AssetInfoProvider::free_balance(&XOR.into(), &caller.clone()).unwrap()),
             Into::<u128>::into(initial_xor_balance) - balance!(2000)
         );
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller.clone()).unwrap()),
+            Into::<u128>::into(<T as Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller.clone()).unwrap()),
             Into::<u128>::into(initial_dot_balance) - balance!(3000)
         );
     }
@@ -250,8 +250,8 @@ benchmarks! {
     withdraw_liquidity {
         setup_benchmark::<T>().unwrap();
         let caller = alice::<T>();
-        let initial_xor_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
-        let initial_dot_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
+        let initial_xor_balance = <T as Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap();
+        let initial_dot_balance = <T as Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
@@ -263,7 +263,7 @@ benchmarks! {
     )
     verify {
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
+            Into::<u128>::into(<T as Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller.clone()).unwrap()),
             Into::<u128>::into(initial_xor_balance) + balance!(816.496580927726032746)
         );
         assert_eq!(
@@ -275,8 +275,8 @@ benchmarks! {
     initialize_pool {
         setup_benchmark_assets_only::<T>()?;
         let caller = alice::<T>();
-        let asset_xor: T::AssetId = XOR.into();
-        let asset_dot: T::AssetId = DOT.into();
+        let asset_xor: AssetIdOf<T> = XOR.into();
+        let asset_dot: AssetIdOf<T> = DOT.into();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
