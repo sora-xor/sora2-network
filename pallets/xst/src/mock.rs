@@ -31,6 +31,7 @@
 use crate::{self as xstpool, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, PriceToolsProvider};
+use common::AssetIdOf;
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     FromGenericPair, PredefinedAssetId, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD,
@@ -197,6 +198,7 @@ impl Config for Runtime {
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl band::Config for Runtime {
@@ -242,6 +244,8 @@ impl currencies::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -388,19 +392,20 @@ impl ceres_liquidity_locker::Config for Runtime {
 
 pub fn set_mock_price<T: Config>(asset_id: &AssetId, price_buy: Balance, price_sell: Balance)
 where
-    T: price_tools::Config + assets::Config<AssetId = common::AssetId32<PredefinedAssetId>>,
+    T: price_tools::Config,
 {
-    let _ = price_tools::Pallet::<T>::register_asset(asset_id);
+    let asset_id_to_register = AssetIdOf::<T>::from(*asset_id);
+    let _ = price_tools::Pallet::<T>::register_asset(&asset_id_to_register);
 
     for _ in 0..31 {
         price_tools::Pallet::<T>::incoming_spot_price(
-            asset_id.into(),
+            &asset_id_to_register,
             price_buy,
             PriceVariant::Buy,
         )
         .expect("Failed to relay spot price");
         price_tools::Pallet::<T>::incoming_spot_price(
-            asset_id.into(),
+            &asset_id_to_register,
             price_sell,
             PriceVariant::Sell,
         )
