@@ -30,28 +30,70 @@
 
 pub mod init {
     use crate::*;
+    use common::PredefinedAssetId::{KEN, KUSD};
     use core::marker::PhantomData;
     use frame_support::log::error;
     use frame_support::pallet_prelude::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
+    use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
     pub struct RegisterTreasuryTechAccount<T>(PhantomData<T>);
 
     /// Registers Kensetsu Treasury technical account
-    impl<T: technical::Config + Config> OnRuntimeUpgrade for RegisterTreasuryTechAccount<T> {
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
+        for RegisterTreasuryTechAccount<T>
+    {
         fn on_runtime_upgrade() -> Weight {
             let tech_account = <T>::TreasuryTechAccount::get();
             match technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account) {
                 Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
                 Err(err) => {
                     error!(
-                        "Failed to register technical account id: {:?}, error: {:?}",
+                        "Failed to register technical account: {:?}, error: {:?}",
                         tech_account, err
                     );
                     <T as frame_system::Config>::DbWeight::get().reads(1)
                 }
             }
+        }
+    }
+
+    pub struct GrantPermissionsTreasuryTechAccount<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
+        for GrantPermissionsTreasuryTechAccount<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+            if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            ) {
+                for token in &[KEN, KUSD] {
+                    let scope = Scope::Limited(common::hash(token));
+                    for permission_id in &[MINT, BURN] {
+                        match permissions::Pallet::<T>::assign_permission(
+                            technical_account_id.clone(),
+                            &technical_account_id,
+                            *permission_id,
+                            scope,
+                        ) {
+                            Ok(()) => {
+                                weight += <T as frame_system::Config>::DbWeight::get().writes(1)
+                            }
+                            Err(err) => {
+                                error!(
+                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                                technical_account_id, err
+                            );
+                                weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            weight
         }
     }
 }
