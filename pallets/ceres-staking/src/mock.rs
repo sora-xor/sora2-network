@@ -130,6 +130,8 @@ impl assets::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {

@@ -89,6 +89,8 @@ impl system::Config for Test {
 impl common::Config for Test {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Test>;
+    type MultiCurrency = currencies::Pallet<Test>;
 }
 
 impl permissions::Config for Test {

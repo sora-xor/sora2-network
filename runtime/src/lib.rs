@@ -935,6 +935,8 @@ impl currencies::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 pub struct GetTotalBalance;
@@ -1731,6 +1733,7 @@ impl xst::Config for Runtime {
     type Symbol = <Runtime as band::Config>::Symbol;
     type TradingPairSourceManager = TradingPair;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
