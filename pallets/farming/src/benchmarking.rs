@@ -39,8 +39,8 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 
 use common::{
-    AssetInfoProvider, AssetManager, AssetManager, AssetName, AssetSymbol,
-    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, XOR,
+    AssetInfoProvider, AssetManager, AssetName, AssetSymbol, TradingPairSourceManager,
+    DEFAULT_BALANCE_PRECISION, XOR,
 };
 
 use crate::utils;

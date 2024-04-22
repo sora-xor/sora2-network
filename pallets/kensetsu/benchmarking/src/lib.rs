@@ -31,11 +31,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
 
-use assets::AssetIdOf;
 use codec::Decode;
 use common::{
-    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
-    KEN, KUSD, XOR,
+    balance, AssetId32, AssetIdOf, Balance, DEXId, PredefinedAssetId, PriceToolsProvider,
+    PriceVariant, DAI, KEN, KUSD, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
@@ -146,7 +145,7 @@ fn initialize_xyk_pool<T: Config>(asset_id: AssetIdOf<T>) {
     assets::Pallet::<T>::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
-        asset_id,
+        asset_id.into(),
         amount.try_into().unwrap(),
     )
     .expect("Shall mint token");
