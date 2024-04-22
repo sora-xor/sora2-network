@@ -33,12 +33,12 @@
 #![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
-use assets::AssetIdOf;
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
     SwapOutcome, TradingPair,
 };
+use common::AssetIdOf;
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -115,7 +115,7 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config: frame_system::Config + technical::Config {
         const MAX_ORDER_LIFESPAN: MomentOf<Self>;
         const MIN_ORDER_LIFESPAN: MomentOf<Self>;
         const MILLISECS_PER_BLOCK: MomentOf<Self>;
@@ -141,19 +141,24 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
-        type Locker: CurrencyLocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
-        type Unlocker: CurrencyUnlocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
+        type Locker: CurrencyLocker<Self::AccountId, AssetIdOf<Self>, Self::DEXId, DispatchError>;
+        type Unlocker: CurrencyUnlocker<
+            Self::AccountId,
+            AssetIdOf<Self>,
+            Self::DEXId,
+            DispatchError,
+        >;
         type Scheduler: AlignmentScheduler
             + ExpirationScheduler<
                 Self::BlockNumber,
-                OrderBookId<Self::AssetId, Self::DEXId>,
+                OrderBookId<AssetIdOf<Self>, Self::DEXId>,
                 Self::DEXId,
                 Self::OrderId,
                 DispatchError,
             >;
         type Delegate: Delegate<
             Self::AccountId,
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::OrderId,
             Self::DEXId,
             MomentOf<Self>,
@@ -166,12 +171,12 @@ pub mod pallet {
         type MaxAlignmentWeightPerBlock: Get<Weight>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
-            Self::AssetId,
+            AssetIdOf<Self>,
             DispatchError,
         >;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             AssetSymbol,
             AssetName,
@@ -179,8 +184,8 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
-        type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type SyntheticInfoProvider: SyntheticInfoProvider<AssetIdOf<Self>>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
         type Time: Time;
         type PermittedCreateOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
@@ -1021,11 +1026,11 @@ pub mod pallet {
     }
 }
 
-impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError> for Pallet<T> {
+impl<T: Config> CurrencyLocker<T::AccountId, AssetIdOf<T>, T::DEXId, DispatchError> for Pallet<T> {
     fn lock_liquidity(
         account: &T::AccountId,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
@@ -1033,11 +1038,13 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError
     }
 }
 
-impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError> for Pallet<T> {
+impl<T: Config> CurrencyUnlocker<T::AccountId, AssetIdOf<T>, T::DEXId, DispatchError>
+    for Pallet<T>
+{
     fn unlock_liquidity(
         account: &T::AccountId,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
@@ -1046,7 +1053,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
 
     fn unlock_liquidity_batch(
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         receivers: &BTreeMap<T::AccountId, OrderVolume>,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
@@ -1062,7 +1069,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchErr
     }
 }
 
-impl<T: Config> Delegate<T::AccountId, T::AssetId, T::OrderId, T::DEXId, MomentOf<T>>
+impl<T: Config> Delegate<T::AccountId, AssetIdOf<T>, T::OrderId, T::DEXId, MomentOf<T>>
     for Pallet<T>
 {
     fn emit_event(
@@ -1383,13 +1390,13 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
     ) -> bool {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return false;
@@ -1404,11 +1411,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1438,12 +1445,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn step_quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<AssetIdOf<T>, Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1586,10 +1593,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         sender: &T::AccountId,
         receiver: &T::AccountId,
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
@@ -1665,21 +1672,21 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn check_rewards(
         _dex_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
+        _input_asset_id: &AssetIdOf<T>,
+        _output_asset_id: &AssetIdOf<T>,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetIdOf<T>, RewardReason)>, Weight), DispatchError> {
         Ok((Vec::new(), Weight::zero())) // no rewards for Order Book
     }
 
     fn quote_without_impact(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
