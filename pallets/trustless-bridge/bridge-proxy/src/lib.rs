@@ -22,8 +22,8 @@ use bridge_types::{
     Address, GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::{prelude::FixedWrapper, Balance};
-use common::{AssetInfoProvider, ReferencePriceProvider};
+use common::{prelude::FixedWrapper, AssetIdOf, Balance, BalanceOf};
+use common::{AssetInfoProvider, AssetManager, ReferencePriceProvider};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
 use frame_support::log;
@@ -77,25 +77,25 @@ pub mod pallet {
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
+    // type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
+        frame_system::Config + pallet_timestamp::Config + technical::Config + permissions::Config
     {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        type EthApp: BridgeApp<Self::AccountId, H160, AssetIdOf<Self>, Balance>;
 
-        type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        type ERC20App: BridgeApp<Self::AccountId, H160, AssetIdOf<Self>, Balance>;
 
-        type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
+        type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, AssetIdOf<Self>, Balance>;
 
-        type LiberlandApp: BridgeApp<Self::AccountId, GenericAccount, Self::AssetId, Balance>;
+        type LiberlandApp: BridgeApp<Self::AccountId, GenericAccount, AssetIdOf<Self>, Balance>;
 
-        type HashiBridge: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        type HashiBridge: BridgeApp<Self::AccountId, H160, AssetIdOf<Self>, Balance>;
 
-        type ReferencePriceProvider: ReferencePriceProvider<Self::AssetId, Balance>;
+        type ReferencePriceProvider: ReferencePriceProvider<AssetIdOf<Self>, Balance>;
 
         type ManagerOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
@@ -114,7 +114,7 @@ pub mod pallet {
         (GenericNetworkId, T::AccountId),
         Blake2_128Concat,
         H256,
-        BridgeRequest<T::AssetId>,
+        BridgeRequest<AssetIdOf<T>>,
         OptionQuery,
     >;
 
@@ -144,7 +144,7 @@ pub mod pallet {
         Blake2_128Concat,
         GenericNetworkId,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf<T>,
         Balance,
         ValueQuery,
     >;
@@ -184,7 +184,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn is_asset_limited)]
     pub(super) type LimitedAssets<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, bool, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, AssetIdOf<T>, bool, ValueQuery>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
@@ -235,7 +235,7 @@ pub mod pallet {
         pub fn burn(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
@@ -275,7 +275,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_limited_asset())]
         pub fn add_limited_asset(
             origin: OriginFor<T>,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             T::ManagerOrigin::ensure_origin(origin)?;
             ensure!(
@@ -290,7 +290,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::remove_limited_asset())]
         pub fn remove_limited_asset(
             origin: OriginFor<T>,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             T::ManagerOrigin::ensure_origin(origin)?;
             ensure!(
@@ -342,7 +342,7 @@ pub mod pallet {
             network_id: GenericNetworkId,
             message_id: H256,
             beneficiary: GenericAccount,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResult {
             let GenericAccount::Sora(beneficiary) = beneficiary else {
@@ -415,7 +415,7 @@ where
     }
 }
 
-impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pallet<T>
+impl<T: Config> MessageStatusNotifier<AssetIdOf<T>, T::AccountId, Balance> for Pallet<T>
 where
     MainnetAccountId: From<T::AccountId>,
 {
@@ -469,7 +469,7 @@ where
         message_id: H256,
         source: GenericAccount,
         dest: T::AccountId,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf<T>,
         amount: Balance,
         start_timepoint: GenericTimepoint,
         status: MessageStatus,
@@ -497,7 +497,7 @@ where
         message_id: H256,
         source: T::AccountId,
         dest: GenericAccount,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf<T>,
         amount: Balance,
         status: MessageStatus,
     ) {
@@ -538,7 +538,7 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
-    type AssetId = <T as assets::Config>::AssetId;
+    type AssetId = AssetIdOf<T>;
     type Balance = Balance;
 
     fn lock_asset(
@@ -552,12 +552,12 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
                 let bridge_account = Self::bridge_tech_account(network_id);
-                technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
+                technical::Pallet::<T>::transfer_in(asset_id, who, &bridge_account, *amount)?;
             }
             bridge_types::types::AssetKind::Sidechain => {
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
-                assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, who, *amount)?;
+                T::AssetManager::burn_from(*asset_id, &bridge_account, who, *amount)?;
             }
         }
         Ok(())
@@ -574,23 +574,23 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
                 let bridge_account = Self::bridge_tech_account(network_id);
-                technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
+                technical::Pallet::<T>::transfer_out(asset_id, &bridge_account, who, *amount)?;
             }
             bridge_types::types::AssetKind::Sidechain => {
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
-                assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, who, *amount)?;
+                T::AssetManager::mint_to(*asset_id, &bridge_account, who, *amount)?;
             }
         }
         Ok(())
     }
 }
 
-impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
+impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
     fn before_asset_lock(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
@@ -647,7 +647,7 @@ impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
     fn before_asset_unlock(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
@@ -672,7 +672,9 @@ impl<T: Config> BridgeAssetLockChecker<T::AssetId, Balance> for Pallet<T> {
     }
 }
 
-impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, AssetIdOf<T>>
+    for Pallet<T>
+{
     type AssetName = common::AssetName;
     type AssetSymbol = common::AssetSymbol;
 
@@ -680,17 +682,17 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
         network_id: GenericNetworkId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
-    ) -> Result<T::AssetId, DispatchError> {
+    ) -> Result<AssetIdOf<T>, DispatchError> {
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
             network_id,
         ))?;
         let owner = Self::bridge_account(network_id)?;
         let asset_id =
-            assets::Pallet::<T>::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
+            T::AssetManager::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
         Ok(asset_id)
     }
 
-    fn manage_asset(network_id: GenericNetworkId, asset_id: T::AssetId) -> DispatchResult {
+    fn manage_asset(network_id: GenericNetworkId, asset_id: AssetIdOf<T>) -> DispatchResult {
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
             network_id,
         ))?;
@@ -715,8 +717,9 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
         Ok(())
     }
 
-    fn get_raw_info(asset_id: T::AssetId) -> bridge_types::types::RawAssetInfo {
-        let (asset_symbol, asset_name, precision, ..) = assets::Pallet::<T>::asset_infos(asset_id);
+    fn get_raw_info(asset_id: AssetIdOf<T>) -> bridge_types::types::RawAssetInfo {
+        let (asset_symbol, asset_name, precision, ..) =
+            <T as technical::Config>::AssetInfoProvider::get_asset_info(&asset_id);
         bridge_types::types::RawAssetInfo {
             name: asset_name.0,
             symbol: asset_symbol.0,
@@ -724,7 +727,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
         }
     }
 
-    fn ensure_asset_exists(asset_id: T::AssetId) -> bool {
-        assets::Pallet::<T>::asset_exists(&asset_id)
+    fn ensure_asset_exists(asset_id: AssetIdOf<T>) -> bool {
+        <T as technical::Config>::AssetInfoProvider::asset_exists(&asset_id)
     }
 }
