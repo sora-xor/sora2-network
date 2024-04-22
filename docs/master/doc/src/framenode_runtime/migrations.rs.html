@@ -53,7 +53,6 @@
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -86,14 +85,13 @@
 
 </span><span class="kw">use crate</span>::<span class="kw-2">*</span>;
 
-<span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// kensetsu
-</span><span class="kw">pub type </span>Migrations =
-    (bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount&lt;Runtime&gt;,);
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))]
+</span><span class="kw">pub type </span>Migrations = ();
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
 </span><span class="kw">pub type </span>Migrations = (
-    bridge_proxy::migrations::generic_account_v2::LiberlandGenericAccount&lt;Runtime&gt;,
     kensetsu::migrations::init::RegisterTreasuryTechAccount&lt;Runtime&gt;,
+    kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount&lt;Runtime&gt;,
 );
 </code></pre></div>
 </section></main></body></html>
