@@ -29,8 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use assets::AssetIdOf;
-use common::{AccountIdOf, FixedInner};
+use common::{AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, FixedInner};
 use frame_support::dispatch::DispatchError;
 use sp_std::cmp::Ordering;
 
@@ -51,20 +50,22 @@ pub fn change_balance_by<T: Config>(
     asset: &AssetIdOf<T>,
     balance_delta: FixedInner,
 ) -> Result<(), Error> {
-    let owner = assets::Pallet::<T>::asset_owner(asset).ok_or(Error::UnknownAsset)?;
+    let owner = <T as Config>::AssetInfoProvider::get_asset_owner(asset)
+        .map_err(|_| Error::UnknownAsset)?;
+
     match balance_delta.cmp(&0) {
         Ordering::Greater => {
             let mint_amount = balance_delta
                 .try_into()
                 .map_err(|_| crate::Error::<T>::ArithmeticError)?;
-            assets::Pallet::<T>::mint_to(asset, &owner, account, mint_amount)?;
+            T::AssetManager::mint_to(*asset, &owner, account, mint_amount)?;
         }
         Ordering::Less => {
             let burn_amount = balance_delta
                 .abs()
                 .try_into()
                 .map_err(|_| crate::Error::<T>::ArithmeticError)?;
-            assets::Pallet::<T>::burn_from(asset, &owner, account, burn_amount)?;
+            T::AssetManager::burn_from(*asset, &owner, account, burn_amount)?;
         }
         Ordering::Equal => (),
     }
