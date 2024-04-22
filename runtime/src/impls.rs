@@ -291,18 +291,10 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
             bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> = msg.try_into()?;
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
-            }
-            #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => {
-                Err(DispatchErrorWithPostInfo {
-                    post_info: Default::default(),
-                    error: DispatchError::Other("Unavailable"),
-                })
             }
         }
     }
@@ -324,7 +316,6 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                 let call: multisig_verifier::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
-            #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
             bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> =
                     match substrate_bridge_app::Call::try_from(msg.clone()) {
@@ -333,8 +324,6 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                     };
                 call.get_dispatch_info()
             }
-            #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => Default::default(),
         }
     }
 }
@@ -475,10 +464,7 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::XCMApp(_) => false,
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
-            #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
             bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
-            #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => false,
         }
     }
 }
