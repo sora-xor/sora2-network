@@ -801,6 +801,7 @@ pub mod pallet {
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
         + permissions::Config
+        + orml_tokens::Config
     {
         /// The minimum amount of XOR to deposit as liquidity
         const MIN_XOR: Balance;

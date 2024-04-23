@@ -1,4 +1,7 @@
-use common::{generate_storage_instance, AssetIdOf, AssetInfoProvider};
+use common::{
+    generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
+    ContentSource, CurrencyIdOf, Description,
+};
 use frame_support::dispatch::Weight;
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
 use frame_support::traits::Get;
@@ -13,14 +16,24 @@ generate_storage_instance!(PoolXYK, MarkerTokensIndex);
 type OldMarkerTokensIndex<AssetId> =
     StorageValue<MarkerTokensIndexOldInstance, BTreeSet<AssetId>, ValueQuery>;
 
-pub fn migrate<T: Config>() -> Weight {
+pub fn migrate<T: Config>() -> Weight
+where
+    <<T as common::Config>::AssetManager as AssetManager<
+        T,
+        AssetSymbol,
+        AssetName,
+        u8,
+        ContentSource,
+        Description,
+    >>::AssetId: PartialEq<<T as orml_tokens::Config>::CurrencyId>,
+{
     if OldMarkerTokensIndex::<AssetIdOf<T>>::exists() {
         OldMarkerTokensIndex::<AssetIdOf<T>>::kill();
     }
     let mut acc_asset_currs = Vec::new();
     Properties::<T>::translate::<(T::AccountId, T::AccountId, AssetIdOf<T>), _>(
         |_ba, _ta, (reserves_acc, fee_acc, marker_asset)| {
-            let currency: <T as orml_tokens::Config>::CurrencyId = marker_asset.clone().into();
+            let currency: CurrencyIdOf<T> = CurrencyIdOf::<T>::from(marker_asset.clone());
             acc_asset_currs.push((reserves_acc.clone(), marker_asset, currency));
             Some((reserves_acc, fee_acc))
         },

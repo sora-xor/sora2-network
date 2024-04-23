@@ -557,7 +557,7 @@ pub type GetBaseAssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
 pub type BalanceOf<T> = <<T as Config>::MultiCurrency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
 /// Common DEX trait. Used for DEX-related pallets.
-pub trait Config: frame_system::Config + currencies::Config + tokens::Config {
+pub trait Config: frame_system::Config {
     /// DEX identifier.
     type DEXId: Parameter
         + MaybeSerializeDeserialize
@@ -1168,24 +1168,10 @@ pub trait AssetManager<
         + From<H256>
         + Into<H256>
         + Into<CurrencyIdOf<T>>
-        + Into<<T as tokens::Config>::CurrencyId>
         + MaxEncodedLen;
 
     type GetBaseAssetId: Get<Self::AssetId>;
 
-    //  /// DEX assets (currency) identifier.
-    // type AssetId: Parameter
-    //     + Member
-    //     + Copy
-    //     + MaybeSerializeDeserialize
-    //     + Ord
-    //     + Default
-    //     + Into<CurrencyIdOf<Self>>
-    //     + From<common::AssetId32<common::PredefinedAssetId>>
-    //     + From<H256>
-    //     + Into<H256>
-    //     + Into<<Self as tokens::Config>::CurrencyId>
-    //     + MaxEncodedLen;
     fn register_from(
         account_id: &T::AccountId,
         symbol: AssetSymbol,
@@ -1272,8 +1258,6 @@ pub trait AssetManager<
 
 impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
     AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> for ()
-where
-    <T as tokens::Config>::CurrencyId: From<AssetId32<PredefinedAssetId>>,
 {
     type AssetId = AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = ();
