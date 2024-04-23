@@ -358,7 +358,7 @@ pub mod pallet {
                 RawOrigin::Signed(who) => {
                     let fee = Self::fee();
                     technical::Pallet::<T>::transfer_in(
-                        &T::FeeCurrency::get(),
+                        &T::FeeCurrency::get().into(),
                         who,
                         &T::FeeTechAccountId::get(),
                         fee,

@@ -396,7 +396,7 @@ pub mod pallet {
             let reward_amount = reward_fraction.mul_ceil(amount);
 
             if let Err(err) = technical::Pallet::<T>::transfer_out(
-                &T::FeeAssetId::get(),
+                &T::FeeAssetId::get().into(),
                 &T::FeeTechAccountId::get(),
                 relayer,
                 reward_amount,
@@ -407,7 +407,7 @@ pub mod pallet {
 
             if let Some(treasure_amount) = amount.checked_sub(reward_amount) {
                 if let Err(err) = technical::Pallet::<T>::transfer(
-                    &T::FeeAssetId::get(),
+                    &T::FeeAssetId::get().into(),
                     &T::FeeTechAccountId::get(),
                     &T::TreasuryTechAccountId::get(),
                     treasure_amount,
