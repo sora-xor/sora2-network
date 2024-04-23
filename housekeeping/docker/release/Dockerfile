@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -14,6 +14,6 @@ RUN mkdir /chain && \
     chown 10000:10000 /chain
 USER substrate
 
-COPY ./framenode /usr/local/bin/framenode
+COPY --chown=substrate:substrate ./framenode /usr/local/bin/framenode
 
 ENTRYPOINT ["framenode"]
