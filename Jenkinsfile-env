@@ -1,7 +1,7 @@
 @Library('jenkins-library')
 
 def pipeline = new org.docker.AppPipeline(steps: this,
-    dockerImageName:              'sora2/env',
+    dockerImageName:              'sora/env',
     dockerRegistryCred:           'bot-sora2-rw',
     dockerFileName:               "housekeeping/docker/env/Dockerfile",
     triggerCommonBuildExpression: (env.BRANCH_NAME in ['master']),
