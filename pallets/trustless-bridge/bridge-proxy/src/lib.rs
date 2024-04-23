@@ -74,10 +74,6 @@ pub mod pallet {
         weights::Weight,
     };
     use frame_system::pallet_prelude::{BlockNumberFor, *};
-    use traits::MultiCurrency;
-
-    type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    // type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
     #[pallet::config]
     pub trait Config:

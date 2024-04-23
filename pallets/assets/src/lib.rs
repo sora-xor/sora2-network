@@ -1135,7 +1135,7 @@ impl<T: Config>
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::transfer_from(&asset_id, from, to, amount)
+        Self::transfer_from(asset_id, from, to, amount)
     }
 
     fn mint_to(
