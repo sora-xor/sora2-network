@@ -14,6 +14,6 @@ RUN mkdir /chain && \
     chown 10000:10000 /chain
 USER substrate
 
-COPY --chown=substrate:substrate ./framenode /usr/local/bin/framenode
+COPY --chmod=0755 --chown=substrate:substrate ./framenode /usr/local/bin/framenode
 
 ENTRYPOINT ["framenode"]
