@@ -16,7 +16,6 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use assets::Pallet as Assets;
 use pallet_timestamp::Pallet as Timestamp;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;

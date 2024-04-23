@@ -13,7 +13,7 @@ mod tests;
 mod benchmarking;
 
 use codec::{Decode, Encode};
-use common::{AssetManager, TradingPairSourceManager};
+use common::TradingPairSourceManager;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
