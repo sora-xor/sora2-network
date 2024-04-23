@@ -1,5 +1,4 @@
 use crate::pallet;
-use crate::Config;
 use crate::Pallet;
 use common::balance;
 use common::FromGenericPair;
