@@ -59,6 +59,7 @@ use common::{
     ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter,
     DEFAULT_BALANCE_PRECISION,
 };
+use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
@@ -1158,7 +1159,7 @@ impl<T: Config>
         origin: OriginFor<T>,
         asset_id: Self::AssetId,
         amount: Balance,
-    ) -> frame_support::dispatch::DispatchResultWithPostInfo {
+    ) -> DispatchResultWithPostInfo {
         Self::burn(origin, asset_id, amount)
     }
     fn mint(
@@ -1166,7 +1167,7 @@ impl<T: Config>
         asset_id: Self::AssetId,
         to: T::AccountId,
         amount: Balance,
-    ) -> frame_support::dispatch::DispatchResultWithPostInfo {
+    ) -> DispatchResultWithPostInfo {
         Self::mint(origin, asset_id, to, amount)
     }
 
@@ -1179,7 +1180,7 @@ impl<T: Config>
         is_indivisible: bool,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
-    ) -> frame_support::dispatch::DispatchResultWithPostInfo {
+    ) -> DispatchResultWithPostInfo {
         Self::register(
             origin,
             symbol,

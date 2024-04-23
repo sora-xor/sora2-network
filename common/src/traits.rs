@@ -1172,6 +1172,7 @@ pub trait AssetManager<
 
     type GetBaseAssetId: Get<Self::AssetId>;
 
+    #[allow(clippy::too_many_arguments)]
     fn register_from(
         account_id: &T::AccountId,
         symbol: AssetSymbol,
@@ -1192,6 +1193,7 @@ pub trait AssetManager<
 
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
+    #[allow(clippy::too_many_arguments)]
     fn register_asset_id(
         account_id: T::AccountId,
         asset_id: Self::AssetId,
@@ -1244,6 +1246,7 @@ pub trait AssetManager<
         amount: Balance,
     ) -> DispatchResultWithPostInfo;
 
+    #[allow(clippy::too_many_arguments)]
     fn register(
         origin: OriginFor<T>,
         symbol: AssetSymbol,
