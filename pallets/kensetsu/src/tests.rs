@@ -175,7 +175,7 @@ fn test_create_cdp_sunny_day() {
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
                 debt_asset_id: KUSD,
-                cdp_type: CdpType::V2,
+                cdp_type: CdpType::Type2,
             }
             .into(),
         );
@@ -800,6 +800,65 @@ fn borrow_with_ken_incentivization() {
         assert_eq!(
             total_kusd_supply,
             initial_total_kusd_supply + to_borrow + borrow_tax
+        );
+        let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
+        let demeter_farming_amount = remint_percent * ken_buyback_amount;
+        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+    });
+}
+
+/// @given: XOR is set as collateral and collateral amount is 100 XOR and borrow tax is 1%
+/// @when: user borrows as max KUSD against XOR as possible
+/// @then: debt is 100 KUSD,
+#[test]
+fn borrow_max_with_ken_incentivization() {
+    new_test_ext().execute_with(|| {
+        set_borrow_tax(Percent::from_percent(1));
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(100),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+        let to_borrow_min = balance!(99);
+        let to_borrow_max = balance!(100);
+        // user receives
+        let actual_loan = 99009900990099009900;
+        let borrow_tax = 990099009900990100;
+        // user debt + tax equals the value of collateral
+        assert_eq!(actual_loan + borrow_tax, balance!(100));
+        let initial_total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(initial_total_kusd_supply, balance!(0));
+        let ken_buyback_amount = borrow_tax;
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(KEN, ken_buyback_amount);
+
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            to_borrow_min,
+            to_borrow_max
+        ));
+
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                debt_asset_id: KUSD,
+                amount: actual_loan + borrow_tax,
+            }
+            .into(),
+        );
+
+        let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
+        assert_eq!(collateral_info.kusd_supply, actual_loan + borrow_tax);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, actual_loan + borrow_tax);
+        assert_balance(&alice_account_id(), &KUSD, actual_loan);
+        let total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(
+            total_kusd_supply,
+            initial_total_kusd_supply + actual_loan + borrow_tax
         );
         let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let demeter_farming_amount = remint_percent * ken_buyback_amount;
@@ -1525,7 +1584,7 @@ fn test_accrue_no_debt() {
 
         assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
-            KensetsuError::NoDebt
+            KensetsuError::UncollectedStabilityFeeTooSmall
         );
     });
 }
@@ -1534,13 +1593,13 @@ fn test_accrue_no_debt() {
 #[test]
 fn test_accrue_wrong_time() {
     new_test_ext().execute_with(|| {
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),
             balance!(0),
         );
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
 
@@ -1608,7 +1667,7 @@ fn test_accrue_profit() {
 
 /// Given: CDP with debt, was updated this time, protocol has no bad debt
 /// When: accrue is called again with the same time
-/// Then: success, no state changes
+/// Then: failed, minimal threshold is not satisfied.
 #[test]
 fn test_accrue_profit_same_time() {
     new_test_ext().execute_with(|| {
@@ -1621,23 +1680,15 @@ fn test_accrue_profit_same_time() {
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
-        let initial_kusd_supply = get_total_supply(&KUSD);
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
 
-        // double call should not fail
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
-        // interest is 10*10%*1 = 1,
-        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
-        let interest = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
-        assert_eq!(collateral_info.kusd_supply, debt + interest);
-        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
-        assert_eq!(cdp.debt, debt + interest);
-        let total_kusd_supply = get_total_supply(&KUSD);
-        assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, interest);
+        // double call should fail
+        assert_noop!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuError::UncollectedStabilityFeeTooSmall
+        );
     });
 }
 

@@ -34,7 +34,9 @@ xst = { path = "../xst", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
-framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = [
+    "std",
+] }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -63,3 +65,5 @@ private-net = [
     "framenode-runtime/private-net",
     "order-book/private-net",
 ]
+
+try-runtime = ["frame-support/try-runtime"]

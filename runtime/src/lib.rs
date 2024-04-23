@@ -165,7 +165,7 @@ pub use {
     order_book, trading_pair, xst,
 };
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 pub use kensetsu;
 
 /// An index to a block.
@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 76,
+    spec_version: 79,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 76,
+    transaction_version: 79,
     state_version: 0,
 };
 
@@ -1945,7 +1945,7 @@ impl hermes_governance_platform::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 parameter_types! {
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
@@ -1964,9 +1964,8 @@ parameter_types! {
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
-    // 1 day = 86_400_000
-    // TODO set 86_400_000
-    pub const AccrueInterestPeriod: Moment = 300_000;
+    // 1 Kensetsu dollar of uncollected stability fee triggers accrue
+    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1977,7 +1976,7 @@ parameter_types! {
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
 }
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
@@ -1988,9 +1987,9 @@ impl kensetsu::Config for Runtime {
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
-    type MaxCdpsPerOwner = ConstU32<100>;
+    type MaxCdpsPerOwner = ConstU32<10000>;
     type MaxRiskManagementTeamSize = ConstU32<100>;
-    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
@@ -2232,10 +2231,7 @@ impl bridge_proxy::Config for Runtime {
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
 
-    #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
     type LiberlandApp = SubstrateBridgeApp;
-    #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
-    type LiberlandApp = ();
 
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
@@ -2360,7 +2356,6 @@ impl parachain_bridge_app::Config for Runtime {
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
 impl substrate_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
@@ -2478,7 +2473,7 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -2515,7 +2510,6 @@ construct_runtime! {
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
-        #[cfg(feature = "ready-to-test")] // Generic Substrate Bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
@@ -3241,7 +3235,7 @@ impl_runtime_apis! {
             use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
 
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3259,7 +3253,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
             list_benchmark!(list, extra, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             list_benchmark!(list, extra, kensetsu, KensetsuBench::<Runtime>);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3308,7 +3302,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
-            #[cfg(feature = "wip")] // Liberland bridge
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
@@ -3323,7 +3316,7 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3332,7 +3325,7 @@ impl_runtime_apis! {
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
             use order_book_benchmarking::Pallet as OrderBookBench;
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             impl kensetsu_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
@@ -3365,7 +3358,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             add_benchmark!(params, batches, kensetsu, KensetsuBench::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3414,7 +3407,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
-            #[cfg(feature = "wip")] // Liberland bridge
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
