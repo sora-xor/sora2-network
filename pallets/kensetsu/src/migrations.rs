@@ -30,7 +30,7 @@
 
 pub mod init {
     use crate::*;
-    use common::PredefinedAssetId::{KEN, KUSD};
+    use common::{KEN, KUSD};
     use core::marker::PhantomData;
     use frame_support::log::error;
     use frame_support::pallet_prelude::Weight;
