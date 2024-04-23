@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-    ca-certificates nano curl && \
+    ca-certificates nano curl libc6 libstdc++6 && \
     apt-get autoremove -y && \
     apt-get clean && \
     find /var/lib/apt/lists/ -type f -not -name lock -delete
