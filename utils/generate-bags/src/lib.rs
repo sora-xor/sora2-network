@@ -89,7 +89,7 @@ fn existential_weight<T: pallet_staking::Config>(
 /// pretty naive.
 fn path_to_header_file() -> Option<PathBuf> {
     let output = Command::new("git")
-        .args(&["rev-parse", "--show-toplevel"])
+        .args(["rev-parse", "--show-toplevel"])
         .output()
         .expect("Failed to execute git command");
 
