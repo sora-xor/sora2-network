@@ -11575,14 +11575,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-gen"
-version = "0.1.0"
-dependencies = [
- "framenode-runtime",
- "sp-core",
-]
-
-[[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"

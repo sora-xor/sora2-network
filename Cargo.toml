@@ -287,7 +287,6 @@ members = [
     "utils/parse",
     "utils/generate-bags",
     "utils/remote-ext",
-    "substrate-gen",
 ]
 
 resolver = "2"
