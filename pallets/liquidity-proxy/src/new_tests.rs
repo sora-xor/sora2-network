@@ -67,7 +67,7 @@ fn bob<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
 #[test]
 fn check_alt() {
     ext().execute_with(|| {
-        let pair = AssetPairInput::new(DEX.into(), VAL, XOR, balance!(11.1));
+        let pair = AssetPairInput::new(DEX.into(), VAL, XOR, balance!(11.1), None);
         assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
             bob::<Runtime>(),
             vec![pair]
@@ -151,9 +151,8 @@ fn check_small_reserves() {
         )
         .unwrap();
 
-        let pair = AssetPairInput::new(DEX.into(), asset, XOR, balance!(10));
+        let pair = AssetPairInput::new(DEX.into(), asset, XOR, balance!(10), Some(balance!(100)));
 
-        // todo customize reserves to 100
         assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
             bob::<Runtime>(),
             vec![pair]
