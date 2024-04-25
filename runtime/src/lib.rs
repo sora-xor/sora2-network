@@ -2118,6 +2118,7 @@ impl bridge_channel::inbound::Config for Runtime {
     type MessageStatusNotifier = BridgeProxy;
     type OutboundChannel = BridgeOutboundChannel;
     type EVMFeeHandler = EVMFungibleApp;
+    type EVMPriorityFee = EVMBridgePriorityFee;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2145,6 +2146,7 @@ parameter_types! {
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
+    pub EVMBridgePriorityFee: u128 = 5_000_000_000; // 5 Gwei
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2166,6 +2168,7 @@ impl evm_fungible_app::Config for Runtime {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = BaseFeeLifetime;
+    type PriorityFee = EVMBridgePriorityFee;
     type WeightInfo = ();
 }
 
@@ -3241,17 +3244,11 @@ impl_runtime_apis! {
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
-            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, eth_app, EthApp);
-            #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, erc20_app, ERC20App);
-            #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, migration_app, MigrationApp);
+            list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
@@ -3346,17 +3343,11 @@ impl_runtime_apis! {
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
-            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, eth_app, EthApp);
-            #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, erc20_app, ERC20App);
-            #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, migration_app, MigrationApp);
+            add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params

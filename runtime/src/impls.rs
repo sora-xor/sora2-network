@@ -335,7 +335,6 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
                     };
                 call.get_dispatch_info()
             }
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => Default::default(),
             #[cfg(feature = "wip")] // EVM bridge
             bridge_types::substrate::BridgeCall::FAApp(msg) => {
                 let call: evm_fungible_app::Call<crate::Runtime> = msg.clone().into();
@@ -484,7 +483,6 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::DataSigner(_) => true,
             bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
             bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
-            bridge_types::substrate::BridgeCall::SubstrateApp(_) => false,
             #[cfg(feature = "wip")] // EVM bridge
             bridge_types::substrate::BridgeCall::FAApp(_) => true,
             #[cfg(not(feature = "wip"))] // EVM bridge
