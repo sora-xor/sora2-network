@@ -210,7 +210,6 @@ pub fn predev_net_coded() -> ChainSpec {
         ChainType::Development,
         move || {
             testnet_genesis(
-                true,
                 hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -300,7 +299,6 @@ pub fn dev_net_coded() -> ChainSpec {
         ChainType::Development,
         move || {
             testnet_genesis(
-                true,
                 hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -411,7 +409,6 @@ pub fn bridge_dev_net_coded() -> ChainSpec {
         ChainType::Live,
         move || {
             testnet_genesis(
-                true,
                 hex!("f6d0e31012ebeef4b9cc4cddd0593a8579d226dc17ce725139225e81683f0143").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -512,7 +509,6 @@ pub fn bridge_staging_net_coded() -> ChainSpec {
                 bridge_contract_address: Default::default(),
             };
             testnet_genesis(
-                false,
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -652,7 +648,6 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                 }
             };
             testnet_genesis(
-                false,
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -806,7 +801,6 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
         ChainType::Development,
         move || {
             testnet_genesis(
-                false,
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 vec![
                     authority_keys_from_seed("Alice"),
@@ -887,7 +881,6 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
 // Some variables are only changed if faucet is enabled
 #[cfg(feature = "private-net")]
 fn testnet_genesis(
-    _dev: bool,
     root_key: AccountId,
     initial_authorities: Vec<(
         AccountId,
