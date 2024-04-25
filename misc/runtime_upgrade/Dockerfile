@@ -5,7 +5,7 @@ WORKDIR /app
 RUN adduser -DH appuser && \
     chown -R appuser:appuser /app
 
-COPY ./misc/runtime_upgrade/main.py \
+COPY --chmod=0500 ./misc/runtime_upgrade/main.py \
     ./framenode_runtime.compact.compressed.wasm \
     ./misc/runtime_upgrade/requirements.txt /app/
 
