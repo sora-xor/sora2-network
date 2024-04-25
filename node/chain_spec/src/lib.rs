@@ -1127,7 +1127,6 @@ fn testnet_genesis(
     )
     .collect::<Vec<_>>();
 
-    #[cfg(not(feature = "include-real-files"))]
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
         val_owners: vec![
@@ -1158,15 +1157,6 @@ fn testnet_genesis(
             hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
             balance!(333),
         )],
-        umi_nfts: vec![PSWAP.into(), VAL.into()],
-    };
-
-    #[cfg(feature = "include-real-files")]
-    let rewards_config = RewardsConfig {
-        reserves_account_id: rewards_tech_account_id,
-        val_owners: our_include!("bytes/rewards_val_owners.in"),
-        pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
-        pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
         umi_nfts: vec![PSWAP.into(), VAL.into()],
     };
 
@@ -1229,13 +1219,10 @@ fn testnet_genesis(
     };
 
     let iroha_migration_config = IrohaMigrationConfig {
-        iroha_accounts: if dev {
-            our_include!("bytes/iroha_migration_accounts_dev.in")
-        } else {
-            our_include!("bytes/iroha_migration_accounts_staging.in")
-        },
+        iroha_accounts: Default::default(),
         account_id: Some(iroha_migration_account_id.clone()),
     };
+
     let initial_collateral_assets = vec![
         DAI.into(),
         VAL.into(),
