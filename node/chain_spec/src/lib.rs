@@ -887,7 +887,7 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
 // Some variables are only changed if faucet is enabled
 #[cfg(feature = "private-net")]
 fn testnet_genesis(
-    dev: bool,
+    _dev: bool,
     root_key: AccountId,
     initial_authorities: Vec<(
         AccountId,
