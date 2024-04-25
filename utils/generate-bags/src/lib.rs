@@ -58,6 +58,7 @@ use frame_election_provider_support::VoteWeight;
 use frame_support::traits::Get;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Compute the existential weight for the specified configuration.
 ///
@@ -87,12 +88,20 @@ fn existential_weight<T: pallet_staking::Config>(
 /// Just searches the git working directory root for files matching certain patterns; it's
 /// pretty naive.
 fn path_to_header_file() -> Option<PathBuf> {
-    let repo = git2::Repository::open_from_env().ok()?;
-    let workdir = repo.workdir()?;
-    for file_name in &["HEADER-APACHE2", "HEADER-GPL3", "HEADER", "file_header.txt"] {
-        let path = workdir.join(file_name);
-        if path.exists() {
-            return Some(path);
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .expect("Failed to execute git command");
+
+    if output.status.success() {
+        let stdout = std::str::from_utf8(&output.stdout).expect("Invalid UTF-8");
+        let workdir = Path::new(stdout.trim());
+
+        for file_name in &["HEADER-APACHE2", "HEADER-GPL3", "HEADER", "file_header.txt"] {
+            let path = workdir.join(file_name);
+            if path.exists() {
+                return Some(path);
+            }
         }
     }
     None
