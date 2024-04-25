@@ -185,12 +185,20 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 pub struct MockOracle;
 
 impl DataFeed<SymbolName, Rate, u64> for MockOracle {
-    fn quote(_symbol: &SymbolName) -> Result<Option<Rate>, DispatchError> {
-        todo!()
+    fn quote(symbol: &SymbolName) -> Result<Option<Rate>, DispatchError> {
+        if *symbol == SymbolName::xau() {
+            Ok(Some(Rate {
+                value: balance!(2315),
+                last_updated: 0,
+                dynamic_fee: Default::default(),
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     fn list_enabled_symbols() -> Result<Vec<(SymbolName, u64)>, DispatchError> {
-        todo!()
+        Ok(vec![(SymbolName::xau(), 0)])
     }
 
     fn quote_unchecked(_symbol: &SymbolName) -> Option<Rate> {

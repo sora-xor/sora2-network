@@ -1491,11 +1491,6 @@ pub mod pallet {
                 .debt
                 .checked_add(stability_fee)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            Self::increase_stablecoin_supply(
-                &cdp.collateral_asset_id,
-                &cdp.stablecoin_asset_id,
-                stability_fee,
-            )?;
             cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 cdp.debt = new_debt;
@@ -1527,6 +1522,11 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
+            Self::increase_stablecoin_supply(
+                &cdp.collateral_asset_id,
+                &cdp.stablecoin_asset_id,
+                stability_fee,
+            )?;
             Self::mint_treasury(&cdp.stablecoin_asset_id, stability_fee)?;
 
             Ok(cdp)

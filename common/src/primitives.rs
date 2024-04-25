@@ -651,8 +651,14 @@ impl SymbolName {
         Self::from_str("USD").expect("`USD` is a valid symbol name")
     }
 
+    /// MakeDAO DAI stablecoin
     pub fn dai() -> Self {
         Self::from_str("DAI").expect("`DAI` is a valid symbol name")
+    }
+
+    /// Troy ounce of gold
+    pub fn xau() -> Self {
+        Self::from_str("XAU").expect("`XAU` is a valid symbol name")
     }
 }
 
