@@ -100,7 +100,7 @@ where
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         frame_support::ensure!(
-            <T as Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into()).is_err(),
+            <T as technical::Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into()).is_err(),
             "TBCD asset already registered"
         );
         frame_support::ensure!(
@@ -116,7 +116,7 @@ where
 
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-        <T as Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into())?;
+        <T as technical::Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into())?;
         frame_support::ensure!(
             crate::EnabledTargets::<T>::get().contains(&TBCD.into()),
             "TBCD pool is not initialized"

@@ -33,8 +33,8 @@
 
 use codec::Decode;
 use common::{
-    balance, AssetId32, AssetIdOf, Balance, DEXId, PredefinedAssetId, PriceToolsProvider,
-    PriceVariant, DAI, KEN, KUSD, XOR,
+    balance, AssetId32, AssetIdOf, AssetManager, Balance, DEXId, PredefinedAssetId,
+    PriceToolsProvider, PriceVariant, DAI, KEN, KUSD, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
@@ -102,7 +102,7 @@ fn create_cdp_with_xor<T: Config>() -> CdpId {
 
 /// Mints XOR and deposited as collateral to CDP
 fn deposit_xor_collateral<T: Config>(cdp_id: CdpId, amount: Balance) {
-    assets::Pallet::<T>::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
         XOR.into(),
@@ -135,14 +135,14 @@ fn make_cdps_unsafe<T: Config>() {
 /// Initializes and adds liquidity to XYK pool XOR/asset_id.
 fn initialize_xyk_pool<T: Config>(asset_id: AssetIdOf<T>) {
     let amount = balance!(1000000);
-    assets::Pallet::<T>::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
         XOR.into(),
         amount.try_into().unwrap(),
     )
     .expect("Shall mint XOR");
-    assets::Pallet::<T>::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
         asset_id.into(),
@@ -210,7 +210,7 @@ fn initialize_liquidity_sources<T: Config>() {
 
 benchmarks! {
     where_clause {
-        where T::AssetId: From<AssetId32<PredefinedAssetId>>
+        where AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>
     }
 
     create_cdp {
@@ -224,7 +224,7 @@ benchmarks! {
         ).expect("Shall update hard cap");
         let collateral = balance!(10);
         let debt = balance!(1);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::<T>(),
             XOR.into(),
@@ -252,7 +252,7 @@ benchmarks! {
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
         let amount = balance!(10);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::<T>(),
             XOR.into(),
@@ -421,7 +421,7 @@ benchmarks! {
             &T::TreasuryTechAccount::get(),
         ).expect("Shall resolve tech account id");
         let amount = balance!(10);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             technical_account_id,
             KUSD.into(),
@@ -437,7 +437,7 @@ benchmarks! {
 
     donate {
         let amount = balance!(10);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::<T>(),
             KUSD.into(),
