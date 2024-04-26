@@ -56,7 +56,6 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "common/std",
-    "assets/std",
     "technical/std",
 ]
 
