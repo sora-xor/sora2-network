@@ -1,10 +1,10 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-    ca-certificates nano curl && \
+    ca-certificates nano curl libc6 libstdc++6 && \
     apt-get autoremove -y && \
     apt-get clean && \
     find /var/lib/apt/lists/ -type f -not -name lock -delete
@@ -14,6 +14,6 @@ RUN mkdir /chain && \
     chown 10000:10000 /chain
 USER substrate
 
-COPY ./framenode /usr/local/bin/framenode
+COPY --chown=substrate:substrate ./framenode /usr/local/bin/framenode
 
 ENTRYPOINT ["framenode"]
