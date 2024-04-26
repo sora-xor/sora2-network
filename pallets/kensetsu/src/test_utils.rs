@@ -31,7 +31,7 @@
 use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
-use common::{AccountIdOf, AssetInfoProvider, Balance, KUSD, XOR};
+use common::{AccountIdOf, AssetInfoProvider, Balance, DAI, KGOLD, KUSD, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
@@ -124,18 +124,34 @@ pub fn set_up_risk_manager() {
 pub fn set_kensetsu_dollar_stablecoin() {
     KensetsuPallet::add_stablecoin(
         &KUSD,
-        StablecoinParameters {
+        StablecoinParameters::<AssetId> {
             hard_cap: Balance::MAX,
-            peg_symbol: SymbolName::dai(),
+            peg_asset: PegAsset::SoraAssetId(DAI),
             minimal_stability_fee_accrue: balance!(1),
         },
     )
     .expect("Must add Kensetsu Dollar pegged to DAI")
 }
 
-/// Sets XOR asset id as collateral with default parameters
-/// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
-pub fn set_xor_as_collateral_type(
+/// Configures Kensetsu Gold stablecoin pegged to XAU.
+pub fn set_kensetsu_gold_stablecoin() {
+    KensetsuPallet::add_stablecoin(
+        &KGOLD,
+        StablecoinParameters::<AssetId> {
+            hard_cap: Balance::MAX,
+            peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
+            minimal_stability_fee_accrue: balance!(0.01),
+        },
+    )
+    .expect("Must add Kensetsu Gold pegged to XAU")
+}
+
+/// Configures Kensetsu with basic parameters.
+///
+/// Sets up risk manager, sets XOR asset id as collateral with default parameters and sets Kensetsu
+/// dollar as stablecoin asset. As if Risk Manager added and called `set_stablecoin` and
+/// `update_collateral_risk_parameters(XOR, some_info)`.
+pub fn configure_kensetsu_dollar_for_xor(
     hard_cap: Balance,
     liquidation_ratio: Perbill,
     stability_fee_rate: FixedU128,
@@ -178,7 +194,7 @@ pub fn create_cdp_for_xor(
     collateral: Balance,
     debt: Balance,
 ) -> CdpId {
-    set_balance(alice_account_id(), collateral);
+    add_balance(alice_account_id(), collateral, XOR);
     assert_ok!(KensetsuPallet::create_cdp(
         owner, XOR, collateral, KUSD, debt, debt
     ));
@@ -191,7 +207,7 @@ pub fn deposit_xor_to_cdp(
     cdp_id: CdpId,
     collateral_amount: Balance,
 ) {
-    set_balance(alice_account_id(), collateral_amount);
+    add_balance(alice_account_id(), collateral_amount, XOR);
     assert_ok!(KensetsuPallet::deposit_collateral(
         owner,
         cdp_id,
@@ -199,12 +215,12 @@ pub fn deposit_xor_to_cdp(
     ));
 }
 
-/// Updates account balance
-pub fn set_balance(account: AccountId, balance: Balance) {
+/// Adds to account balance
+pub fn add_balance(account: AccountId, balance: Balance, asset_id: AssetId) {
     assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
         RuntimeOrigin::root(),
         account,
-        XOR,
+        asset_id,
         balance.try_into().unwrap()
     ));
 }

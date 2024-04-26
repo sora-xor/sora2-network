@@ -34,14 +34,14 @@
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{
-    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant,
-    SymbolName, DAI, KEN, KUSD, XOR,
+    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
+    KEN, KUSD, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use kensetsu::{
-    BorrowTax, CdpId, CollateralInfos, CollateralRiskParameters, Event, StablecoinInfos,
+    BorrowTax, CdpId, CollateralInfos, CollateralRiskParameters, Event, PegAsset, StablecoinInfos,
     StablecoinParameters,
 };
 use price_tools::AVG_BLOCK_SPAN;
@@ -80,7 +80,7 @@ fn set_xor_as_collateral_type<T: Config>() {
             bad_debt: 0,
             stablecoin_parameters: StablecoinParameters {
                 hard_cap: Balance::MAX,
-                peg_symbol: SymbolName::dai(),
+                peg_asset: PegAsset::SoraAssetId(DAI.into()),
                 minimal_stability_fee_accrue: balance!(0),
             },
         }),
@@ -264,7 +264,7 @@ benchmarks! {
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
     }: {
-        kensetsu::Pallet::<T>::close_cdp(RawOrigin::Signed(caller::<T>()).into(), cdp_id).unwrap();
+        kensetsu::Pallet::<T>::close_cdp(RawOrigin::Signed(caller::<T>()).into(), cdp_id, balance!(0)).unwrap();
     }
 
     deposit_collateral {

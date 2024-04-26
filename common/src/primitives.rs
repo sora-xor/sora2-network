@@ -185,6 +185,7 @@ mod _allowed_deprecated {
         TBCD = 10,
         KEN = 11,
         KUSD = 12,
+        KGOLD = 13,
     }
 }
 
@@ -199,6 +200,7 @@ pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const TBCD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 pub const KEN: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KEN);
 pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
+pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
@@ -649,11 +651,6 @@ pub struct SymbolName(pub Vec<u8>);
 impl SymbolName {
     pub fn usd() -> Self {
         Self::from_str("USD").expect("`USD` is a valid symbol name")
-    }
-
-    /// MakeDAO DAI stablecoin
-    pub fn dai() -> Self {
-        Self::from_str("DAI").expect("`DAI` is a valid symbol name")
     }
 
     /// Troy ounce of gold

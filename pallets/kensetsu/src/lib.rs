@@ -72,14 +72,22 @@ const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
 /// Liquidation limit reached
 const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
+/// Staiblecoin may be pegged either to Oracle (like XAU, BTC) or Price tools AssetId (like XOR,
+/// DAI).
+#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
+pub enum PegAsset<AssetId> {
+    OracleSymbol(SymbolName),
+    SoraAssetId(AssetId),
+}
+
 /// Parameters of the tokens created by the protocol.
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
-pub struct StablecoinParameters {
+pub struct StablecoinParameters<AssetId> {
     /// Maximum amount of tokens issued by the system.
     pub hard_cap: Balance,
 
-    /// Symbol of the rate on the Oracle the stablecoin pegged to. 'DAI' pegged to USD.
-    pub peg_symbol: SymbolName,
+    /// Peg of stablecoin.
+    pub peg_asset: PegAsset<AssetId>,
 
     /// Minimal uncollected fee in stablecoins that triggers offchain worker to call accrue.
     pub minimal_stability_fee_accrue: Balance,
@@ -87,12 +95,12 @@ pub struct StablecoinParameters {
 
 /// Parameters and additional variables related to stablecoins.
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
-pub struct StablecoinInfo {
+pub struct StablecoinInfo<AssetId> {
     /// System bad debt, the amount of stablecoins not secured with collateral.
     pub bad_debt: Balance,
 
     /// Configurable parameters
-    pub stablecoin_parameters: StablecoinParameters,
+    pub stablecoin_parameters: StablecoinParameters<AssetId>,
 }
 
 #[derive(
@@ -376,7 +384,8 @@ pub mod pallet {
     #[pallet::getter(fn stablecoin_infos)]
     // TODO bound
     #[pallet::unbounded]
-    pub type StablecoinInfos<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, StablecoinInfo>;
+    pub type StablecoinInfos<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, StablecoinInfo<T::AssetId>>;
 
     /// Parameters for collaterals, include risk parameters and interest recalculation coefficients.
     /// Map (Collateral asset id, Stablecoin asset id => CollateralInfo)
@@ -516,6 +525,8 @@ pub mod pallet {
         /// Risk management team size exceeded
         TooManyManagers,
         OperationNotPermitted,
+        /// Outstanding debt prevents closing CDP
+        OutstandingDebt,
         /// Uncollected stability fee is too small for accrue
         UncollectedStabilityFeeTooSmall,
         HardCapSupply,
@@ -608,13 +619,16 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
+        /// - `amount`: The amount of stablecoins to repay outstanding debt, only min(amount, debt)
+        ///  will be transferred.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
-        pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+        pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            Self::repay_debt_internal(cdp_id, cdp.debt)?;
+            ensure!(amount >= cdp.debt, Error::<T>::OutstandingDebt);
+            Self::repay_debt_internal(cdp_id, amount)?;
             Self::delete_cdp(cdp_id)
         }
 
@@ -712,19 +726,22 @@ pub mod pallet {
             )?;
             // stablecoin supply change for collateral.
             let stablecoin_supply_change: Balance;
-            if cdp.debt >= proceeds {
+            if cdp.debt > proceeds {
                 Self::burn_treasury(&cdp.stablecoin_asset_id, proceeds)?;
                 let shortage = cdp
                     .debt
                     .checked_sub(proceeds)
-                    .ok_or(Error::<T>::CDPNotFound)?;
+                    .ok_or(Error::<T>::ArithmeticError)?;
                 if cdp.collateral_amount <= collateral_liquidated {
                     // no collateral, total default
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
-                    Self::cover_with_protocol(&cdp.stablecoin_asset_id, shortage)?;
+                    let profit_burnt =
+                        Self::cover_with_protocol(&cdp.stablecoin_asset_id, shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
                     Self::delete_cdp(cdp_id)?;
-                    stablecoin_supply_change = cdp.debt;
+                    stablecoin_supply_change = proceeds
+                        .checked_add(profit_burnt)
+                        .ok_or(Error::<T>::ArithmeticError)?;
                 } else {
                     // partly covered
                     Self::update_cdp_debt(cdp_id, shortage)?;
@@ -1034,16 +1051,31 @@ pub mod pallet {
         // TODO decide on visibility (pub)
         pub fn add_stablecoin(
             stablecoin_asset_id: &T::AssetId,
-            new_stablecoin_parameters: StablecoinParameters,
+            new_stablecoin_parameters: StablecoinParameters<T::AssetId>,
         ) -> DispatchResult {
-            ensure!(
-                (new_stablecoin_parameters.peg_symbol == SymbolName::dai())
-                    || (<T>::Oracle::list_enabled_symbols()?
-                        .iter()
-                        .find(|(symbol, _)| { *symbol == new_stablecoin_parameters.peg_symbol })
-                        .is_some()),
-                Error::<T>::SymbolNotEnabledByOracle
-            );
+            match &new_stablecoin_parameters.peg_asset {
+                PegAsset::OracleSymbol(symbol) => {
+                    ensure!(
+                        <T>::Oracle::list_enabled_symbols()?
+                            .iter()
+                            .find(|(supported_symbol, _)| { *supported_symbol == *symbol })
+                            .is_some(),
+                        Error::<T>::SymbolNotEnabledByOracle
+                    );
+                }
+                PegAsset::SoraAssetId(asset_id) => {
+                    ensure!(
+                        T::AssetInfoProvider::asset_exists(asset_id),
+                        Error::<T>::WrongAssetId
+                    );
+                    // cannot be pegged to KEN or other stablecoin
+                    ensure!(
+                        *asset_id != T::KenAssetId::get()
+                            || !StablecoinInfos::<T>::contains_key(stablecoin_asset_id),
+                        Error::<T>::WrongAssetId
+                    );
+                }
+            }
 
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
@@ -1102,30 +1134,37 @@ pub mod pallet {
                     .risk_parameters
                     .liquidation_ratio;
 
-            // collateral price in DAI
-            let mut collateral_reference_price =
-                FixedU128::from_inner(T::PriceTools::get_average_price(
-                    &collateral_asset_id,
-                    &DAI.into(),
-                    PriceVariant::Sell,
-                )?);
-
             // stablecoin price in DAI
-            let symbol = Self::stablecoin_infos(stablecoin_asset_id)
+            let peg_asset = Self::stablecoin_infos(stablecoin_asset_id)
                 .ok_or(Error::<T>::StablecoinInfoNotFound)?
                 .stablecoin_parameters
-                .peg_symbol;
-            if symbol != SymbolName::dai() {
-                let stablecoin_price = FixedU128::from_inner(
-                    <T>::Oracle::quote(&symbol)?
-                        .ok_or(Error::<T>::SymbolNotEnabledByOracle)?
-                        .value,
-                );
-                collateral_reference_price = collateral_reference_price
-                    .checked_div(&stablecoin_price)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-            }
-
+                .peg_asset;
+            let collateral_reference_price = match peg_asset {
+                PegAsset::OracleSymbol(symbol) => {
+                    // collateral price in DAI
+                    let collateral_price_dai =
+                        FixedU128::from_inner(T::PriceTools::get_average_price(
+                            &collateral_asset_id,
+                            &DAI.into(),
+                            PriceVariant::Sell,
+                        )?);
+                    let stablecoin_price = FixedU128::from_inner(
+                        <T>::Oracle::quote(&symbol)?
+                            .ok_or(Error::<T>::SymbolNotEnabledByOracle)?
+                            .value,
+                    );
+                    collateral_price_dai
+                        .checked_div(&stablecoin_price)
+                        .ok_or(Error::<T>::ArithmeticError)?
+                }
+                PegAsset::SoraAssetId(asset_id) => {
+                    FixedU128::from_inner(T::PriceTools::get_average_price(
+                        &collateral_asset_id,
+                        &asset_id,
+                        PriceVariant::Sell,
+                    )?)
+                }
+            };
             let collateral_volume = collateral_reference_price
                 .checked_mul(&FixedU128::from_inner(collateral))
                 .ok_or(Error::<T>::ArithmeticError)?;
@@ -1293,19 +1332,10 @@ pub mod pallet {
             )?;
             Self::mint_to(who, &cdp.stablecoin_asset_id, borrow_amount)?;
             Self::update_cdp_debt(cdp_id, new_debt)?;
-            CollateralInfos::<T>::try_mutate(
-                cdp.collateral_asset_id,
-                cdp.stablecoin_asset_id,
-                |collateral_info| {
-                    let collateral_info = collateral_info
-                        .as_mut()
-                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                    collateral_info.stablecoin_supply = collateral_info
-                        .stablecoin_supply
-                        .checked_add(borrow_amount_with_tax)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                    DispatchResult::Ok(())
-                },
+            Self::increase_stablecoin_supply(
+                &cdp.collateral_asset_id,
+                &cdp.stablecoin_asset_id,
+                borrow_amount_with_tax,
             )?;
             Self::deposit_event(Event::DebtIncreased {
                 cdp_id,
@@ -1711,10 +1741,11 @@ pub mod pallet {
 
         /// Cover CDP debt with protocol balance
         /// If protocol balance is less than amount to cover, it is a bad debt
+        /// Returns amount burnt.
         fn cover_with_protocol(
             stablecoin_asset_id: &AssetIdOf<T>,
             amount: Balance,
-        ) -> DispatchResult {
+        ) -> Result<Balance, DispatchError> {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
@@ -1741,7 +1772,7 @@ pub mod pallet {
             };
             Self::burn_treasury(stablecoin_asset_id, to_burn)?;
 
-            Ok(())
+            Ok(to_burn)
         }
 
         /// Increments CDP Id counter, changes storage state.

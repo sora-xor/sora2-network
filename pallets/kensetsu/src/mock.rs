@@ -38,8 +38,8 @@ use common::{
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
-    PriceToolsProvider, PriceVariant, Rate, SymbolName, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD,
-    XOR, XST,
+    PriceToolsProvider, PriceVariant, Rate, SymbolName, DAI, DEFAULT_BALANCE_PRECISION, KEN, KGOLD,
+    KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -188,7 +188,7 @@ impl DataFeed<SymbolName, Rate, u64> for MockOracle {
     fn quote(symbol: &SymbolName) -> Result<Option<Rate>, DispatchError> {
         if *symbol == SymbolName::xau() {
             Ok(Some(Rate {
-                value: balance!(2315),
+                value: balance!(2500),
                 last_updated: 0,
                 dynamic_fee: Default::default(),
             }))
@@ -369,9 +369,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             ),
             (
                 KUSD,
-                assets_and_permissions_account_id,
+                assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KGOLD,
+                assets_and_permissions_account_id,
+                AssetSymbol(b"KGOLD".to_vec()),
+                AssetName(b"Kensetsu Stable Gold".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
