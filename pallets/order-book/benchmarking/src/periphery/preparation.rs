@@ -563,8 +563,8 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         trading_pair::Pallet::<T>::register(
             RawOrigin::Signed(creator).into(),
             DEX.into(),
-            id.quote.into(),
-            id.base.into(),
+            id.quote,
+            id.base,
         )
         .unwrap();
         OrderBookPallet::<T>::create_orderbook(

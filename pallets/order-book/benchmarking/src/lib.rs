@@ -186,8 +186,8 @@ mod benchmarks_inner {
             TradingPair::<T>::register(
                 RawOrigin::Signed(caller.clone()).into(),
                 DEX.into(),
-                order_book_id.quote.into(),
-                order_book_id.base.into(),
+                order_book_id.quote,
+                order_book_id.base,
             ).unwrap();
         }: {
             OrderBookPallet::<T>::create_orderbook(
