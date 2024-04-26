@@ -1,4 +1,4 @@
-@Library('jenkins-library@duty/enable_buildkit') _
+@Library('jenkins-library') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
