@@ -18,7 +18,7 @@ ENV SUBWASM_VER=v0.20.0
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     binaryen cmake protobuf-compiler \
-    software-properties-common musl-tools && \
+    software-properties-common && \
     wget -O - https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup toolchain install ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_VERSION} && \
