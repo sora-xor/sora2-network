@@ -35,13 +35,13 @@
 use super::*;
 
 use codec::Decode;
-use common::{AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR};
+use common::{
+    AssetManager, AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+};
 use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
-
-use assets::Pallet as Assets;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -63,7 +63,7 @@ benchmarks! {
     register {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let _ = Assets::<T>::register_asset_id(
+        let _ = T::AssetManager::register_asset_id(
             caller.clone(),
             DOT.into(),
             AssetSymbol(b"DOT".to_vec()),
