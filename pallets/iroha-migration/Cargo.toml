@@ -31,7 +31,6 @@ ed25519-dalek-iroha = { git = "https://github.com/soramitsu/sora2-ed25519-dalek-
     "u64_backend",
 ] }
 
-assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 referrals = { path = "../referrals", default-features = false }
 technical = { path = "../technical", default-features = false }
