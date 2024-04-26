@@ -1,4 +1,4 @@
-FROM debian:bullseye-20240211-slim
+FROM debian:bookworm-20240408-slim
 
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
@@ -11,7 +11,6 @@ ENV CXX=clang++-14
 ENV SUBWASM_VER=v0.20.0
 ENV GRCOV_VERSION=0.8.19
 ENV LLVM_TOOLS_VER=14
-ENV CCLANG_VER=14
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
@@ -21,6 +20,7 @@ RUN apt-get update && \
     wget \
     git binaryen \
     make cmake \
+    gcc build-essential \
     software-properties-common && \
     wget -O - https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup toolchain install ${RUST_VERSION} && \
@@ -31,8 +31,7 @@ RUN apt-get update && \
     rm llvm.sh && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
-    clang-${CCLANG_VER} lldb-${CCLANG_VER} lld-${CCLANG_VER} libclang-${CCLANG_VER}-dev llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
-    update-alternatives --install /usr/bin/cc cc /usr/bin/${CC} 100 && \
+    llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
     rustup update && \
     cargo install --locked --git https://github.com/chevdor/subwasm --tag ${SUBWASM_VER} && \
     cargo install grcov --version ${GRCOV_VERSION} && \

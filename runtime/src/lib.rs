@@ -259,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 77,
+    spec_version: 79,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 77,
+    transaction_version: 79,
     state_version: 0,
 };
 
@@ -2010,6 +2010,7 @@ impl order_book::Config for Runtime {
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const SOFT_MIN_MAX_RATIO: usize = 1000;
     const HARD_MIN_MAX_RATIO: usize = 4000;
+    const REGULAR_NUBMER_OF_EXECUTED_ORDERS: usize = 100;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type Locker = OrderBook;
