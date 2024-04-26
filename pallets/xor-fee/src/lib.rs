@@ -32,8 +32,8 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider,
+    AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::log::error;
@@ -81,7 +81,6 @@ type BalanceOf<T> =
     <<T as Config>::XorCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
-type Assets<T> = assets::Pallet<T>;
 
 // #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
@@ -589,7 +588,7 @@ impl<T: Config> Pallet<T> {
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
-        Assets::<T>::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+        T::AssetManager::mint_to(xor, &tech_account_id, &tech_account_id, xor_to_val)?;
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         match T::LiquidityProxy::exchange(
@@ -628,19 +627,14 @@ impl<T: Config> Pallet<T> {
                         error!("failed to exchange VAL to TBCD, burning VAL instead of buy back: {err:?}");
                     }
                 }
-                assets::Pallet::<T>::burn_from(
-                    &val,
-                    &tech_account_id,
-                    &tech_account_id,
-                    val_to_burn,
-                )?;
+                T::AssetManager::burn_from(val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
                 error!(
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
                     xor_to_val, e
                 );
-                Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+                T::AssetManager::burn_from(xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
         }
 
@@ -655,26 +649,27 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_transaction_payment::Config + assets::Config
+        frame_system::Config + pallet_transaction_payment::Config + common::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
-        type XorId: Get<Self::AssetId>;
-        type ValId: Get<Self::AssetId>;
-        type TbcdId: Get<Self::AssetId>;
+        type XorId: Get<AssetIdOf<Self>>;
+        type ValId: Get<AssetIdOf<Self>>;
+        type TbcdId: Get<AssetIdOf<Self>>;
         type ReferrerWeight: Get<u32>;
         type XorBurnedWeight: Get<u32>;
         type XorIntoValBurnedWeight: Get<u32>;
         type BuyBackTBCDPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>, Self::AccountId>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
@@ -684,7 +679,7 @@ pub mod pallet {
             Self::FullIdentification,
         >;
         type ReferrerAccountProvider: ReferrerAccountProvider<Self::AccountId>;
-        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;
