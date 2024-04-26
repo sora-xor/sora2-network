@@ -37,7 +37,6 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::QuoteAmount;
 use common::AssetIdOf;
 use common::{Balance, PriceVariant};
-use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;

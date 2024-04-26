@@ -2026,6 +2026,7 @@ impl order_book::Config for Runtime {
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const SOFT_MIN_MAX_RATIO: usize = 1000;
     const HARD_MIN_MAX_RATIO: usize = 4000;
+    const REGULAR_NUBMER_OF_EXECUTED_ORDERS: usize = 100;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type Locker = OrderBook;

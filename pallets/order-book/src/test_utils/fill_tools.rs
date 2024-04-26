@@ -36,7 +36,7 @@ use order_book_imported::{
     OrderPrice, OrderVolume, Pallet, Payment,
 };
 
-use common::prelude::{BalanceUnit, Scalar};
+use common::prelude::{Balance, BalanceUnit, Scalar};
 use common::PriceVariant;
 use common::{AssetIdOf, AssetManager};
 use frame_support::log::{debug, trace};
@@ -106,16 +106,45 @@ pub fn lifespans_iterator<T: Config>(
         })
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
+pub enum AmountVariant {
+    /// Amount = min_lot_size
+    Min,
+    /// Amount = max_lot_size / REGULAR_NUBMER_OF_EXECUTED_ORDERS
+    Regular,
+    /// Amount = (min_lot_size + max_lot_size) / 2
+    Average,
+    /// Amount = max_lot_size
+    Max,
+    /// Manual amount
+    Custom(Balance),
+}
+
+impl AmountVariant {
+    pub fn calculate_amount<T: Config>(&self, order_book: &OrderBook<T>) -> OrderVolume {
+        match self {
+            Self::Min => sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size),
+            Self::Regular => order_book.step_lot_size.copy_divisibility(
+                order_book.max_lot_size.balance()
+                    / <T as Config>::REGULAR_NUBMER_OF_EXECUTED_ORDERS as u128,
+            ),
+            Self::Average => order_book.step_lot_size.copy_divisibility(
+                (order_book.min_lot_size.balance() + order_book.max_lot_size.balance()) / 2,
+            ),
+            Self::Max => order_book.max_lot_size,
+            Self::Custom(amount) => order_book.step_lot_size.copy_divisibility(*amount),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct FillSettings<T: Config> {
     pub now: <<T as Config>::Time as Time>::Moment,
     pub max_side_price_count: u32,
     pub max_orders_per_price: u32,
     pub max_orders_per_user: u32,
     pub max_expiring_orders_per_block: u32,
-    /// Additional constraint from order book that limits number of executed orders at once.
-    /// Does not directly correlate to storage constraints, unlike other parameters.
-    pub executed_orders_limit: u32,
+    pub amount_variant: AmountVariant,
 }
 
 impl<T: Config> FillSettings<T> {
@@ -124,7 +153,7 @@ impl<T: Config> FillSettings<T> {
         max_orders_per_price: u32,
         max_orders_per_user: u32,
         max_expiring_orders_per_block: u32,
-        executed_orders_limit: u32,
+        amount_variant: AmountVariant,
     ) -> Self {
         Self {
             now: T::Time::now(),
@@ -132,7 +161,7 @@ impl<T: Config> FillSettings<T> {
             max_orders_per_price,
             max_orders_per_user,
             max_expiring_orders_per_block,
-            executed_orders_limit,
+            amount_variant,
         }
     }
 
@@ -142,8 +171,32 @@ impl<T: Config> FillSettings<T> {
             <T as Config>::MaxLimitOrdersForPrice::get(),
             <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
             <T as Config>::MaxExpiringOrdersPerBlock::get(),
-            <T as Config>::HARD_MIN_MAX_RATIO.try_into().unwrap(),
+            AmountVariant::Min, // the lower order amount, the greater the count of executed limit orders
         )
+    }
+
+    pub fn regular() -> Self {
+        Self::new(
+            200,
+            10,
+            <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            <T as Config>::MaxExpiringOrdersPerBlock::get(),
+            AmountVariant::Regular,
+        )
+    }
+
+    pub fn regular_with_custom_amount(custom_amount: Balance) -> Self {
+        Self::new(
+            200,
+            10,
+            <T as Config>::MaxOpenedLimitOrdersPerUser::get(),
+            <T as Config>::MaxExpiringOrdersPerBlock::get(),
+            AmountVariant::Custom(custom_amount),
+        )
+    }
+
+    pub fn max_side_orders(&self) -> u128 {
+        (self.max_orders_per_price * self.max_side_price_count) as u128
     }
 }
 
@@ -193,12 +246,9 @@ pub fn fill_user_orders<T: Config>(
     lifespans: &mut Peekable<impl Iterator<Item = u64>>,
 ) {
     let FillSettings {
-        now: _,
         max_side_price_count,
-        max_orders_per_price: _,
         max_orders_per_user,
-        max_expiring_orders_per_block: _,
-        executed_orders_limit: _,
+        ..
     } = settings;
     // Since we fill orders of the user, it is the only author
     match side {
@@ -434,7 +484,7 @@ pub fn fill_order_book_worst_case<T: Config>(
     Peekable<impl Iterator<Item = T::AccountId>>,
     Peekable<impl Iterator<Item = u64>>,
 ) {
-    let order_amount = sp_std::cmp::max(order_book.step_lot_size, order_book.min_lot_size);
+    let order_amount = settings.amount_variant.calculate_amount(order_book);
     let max_price = order_book.tick_size * Scalar(2 * settings.max_side_price_count);
 
     // Owners for each placed order
