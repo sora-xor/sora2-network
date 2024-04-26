@@ -158,7 +158,7 @@ mod benchmarks_inner {
 
     benchmarks! {
         where_clause {
-            where T: trading_pair::Config + core::fmt::Debug
+            where T: trading_pair::Config + core::fmt::Debug + assets::Config
         }
 
         create_orderbook {
