@@ -582,8 +582,8 @@ dependencies = [
  "futures-io",
  "futures-lite 2.3.0",
  "parking",
- "polling 3.6.0",
- "rustix 0.38.33",
+ "polling 3.7.0",
+ "rustix 0.38.34",
  "slab",
  "tracing",
  "windows-sys 0.52.0",
@@ -622,7 +622,7 @@ dependencies = [
  "cfg-if",
  "event-listener 3.1.0",
  "futures-lite 1.13.0",
- "rustix 0.38.33",
+ "rustix 0.38.34",
  "windows-sys 0.48.0",
 ]
 
@@ -638,7 +638,7 @@ dependencies = [
  "cfg-if",
  "futures-core",
  "futures-io",
- "rustix 0.38.33",
+ "rustix 0.38.34",
  "signal-hook-registry",
  "slab",
  "windows-sys 0.52.0",
@@ -818,7 +818,7 @@ dependencies = [
  "futures 0.3.30",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-client-api",
  "sc-consensus",
  "sc-keystore",
@@ -851,7 +851,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-rpc",
  "serde",
  "sp-beefy",
@@ -863,7 +863,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "anyhow",
  "beefy-merkle-tree",
@@ -887,7 +887,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee",
@@ -903,7 +903,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1107,7 +1107,7 @@ dependencies = [
 [[package]]
 name = "bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -1130,7 +1130,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bitvec",
  "bridge-types",
@@ -1148,7 +1148,7 @@ dependencies = [
 [[package]]
 name = "bridge-data-signer"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -1229,7 +1229,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "derivative",
  "ethabi",
@@ -2632,7 +2632,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -2941,7 +2941,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "parity-util-mem",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "permissions",
  "rlp",
  "rustc-hex",
@@ -3122,7 +3122,7 @@ dependencies = [
 [[package]]
 name = "evm-fungible-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "dispatch",
@@ -3296,9 +3296,9 @@ dependencies = [
 
 [[package]]
 name = "fiat-crypto"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c007b1ae3abe1cb6f85a16305acd418b7ca6343b953633fee2b76d8f108b830f"
+checksum = "38793c55593b33412e3ae40c2c9781ffaa6f438f6f8c10f24e71846fbd7ae01e"
 
 [[package]]
 name = "file-per-thread-logger"
@@ -3334,7 +3334,7 @@ dependencies = [
  "log",
  "num-traits",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "scale-info",
 ]
 
@@ -3371,9 +3371,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.28"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46303f565772937ffe1d394a4fac6f411c6013172fadde9dcdb1e147a086940e"
+checksum = "4556222738635b7a3417ae6130d8f52201e45a0c4d1a907f0826383adb5f85e7"
 dependencies = [
  "crc32fast",
  "libz-sys",
@@ -3734,7 +3734,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pswap-distribution-rpc",
  "rewards",
  "rewards-rpc",
@@ -4889,9 +4889,9 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
 name = "jobserver"
-version = "0.1.30"
+version = "0.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "685a7d121ee3f65ae4fddd72b25a04bb36b6af81bc0828f7d5434c0fe60fa3a2"
+checksum = "d2b099aaa34a9751c5bf0878add70444e1ed2dd73f347be99003d4577277de6e"
 dependencies = [
  "libc",
 ]
@@ -4969,7 +4969,7 @@ dependencies = [
  "globset",
  "hyper",
  "jsonrpsee-types",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "rustc-hash",
  "serde",
@@ -5133,7 +5133,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf7a85fe66f9ff9cd74e169fdd2c94c6e1e74c412c99a73b4df3200b5d3760b2"
 dependencies = [
  "kvdb",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
 ]
 
 [[package]]
@@ -5144,7 +5144,7 @@ checksum = "2182b8219fee6bd83aacaab7344e840179ae079d5216aa4e249b4d704646a844"
 dependencies = [
  "kvdb",
  "num_cpus",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "regex",
  "rocksdb",
  "smallvec",
@@ -5165,7 +5165,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -5185,7 +5185,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "jsonrpsee",
  "leaf-provider-runtime-api",
@@ -5202,7 +5202,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -5276,7 +5276,7 @@ dependencies = [
  "libp2p-websocket",
  "libp2p-yamux",
  "multiaddr 0.16.0",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project",
  "smallvec",
 ]
@@ -5300,7 +5300,7 @@ dependencies = [
  "multihash 0.16.3",
  "multistream-select",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project",
  "prost",
  "prost-build",
@@ -5332,7 +5332,7 @@ dependencies = [
  "multihash 0.17.0",
  "multistream-select",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project",
  "quick-protobuf",
  "rand 0.8.5",
@@ -5352,7 +5352,7 @@ dependencies = [
  "futures 0.3.30",
  "libp2p-core 0.38.0",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "smallvec",
  "trust-dns-resolver",
 ]
@@ -5470,7 +5470,7 @@ dependencies = [
  "libp2p-core 0.38.0",
  "log",
  "nohash-hasher",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "smallvec",
  "unsigned-varint",
@@ -5528,7 +5528,7 @@ dependencies = [
  "libp2p-core 0.38.0",
  "libp2p-tls",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "quinn-proto",
  "rand 0.8.5",
  "rustls 0.20.9",
@@ -5678,7 +5678,7 @@ dependencies = [
  "futures-rustls",
  "libp2p-core 0.38.0",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "quicksink",
  "rw-stream-sink",
  "soketto",
@@ -5695,7 +5695,7 @@ dependencies = [
  "futures 0.3.30",
  "libp2p-core 0.38.0",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "thiserror",
  "yamux",
 ]
@@ -5949,9 +5949,9 @@ dependencies = [
 
 [[package]]
 name = "lock_api"
-version = "0.4.11"
+version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c168f8615b12bc01f9c17e2eb0cc07dcae1940121185446edc3744920e8ef45"
+checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
 dependencies = [
  "autocfg",
  "scopeguard",
@@ -6066,7 +6066,7 @@ version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2cffa4ad52c6f791f4f8b15f0c05f9824b2ced1160e88cc393d64fff9a8ac64"
 dependencies = [
- "rustix 0.38.33",
+ "rustix 0.38.34",
 ]
 
 [[package]]
@@ -6374,7 +6374,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multisig-verifier"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -7414,7 +7414,7 @@ dependencies = [
 [[package]]
 name = "parachain-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -7456,7 +7456,7 @@ dependencies = [
  "log",
  "lz4",
  "memmap2",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "siphasher",
  "snap",
@@ -7545,12 +7545,12 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
+checksum = "7e4af0ca4f6caed20e900d564c242b8e5d4903fdacf31d3daf527b66fe6f42fb"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.9",
+ "parking_lot_core 0.9.10",
 ]
 
 [[package]]
@@ -7569,15 +7569,15 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.9"
+version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c42a9226546d68acdd9c0a280d17ce19bfe27a46bf68784e4066115788d008e"
+checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.4.1",
+ "redox_syscall 0.5.1",
  "smallvec",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.5",
 ]
 
 [[package]]
@@ -7822,15 +7822,15 @@ dependencies = [
 
 [[package]]
 name = "polling"
-version = "3.6.0"
+version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0c976a60b2d7e99d6f229e414670a9b85d13ac305cc6d1e9c134de58c5aaaf6"
+checksum = "645493cf344456ef24219d02a768cf1fb92ddf8c92161679ae3d91b91a637be3"
 dependencies = [
  "cfg-if",
  "concurrent-queue",
  "hermit-abi 0.3.9",
  "pin-project-lite 0.2.14",
- "rustix 0.38.33",
+ "rustix 0.38.34",
  "tracing",
  "windows-sys 0.52.0",
 ]
@@ -8101,7 +8101,7 @@ dependencies = [
  "fnv",
  "lazy_static",
  "memchr",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "thiserror",
 ]
 
@@ -8113,7 +8113,7 @@ checksum = "83cd1b99916654a69008fd66b4f9397fbe08e6e51dfe23d4417acf5d3b8cb87c"
 dependencies = [
  "dtoa",
  "itoa",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "prometheus-client-derive-text-encode",
 ]
 
@@ -8548,6 +8548,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_syscall"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "469052894dcb553421e483e4209ee581a45100d31b4018de03e5a7ad86374a7e"
+dependencies = [
+ "bitflags 2.5.0",
+]
+
+[[package]]
 name = "redox_users"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8952,9 +8961,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.33"
+version = "0.38.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3cc72858054fcff6d7dea32df2aeaee6a7c24227366d7ea429aada2f26b16ad"
+checksum = "70dc5ec042f7a43c4a73241207cecc9873a06d45debb38b329f8541d85c2730f"
 dependencies = [
  "bitflags 2.5.0",
  "errno 0.3.8",
@@ -9197,7 +9206,7 @@ dependencies = [
  "futures 0.3.30",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-executor",
  "sc-transaction-pool-api",
  "sc-utils 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
@@ -9227,7 +9236,7 @@ dependencies = [
  "log",
  "parity-db",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-client-api",
  "sc-state-db",
  "schnellru",
@@ -9251,7 +9260,7 @@ dependencies = [
  "libp2p",
  "log",
  "mockall",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-client-api",
  "sc-utils 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "serde",
@@ -9308,7 +9317,7 @@ dependencies = [
  "num-rational",
  "num-traits",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-client-api",
  "sc-consensus",
  "sc-consensus-epochs",
@@ -9375,7 +9384,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "lru",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-executor-common",
  "sc-executor-wasmi",
  "sc-executor-wasmtime",
@@ -9450,7 +9459,7 @@ dependencies = [
  "futures-timer",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "sc-block-builder",
  "sc-chain-spec",
@@ -9497,7 +9506,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "array-bytes",
  "async-trait",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "serde_json",
  "sp-application-crypto",
  "sp-core",
@@ -9524,7 +9533,7 @@ dependencies = [
  "log",
  "lru",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project",
  "rand 0.8.5",
  "sc-block-builder",
@@ -9724,7 +9733,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "sc-client-api",
  "sc-network-common 0.10.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
@@ -9754,7 +9763,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "sc-client-api",
  "sc-network-common 0.10.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
@@ -9812,7 +9821,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-block-builder",
  "sc-chain-spec",
  "sc-client-api",
@@ -9879,7 +9888,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-chain-spec",
  "sc-client-api",
  "sc-transaction-pool-api",
@@ -9906,7 +9915,7 @@ dependencies = [
  "jsonrpsee",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project",
  "rand 0.8.5",
  "sc-block-builder",
@@ -9966,7 +9975,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sp-core",
 ]
 
@@ -10014,7 +10023,7 @@ dependencies = [
  "futures 0.3.30",
  "libp2p",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project",
  "rand 0.8.5",
  "sc-utils 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
@@ -10036,7 +10045,7 @@ dependencies = [
  "libc",
  "log",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "regex",
  "rustc-hash",
  "sc-client-api",
@@ -10078,7 +10087,7 @@ dependencies = [
  "log",
  "num-traits",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sc-client-api",
  "sc-transaction-pool-api",
  "sc-utils 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
@@ -10117,7 +10126,7 @@ dependencies = [
  "futures-timer",
  "lazy_static",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "prometheus",
 ]
 
@@ -10131,7 +10140,7 @@ dependencies = [
  "futures-timer",
  "lazy_static",
  "log",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "prometheus",
 ]
 
@@ -10699,7 +10708,7 @@ dependencies = [
  "log",
  "lru",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "sp-api",
  "sp-consensus",
  "sp-database",
@@ -10812,7 +10821,7 @@ dependencies = [
  "log",
  "merlin",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "primitive-types",
  "rand 0.8.5",
  "regex",
@@ -10865,7 +10874,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "kvdb",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
 ]
 
 [[package]]
@@ -10976,7 +10985,7 @@ dependencies = [
  "futures 0.3.30",
  "merlin",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "schnorrkel",
  "serde",
  "sp-core",
@@ -11141,7 +11150,7 @@ dependencies = [
  "hash-db",
  "log",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "smallvec",
  "sp-core",
@@ -11235,7 +11244,7 @@ dependencies = [
  "memory-db",
  "nohash-hasher",
  "parity-scale-codec",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "scale-info",
  "schnellru",
  "sp-core",
@@ -11502,7 +11511,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git#37a579c7a334d99c7693597b19ffd331308f9001"
+source = "git+https://github.com/sora-xor/sora2-common.git#37ff77936b521495086972b38c1df5fb076c06bc"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -11526,7 +11535,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-bridge-pallets#d7bdcff6e4a7459addd16e7864ddf34907f79f50"
+source = "git+https://github.com/sora-xor//sora2-common.git?branch=evm-fungible-app#579402a2a4279f30b85e5640c1345d0352677784"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -11732,7 +11741,7 @@ checksum = "85b77fafb263dd9d05cbeac119526425676db3784113aa9295c88498cbf8bff1"
 dependencies = [
  "cfg-if",
  "fastrand 2.0.2",
- "rustix 0.38.33",
+ "rustix 0.38.34",
  "windows-sys 0.52.0",
 ]
 
@@ -11899,7 +11908,7 @@ dependencies = [
  "libc",
  "mio",
  "num_cpus",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "pin-project-lite 0.2.14",
  "signal-hook-registry",
  "socket2 0.5.6",
@@ -12225,7 +12234,7 @@ dependencies = [
  "ipconfig",
  "lazy_static",
  "lru-cache",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "resolv-conf",
  "smallvec",
  "thiserror",
@@ -13192,7 +13201,7 @@ dependencies = [
  "either",
  "home",
  "once_cell",
- "rustix 0.38.33",
+ "rustix 0.38.34",
 ]
 
 [[package]]
@@ -13219,11 +13228,11 @@ checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 
 [[package]]
 name = "winapi-util"
-version = "0.1.6"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f29e6f9198ba0d26b4c9f07dbe6f9ed633e1f3d5b8b414090084349e46a52596"
+checksum = "4d4cc384e1e73b93bafa6fb4f1df8c41695c8a91cf9c4c64358067d15a7b6c6b"
 dependencies = [
- "winapi",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -13716,7 +13725,7 @@ dependencies = [
  "futures 0.3.30",
  "log",
  "nohash-hasher",
- "parking_lot 0.12.1",
+ "parking_lot 0.12.2",
  "rand 0.8.5",
  "static_assertions",
 ]
