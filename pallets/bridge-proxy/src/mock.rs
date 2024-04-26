@@ -46,7 +46,7 @@ use common::{
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::ConstU64;
+use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{
@@ -326,6 +326,7 @@ impl evm_fungible_app::Config for Test {
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = ConstU64<100>;
+    type PriorityFee = ConstU128<100>;
     type WeightInfo = ();
 }
 
@@ -389,19 +390,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     GenesisBuild::<Test>::assimilate_storage(
         &evm_fungible_app::GenesisConfig {
-            apps: vec![
-                (
-                    BASE_EVM_NETWORK_ID,
-                    H160::repeat_byte(1),
-                    AssetKind::Thischain,
-                ),
-                (
-                    BASE_EVM_NETWORK_ID,
-                    H160::repeat_byte(2),
-                    AssetKind::Sidechain,
-                ),
-                (BASE_EVM_NETWORK_ID, H160::repeat_byte(3), AssetKind::Native),
-            ],
+            apps: vec![(BASE_EVM_NETWORK_ID, H160::repeat_byte(1))],
             assets: vec![
                 (
                     BASE_EVM_NETWORK_ID,
@@ -420,8 +409,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
                 (
                     BASE_EVM_NETWORK_ID,
                     ETH,
-                    H160::repeat_byte(4),
-                    AssetKind::Native,
+                    H160::repeat_byte(0),
+                    AssetKind::Sidechain,
                     18,
                 ),
             ],

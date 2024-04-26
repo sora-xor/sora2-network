@@ -48,7 +48,7 @@ use frame_system::RawOrigin;
 use sp_keyring::AccountKeyring as Keyring;
 
 use bridge_types::evm::AdditionalEVMInboundData;
-use bridge_types::types::{AssetKind, MessageDirection, MessageId, MessageStatus};
+use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
 
 fn assert_event(event: RuntimeEvent) {
     System::events()
@@ -158,7 +158,7 @@ fn burn_failed() {
 fn mint_successfull() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID, AssetKind::Sidechain).unwrap();
+        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
         let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
@@ -211,7 +211,7 @@ fn mint_successfull() {
 fn mint_failed() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
         let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
@@ -243,7 +243,7 @@ fn mint_failed() {
 fn mint_not_enough_locked() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
         let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
