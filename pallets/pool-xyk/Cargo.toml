@@ -53,7 +53,7 @@ price-tools = { path = "../price-tools" }
 xst = { path = "../xst" }
 oracle-proxy = { path = "../oracle-proxy" }
 band = { path = "../band" }
-assets = { path = "../assets", default-features = false }
+assets = { path = "../assets" }
 
 [features]
 default = ['std']

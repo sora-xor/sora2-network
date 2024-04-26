@@ -52,7 +52,7 @@ price-tools = { path = "../price-tools" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 vested-rewards = { path = "../vested-rewards" }
-assets = { path = "../assets", default-features = false }
+assets = { path = "../assets" }
 
 [features]
 default = ['std']
@@ -70,7 +70,6 @@ std = [
     'sp-std/std',
     'tokens/std',
     'pool-xyk/std',
-    "assets/std",
     "common/std",
     "dex-api/std",
     "permissions/std",

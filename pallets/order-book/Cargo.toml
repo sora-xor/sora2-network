@@ -42,7 +42,6 @@ assets = { path = "../assets"}
 [features]
 default = ["std"]
 std = [
-    "assets/std",
     "common/std",
     "codec/std",
     "frame-support/std",

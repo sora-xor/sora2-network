@@ -41,12 +41,11 @@ pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = 
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-assets = { path = "../assets", default-features = false }
+assets = { path = "../assets" }
 
 [features]
 default = ["std"]
 std = [
-    "assets/std",
     "band/std",
     "codec/std",
     "common/std",

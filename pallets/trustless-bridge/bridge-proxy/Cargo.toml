@@ -33,7 +33,7 @@ xcm = { git = "https://github.com/paritytech/polkadot.git", branch = "release-v0
 
 [dev-dependencies]
 common = { path = "../../../common", features = ["test"] }
-assets = { path = "../../assets", default-features = false }
+assets = { path = "../../assets" }
 dispatch = { git = "https://github.com/sora-xor/sora2-common.git" }
 eth-app = { path = "../eth-app" }
 erc20-app = { path = "../erc20-app" }
