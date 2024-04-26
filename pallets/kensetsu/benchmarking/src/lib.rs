@@ -145,7 +145,7 @@ fn initialize_xyk_pool<T: Config>(asset_id: AssetIdOf<T>) {
     T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
-        asset_id.into(),
+        asset_id,
         amount.try_into().unwrap(),
     )
     .expect("Shall mint token");
