@@ -2,7 +2,7 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 use codec::{Decode, Encode};
-use common::Balance;
+use common::{AssetManager, Balance};
 pub use weights::WeightInfo;
 
 mod benchmarking;
@@ -59,7 +59,10 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
-    use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI};
+    use common::{
+        balance, AssetIdOf, AssetManager, DEXId, LiquiditySourceFilter, PriceVariant,
+        CERES_ASSET_ID, DAI,
+    };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
@@ -77,16 +80,20 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + assets::Config
         + price_tools::Config
         + liquidity_proxy::Config
         + trading_pair::Config
+        + common::Config
         + SendTransactionTypes<Call<Self>>
     {
         const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type PriceTools: PriceToolsProvider<Self::AssetId>;
-        type LiquidityProxyPallet: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
+        type LiquidityProxyPallet: LiquidityProxyTrait<
+            Self::DEXId,
+            Self::AccountId,
+            AssetIdOf<Self>,
+        >;
 
         /// A configuration for base priority of unsigned transactions.
         #[pallet::constant]
@@ -100,9 +107,7 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -453,8 +458,13 @@ pub mod pallet {
             }
 
             // Transfer lending amount to pallet
-            Assets::<T>::transfer_from(&lending_asset, &user, &Self::account_id(), lending_amount)
-                .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
+            T::AssetManager::transfer_from(
+                &lending_asset,
+                &user,
+                &Self::account_id(),
+                lending_amount,
+            )
+            .map_err(|_| Error::<T>::CanNotTransferLendingAmount)?;
             pool_info.total_liquidity += lending_amount;
             <PoolData<T>>::insert(lending_asset, pool_info);
 
@@ -578,7 +588,7 @@ pub mod pallet {
             <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
             // Transfer borrowing amount to user
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &borrowing_asset,
                 &Self::account_id(),
                 &user,
@@ -623,7 +633,7 @@ pub mod pallet {
                     Error::<T>::NoRewardsToClaim
                 );
 
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
@@ -661,7 +671,7 @@ pub mod pallet {
 
                 ensure!(borrowing_rewards > 0, Error::<T>::NoRewardsToClaim);
 
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
@@ -705,7 +715,7 @@ pub mod pallet {
             );
 
             // Transfer lending amount
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &withdrawn_asset,
                 &Self::account_id(),
                 &user,
@@ -727,7 +737,7 @@ pub mod pallet {
                 <UserLendingInfo<T>>::insert(withdrawn_asset, user.clone(), user_info);
             } else {
                 // Transfer lending interest when user withdraws whole lending amount
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
@@ -782,7 +792,7 @@ pub mod pallet {
                     user_info.borrowing_interest.saturating_sub(amount_to_repay);
                 borrow_user_info.insert(collateral_asset, user_info);
 
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &borrowing_asset,
                     &user,
                     &Self::account_id(),
@@ -812,7 +822,7 @@ pub mod pallet {
                 borrow_pool_info.total_liquidity += remaining_amount;
                 <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &borrowing_asset,
                     &user,
                     &Self::account_id(),
@@ -846,7 +856,7 @@ pub mod pallet {
                 <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
                 // Transfer borrowing amount and borrowing interest to pallet
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &borrowing_asset,
                     &user,
                     &Self::account_id(),
@@ -855,7 +865,7 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
 
                 // Transfer collateral to user
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &collateral_asset,
                     &Self::account_id(),
                     &user,
@@ -864,7 +874,7 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::UnableToTransferCollateral)?;
 
                 // Transfer borrowing rewards to user
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &APOLLO_ASSET_ID.into(),
                     &Self::account_id(),
                     &user,
@@ -1323,14 +1333,14 @@ pub mod pallet {
             )
             .unwrap();
 
-            Assets::<T>::burn(
+            T::AssetManager::burn(
                 RawOrigin::Signed(caller).into(),
                 CERES_ASSET_ID.into(),
                 outcome.amount,
             )?;
 
             // Transfer amount to developer fund
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &asset_id,
                 &Self::account_id(),
                 &AuthorityAccount::<T>::get(),
