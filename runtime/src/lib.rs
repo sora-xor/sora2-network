@@ -1240,6 +1240,7 @@ where
 impl referrals::Config for Runtime {
     type ReservesAcc = ReferralsReservesAcc;
     type WeightInfo = referrals::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl rewards::Config for Runtime {

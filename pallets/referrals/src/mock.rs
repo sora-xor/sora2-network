@@ -187,6 +187,7 @@ impl tokens::Config for Runtime {
 impl referrals::Config for Runtime {
     type ReservesAcc = ReferralsReservesAcc;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 pub fn test_ext() -> sp_io::TestExternalities {
