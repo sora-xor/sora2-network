@@ -1,4 +1,4 @@
-@Library('jenkins-library@duty/add_cache_to_build') _
+@Library('jenkins-library') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
