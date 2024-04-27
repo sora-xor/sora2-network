@@ -569,9 +569,8 @@ pub mod pallet {
             );
 
             // checks minimal collateral deposit requirement
-            let collateral_info =
-                Self::collateral_infos(&collateral_asset_id, &stablecoin_asset_id)
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let collateral_info = Self::collateral_infos(collateral_asset_id, stablecoin_asset_id)
+                .ok_or(Error::<T>::CollateralInfoNotFound)?;
             ensure!(
                 collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
                 Error::<T>::CollateralBelowMinimal
@@ -1057,8 +1056,7 @@ pub mod pallet {
                     ensure!(
                         <T>::Oracle::list_enabled_symbols()?
                             .iter()
-                            .find(|(supported_symbol, _)| { *supported_symbol == *symbol })
-                            .is_some(),
+                            .any(|(supported_symbol, _)| { *supported_symbol == *symbol }),
                         Error::<T>::SymbolNotEnabledByOracle
                     );
                 }
@@ -1717,7 +1715,7 @@ pub mod pallet {
                     DEXId::Polkaswap.into(),
                     &technical_account_id,
                     &technical_account_id,
-                    &stablecoin_asset_id,
+                    stablecoin_asset_id,
                     &T::KenAssetId::get(),
                     SwapAmount::with_desired_input(borrow_tax, balance!(0)),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
