@@ -16,7 +16,7 @@ test() {
         cargo test --release --features "private-net runtime-benchmarks" -- --test-threads 2 -- -j 4
         if [[ ${TAG_NAME} =~ 'testnet'* ]]; then
             RUST_LOG="debug"
-            cargo test --features try-runtime -- run_migrations 
+            cargo test -j 3 --features try-runtime -- run_migrations 
         fi
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
@@ -25,7 +25,7 @@ test() {
         export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
         rm -rf ~/.cargo/.package-cache
         cargo fmt -- --check > /dev/null
-        cargo test --features "$allfeatures" -- --test-threads 2 -- j 4
+        cargo test -j 3 --features "$allfeatures" -- --test-threads 2
     fi
 }
 
@@ -43,7 +43,7 @@ build() {
     fi
     printf "⚡️ Building with features: %s\n" "$featureList"
     printf "⚡️ Checking sudo pallet: %s\n" "$sudoCheckStatus"
-    cargo build --release --features "$featureList" -j 4
+    cargo build -j 3 --release --features "$featureList"
     mv ./target/release/framenode .
     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
     subwasm --json info framenode_runtime.compact.compressed.wasm > $wasmReportFile
