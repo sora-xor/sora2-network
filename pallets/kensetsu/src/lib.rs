@@ -382,7 +382,6 @@ pub mod pallet {
     /// Stablecoin parameters
     #[pallet::storage]
     #[pallet::getter(fn stablecoin_infos)]
-    // TODO bound
     #[pallet::unbounded]
     pub type StablecoinInfos<T: Config> =
         StorageMap<_, Identity, AssetIdOf<T>, StablecoinInfo<T::AssetId>>;
@@ -570,10 +569,9 @@ pub mod pallet {
             );
 
             // checks minimal collateral deposit requirement
-            let collateral_info = Self::calculate_collateral_interest_coefficient(
-                &collateral_asset_id,
-                &stablecoin_asset_id,
-            )?;
+            let collateral_info =
+                Self::collateral_infos(&collateral_asset_id, &stablecoin_asset_id)
+                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
             ensure!(
                 collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
                 Error::<T>::CollateralBelowMinimal
@@ -626,7 +624,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            let cdp = Self::accrue_internal(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             ensure!(amount >= cdp.debt, Error::<T>::OutstandingDebt);
             Self::repay_debt_internal(cdp_id, amount)?;
@@ -998,8 +996,8 @@ pub mod pallet {
                     }
                 }
                 Call::liquidate { cdp_id } => {
-                    let cdp = Self::cdp(cdp_id)
-                        .ok_or(InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
+                    let cdp = Self::accrue_internal(*cdp_id)
+                        .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
                     if !Self::check_cdp_is_safe(
                         cdp.collateral_asset_id,
                         cdp.collateral_amount,
@@ -1428,7 +1426,7 @@ pub mod pallet {
         fn is_accruable(cdp_id: &CdpId) -> Result<bool, DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             if cdp.debt > 0 {
-                let uncollected_stability_fee = Self::calculate_stability_fee(*cdp_id)?;
+                let (uncollected_stability_fee, _) = Self::calculate_stability_fee(*cdp_id)?;
                 let minimal_accruable_fee = Self::stablecoin_infos(cdp.stablecoin_asset_id)
                     .ok_or(Error::<T>::StablecoinInfoNotFound)?
                     .stablecoin_parameters
@@ -1439,7 +1437,7 @@ pub mod pallet {
             }
         }
 
-        /// Recalculates collateral interest coefficient with the current timestamp
+        /// Recalculates collateral interest coefficient with the current timestamp.
         ///
         /// Note:
         /// In the case of update this code do not forget to update front-end logic:
@@ -1479,11 +1477,15 @@ pub mod pallet {
 
         /// Calculates stability fee for the CDP for the current time.
         ///
+        /// Returns:
+        /// - `stability_fee`: Balance
+        /// - `updated_interest_coefficient`: FixedU128
+        ///
         /// Note:
         /// In the case of update this code do not forget to update front-end logic:
         /// `sora2-substrate-js-library/packages/util/src/kensetsu/index.ts`
         /// function `calcNewDebt`
-        fn calculate_stability_fee(cdp_id: CdpId) -> Result<Balance, DispatchError> {
+        fn calculate_stability_fee(cdp_id: CdpId) -> Result<(Balance, FixedU128), DispatchError> {
             let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             let collateral_info = Self::calculate_collateral_interest_coefficient(
                 &cdp.collateral_asset_id,
@@ -1499,7 +1501,7 @@ pub mod pallet {
                 .checked_mul(&interest_percent)
                 .ok_or(Error::<T>::ArithmeticError)?
                 .into_inner();
-            Ok(stability_fee)
+            Ok((stability_fee, interest_coefficient))
         }
 
         /// Accrues interest on a Collateralized Debt Position (CDP) and updates relevant parameters.
@@ -1511,20 +1513,13 @@ pub mod pallet {
             cdp_id: CdpId,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
         {
-            let mut cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
-            let collateral_info = Self::calculate_collateral_interest_coefficient(
-                &cdp.collateral_asset_id,
-                &cdp.stablecoin_asset_id,
-            )?;
-            let new_coefficient = collateral_info.interest_coefficient;
-            let mut stability_fee = Self::calculate_stability_fee(cdp_id)?;
-            let new_debt = cdp
-                .debt
-                .checked_add(stability_fee)
-                .ok_or(Error::<T>::ArithmeticError)?;
-            cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
+            let (mut stability_fee, new_coefficient) = Self::calculate_stability_fee(cdp_id)?;
+            let cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                cdp.debt = new_debt;
+                cdp.debt = cdp
+                    .debt
+                    .checked_add(stability_fee)
+                    .ok_or(Error::<T>::ArithmeticError)?;
                 cdp.interest_coefficient = new_coefficient;
                 Ok::<CollateralizedDebtPosition<T::AccountId, T::AssetId>, DispatchError>(
                     cdp.clone(),
