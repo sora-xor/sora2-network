@@ -570,9 +570,10 @@ pub mod pallet {
             );
 
             // checks minimal collateral deposit requirement
-            let collateral_info = Self::collateral_infos(collateral_asset_id, stablecoin_asset_id)
-                .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let interest_coefficient = collateral_info.interest_coefficient;
+            let collateral_info = Self::calculate_collateral_interest_coefficient(
+                &collateral_asset_id,
+                &stablecoin_asset_id,
+            )?;
             ensure!(
                 collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
                 Error::<T>::CollateralBelowMinimal
@@ -588,7 +589,7 @@ pub mod pallet {
                     collateral_amount: balance!(0),
                     stablecoin_asset_id,
                     debt: balance!(0),
-                    interest_coefficient,
+                    interest_coefficient: collateral_info.interest_coefficient,
                 },
             )?;
             Self::deposit_event(Event::CDPCreated {
