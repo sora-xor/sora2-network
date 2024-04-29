@@ -251,12 +251,7 @@ pub mod pallet {
                 }
 
                 // Liquidation
-                match Self::check_cdp_is_safe(
-                    cdp.collateral_asset_id,
-                    cdp.collateral_amount,
-                    cdp.stablecoin_asset_id,
-                    cdp.debt,
-                ) {
+                match Self::check_cdp_is_safe(&cdp) {
                     Ok(true) => {}
                     Ok(false) => {
                         debug!("CDP {:?} unsafe", cdp_id);
@@ -563,6 +558,7 @@ pub mod pallet {
             borrow_amount_max: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+
             ensure!(
                 borrow_amount_min <= borrow_amount_max,
                 Error::<T>::WrongBorrowAmounts
@@ -576,19 +572,15 @@ pub mod pallet {
                 Error::<T>::CollateralBelowMinimal
             );
 
-            let cdp_id = Self::increment_cdp_id()?;
-            Self::insert_cdp(
-                &who,
-                cdp_id,
-                CollateralizedDebtPosition {
-                    owner: who.clone(),
-                    collateral_asset_id,
-                    collateral_amount: balance!(0),
-                    stablecoin_asset_id,
-                    debt: balance!(0),
-                    interest_coefficient: collateral_info.interest_coefficient,
-                },
-            )?;
+            let cdp_id = Self::insert_cdp(CollateralizedDebtPosition {
+                owner: who.clone(),
+                collateral_asset_id,
+                collateral_amount: balance!(0),
+                stablecoin_asset_id,
+                debt: balance!(0),
+                interest_coefficient: collateral_info.interest_coefficient,
+            })?;
+
             Self::deposit_event(Event::CDPCreated {
                 cdp_id,
                 owner: who.clone(),
@@ -623,9 +615,11 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::accrue_internal(cdp_id)?;
+
+            let cdp = Self::get_cdp_updated(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             ensure!(amount >= cdp.debt, Error::<T>::OutstandingDebt);
+
             Self::repay_debt_internal(cdp_id, amount)?;
             Self::delete_cdp(cdp_id)
         }
@@ -697,76 +691,18 @@ pub mod pallet {
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+            // only one liquidation per block
             ensure!(
                 Self::check_liquidation_available(),
                 Error::<T>::LiquidationLimit
             );
-            let cdp = Self::accrue_internal(cdp_id)?;
-            ensure!(
-                !Self::check_cdp_is_safe(
-                    cdp.collateral_asset_id,
-                    cdp.collateral_amount,
-                    cdp.stablecoin_asset_id,
-                    cdp.debt
-                )?,
-                Error::<T>::CDPSafe
-            );
-            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::TreasuryTechAccount::get(),
-            )?;
+
+            let cdp = Self::get_cdp_updated(cdp_id)?;
+            ensure!(!Self::check_cdp_is_safe(&cdp)?, Error::<T>::CDPSafe);
+
             let (collateral_liquidated, proceeds, penalty) =
-                Self::swap(&cdp, &technical_account_id)?;
-            Self::update_cdp_collateral(
-                cdp_id,
-                cdp.collateral_amount
-                    .checked_sub(collateral_liquidated)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-            )?;
-            // stablecoin supply change for collateral.
-            let stablecoin_supply_change: Balance;
-            if cdp.debt > proceeds {
-                Self::burn_treasury(&cdp.stablecoin_asset_id, proceeds)?;
-                let shortage = cdp
-                    .debt
-                    .checked_sub(proceeds)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                if cdp.collateral_amount <= collateral_liquidated {
-                    // no collateral, total default
-                    // CDP debt is not covered with liquidation, now it is a protocol bad debt
-                    let profit_burnt =
-                        Self::cover_with_protocol(&cdp.stablecoin_asset_id, shortage)?;
-                    // close empty CDP, debt == 0, collateral == 0
-                    Self::delete_cdp(cdp_id)?;
-                    stablecoin_supply_change = proceeds
-                        .checked_add(profit_burnt)
-                        .ok_or(Error::<T>::ArithmeticError)?;
-                } else {
-                    // partly covered
-                    Self::update_cdp_debt(cdp_id, shortage)?;
-                    stablecoin_supply_change = proceeds;
-                }
-            } else {
-                Self::burn_treasury(&cdp.stablecoin_asset_id, cdp.debt)?;
-                // CDP debt is covered
-                Self::update_cdp_debt(cdp_id, 0)?;
-                stablecoin_supply_change = cdp.debt;
-                // There is more stablecoins than to cover debt and penalty, leftover goes to cdp.owner
-                let leftover = proceeds
-                    .checked_sub(cdp.debt)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                assets::Pallet::<T>::transfer_from(
-                    &cdp.stablecoin_asset_id,
-                    &technical_account_id,
-                    &cdp.owner,
-                    leftover,
-                )?;
-            };
-            Self::decrease_stablecoin_supply(
-                &cdp.collateral_asset_id,
-                &cdp.stablecoin_asset_id,
-                stablecoin_supply_change,
-            )?;
-            LiquidatedThisBlock::<T>::put(true);
+                Self::liquidate_internal(cdp_id, &cdp)?;
+
             Self::deposit_event(Event::Liquidated {
                 cdp_id,
                 collateral_asset_id: cdp.collateral_asset_id,
@@ -792,7 +728,7 @@ pub mod pallet {
                 Self::is_accruable(&cdp_id)?,
                 Error::<T>::UncollectedStabilityFeeTooSmall
             );
-            Self::accrue_internal(cdp_id)?;
+            Self::get_cdp_updated(cdp_id)?;
             Ok(())
         }
 
@@ -995,15 +931,10 @@ pub mod pallet {
                     }
                 }
                 Call::liquidate { cdp_id } => {
-                    let cdp = Self::accrue_internal(*cdp_id)
+                    let cdp = Self::get_cdp_updated(*cdp_id)
                         .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
-                    if !Self::check_cdp_is_safe(
-                        cdp.collateral_asset_id,
-                        cdp.collateral_amount,
-                        cdp.stablecoin_asset_id,
-                        cdp.debt,
-                    )
-                    .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?
+                    if !Self::check_cdp_is_safe(&cdp)
+                        .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?
                     {
                         ValidTransaction::with_tag_prefix("Kensetsu::liquidate")
                             .priority(T::UnsignedPriority::get())
@@ -1044,8 +975,9 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Adds stablecoin.
-        /// Stablecoin symbol must be supported by band, `DAI` means USD.
+        /// Adds stablecoin info.
+        /// Stablecoin can be iither symbol supported by Band Oracle or asset id supported by
+        /// PriceTools.
         // TODO decide on visibility (pub)
         pub fn add_stablecoin(
             stablecoin_asset_id: &T::AssetId,
@@ -1131,14 +1063,14 @@ pub mod pallet {
                     .risk_parameters
                     .liquidation_ratio;
 
-            // stablecoin price in DAI
+            // collateral price in pegged asset
             let peg_asset = Self::stablecoin_infos(stablecoin_asset_id)
                 .ok_or(Error::<T>::StablecoinInfoNotFound)?
                 .stablecoin_parameters
                 .peg_asset;
             let collateral_reference_price = match peg_asset {
                 PegAsset::OracleSymbol(symbol) => {
-                    // collateral price in DAI
+                    // collateral price in DAI assumed as price in $
                     let collateral_price_dai =
                         FixedU128::from_inner(T::PriceTools::get_average_price(
                             &collateral_asset_id,
@@ -1177,22 +1109,19 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `collateral_asset_id`: The asset ID associated with the collateral in the CDP.
-        /// - `collateral`: The current collateral amount in the CDP.
-        /// - `collateral_asset_id`: The asset ID associated with the debt in the CDP.
-        /// - `debt`: The current debt amount in the CDP.
+        /// - `cdp` - Collateralized Debt Position.
         fn check_cdp_is_safe(
-            collateral_asset_id: AssetIdOf<T>,
-            collateral: Balance,
-            stablecoin_asset_id: AssetIdOf<T>,
-            debt: Balance,
+            cdp: &CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
         ) -> Result<bool, DispatchError> {
-            if debt == Balance::zero() {
+            if cdp.debt == Balance::zero() {
                 Ok(true)
             } else {
-                let max_safe_debt =
-                    Self::get_max_safe_debt(collateral_asset_id, collateral, stablecoin_asset_id)?;
-                Ok(debt <= max_safe_debt)
+                let max_safe_debt = Self::get_max_safe_debt(
+                    cdp.collateral_asset_id,
+                    cdp.collateral_amount,
+                    cdp.stablecoin_asset_id,
+                )?;
+                Ok(cdp.debt <= max_safe_debt)
             }
         }
 
@@ -1266,7 +1195,7 @@ pub mod pallet {
             borrow_amount_min: Balance,
             borrow_amount_max: Balance,
         ) -> DispatchResult {
-            let cdp = Self::accrue_internal(cdp_id)?;
+            let cdp = Self::get_cdp_updated(cdp_id)?;
             ensure!(*who == cdp.owner, Error::<T>::OperationNotPermitted);
             let max_safe_debt = Self::get_max_safe_debt(
                 cdp.collateral_asset_id,
@@ -1352,7 +1281,7 @@ pub mod pallet {
         /// - 'cdp_id' - CDP id
         /// - `amount` - The maximum amount to repay, if exceeds debt, the debt amount is repayed.
         fn repay_debt_internal(cdp_id: CdpId, amount: Balance) -> DispatchResult {
-            let cdp = Self::accrue_internal(cdp_id)?;
+            let cdp = Self::get_cdp_updated(cdp_id)?;
             // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&cdp.owner, &cdp.stablecoin_asset_id, to_cover_debt)?;
@@ -1502,12 +1431,17 @@ pub mod pallet {
             Ok((stability_fee, interest_coefficient))
         }
 
-        /// Accrues interest on a Collateralized Debt Position (CDP) and updates relevant parameters.
+        /// Updates Collateralized Debt Position (CDP) fields to the current time and saves storage:
+        /// - debt,
+        /// - interest coefficient,
         ///
         /// ## Parameters
         ///
         /// - `cdp_id`: The ID of the CDP for interest accrual.
-        fn accrue_internal(
+        ///
+        /// ## Returns
+        /// - updated cdp
+        fn get_cdp_updated(
             cdp_id: CdpId,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
         {
@@ -1623,9 +1557,9 @@ pub mod pallet {
         /// - sold - collateral sold (in swap amount)
         /// - proceeds - stablecoin got from swap (out amount) minus liquidation penalty
         /// - penalty - liquidation penalty
-        fn swap(
+        fn liquidate_internal(
+            cdp_id: CdpId,
             cdp: &CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
-            technical_account_id: &AccountIdOf<T>,
         ) -> Result<(Balance, Balance, Balance), DispatchError> {
             let risk_parameters =
                 Self::collateral_infos(cdp.collateral_asset_id, cdp.stablecoin_asset_id)
@@ -1668,10 +1602,13 @@ pub mod pallet {
             let collateral_balance_before =
                 T::AssetInfoProvider::free_balance(&cdp.collateral_asset_id, &treasury_account_id)?;
 
+            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            )?;
             T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
-                technical_account_id,
-                technical_account_id,
+                &technical_account_id,
+                &technical_account_id,
                 &cdp.collateral_asset_id,
                 &cdp.stablecoin_asset_id,
                 swap_amount,
@@ -1694,6 +1631,58 @@ pub mod pallet {
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * stablecoin_swapped.min(cdp.debt);
             let proceeds = stablecoin_swapped - penalty;
+            Self::update_cdp_collateral(
+                cdp_id,
+                cdp.collateral_amount
+                    .checked_sub(collateral_liquidated)
+                    .ok_or(Error::<T>::ArithmeticError)?,
+            )?;
+            // stablecoin supply change for collateral.
+            let stablecoin_supply_change: Balance;
+            if cdp.debt > proceeds {
+                Self::burn_treasury(&cdp.stablecoin_asset_id, proceeds)?;
+                let shortage = cdp
+                    .debt
+                    .checked_sub(proceeds)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                if cdp.collateral_amount <= collateral_liquidated {
+                    // no collateral, total default
+                    // CDP debt is not covered with liquidation, now it is a protocol bad debt
+                    let profit_burnt =
+                        Self::cover_with_protocol(&cdp.stablecoin_asset_id, shortage)?;
+                    // close empty CDP, debt == 0, collateral == 0
+                    Self::delete_cdp(cdp_id)?;
+                    stablecoin_supply_change = proceeds
+                        .checked_add(profit_burnt)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                } else {
+                    // partly covered
+                    Self::update_cdp_debt(cdp_id, shortage)?;
+                    stablecoin_supply_change = proceeds;
+                }
+            } else {
+                Self::burn_treasury(&cdp.stablecoin_asset_id, cdp.debt)?;
+                // CDP debt is covered
+                Self::update_cdp_debt(cdp_id, 0)?;
+                stablecoin_supply_change = cdp.debt;
+                // There is more stablecoins than to cover debt and penalty, leftover goes to cdp.owner
+                let leftover = proceeds
+                    .checked_sub(cdp.debt)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                assets::Pallet::<T>::transfer_from(
+                    &cdp.stablecoin_asset_id,
+                    &technical_account_id,
+                    &cdp.owner,
+                    leftover,
+                )?;
+            };
+            Self::decrease_stablecoin_supply(
+                &cdp.collateral_asset_id,
+                &cdp.stablecoin_asset_id,
+                stablecoin_supply_change,
+            )?;
+            LiquidatedThisBlock::<T>::put(true);
+
             Ok((collateral_liquidated, proceeds, penalty))
         }
 
@@ -1780,13 +1769,13 @@ pub mod pallet {
         /// Inserts a new CDP
         /// Updates CDP storage and updates index owner -> CDP
         fn insert_cdp(
-            owner: &AccountIdOf<T>,
-            cdp_id: CdpId,
             cdp: CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
-        ) -> DispatchResult {
+        ) -> Result<CdpId, DispatchError> {
+            let cdp_id = Self::increment_cdp_id()?;
+            CdpOwnerIndex::<T>::try_append(&cdp.owner, cdp_id)
+                .map_err(|_| Error::<T>::CDPLimitPerUser)?;
             CDPDepository::<T>::insert(cdp_id, cdp);
-            CdpOwnerIndex::<T>::try_append(owner, cdp_id)
-                .map_err(|_| Error::<T>::CDPLimitPerUser.into())
+            Ok(cdp_id)
         }
 
         /// Updates CDP collateral balance
