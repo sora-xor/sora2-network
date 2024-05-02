@@ -1675,10 +1675,6 @@ pub mod pallet {
                 *collateral_asset_id != T::KenAssetId::get(),
                 Error::<T>::WrongAssetId
             );
-            ensure!(
-                *collateral_asset_id != T::KenAssetId::get(),
-                Error::<T>::WrongAssetId
-            );
             CollateralInfos::<T>::try_mutate(collateral_asset_id, |option_collateral_info| {
                 match option_collateral_info {
                     Some(collateral_info) => {
