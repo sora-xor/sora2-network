@@ -30,7 +30,7 @@
 
 pub mod init {
     use crate::*;
-    use common::{KEN, KUSD};
+    use common::{KEN, KGOLD, KUSD};
     use core::marker::PhantomData;
     use frame_support::log::error;
     use frame_support::pallet_prelude::Weight;
@@ -40,13 +40,15 @@ pub mod init {
 
     pub struct RegisterTreasuryTechAccount<T>(PhantomData<T>);
 
-    /// Registers Kensetsu Treasury technical account
+    /// Registers Kensetsu Treasury technical account and grant premission to [KEN, KUSD, KGLD]
     impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
         for RegisterTreasuryTechAccount<T>
     {
         fn on_runtime_upgrade() -> Weight {
             let tech_account = <T>::TreasuryTechAccount::get();
-            match technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account) {
+            let mut weight = match technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+                &tech_account,
+            ) {
                 Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
                 Err(err) => {
                     error!(
@@ -55,21 +57,12 @@ pub mod init {
                     );
                     <T as frame_system::Config>::DbWeight::get().reads(1)
                 }
-            }
-        }
-    }
+            };
 
-    pub struct GrantPermissionsTreasuryTechAccount<T>(PhantomData<T>);
-
-    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
-        for GrantPermissionsTreasuryTechAccount<T>
-    {
-        fn on_runtime_upgrade() -> Weight {
-            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             ) {
-                for token in &[KEN, KUSD] {
+                for token in &[KEN, KUSD, KGOLD] {
                     let scope = Scope::Limited(common::hash(token));
                     for permission_id in &[MINT, BURN] {
                         match permissions::Pallet::<T>::assign_permission(
@@ -92,6 +85,43 @@ pub mod init {
                     }
                 }
             }
+
+            weight
+        }
+    }
+}
+
+pub mod clear_storage {
+    use crate::{CollateralInfos, Config};
+    use frame_support::dispatch::Weight;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_core::Get;
+    use std::marker::PhantomData;
+
+    mod old_storage {}
+
+    pub struct ClearStorage<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for ClearStorage<T> {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+            // TODO
+            //             let res = frame_support::migration::clear_storage_prefix(
+            //                 <Pallet<T>>::name().as_bytes(),
+            //                 b"StorageName",
+            //                 b"",
+            //                 None,
+            //                 None,
+            //             );
+
+            // TODO translate(None)
+            // CollateralInfos::<T>::clear(, None);
+
+            // NextCDPId set 0
+
+            // CDPDepository drop
+
+            // CdpOwnerIndex drop
 
             weight
         }
