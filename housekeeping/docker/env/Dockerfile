@@ -1,4 +1,6 @@
-FROM debian:bookworm-20240408-slim
+FROM gcc:12.3.0-bookworm
+
+ARG DEBIAN_FRONTEND=noninteractive
 
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
@@ -6,21 +8,16 @@ ENV PATH="$PATH:$RUSTUP_HOME/bin"
 ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 ENV RUST_VERSION=nightly-2024-01-15
 ENV TZ=Europe/Moscow
-ENV CC=clang-14
-ENV CXX=clang++-14
-ENV SUBWASM_VER=v0.20.0
+ENV LLVM_TOOLS_VER="14"
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CC=gcc
+ENV CXX=g++
 ENV GRCOV_VERSION=0.8.19
-ENV LLVM_TOOLS_VER=14
-ARG DEBIAN_FRONTEND=noninteractive
+ENV SUBWASM_VER=v0.20.0
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-    ca-certificates apt-transport-https gnupg \
-    libssl-dev pkg-config \
-    wget \
-    git binaryen \
-    make cmake \
-    gcc build-essential \
+    binaryen cmake protobuf-compiler \
     software-properties-common && \
     wget -O - https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup toolchain install ${RUST_VERSION} && \
@@ -29,9 +26,6 @@ RUN apt-get update && \
     chmod +x llvm.sh && \
     ./llvm.sh ${LLVM_TOOLS_VER} && \
     rm llvm.sh && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y \
-    llvm-${LLVM_TOOLS_VER} protobuf-compiler && \
     rustup update && \
     cargo install --locked --git https://github.com/chevdor/subwasm --tag ${SUBWASM_VER} && \
     cargo install grcov --version ${GRCOV_VERSION} && \
