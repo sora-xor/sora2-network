@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -14,6 +14,6 @@ RUN mkdir /chain && \
     chown 10000:10000 /chain
 USER substrate
 
-COPY --chmod=0500 --chown=substrate:substrate ./framenode /usr/local/bin/framenode
+COPY --chown=substrate:substrate ./framenode /usr/local/bin/framenode
 
 ENTRYPOINT ["framenode"]
