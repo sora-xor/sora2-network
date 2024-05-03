@@ -38,4 +38,5 @@ pub type Migrations = ();
 pub type Migrations = (
     kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,
     kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount<Runtime>,
+    kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,
 );

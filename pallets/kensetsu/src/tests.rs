@@ -32,10 +32,10 @@ use super::*;
 
 use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
-    alice, alice_account_id, assert_bad_debt, assert_balance, bob, create_cdp_for_xor,
+    add_balance, alice, alice_account_id, assert_bad_debt, assert_balance, bob, create_cdp_for_xor,
     deposit_xor_to_cdp, get_total_supply, make_cdps_unsafe, protocol_owner,
-    protocol_owner_account_id, risk_manager, risk_manager_account_id, set_bad_debt, set_balance,
-    set_borrow_tax, set_up_risk_manager, set_xor_as_collateral_type, tech_account_id,
+    protocol_owner_account_id, risk_manager, risk_manager_account_id, set_bad_debt, set_borrow_tax,
+    set_up_risk_manager, set_xor_as_collateral_type, tech_account_id,
 };
 
 use common::{balance, AssetId32, Balance, KEN, KUSD, XOR};
@@ -158,7 +158,7 @@ fn test_create_cdp_sunny_day() {
             FixedU128::from_float(0.0),
             collateral_minimal_balance,
         );
-        set_balance(alice_account_id(), collateral);
+        add_balance(alice_account_id(), collateral, XOR);
 
         assert_ok!(KensetsuPallet::create_cdp(
             alice(),
@@ -277,9 +277,10 @@ fn test_close_cdp_outstanding_debt() {
         );
         let collateral = balance!(10);
         let debt = balance!(1);
+        let more_than_debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         assert_balance(&alice_account_id(), &XOR, balance!(0));
-        assert_balance(&alice_account_id(), &KUSD, debt);
+        add_balance(alice_account_id(), more_than_debt, KUSD);
 
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
 
@@ -302,7 +303,7 @@ fn test_close_cdp_outstanding_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &XOR, balance!(10));
-        assert_balance(&alice_account_id(), &KUSD, balance!(0));
+        assert_balance(&alice_account_id(), &KUSD, more_than_debt);
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
     });
@@ -433,7 +434,7 @@ fn test_deposit_collateral_overflow() {
         let max_i128_amount = Balance::MAX / 2;
         let cdp_id = create_cdp_for_xor(alice(), max_i128_amount, balance!(0));
         deposit_xor_to_cdp(alice(), cdp_id, max_i128_amount);
-        set_balance(alice_account_id(), max_i128_amount);
+        add_balance(alice_account_id(), max_i128_amount, XOR);
 
         // ArithmeticError::Overflow from pallet_balances
         assert_noop!(
@@ -484,7 +485,7 @@ fn test_deposit_collateral_sunny_day() {
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
         let amount = balance!(10);
-        set_balance(alice_account_id(), amount);
+        add_balance(alice_account_id(), amount, XOR);
 
         assert_ok!(KensetsuPallet::deposit_collateral(alice(), cdp_id, amount));
 
@@ -807,9 +808,9 @@ fn borrow_with_ken_incentivization() {
     });
 }
 
-/// @given: XOR is set as collateral and collateral amount is 100 XOR and borrow tax is 1%
-/// @when: user borrows as max KUSD against XOR as possible
-/// @then: debt is 100 KUSD,
+/// @given: XOR is set as collateral and collateral amount is 100 XOR and borrow tax is 1%.
+/// @when: user borrows as max KUSD against XOR as possible.
+/// @then: debt is 100 KUSD.
 #[test]
 fn borrow_max_with_ken_incentivization() {
     new_test_ext().execute_with(|| {
@@ -1476,13 +1477,16 @@ fn test_liquidate_kusd_bad_debt() {
         // withdraw 10 KUSD from interest, so the protocol can not cover bad debt
         let interest = balance!(10);
         assert_ok!(KensetsuPallet::withdraw_profit(protocol_owner(), interest));
-        // 110 KUSD debt + 10 KUSD liquidity provider
+        // 110 KUSD debt + 100 KUSD liquidity provider
         let initial_kusd_supply = get_total_supply(&KUSD);
+        // 110 KUSD minted by the protocol
+        let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
+        assert_eq!(collateral_info.kusd_supply, balance!(110));
 
-        // 100 XOR sold for 10 KUSD
+        // 100 XOR sold for 100 KUSD
         assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
-        // debt * liquidation penalty = 10 KUSD
+        // liquidation_income * liquidation penalty = 10 KUSD
         let penalty = balance!(10);
         System::assert_has_event(
             Event::Liquidated {
@@ -1504,17 +1508,20 @@ fn test_liquidate_kusd_bad_debt() {
             }
             .into(),
         );
-        // tech account has 10 KUSD penalty
-        // debt is 100 + 10 interest
-        // liquidation revenue is 100 - 10 penalty = 90
-        // bad debt = debt - liquidation = 110 - 90 = 20 - covered with protocol profit
+        // tech account balance: 10 fee + 10 penalty - 10 withdrawn = 10 KUSD
+        // CDP debt is 100 + 10 interest = 110 KUSD
+        // liquidation sold for 100 where proceeds is 90 and 10 penalty
+        // CDP bad debt = CDP debt - proceeds = 110 - 90 = 20 KUSD
+        // protocol bad debt = CDP bad debt - tech account balance = 20 - 10 = 10 KUSD
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(10));
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
-        assert_eq!(collateral_info.kusd_supply, balance!(0));
+        // 10 KUSD minted by the protocol (accounted in bad debt)
+        assert_eq!(collateral_info.kusd_supply, balance!(10));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
-        assert_balance(&alice_account_id(), &KUSD, debt);
+        assert_balance(&protocol_owner_account_id(), &KUSD, interest);
+        // 10 fee on owner + 100 debt alice = 110 KUSD
         let kusd_supply = get_total_supply(&KUSD);
         // 100 KUSD which is debt amount is burned
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
@@ -1692,9 +1699,9 @@ fn test_accrue_profit_same_time() {
     });
 }
 
-/// Given: CDP with debt, protocol has bad debt and interest accrued < bad debt
-/// When: accrue is called
-/// Then: interest covers the part of bad debt
+/// Given: CDP with debt, protocol has bad debt and interest accrued < bad debt.
+/// When: accrue is called.
+/// Then: interest covers the part of bad debt.
 #[test]
 fn test_accrue_interest_less_bad_debt() {
     new_test_ext().execute_with(|| {
@@ -1702,10 +1709,11 @@ fn test_accrue_interest_less_bad_debt() {
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 20% per millisecond
+            // 10% per millisecond
             FixedU128::from_float(0.1),
             balance!(0),
         );
+        set_bad_debt(balance!(2));
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
         // 1 sec passed
@@ -1715,12 +1723,13 @@ fn test_accrue_interest_less_bad_debt() {
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
         // interest is 10*20%*1 = 1 KUSD,
-        // where 10 - initial balance, 20% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         // and 1 KUSD covers the part of bad debt
         let interest = balance!(1);
         let new_bad_debt = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
-        assert_eq!(collateral_info.kusd_supply, debt + interest);
+        // fee is burned as bad debt, no KUSD minted
+        assert_eq!(collateral_info.kusd_supply, debt);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
@@ -1730,9 +1739,9 @@ fn test_accrue_interest_less_bad_debt() {
     });
 }
 
-/// Given: CDP with debt, protocol has bad debt and interest accrued == bad debt
-/// When: accrue is called
-/// Then: interest covers the part of bad debt
+/// Given: CDP with debt, protocol has bad debt and interest accrued == bad debt.
+/// When: accrue is called.
+/// Then: interest covers the part of bad debt.
 #[test]
 fn test_accrue_interest_eq_bad_debt() {
     new_test_ext().execute_with(|| {
@@ -1740,10 +1749,11 @@ fn test_accrue_interest_eq_bad_debt() {
         set_xor_as_collateral_type(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 20% per millisecond
+            // 10% per millisecond
             FixedU128::from_float(0.1),
             balance!(0),
         );
+        set_bad_debt(balance!(1));
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
         let initial_kusd_supply = get_total_supply(&KUSD);
@@ -1752,12 +1762,13 @@ fn test_accrue_interest_eq_bad_debt() {
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
-        // interest is 10*20%*1 = 1 KUSD,
+        // interest is 10*10%*1 = 1 KUSD,
         // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         // and 1 KUSD covers bad debt
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
-        assert_eq!(collateral_info.kusd_supply, debt + interest);
+        // supply doesn't change, fee is burned as bad debt
+        assert_eq!(collateral_info.kusd_supply, debt);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
@@ -1767,9 +1778,9 @@ fn test_accrue_interest_eq_bad_debt() {
     });
 }
 
-/// Given: CDP with debt, protocol has bad debt and interest accrued > bad debt
-/// When: accrue is called
-/// Then: interest covers the bad debt and leftover goes to protocol profit
+/// Given: CDP with debt, protocol has bad debt and interest accrued > bad debt.
+/// When: accrue is called.
+/// Then: interest covers the bad debt and leftover goes to protocol profit.
 #[test]
 fn test_accrue_interest_gt_bad_debt() {
     new_test_ext().execute_with(|| {
@@ -1781,6 +1792,7 @@ fn test_accrue_interest_gt_bad_debt() {
             FixedU128::from_float(0.2),
             balance!(0),
         );
+        set_bad_debt(balance!(1));
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
         // 1 sec passed
@@ -1795,7 +1807,8 @@ fn test_accrue_interest_gt_bad_debt() {
         let interest = balance!(2);
         let profit = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
-        assert_eq!(collateral_info.kusd_supply, debt + interest);
+        // 1 KUSD goes to profit and 1 is burned as bad debt
+        assert_eq!(collateral_info.kusd_supply, debt + profit);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
