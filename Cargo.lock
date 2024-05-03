@@ -5197,7 +5197,6 @@ dependencies = [
  "price-tools",
  "sp-arithmetic",
  "sp-core",
- "sp-io",
  "sp-runtime",
  "technical",
  "trading-pair",
