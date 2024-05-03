@@ -209,21 +209,21 @@ try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = 
 pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 [patch."https://github.com/sora-xor/sora2-common.git"]
-beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-parachain-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-evm-fungible-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "evm-fungible-app" }
+beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+parachain-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+evm-fungible-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
+bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.24" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
@@ -286,7 +286,7 @@ members = [
     "node/",
     "utils/parse",
     "utils/generate-bags",
-    "utils/remote-ext"
+    "utils/remote-ext",
 ]
 
 resolver = "2"
