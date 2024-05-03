@@ -97,3 +97,76 @@ pub mod init {
         }
     }
 }
+
+/// Due to bug in stability fee update some extra KUSD were minted, this migration burns and sets
+/// correct amounts.
+pub mod stage_correction {
+    use crate::{CDPDepository, CollateralInfos, Config, Error};
+    use assets::AssetIdOf;
+    use common::AssetInfoProvider;
+    use common::Balance;
+    use frame_support::dispatch::Weight;
+    use frame_support::log::error;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_arithmetic::traits::Zero;
+    use sp_core::Get;
+    use sp_runtime::DispatchResult;
+    use std::collections::BTreeMap;
+    use std::marker::PhantomData;
+
+    pub struct CorrectKusdBalances<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config> CorrectKusdBalances<T> {
+        fn runtime_upgrade_internal(weight: &mut Weight) -> DispatchResult {
+            let mut collateral_debts: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
+            let mut total_debt = Balance::zero();
+
+            for (_, cdp) in CDPDepository::<T>::iter() {
+                *collateral_debts.entry(cdp.collateral_asset_id).or_default() += cdp.debt;
+                total_debt += cdp.debt;
+                *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+            }
+
+            for asset_id in CollateralInfos::<T>::iter_keys() {
+                CollateralInfos::<T>::try_mutate(asset_id, |collateral_info| {
+                    let collateral_info =
+                        collateral_info.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                    collateral_info.kusd_supply =
+                        *collateral_debts.get(&asset_id).unwrap_or(&Balance::zero());
+                    DispatchResult::Ok(())
+                })?;
+                *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            }
+
+            // burn KUSD on tech account
+            let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            )?;
+            let balance =
+                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
+            let to_burn = balance - total_debt;
+            assets::Pallet::<T>::burn_from(
+                &T::KusdAssetId::get(),
+                &treasury_account_id,
+                &treasury_account_id,
+                to_burn,
+            )?;
+
+            *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+            Ok(())
+        }
+    }
+
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
+        for CorrectKusdBalances<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+            Self::runtime_upgrade_internal(&mut weight).unwrap_or_else(|err| {
+                error!("Runtime upgrade error {:?}", err);
+            });
+            weight
+        }
+    }
+}
