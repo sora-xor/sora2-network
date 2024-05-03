@@ -212,7 +212,7 @@ fn mint_failed() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
         let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
-        let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
+        let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
         Dispatch::dispatch(
             BASE_EVM_NETWORK_ID,
             MessageId::basic(
@@ -231,7 +231,7 @@ fn mint_failed() {
             AdditionalEVMInboundData { source },
         );
         assert_eq!(
-            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
             0
         );
         assert_eq!(Transactions::<Test>::iter().count(), 0);
