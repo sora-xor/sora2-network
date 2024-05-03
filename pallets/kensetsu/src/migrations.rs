@@ -104,13 +104,13 @@ pub mod stage_correction {
     use crate::{CDPDepository, CollateralInfos, Config, Error};
     use common::AssetInfoProvider;
     use common::Balance;
+    use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::log::error;
     use frame_support::traits::OnRuntimeUpgrade;
     use sp_arithmetic::traits::Zero;
     use sp_core::Get;
     use sp_runtime::DispatchResult;
-    use std::marker::PhantomData;
 
     pub struct CorrectKusdBalances<T>(PhantomData<T>);
 
