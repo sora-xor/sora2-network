@@ -102,7 +102,6 @@ pub mod init {
 /// correct amounts.
 pub mod stage_correction {
     use crate::{CDPDepository, CollateralInfos, Config, Error};
-    use assets::AssetIdOf;
     use common::AssetInfoProvider;
     use common::Balance;
     use frame_support::dispatch::Weight;
@@ -111,31 +110,36 @@ pub mod stage_correction {
     use sp_arithmetic::traits::Zero;
     use sp_core::Get;
     use sp_runtime::DispatchResult;
-    use std::collections::BTreeMap;
     use std::marker::PhantomData;
 
     pub struct CorrectKusdBalances<T>(PhantomData<T>);
 
     impl<T: Config + permissions::Config + technical::Config> CorrectKusdBalances<T> {
         fn runtime_upgrade_internal(weight: &mut Weight) -> DispatchResult {
-            let mut collateral_debts: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
             let mut total_debt = Balance::zero();
 
-            for (_, cdp) in CDPDepository::<T>::iter() {
-                *collateral_debts.entry(cdp.collateral_asset_id).or_default() += cdp.debt;
-                total_debt += cdp.debt;
-                *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
-            }
-
             for asset_id in CollateralInfos::<T>::iter_keys() {
+                let accumulated_debt_for_collateral = CDPDepository::<T>::iter()
+                    .filter(|(_, cdp)| {
+                        *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                        cdp.collateral_asset_id == asset_id
+                    })
+                    .fold(
+                        Balance::zero(),
+                        |accumulated_debt_for_collateral, (_, cdp)| {
+                            accumulated_debt_for_collateral + cdp.debt
+                        },
+                    );
+
                 CollateralInfos::<T>::try_mutate(asset_id, |collateral_info| {
                     let collateral_info =
                         collateral_info.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    collateral_info.kusd_supply =
-                        *collateral_debts.get(&asset_id).unwrap_or(&Balance::zero());
+                    collateral_info.kusd_supply = accumulated_debt_for_collateral;
                     DispatchResult::Ok(())
                 })?;
                 *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                total_debt += accumulated_debt_for_collateral;
             }
 
             // burn KUSD on tech account
