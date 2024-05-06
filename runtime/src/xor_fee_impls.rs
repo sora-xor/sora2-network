@@ -29,11 +29,59 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
+#[cfg(feature = "wip")] // EVM bridge
+use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 use common::LiquidityProxyTrait;
+use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
 
 impl RuntimeCall {
+    #[cfg(feature = "wip")] // EVM bridge
+    pub fn withdraw_evm_fee(&self, who: &AccountId) -> DispatchResult {
+        match self {
+            Self::BridgeProxy(bridge_proxy::Call::burn {
+                network_id: GenericNetworkId::EVM(chain_id),
+                asset_id,
+                ..
+            }) => BridgeProxy::withdraw_transfer_fee(who, *chain_id, *asset_id)?,
+            Self::EVMFungibleApp(evm_fungible_app::Call::burn {
+                network_id,
+                asset_id,
+                ..
+            }) => EVMFungibleApp::withdraw_transfer_fee(who, *network_id, *asset_id)?,
+            _ => {}
+        }
+        Ok(())
+    }
+
+    #[cfg(not(feature = "wip"))] // EVM bridge
+    pub fn additional_evm_fee(&self, _who: &AccountId) -> DispatchResult {
+        Ok(())
+    }
+
+    #[cfg(feature = "wip")] // EVM bridge
+    pub fn withdraw_evm_fee_nested(&self, who: &AccountId) -> DispatchResult {
+        match self {
+            Self::Multisig(pallet_multisig::Call::as_multi_threshold_1 { call, .. })
+            | Self::Multisig(pallet_multisig::Call::as_multi { call, .. })
+            | Self::Utility(UtilityCall::as_derivative { call, .. }) => {
+                call.withdraw_evm_fee_nested(who)?
+            }
+            Self::Utility(UtilityCall::batch { calls })
+            | Self::Utility(UtilityCall::batch_all { calls })
+            | Self::Utility(UtilityCall::force_batch { calls }) => {
+                for call in calls {
+                    call.withdraw_evm_fee_nested(who)?;
+                }
+            }
+            call => {
+                call.withdraw_evm_fee(who)?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn swap_count(&self) -> u32 {
         match self {
             Self::Multisig(pallet_multisig::Call::as_multi_threshold_1 { call, .. })
@@ -346,6 +394,8 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
 
             }
         }
+        #[cfg(feature = "wip")] // EVM bridge
+        call.withdraw_evm_fee_nested(who)?;
         Ok((
             fee_source.clone(),
             Some(Balances::withdraw(
