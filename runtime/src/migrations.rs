@@ -37,6 +37,5 @@ pub type Migrations = ();
 #[cfg(feature = "ready-to-test")] // kensetsu
 pub type Migrations = (
     kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,
-    kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount<Runtime>,
     // TODO migration KGOLD
 );

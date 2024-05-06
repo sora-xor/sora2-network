@@ -92,11 +92,11 @@ pub mod init {
 }
 
 pub mod clear_storage {
-    use crate::{CollateralInfos, Config};
+    use crate::Config;
+    use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
     use sp_core::Get;
-    use std::marker::PhantomData;
 
     mod old_storage {}
 

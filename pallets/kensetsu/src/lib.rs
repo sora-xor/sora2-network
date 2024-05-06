@@ -609,18 +609,16 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
-        /// - `amount`: The amount of stablecoins to repay outstanding debt, only min(amount, debt)
         ///  will be transferred.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
-        pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
+        pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let cdp = Self::get_cdp_updated(cdp_id)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
-            ensure!(amount >= cdp.debt, Error::<T>::OutstandingDebt);
 
-            Self::repay_debt_internal(cdp_id, amount)?;
+            Self::repay_debt_internal(cdp_id, cdp.debt)?;
             Self::delete_cdp(cdp_id)
         }
 

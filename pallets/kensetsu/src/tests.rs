@@ -308,11 +308,11 @@ fn test_close_cdp_only_signed_origin() {
         let cdp_id = 1;
 
         assert_noop!(
-            KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id, balance!(0)),
+            KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id),
             BadOrigin
         );
         assert_noop!(
-            KensetsuPallet::close_cdp(RuntimeOrigin::root(), cdp_id, balance!(0)),
+            KensetsuPallet::close_cdp(RuntimeOrigin::root(), cdp_id),
             BadOrigin
         );
     });
@@ -332,7 +332,7 @@ fn test_close_cdp_only_owner() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
 
         assert_noop!(
-            KensetsuPallet::close_cdp(bob(), cdp_id, balance!(0)),
+            KensetsuPallet::close_cdp(bob(), cdp_id),
             KensetsuError::OperationNotPermitted
         );
     });
@@ -345,32 +345,8 @@ fn test_close_cdp_does_not_exist() {
         let cdp_id = 1;
 
         assert_noop!(
-            KensetsuPallet::close_cdp(alice(), cdp_id, balance!(0)),
+            KensetsuPallet::close_cdp(alice(), cdp_id),
             KensetsuError::CDPNotFound
-        );
-    });
-}
-
-/// When CDP has outstanding debt, but the client entered amount not enough to cover debt.
-#[test]
-fn test_close_cdp_outstanding_debt_not_covered() {
-    new_test_ext().execute_with(|| {
-        configure_kensetsu_dollar_for_xor(
-            Balance::MAX,
-            Perbill::from_percent(50),
-            FixedU128::from_float(0.0),
-            balance!(0),
-        );
-        let collateral = balance!(10);
-        let debt = balance!(1);
-        let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
-        assert_balance(&alice_account_id(), &XOR, balance!(0));
-        assert_balance(&alice_account_id(), &KUSD, debt);
-
-        // close with transfer amount more than debt
-        assert_noop!(
-            KensetsuPallet::close_cdp(alice(), cdp_id, balance!(0)),
-            KensetsuError::OutstandingDebt
         );
     });
 }
@@ -393,7 +369,7 @@ fn test_close_cdp_outstanding_debt() {
         add_balance(alice_account_id(), more_than_debt, KUSD);
 
         // close with transfer amount more than debt
-        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id, more_than_debt));
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
 
         System::assert_has_event(
             Event::DebtPayment {
@@ -434,7 +410,7 @@ fn test_close_cdp_sunny_day() {
         let cdp_id = create_cdp_for_xor(alice(), collateral, balance!(0));
         assert_balance(&alice_account_id(), &XOR, balance!(0));
 
-        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id, balance!(0)));
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
 
         System::assert_last_event(
             Event::CDPClosed {
@@ -475,13 +451,13 @@ fn test_multiple_cdp_close() {
             Some(BoundedVec::try_from(vec![cdp_id_1, cdp_id_2]).unwrap())
         );
 
-        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_1, balance!(0)));
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_1));
         assert_eq!(
             KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(BoundedVec::try_from(vec![cdp_id_2]).unwrap())
         );
 
-        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_2, balance!(0)));
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_2));
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
     });
 }

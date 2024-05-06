@@ -264,7 +264,7 @@ benchmarks! {
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
     }: {
-        kensetsu::Pallet::<T>::close_cdp(RawOrigin::Signed(caller::<T>()).into(), cdp_id, balance!(0)).unwrap();
+        kensetsu::Pallet::<T>::close_cdp(RawOrigin::Signed(caller::<T>()).into(), cdp_id).unwrap();
     }
 
     deposit_collateral {
