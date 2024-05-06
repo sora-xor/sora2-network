@@ -49,20 +49,18 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
+#[cfg(feature = "wip")]
+use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader,
-    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
-    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
-    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
+    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
+    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
-};
-#[cfg(feature = "wip")]
-use framenode_runtime::{
-    BridgeInboundChannelConfig, BridgeOutboundChannelConfig, EthereumLightClientConfig,
 };
 
 use hex_literal::hex;
@@ -906,8 +904,6 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
-    #[cfg(feature = "wip")]
-    use framenode_runtime::EthAppConfig;
 
     // Initial balances
     let initial_staking = balance!(1000000000);
@@ -1245,6 +1241,8 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
+        #[cfg(feature = "wip")] // EVM bridge
+        evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
@@ -1252,21 +1250,7 @@ fn testnet_genesis(
         beefy_light_client: Default::default(),
 
         #[cfg(feature = "wip")] // EVM bridge
-        migration_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        erc20_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        eth_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        ethereum_light_client: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        bridge_inbound_channel: BridgeInboundChannelConfig {
-            reward_fraction: Perbill::from_percent(80),
-            ..Default::default()
-        },
-        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
-            fee: 10000,
             interval: 10,
             ..Default::default()
         },
@@ -2182,6 +2166,7 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
@@ -2189,23 +2174,8 @@ fn mainnet_genesis(
         beefy_light_client: Default::default(),
 
         #[cfg(feature = "wip")] // EVM bridge
-        migration_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        erc20_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        eth_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        ethereum_light_client: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        bridge_inbound_channel: BridgeInboundChannelConfig {
-            reward_fraction: Perbill::from_percent(80),
-            ..Default::default()
-        },
-        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
-            fee: 10000,
             interval: 10,
-            ..Default::default()
         },
 
         system: SystemConfig {
