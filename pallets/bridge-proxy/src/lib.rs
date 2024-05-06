@@ -15,11 +15,11 @@ pub mod weights;
 
 use bridge_types::{
     traits::{
-        BridgeAssetLockChecker, BridgeAssetLocker, GasTracker, MessageStatusNotifier,
-        TimepointProvider,
+        BridgeApp, BridgeAssetLockChecker, BridgeAssetLocker, EVMBridgeWithdrawFee,
+        MessageStatusNotifier, TimepointProvider,
     },
     types::{AssetKind, MessageDirection, MessageStatus},
-    Address, GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
+    GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 use codec::{Decode, Encode};
 use common::{prelude::FixedWrapper, Balance};
@@ -28,7 +28,6 @@ use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
 use frame_support::log;
 use scale_info::TypeInfo;
-use sp_core::U256;
 use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
 use sp_runtime::Saturating;
@@ -37,6 +36,7 @@ use sp_std::prelude::*;
 pub use weights::WeightInfo;
 
 pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
+pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b"bridge-fee";
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -85,9 +85,8 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type EthApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
-
-        type ERC20App: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>;
+        type FAApp: BridgeApp<Self::AccountId, H160, Self::AssetId, Balance>
+            + EVMBridgeWithdrawFee<Self::AccountId, Self::AssetId>;
 
         type ParachainApp: BridgeApp<Self::AccountId, ParachainAccountId, Self::AssetId, Balance>;
 
@@ -129,12 +128,6 @@ pub mod pallet {
         T::AccountId,
         OptionQuery,
     >;
-
-    /// Fee paid for relayed tx on sidechain. Map ((Network ID, Address) => Cumulative Fee Paid).
-    #[pallet::storage]
-    #[pallet::getter(fn sidechain_fee_paid)]
-    pub(super) type SidechainFeePaid<T: Config> =
-        StorageDoubleMap<_, Blake2_128Concat, GenericNetworkId, Blake2_128Concat, Address, U256>;
 
     /// Amount of assets locked by bridge for specific network. Map ((Network ID, Asset ID) => Locked amount).
     #[pallet::storage]
@@ -244,10 +237,8 @@ pub mod pallet {
                 GenericAccount::EVM(recipient) => {
                     if T::HashiBridge::is_asset_supported(network_id, asset_id) {
                         T::HashiBridge::transfer(network_id, asset_id, sender, recipient, amount)?;
-                    } else if T::EthApp::is_asset_supported(network_id, asset_id) {
-                        T::EthApp::transfer(network_id, asset_id, sender, recipient, amount)?;
-                    } else if T::ERC20App::is_asset_supported(network_id, asset_id) {
-                        T::ERC20App::transfer(network_id, asset_id, sender, recipient, amount)?;
+                    } else if T::FAApp::is_asset_supported(network_id, asset_id) {
+                        T::FAApp::transfer(network_id, asset_id, sender, recipient, amount)?;
                     } else {
                         frame_support::fail!(Error::<T>::PathIsNotAvailable);
                     }
@@ -320,8 +311,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         pub fn list_apps() -> Vec<BridgeAppInfo> {
             let mut res = vec![];
-            res.extend(T::EthApp::list_apps());
-            res.extend(T::ERC20App::list_apps());
+            res.extend(T::FAApp::list_apps());
             res.extend(T::HashiBridge::list_apps());
             res.extend(T::ParachainApp::list_apps());
             res.extend(T::LiberlandApp::list_apps());
@@ -330,8 +320,7 @@ pub mod pallet {
 
         pub fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo> {
             let mut res = vec![];
-            res.extend(T::EthApp::list_supported_assets(network_id));
-            res.extend(T::ERC20App::list_supported_assets(network_id));
+            res.extend(T::FAApp::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
             res.extend(T::ParachainApp::list_supported_assets(network_id));
             res.extend(T::LiberlandApp::list_supported_assets(network_id));
@@ -355,10 +344,8 @@ pub mod pallet {
                 T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::LiberlandApp::is_asset_supported(network_id, asset_id) {
                 T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else if T::EthApp::is_asset_supported(network_id, asset_id) {
-                T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else {
-                T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else if T::FAApp::is_asset_supported(network_id, asset_id) {
+                T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             }
             Ok(())
         }
@@ -366,52 +353,12 @@ pub mod pallet {
         /// Returns the maximum weight which can be consumed by burn call.
         fn burn_weight() -> Weight {
             T::HashiBridge::transfer_weight()
-                .max(T::EthApp::transfer_weight())
-                .max(T::ERC20App::transfer_weight())
+                .max(T::FAApp::transfer_weight())
                 .max(T::ParachainApp::transfer_weight())
                 .max(T::LiberlandApp::transfer_weight())
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
-                .saturating_add(T::EthApp::is_asset_supported_weight())
-                .saturating_add(T::ERC20App::is_asset_supported_weight())
+                .saturating_add(T::FAApp::is_asset_supported_weight())
         }
-    }
-}
-
-impl<T: Config> GasTracker<Balance> for Pallet<T>
-where
-    T::AccountId: From<bridge_types::MainnetAccountId>,
-{
-    /// Records fee paid by relayer for message submission.
-    /// - network_id - ethereum network id,
-    /// - batch_nonce - batch nonce,
-    /// - ethereum_relayer_address - relayer that had paid for the batch submission,
-    /// - gas_used - gas paid for batch relaying,
-    /// - gas_price - ethereum base fee in the block when batch was submitted.
-    fn record_tx_fee(
-        network_id: GenericNetworkId,
-        batch_nonce: u64,
-        ethereum_relayer_address: Address,
-        gas_used: U256,
-        gas_price: U256,
-    ) {
-        log::debug!(
-            "Record tx fee: batch_nonce={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
-            batch_nonce,
-            ethereum_relayer_address,
-            gas_used,
-            gas_price,
-        );
-
-        let tx_fee = gas_used * gas_price;
-
-        SidechainFeePaid::<T>::mutate(
-            network_id,
-            ethereum_relayer_address,
-            |maybe_cumulative_fee| {
-                let cumulative_fee = maybe_cumulative_fee.get_or_insert(U256::from(0));
-                *cumulative_fee += tx_fee;
-            },
-        );
     }
 }
 
@@ -535,6 +482,21 @@ impl<T: Config> Pallet<T> {
             network_id,
         ))
     }
+
+    pub fn bridge_fee_tech_account(
+        network_id: GenericNetworkId,
+    ) -> <T as technical::Config>::TechAccountId {
+        common::FromGenericPair::from_generic_pair(
+            BRIDGE_FEE_TECH_ACC_PREFIX.to_vec(),
+            network_id.encode(),
+        )
+    }
+
+    pub fn bridge_fee_account(network_id: GenericNetworkId) -> Result<T::AccountId, DispatchError> {
+        technical::Pallet::<T>::tech_account_id_to_account_id(&Self::bridge_fee_tech_account(
+            network_id,
+        ))
+    }
 }
 
 impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
@@ -582,6 +544,28 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
                 assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, who, *amount)?;
             }
         }
+        Ok(())
+    }
+
+    fn refund_fee(
+        network_id: GenericNetworkId,
+        who: &T::AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> DispatchResult {
+        let bridge_account = Self::bridge_fee_tech_account(network_id);
+        technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
+        Ok(())
+    }
+
+    fn withdraw_fee(
+        network_id: GenericNetworkId,
+        who: &T::AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> DispatchResult {
+        let bridge_account = Self::bridge_fee_tech_account(network_id);
+        technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
         Ok(())
     }
 }
@@ -684,6 +668,9 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
             network_id,
         ))?;
+        technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+            &Self::bridge_fee_tech_account(network_id),
+        )?;
         let owner = Self::bridge_account(network_id)?;
         let asset_id =
             assets::Pallet::<T>::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
@@ -694,6 +681,9 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
             network_id,
         ))?;
+        technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+            &Self::bridge_fee_tech_account(network_id),
+        )?;
         let manager = Self::bridge_account(network_id)?;
         let scope = permissions::Scope::Limited(common::hash(&asset_id));
         for permission_id in [permissions::BURN, permissions::MINT] {
@@ -726,5 +716,19 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::Asset
 
     fn ensure_asset_exists(asset_id: T::AssetId) -> bool {
         assets::Pallet::<T>::asset_exists(&asset_id)
+    }
+}
+
+impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, T::AssetId> for Pallet<T> {
+    fn withdraw_transfer_fee(
+        who: &T::AccountId,
+        chain_id: bridge_types::EVMChainId,
+        asset_id: T::AssetId,
+    ) -> DispatchResult {
+        if T::FAApp::is_asset_supported(chain_id.into(), asset_id) {
+            T::FAApp::withdraw_transfer_fee(who, chain_id.into(), asset_id)
+        } else {
+            Err(Error::<T>::PathIsNotAvailable.into())
+        }
     }
 }
