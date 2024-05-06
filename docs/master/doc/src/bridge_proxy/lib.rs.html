@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/trustless-bridge/bridge-proxy/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bridge_proxy" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/bridge-proxy/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bridge_proxy" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
 <!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
@@ -743,6 +743,10 @@
 <a href="#728" id="728">728</a>
 <a href="#729" id="729">729</a>
 <a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -760,11 +764,11 @@
 
 <span class="kw">use </span>bridge_types::{
     traits::{
-        BridgeAssetLockChecker, BridgeAssetLocker, GasTracker, MessageStatusNotifier,
-        TimepointProvider,
+        BridgeApp, BridgeAssetLockChecker, BridgeAssetLocker, EVMBridgeWithdrawFee,
+        MessageStatusNotifier, TimepointProvider,
     },
     types::{AssetKind, MessageDirection, MessageStatus},
-    Address, GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
+    GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::{prelude::FixedWrapper, Balance};
@@ -773,7 +777,6 @@
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::log;
 <span class="kw">use </span>scale_info::TypeInfo;
-<span class="kw">use </span>sp_core::U256;
 <span class="kw">use </span>sp_runtime::traits::Convert;
 <span class="kw">use </span>sp_runtime::DispatchError;
 <span class="kw">use </span>sp_runtime::Saturating;
@@ -782,6 +785,7 @@
 <span class="kw">pub use </span>weights::WeightInfo;
 
 <span class="kw">pub const </span>BRIDGE_TECH_ACC_PREFIX: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;bridge&quot;</span>;
+<span class="kw">pub const </span>BRIDGE_FEE_TECH_ACC_PREFIX: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;bridge-fee&quot;</span>;
 
 <span class="attr">#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -830,9 +834,8 @@
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
-        <span class="kw">type </span>EthApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;;
-
-        <span class="kw">type </span>ERC20App: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;;
+        <span class="kw">type </span>FAApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;
+            + EVMBridgeWithdrawFee&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
 
         <span class="kw">type </span>ParachainApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, ParachainAccountId, <span class="self">Self</span>::AssetId, Balance&gt;;
 
@@ -874,12 +877,6 @@
         T::AccountId,
         OptionQuery,
     &gt;;
-
-    <span class="doccomment">/// Fee paid for relayed tx on sidechain. Map ((Network ID, Address) =&gt; Cumulative Fee Paid).
-    </span><span class="attr">#[pallet::storage]
-    #[pallet::getter(<span class="kw">fn </span>sidechain_fee_paid)]
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>SidechainFeePaid&lt;T: Config&gt; =
-        StorageDoubleMap&lt;<span class="kw">_</span>, Blake2_128Concat, GenericNetworkId, Blake2_128Concat, Address, U256&gt;;
 
     <span class="doccomment">/// Amount of assets locked by bridge for specific network. Map ((Network ID, Asset ID) =&gt; Locked amount).
     </span><span class="attr">#[pallet::storage]
@@ -989,10 +986,8 @@
                 GenericAccount::EVM(recipient) =&gt; {
                     <span class="kw">if </span>T::HashiBridge::is_asset_supported(network_id, asset_id) {
                         T::HashiBridge::transfer(network_id, asset_id, sender, recipient, amount)<span class="question-mark">?</span>;
-                    } <span class="kw">else if </span>T::EthApp::is_asset_supported(network_id, asset_id) {
-                        T::EthApp::transfer(network_id, asset_id, sender, recipient, amount)<span class="question-mark">?</span>;
-                    } <span class="kw">else if </span>T::ERC20App::is_asset_supported(network_id, asset_id) {
-                        T::ERC20App::transfer(network_id, asset_id, sender, recipient, amount)<span class="question-mark">?</span>;
+                    } <span class="kw">else if </span>T::FAApp::is_asset_supported(network_id, asset_id) {
+                        T::FAApp::transfer(network_id, asset_id, sender, recipient, amount)<span class="question-mark">?</span>;
                     } <span class="kw">else </span>{
                         <span class="macro">frame_support::fail!</span>(Error::&lt;T&gt;::PathIsNotAvailable);
                     }
@@ -1065,8 +1060,7 @@
     <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
         <span class="kw">pub fn </span>list_apps() -&gt; Vec&lt;BridgeAppInfo&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
-            res.extend(T::EthApp::list_apps());
-            res.extend(T::ERC20App::list_apps());
+            res.extend(T::FAApp::list_apps());
             res.extend(T::HashiBridge::list_apps());
             res.extend(T::ParachainApp::list_apps());
             res.extend(T::LiberlandApp::list_apps());
@@ -1075,8 +1069,7 @@
 
         <span class="kw">pub fn </span>list_supported_assets(network_id: GenericNetworkId) -&gt; Vec&lt;BridgeAssetInfo&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
-            res.extend(T::EthApp::list_supported_assets(network_id));
-            res.extend(T::ERC20App::list_supported_assets(network_id));
+            res.extend(T::FAApp::list_supported_assets(network_id));
             res.extend(T::HashiBridge::list_supported_assets(network_id));
             res.extend(T::ParachainApp::list_supported_assets(network_id));
             res.extend(T::LiberlandApp::list_supported_assets(network_id));
@@ -1100,10 +1093,8 @@
                 T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
             } <span class="kw">else if </span>T::LiberlandApp::is_asset_supported(network_id, asset_id) {
                 T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
-            } <span class="kw">else if </span>T::EthApp::is_asset_supported(network_id, asset_id) {
-                T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
-            } <span class="kw">else </span>{
-                T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
+            } <span class="kw">else if </span>T::FAApp::is_asset_supported(network_id, asset_id) {
+                T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)<span class="question-mark">?</span>;
             }
             <span class="prelude-val">Ok</span>(())
         }
@@ -1111,52 +1102,12 @@
         <span class="doccomment">/// Returns the maximum weight which can be consumed by burn call.
         </span><span class="kw">fn </span>burn_weight() -&gt; Weight {
             T::HashiBridge::transfer_weight()
-                .max(T::EthApp::transfer_weight())
-                .max(T::ERC20App::transfer_weight())
+                .max(T::FAApp::transfer_weight())
                 .max(T::ParachainApp::transfer_weight())
                 .max(T::LiberlandApp::transfer_weight())
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
-                .saturating_add(T::EthApp::is_asset_supported_weight())
-                .saturating_add(T::ERC20App::is_asset_supported_weight())
+                .saturating_add(T::FAApp::is_asset_supported_weight())
         }
-    }
-}
-
-<span class="kw">impl</span>&lt;T: Config&gt; GasTracker&lt;Balance&gt; <span class="kw">for </span>Pallet&lt;T&gt;
-<span class="kw">where
-    </span>T::AccountId: From&lt;bridge_types::MainnetAccountId&gt;,
-{
-    <span class="doccomment">/// Records fee paid by relayer for message submission.
-    /// - network_id - ethereum network id,
-    /// - batch_nonce - batch nonce,
-    /// - ethereum_relayer_address - relayer that had paid for the batch submission,
-    /// - gas_used - gas paid for batch relaying,
-    /// - gas_price - ethereum base fee in the block when batch was submitted.
-    </span><span class="kw">fn </span>record_tx_fee(
-        network_id: GenericNetworkId,
-        batch_nonce: u64,
-        ethereum_relayer_address: Address,
-        gas_used: U256,
-        gas_price: U256,
-    ) {
-        <span class="macro">log::debug!</span>(
-            <span class="string">&quot;Record tx fee: batch_nonce={}, ethereum_relayer_address={}, gas_used={}, gas_price={}&quot;</span>,
-            batch_nonce,
-            ethereum_relayer_address,
-            gas_used,
-            gas_price,
-        );
-
-        <span class="kw">let </span>tx_fee = gas_used * gas_price;
-
-        SidechainFeePaid::&lt;T&gt;::mutate(
-            network_id,
-            ethereum_relayer_address,
-            |maybe_cumulative_fee| {
-                <span class="kw">let </span>cumulative_fee = maybe_cumulative_fee.get_or_insert(U256::from(<span class="number">0</span>));
-                <span class="kw-2">*</span>cumulative_fee += tx_fee;
-            },
-        );
     }
 }
 
@@ -1280,6 +1231,21 @@
             network_id,
         ))
     }
+
+    <span class="kw">pub fn </span>bridge_fee_tech_account(
+        network_id: GenericNetworkId,
+    ) -&gt; &lt;T <span class="kw">as </span>technical::Config&gt;::TechAccountId {
+        common::FromGenericPair::from_generic_pair(
+            BRIDGE_FEE_TECH_ACC_PREFIX.to_vec(),
+            network_id.encode(),
+        )
+    }
+
+    <span class="kw">pub fn </span>bridge_fee_account(network_id: GenericNetworkId) -&gt; <span class="prelude-ty">Result</span>&lt;T::AccountId, DispatchError&gt; {
+        technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_fee_tech_account(
+            network_id,
+        ))
+    }
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; BridgeAssetLocker&lt;T::AccountId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
@@ -1327,6 +1293,28 @@
                 assets::Pallet::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
             }
         }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>refund_fee(
+        network_id: GenericNetworkId,
+        who: <span class="kw-2">&amp;</span>T::AccountId,
+        asset_id: <span class="kw-2">&amp;</span><span class="self">Self</span>::AssetId,
+        amount: <span class="kw-2">&amp;</span><span class="self">Self</span>::Balance,
+    ) -&gt; DispatchResult {
+        <span class="kw">let </span>bridge_account = <span class="self">Self</span>::bridge_fee_tech_account(network_id);
+        technical::Pallet::&lt;T&gt;::transfer_out(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>withdraw_fee(
+        network_id: GenericNetworkId,
+        who: <span class="kw-2">&amp;</span>T::AccountId,
+        asset_id: <span class="kw-2">&amp;</span><span class="self">Self</span>::AssetId,
+        amount: <span class="kw-2">&amp;</span><span class="self">Self</span>::Balance,
+    ) -&gt; DispatchResult {
+        <span class="kw">let </span>bridge_account = <span class="self">Self</span>::bridge_fee_tech_account(network_id);
+        technical::Pallet::&lt;T&gt;::transfer_in(<span class="kw-2">&amp;</span>asset_id, who, <span class="kw-2">&amp;</span>bridge_account, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -1429,6 +1417,9 @@
         technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(<span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_tech_account(
             network_id,
         ))<span class="question-mark">?</span>;
+        technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(
+            <span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_fee_tech_account(network_id),
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>owner = <span class="self">Self</span>::bridge_account(network_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>asset_id =
             assets::Pallet::&lt;T&gt;::register_from(<span class="kw-2">&amp;</span>owner, symbol, name, <span class="number">18</span>, <span class="number">0</span>, <span class="bool-val">true</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
@@ -1439,6 +1430,9 @@
         technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(<span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_tech_account(
             network_id,
         ))<span class="question-mark">?</span>;
+        technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(
+            <span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_fee_tech_account(network_id),
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>manager = <span class="self">Self</span>::bridge_account(network_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>scope = permissions::Scope::Limited(common::hash(<span class="kw-2">&amp;</span>asset_id));
         <span class="kw">for </span>permission_id <span class="kw">in </span>[permissions::BURN, permissions::MINT] {
@@ -1471,6 +1465,20 @@
 
     <span class="kw">fn </span>ensure_asset_exists(asset_id: T::AssetId) -&gt; bool {
         assets::Pallet::&lt;T&gt;::asset_exists(<span class="kw-2">&amp;</span>asset_id)
+    }
+}
+
+<span class="kw">impl</span>&lt;T: Config&gt; EVMBridgeWithdrawFee&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>withdraw_transfer_fee(
+        who: <span class="kw-2">&amp;</span>T::AccountId,
+        chain_id: bridge_types::EVMChainId,
+        asset_id: T::AssetId,
+    ) -&gt; DispatchResult {
+        <span class="kw">if </span>T::FAApp::is_asset_supported(chain_id.into(), asset_id) {
+            T::FAApp::withdraw_transfer_fee(who, chain_id.into(), asset_id)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::PathIsNotAvailable.into())
+        }
     }
 }
 </code></pre></div>
