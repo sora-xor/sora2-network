@@ -46,6 +46,7 @@ use common::{
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
+use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{
@@ -75,9 +76,8 @@ frame_support::construct_runtime!(
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
-        EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
-        ERC20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
+        FungibleApp: evm_fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         BridgeProxy: proxy::{Pallet, Call, Storage, Event},
     }
 );
@@ -238,16 +238,18 @@ parameter_types! {
     pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-impl bridge_outbound_channel::Config for Test {
+impl bridge_channel::outbound::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type FeeCurrency = FeeCurrency;
     type MessageStatusNotifier = BridgeProxy;
-    type MaxTotalGasLimit = MaxTotalGasLimit;
     type AuxiliaryDigestHandler = ();
     type ThisNetworkId = ThisNetworkId;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type MaxGasPerCommit = MaxTotalGasLimit;
+    type MaxGasPerMessage = MaxTotalGasLimit;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
@@ -282,20 +284,6 @@ parameter_types! {
     };
 }
 
-impl eth_app::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
-    >;
-    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
-    type AssetRegistry = BridgeProxy;
-    type MessageStatusNotifier = BridgeProxy;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = ();
-}
-
 pub struct AppRegistryImpl;
 
 impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
@@ -328,7 +316,7 @@ impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConve
     }
 }
 
-impl erc20_app::Config for Test {
+impl evm_fungible_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
@@ -340,6 +328,8 @@ impl erc20_app::Config for Test {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type BridgeAssetLocker = BridgeProxy;
+    type BaseFeeLifetime = ConstU64<100>;
+    type PriorityFee = ConstU128<100>;
     type WeightInfo = ();
 }
 
@@ -363,8 +353,7 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
 
 impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type EthApp = EthApp;
-    type ERC20App = ERC20App;
+    type FAApp = FungibleApp;
     type ParachainApp = ();
     type HashiBridge = ();
     type LiberlandApp = ();
@@ -403,27 +392,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
-        &eth_app::GenesisConfig {
-            networks: vec![(BASE_EVM_NETWORK_ID, Default::default(), ETH, 18)],
-        },
-        &mut storage,
-    )
-    .unwrap();
-
-    GenesisBuild::<Test>::assimilate_storage(
-        &erc20_app::GenesisConfig {
-            apps: vec![
-                (
-                    BASE_EVM_NETWORK_ID,
-                    H160::repeat_byte(1),
-                    AssetKind::Thischain,
-                ),
-                (
-                    BASE_EVM_NETWORK_ID,
-                    H160::repeat_byte(2),
-                    AssetKind::Sidechain,
-                ),
-            ],
+        &evm_fungible_app::GenesisConfig {
+            apps: vec![(BASE_EVM_NETWORK_ID, H160::repeat_byte(1))],
             assets: vec![
                 (
                     BASE_EVM_NETWORK_ID,
@@ -436,6 +406,13 @@ pub fn new_tester() -> sp_io::TestExternalities {
                     BASE_EVM_NETWORK_ID,
                     DAI,
                     H160::repeat_byte(4),
+                    AssetKind::Sidechain,
+                    18,
+                ),
+                (
+                    BASE_EVM_NETWORK_ID,
+                    ETH,
+                    H160::repeat_byte(0),
                     AssetKind::Sidechain,
                     18,
                 ),

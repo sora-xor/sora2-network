@@ -58,7 +58,7 @@ framenode-runtime = { path = "../runtime" }
 
 # Substrate dependencies
 
-bridge-proxy-rpc = { path = "../pallets/trustless-bridge/bridge-proxy/rpc" }
+bridge-proxy-rpc = { path = "../pallets/bridge-proxy/rpc" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }

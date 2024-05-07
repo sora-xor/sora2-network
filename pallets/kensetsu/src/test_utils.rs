@@ -159,7 +159,7 @@ pub fn create_cdp_for_xor(
     collateral: Balance,
     debt: Balance,
 ) -> CdpId {
-    set_balance(alice_account_id(), collateral);
+    add_balance(alice_account_id(), collateral, XOR);
     assert_ok!(KensetsuPallet::create_cdp(
         owner, XOR, collateral, debt, debt
     ));
@@ -172,7 +172,7 @@ pub fn deposit_xor_to_cdp(
     cdp_id: CdpId,
     collateral_amount: Balance,
 ) {
-    set_balance(alice_account_id(), collateral_amount);
+    add_balance(alice_account_id(), collateral_amount, XOR);
     assert_ok!(KensetsuPallet::deposit_collateral(
         owner,
         cdp_id,
@@ -181,11 +181,11 @@ pub fn deposit_xor_to_cdp(
 }
 
 /// Updates account balance
-pub fn set_balance(account: AccountId, balance: Balance) {
+pub fn add_balance(account: AccountId, balance: Balance, asset_id: AssetId) {
     assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
         RuntimeOrigin::root(),
         account,
-        XOR,
+        asset_id,
         balance.try_into().unwrap()
     ));
 }
