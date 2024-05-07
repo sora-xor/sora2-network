@@ -821,6 +821,12 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_protocol_owner(&who)?;
+            ensure!(
+                stablecoin_asset_id == T::KenAssetId::get()
+                    || StablecoinInfos::<T>::contains_key(stablecoin_asset_id),
+                Error::<T>::WrongAssetId
+            );
+
             technical::Pallet::<T>::transfer_out(
                 &stablecoin_asset_id,
                 &T::TreasuryTechAccount::get(),
