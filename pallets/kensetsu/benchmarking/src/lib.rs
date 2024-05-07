@@ -81,6 +81,7 @@ fn set_xor_as_collateral_type<T: Config>() {
                 stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
                 minimal_collateral_deposit: balance!(0),
             },
+            total_collateral: balance!(0),
             kusd_supply: balance!(0),
             last_fee_update_time: Default::default(),
             interest_coefficient: FixedU128::one(),

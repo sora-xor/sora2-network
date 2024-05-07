@@ -110,6 +110,9 @@ pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
 
+    /// Total collateral locked in all CDPs
+    pub total_collateral: Balance,
+
     /// Amount of KUSD issued for the collateral
     pub kusd_supply: Balance,
 
@@ -1587,6 +1590,19 @@ pub mod pallet {
         fn update_cdp_collateral(cdp_id: CdpId, collateral_amount: Balance) -> DispatchResult {
             CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                let old_collateral = cdp.collateral_amount;
+                CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                    let collateral_info = collateral_info
+                        .as_mut()
+                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                    collateral_info.total_collateral = collateral_info
+                        .total_collateral
+                        .checked_sub(old_collateral)
+                        .ok_or(Error::<T>::ArithmeticError)?
+                        .checked_add(collateral_amount)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    Ok::<(), Error<T>>(())
+                })?;
                 cdp.collateral_amount = collateral_amount;
                 Ok(())
             })
@@ -1611,6 +1627,16 @@ pub mod pallet {
                 &cdp.owner,
                 transfer_out,
             )?;
+            CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                let collateral_info = collateral_info
+                    .as_mut()
+                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                collateral_info.total_collateral = collateral_info
+                    .total_collateral
+                    .checked_sub(transfer_out)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                Ok::<(), Error<T>>(())
+            })?;
             if let Some(mut cdp_ids) = CdpOwnerIndex::<T>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
@@ -1686,7 +1712,8 @@ pub mod pallet {
                     None => {
                         let _ = option_collateral_info.insert(CollateralInfo {
                             risk_parameters: new_risk_parameters,
-                            kusd_supply: balance!(0),
+                            total_collateral: Balance::zero(),
+                            kusd_supply: Balance::zero(),
                             last_fee_update_time: Timestamp::<T>::get(),
                             interest_coefficient: FixedU128::one(),
                         });
