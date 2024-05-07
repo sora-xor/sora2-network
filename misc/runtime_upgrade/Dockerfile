@@ -18,7 +18,6 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_DEFAULT_TIMEOUT=100
 
 RUN mv ./framenode_runtime.compact.compressed.wasm wasm.wasm && \
-    chmod -R 0500 /app && \
     pip3 install -r requirements.txt
 
 USER appuser
