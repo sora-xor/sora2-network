@@ -35,5 +35,7 @@ use crate::*;
 pub type Migrations = ();
 
 #[cfg(feature = "ready-to-test")] // kensetsu
-pub type Migrations =
-    (kensetsu::migrations::storage_add_total_collateral::StorageAddTotalCollateral<Runtime>,);
+pub type Migrations = (
+    kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,
+    kensetsu::migrations::storage_add_total_collateral::StorageAddTotalCollateral<Runtime>,
+);

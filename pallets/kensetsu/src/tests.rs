@@ -1560,7 +1560,7 @@ fn test_liquidate_kusd_bad_debt() {
         assert_bad_debt(balance!(10));
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
         // 10 KUSD minted by the protocol (accounted in bad debt)
-        assert_eq!(collateral_info.kusd_supply, balance!(10));
+        assert_eq!(collateral_info.kusd_supply, balance!(0));
         assert_eq!(collateral_info.total_collateral, balance!(0));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);

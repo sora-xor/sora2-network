@@ -803,7 +803,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::cover_bad_debt(&who, kusd_amount)?;
+            technical::Pallet::<T>::transfer_in(
+                &T::KusdAssetId::get(),
+                &who,
+                &T::TreasuryTechAccount::get(),
+                kusd_amount,
+            )?;
+            Self::cover_bad_debt(kusd_amount)?;
             Self::deposit_event(Event::Donation {
                 debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
@@ -1175,25 +1181,13 @@ pub mod pallet {
         ///
         /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
-        fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
+        fn cover_bad_debt(kusd_amount: Balance) -> DispatchResult {
             let bad_debt = BadDebt::<T>::get();
-            let to_cover_debt = if kusd_amount <= bad_debt {
-                kusd_amount
-            } else {
-                technical::Pallet::<T>::transfer_in(
-                    &T::KusdAssetId::get(),
-                    from,
-                    &T::TreasuryTechAccount::get(),
-                    kusd_amount
-                        .checked_sub(bad_debt)
-                        .ok_or(Error::<T>::ArithmeticError)?,
-                )?;
-                bad_debt
-            };
-            Self::burn_from(from, to_cover_debt)?;
+            let bad_debt_change = bad_debt.min(kusd_amount);
+            Self::burn_treasury(bad_debt_change)?;
             BadDebt::<T>::try_mutate(|bad_debt| {
                 *bad_debt = bad_debt
-                    .checked_sub(to_cover_debt)
+                    .checked_sub(bad_debt_change)
                     .ok_or(Error::<T>::ArithmeticError)?;
                 DispatchResult::Ok(())
             })?;
@@ -1454,6 +1448,7 @@ pub mod pallet {
 
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * kusd_swapped.min(cdp.debt);
+            Self::cover_bad_debt(penalty)?;
             let proceeds = kusd_swapped - penalty;
             Self::update_cdp_collateral(
                 cdp_id,
@@ -1472,12 +1467,10 @@ pub mod pallet {
                 if cdp.collateral_amount <= collateral_liquidated {
                     // no collateral, total default
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
-                    let profit_burnt = Self::cover_with_protocol(shortage)?;
+                    Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
                     Self::delete_cdp(cdp_id)?;
-                    kusd_supply_change = proceeds
-                        .checked_add(profit_burnt)
-                        .ok_or(Error::<T>::ArithmeticError)?;
+                    kusd_supply_change = cdp.debt;
                 } else {
                     // partly covered
                     Self::update_cdp_debt(cdp_id, shortage)?;
