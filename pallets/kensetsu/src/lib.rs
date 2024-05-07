@@ -158,7 +158,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
     use sp_arithmetic::Percent;
-    use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
+    use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
     use sp_std::vec::Vec;
@@ -299,10 +299,6 @@ pub mod pallet {
         #[pallet::constant]
         type MaxCdpsPerOwner: Get<u32>;
 
-        /// Maximum number of risk manager team members
-        #[pallet::constant]
-        type MaxRiskManagementTeamSize: Get<u32>;
-
         /// A configuration for base priority of unsigned transactions.
         #[pallet::constant]
         type UnsignedPriority: Get<TransactionPriority>;
@@ -376,12 +372,6 @@ pub mod pallet {
     #[pallet::getter(fn cdp_owner_index)]
     pub type CdpOwnerIndex<T: Config> =
         StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
-
-    /// Accounts of risk management team
-    #[pallet::storage]
-    #[pallet::getter(fn risk_managers)]
-    pub type RiskManagers<T: Config> =
-        StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxRiskManagementTeamSize>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -470,8 +460,6 @@ pub mod pallet {
         CDPUnsafe,
         /// Too many CDPs per user
         CDPLimitPerUser,
-        /// Risk management team size exceeded
-        TooManyManagers,
         OperationNotPermitted,
         /// Outstanding debt prevents closing CDP
         OutstandingDebt,
@@ -685,8 +673,7 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             Self::upsert_collateral_info(&collateral_asset_id, new_risk_parameters)?;
             Self::deposit_event(Event::CollateralRiskParametersUpdated {
                 collateral_asset_id,
@@ -708,8 +695,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             new_hard_cap: Balance,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             let old_hard_cap = KusdHardCap::<T>::get();
             KusdHardCap::<T>::set(new_hard_cap);
             Self::deposit_event(Event::DebtTokenHardCapUpdated {
@@ -729,8 +715,7 @@ pub mod pallet {
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_borrow_tax())]
         pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             let old_borrow_tax = BorrowTax::<T>::get();
             BorrowTax::<T>::set(new_borrow_tax);
             Self::deposit_event(Event::BorrowTaxUpdated {
@@ -753,8 +738,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             new_liquidation_penalty: Percent,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             let old_liquidation_penalty = LiquidationPenalty::<T>::get();
             LiquidationPenalty::<T>::set(new_liquidation_penalty);
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
@@ -773,13 +757,16 @@ pub mod pallet {
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
-        pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_protocol_owner(&who)?;
+        pub fn withdraw_profit(
+            origin: OriginFor<T>,
+            beneficiary: T::AccountId,
+            kusd_amount: Balance,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
             technical::Pallet::<T>::transfer_out(
                 &T::KusdAssetId::get(),
                 &T::TreasuryTechAccount::get(),
-                &who,
+                &beneficiary,
                 kusd_amount,
             )?;
             Self::deposit_event(Event::ProfitWithdrawn {
@@ -804,49 +791,6 @@ pub mod pallet {
             Self::deposit_event(Event::Donation {
                 debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
-            });
-
-            Ok(())
-        }
-
-        /// Adds a new account ID to the set of risk managers.
-        ///
-        /// ## Parameters
-        ///
-        /// - `origin`: The origin of the transaction.
-        /// - `account_id`: The account ID to be added as a risk manager.
-        #[pallet::call_index(13)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
-        pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
-            RiskManagers::<T>::try_mutate(|option_risk_managers| {
-                option_risk_managers
-                    .get_or_insert(BoundedBTreeSet::new())
-                    .try_insert(account_id)
-                    .map_err(|_| Error::<T>::TooManyManagers)
-            })?;
-
-            Ok(())
-        }
-
-        /// Removes an account ID from the set of risk managers.
-        ///
-        /// ## Parameters
-        ///
-        /// - `origin`: The origin of the transaction.
-        /// - `account_id`: The account ID to be removed from the set of risk managers.
-        #[pallet::call_index(14)]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
-        pub fn remove_risk_manager(
-            origin: OriginFor<T>,
-            account_id: T::AccountId,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            RiskManagers::<T>::mutate(|option_risk_managers| match option_risk_managers {
-                Some(risk_managers) => {
-                    let _ = risk_managers.remove(&account_id);
-                }
-                None => {}
             });
 
             Ok(())
@@ -903,26 +847,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Ensures that `who` is a risk manager.
-        /// Risk manager can set protocol risk parameters.
-        fn ensure_risk_manager(who: &AccountIdOf<T>) -> DispatchResult {
-            if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
-                return Err(Error::<T>::OperationNotPermitted.into());
-            }
-
-            Ok(())
-        }
-
-        /// Ensures that `who` is a protocol owner.
-        /// Protocol owner can withdraw profit from the protocol.
-        fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
-            if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
-                return Err(Error::<T>::OperationNotPermitted.into());
-            }
-
-            Ok(())
-        }
-
         /// Checks if liquidation is available now.
         /// Returns `false` if liquidation took place this block since only one liquidation per
         /// block is allowed.
