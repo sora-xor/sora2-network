@@ -1497,7 +1497,7 @@ pub mod pallet {
                 let leftover = proceeds
                     .checked_sub(cdp.debt)
                     .ok_or(Error::<T>::ArithmeticError)?;
-                assets::Pallet::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &T::KusdAssetId::get(),
                     &technical_account_id,
                     &cdp.owner,
@@ -1678,7 +1678,7 @@ pub mod pallet {
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
             ensure!(
-                T::AssetInfoProvider::asset_exists(collateral_asset_id),
+                <T as Config>::AssetInfoProvider::asset_exists(collateral_asset_id),
                 Error::<T>::WrongAssetId
             );
             ensure!(

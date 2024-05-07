@@ -102,8 +102,8 @@ pub mod init {
 /// correct amounts.
 pub mod stage_correction {
     use crate::{CDPDepository, CollateralInfos, Config, Error};
-    use common::AssetInfoProvider;
     use common::Balance;
+    use common::{AssetInfoProvider, AssetManager};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::log::error;
@@ -146,11 +146,13 @@ pub mod stage_correction {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            let balance =
-                T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let to_burn = balance - total_debt;
-            assets::Pallet::<T>::burn_from(
+            let balance = <T as Config>::AssetInfoProvider::free_balance(
                 &T::KusdAssetId::get(),
+                &treasury_account_id,
+            )?;
+            let to_burn = balance - total_debt;
+            T::AssetManager::burn_from(
+                T::KusdAssetId::get(),
                 &treasury_account_id,
                 &treasury_account_id,
                 to_burn,

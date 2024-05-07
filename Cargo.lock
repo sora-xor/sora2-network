@@ -1168,6 +1168,7 @@ dependencies = [
 name = "bridge-proxy"
 version = "0.1.0"
 dependencies = [
+ "assets",
  "bridge-channel",
  "bridge-types",
  "common",

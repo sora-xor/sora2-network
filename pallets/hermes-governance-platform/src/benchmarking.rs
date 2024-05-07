@@ -5,7 +5,7 @@
 use super::*;
 
 use codec::{Decode, Encode};
-use common::{balance, AssetInfoProvider, HERMES_ASSET_ID};
+use common::{balance, AssetInfoProvider, AssetManager, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_support::BoundedVec;

@@ -15,7 +15,7 @@ mod tests;
 extern crate alloc;
 
 use codec::{Decode, Encode};
-use common::{AssetManager, Balance, BoundedString};
+use common::{Balance, BoundedString};
 use frame_support::BoundedVec;
 pub use weights::WeightInfo;
 

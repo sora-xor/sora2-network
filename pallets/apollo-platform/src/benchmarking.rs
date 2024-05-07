@@ -4,8 +4,8 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceToolsProvider, PriceVariant,
-    APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId, PriceToolsProvider,
+    PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Hooks;

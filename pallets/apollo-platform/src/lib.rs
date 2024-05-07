@@ -2,7 +2,7 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 use codec::{Decode, Encode};
-use common::{AssetManager, Balance};
+use common::Balance;
 pub use weights::WeightInfo;
 
 mod benchmarking;

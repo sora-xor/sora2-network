@@ -718,11 +718,11 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, AssetIdO
     }
 }
 
-impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>> for Pallet<T> {
     fn withdraw_transfer_fee(
         who: &T::AccountId,
         chain_id: bridge_types::EVMChainId,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf<T>,
     ) -> DispatchResult {
         if T::FAApp::is_asset_supported(chain_id.into(), asset_id) {
             T::FAApp::withdraw_transfer_fee(who, chain_id.into(), asset_id)
