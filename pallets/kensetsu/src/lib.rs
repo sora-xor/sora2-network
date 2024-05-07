@@ -754,6 +754,7 @@ pub mod pallet {
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
+        /// - `beneficiary` : The destination account where assets will be withdrawn.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
