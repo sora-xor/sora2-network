@@ -174,3 +174,91 @@ pub mod stage_correction {
         }
     }
 }
+
+pub mod storage_add_total_collateral {
+    use crate::{CDPDepository, CollateralInfo, CollateralInfos, Config, Error, Timestamp};
+    use common::Balance;
+    use frame_support::dispatch::{TypeInfo, Weight};
+    use frame_support::log::error;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_arithmetic::traits::Zero;
+    use sp_arithmetic::FixedU128;
+    use sp_core::Get;
+    use sp_runtime::DispatchResult;
+    use std::marker::PhantomData;
+
+    mod old {
+        use crate::{pallet, CollateralRiskParameters, Pallet};
+        use assets::AssetIdOf;
+        use codec::{Decode, Encode, MaxEncodedLen};
+        use common::{Balance, Config};
+        use frame_support::dispatch::{TypeInfo, Weight};
+        use frame_support::pallet_prelude::StorageMap;
+        use frame_support::Identity;
+        use sp_arithmetic::FixedU128;
+
+        /// Old format without `total_collateral` field.
+        #[derive(
+            Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord,
+        )]
+        pub struct CollateralInfo<Moment> {
+            /// Collateral Risk parameters set by risk management
+            pub risk_parameters: CollateralRiskParameters,
+
+            /// Amount of KUSD issued for the collateral
+            pub kusd_supply: Balance,
+
+            /// the last timestamp when stability fee was accrued
+            pub last_fee_update_time: Moment,
+
+            /// Interest accrued for collateral for all time
+            pub interest_coefficient: FixedU128,
+        }
+
+        impl<Moment> CollateralInfo<Moment> {
+            // Returns new format with provided `total_collateral`.
+            pub fn to_new(self, total_collateral: Balance) -> crate::CollateralInfo<Moment> {
+                crate::CollateralInfo {
+                    risk_parameters: self.risk_parameters,
+                    total_collateral,
+                    kusd_supply: self.kusd_supply,
+                    last_fee_update_time: self.last_fee_update_time,
+                    interest_coefficient: self.interest_coefficient,
+                }
+            }
+        }
+    }
+
+    pub struct StorageAddTotalCollateral<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config> StorageAddTotalCollateral<T> {
+        fn runtime_upgrade_internal(weight: &mut Weight) -> DispatchResult {
+            CollateralInfos::<T>::translate::<old::CollateralInfo<T::Moment>, _>(
+                |collateral_asset_id, old_collateral_info| {
+                    let accumulated_collateral = CDPDepository::<T>::iter()
+                        .filter(|(_, cdp)| {
+                            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                            cdp.collateral_asset_id == collateral_asset_id
+                        })
+                        .fold(Balance::zero(), |accumulated_collateral, (_, cdp)| {
+                            accumulated_collateral + cdp.collateral_amount
+                        });
+                    *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                    Some(old_collateral_info.to_new(accumulated_collateral))
+                },
+            );
+
+            Ok(())
+        }
+    }
+
+    impl<T: Config> OnRuntimeUpgrade for StorageAddTotalCollateral<T> {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+            Self::runtime_upgrade_internal(&mut weight).unwrap_or_else(|err| {
+                error!("Runtime upgrade error {:?}", err);
+            });
+            weight
+        }
+    }
+}
