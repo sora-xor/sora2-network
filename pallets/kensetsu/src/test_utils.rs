@@ -74,26 +74,6 @@ pub fn tech_account_id() -> AccountId {
         .expect("Failed to get ordinary account id for technical account id.")
 }
 
-/// Returns Risk Manager account
-pub fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
-/// Returns risk manager account id
-pub fn risk_manager_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account id
-pub fn protocol_owner_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account
-pub fn protocol_owner() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
 /// Sets protocol bad debt in KUSD.
 pub fn set_bad_debt(bad_debt: Balance) {
     BadDebt::<TestRuntime>::set(bad_debt);
@@ -109,23 +89,16 @@ pub fn set_borrow_tax(borrow_tax: Percent) {
     BorrowTax::<TestRuntime>::set(borrow_tax);
 }
 
-/// Sets risk manager for protocol
-pub fn set_up_risk_manager() {
-    KensetsuPallet::add_risk_manager(RuntimeOrigin::root(), risk_manager_account_id())
-        .expect("Must set risk manager");
-}
-
 /// Sets XOR asset id as collateral with default parameters
-/// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
+/// As if was called `update_collateral_risk_parameters(XOR, some_info)`
 pub fn set_xor_as_collateral_type(
     hard_cap: Balance,
     liquidation_ratio: Perbill,
     stability_fee_rate: FixedU128,
     minimal_collateral_deposit: Balance,
 ) {
-    set_up_risk_manager();
     assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
-        risk_manager(),
+        RuntimeOrigin::root(),
         XOR,
         CollateralRiskParameters {
             hard_cap,

@@ -174,3 +174,32 @@ pub mod stage_correction {
         }
     }
 }
+
+pub mod remove_managers {
+
+    mod old {
+        use crate::{Config, Pallet};
+        use common::AccountIdOf;
+        use sp_core::bounded::BoundedBTreeSet;
+        use sp_core::ConstU32;
+
+        #[frame_support::storage_alias]
+        pub type RiskManagers<T: Config + frame_system::Config> =
+            StorageValue<Pallet<T>, BoundedBTreeSet<AccountIdOf<T>, ConstU32<100>>>;
+    }
+
+    use crate::Config;
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_core::Get;
+
+    pub struct RemoveManagers<T>(PhantomData<T>);
+
+    impl<T: Config + frame_system::Config> OnRuntimeUpgrade for RemoveManagers<T> {
+        fn on_runtime_upgrade() -> Weight {
+            old::RiskManagers::<T>::kill();
+            <T as frame_system::Config>::DbWeight::get().writes(1)
+        }
+    }
+}
