@@ -91,7 +91,7 @@ pub mod init {
     }
 }
 
-pub mod clear_storage {
+pub mod kensetsu_more_stablecoins {
     use crate::Config;
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
@@ -100,11 +100,11 @@ pub mod clear_storage {
 
     mod old_storage {}
 
-    pub struct ClearStorage<T>(PhantomData<T>);
+    pub struct MoreStablecoins<T>(PhantomData<T>);
 
-    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for ClearStorage<T> {
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for MoreStablecoins<T> {
         fn on_runtime_upgrade() -> Weight {
-            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+            let mut _weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             // TODO
             //             let res = frame_support::migration::clear_storage_prefix(
             //                 <Pallet<T>>::name().as_bytes(),

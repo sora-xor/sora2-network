@@ -74,26 +74,6 @@ pub fn tech_account_id() -> AccountId {
         .expect("Failed to get ordinary account id for technical account id.")
 }
 
-/// Returns Risk Manager account
-pub fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
-/// Returns risk manager account id
-pub fn risk_manager_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account id
-pub fn protocol_owner_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account
-pub fn protocol_owner() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
 /// Sets protocol bad debt in KUSD.
 pub fn set_bad_debt(bad_debt: Balance) {
     StablecoinInfos::<TestRuntime>::mutate(KUSD, |stablecoin_info| {
@@ -112,12 +92,6 @@ pub fn assert_bad_debt(expected_amount: Balance) {
 /// Sets protocol borrow tax.
 pub fn set_borrow_tax(borrow_tax: Percent) {
     BorrowTax::<TestRuntime>::set(borrow_tax);
-}
-
-/// Sets risk manager for protocol
-pub fn set_up_risk_manager() {
-    KensetsuPallet::add_risk_manager(RuntimeOrigin::root(), risk_manager_account_id())
-        .expect("Must set risk manager");
 }
 
 /// Configures Kensetsu Dollar stablecoin pegged to DAI.
@@ -148,8 +122,8 @@ pub fn set_kensetsu_gold_stablecoin() {
 
 /// Configures Kensetsu with basic parameters.
 ///
-/// Sets up risk manager, sets XOR asset id as collateral with default parameters and sets Kensetsu
-/// dollar as stablecoin asset. As if Risk Manager added and called `set_stablecoin` and
+/// Sets XOR asset id as collateral with default parameters and sets Kensetsu
+/// dollar as stablecoin asset. As if it was called `set_stablecoin` and
 /// `update_collateral_risk_parameters(XOR, some_info)`.
 pub fn configure_kensetsu_dollar_for_xor(
     hard_cap: Balance,
@@ -157,10 +131,9 @@ pub fn configure_kensetsu_dollar_for_xor(
     stability_fee_rate: FixedU128,
     minimal_collateral_deposit: Balance,
 ) {
-    set_up_risk_manager();
     set_kensetsu_dollar_stablecoin();
     assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
-        risk_manager(),
+        RuntimeOrigin::root(),
         XOR,
         KUSD,
         CollateralRiskParameters {
