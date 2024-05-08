@@ -36,8 +36,7 @@ pub type Migrations = ();
 
 #[cfg(feature = "ready-to-test")] // kensetsu
 pub type Migrations = (
-    kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,
-    kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount<Runtime>,
     kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,
+    kensetsu::migrations::storage_add_total_collateral::StorageAddTotalCollateral<Runtime>,
     kensetsu::migrations::remove_managers::RemoveManagers<Runtime>,
 );
