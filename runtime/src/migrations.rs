@@ -38,4 +38,5 @@ pub type Migrations = ();
 pub type Migrations = (
     kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,
     kensetsu::migrations::storage_add_total_collateral::StorageAddTotalCollateral<Runtime>,
+    kensetsu::migrations::remove_managers::RemoveManagers<Runtime>,
 );

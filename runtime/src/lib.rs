@@ -1970,7 +1970,6 @@ impl kensetsu::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
-    type MaxRiskManagementTeamSize = ConstU32<100>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
