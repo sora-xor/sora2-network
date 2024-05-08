@@ -1179,7 +1179,6 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
         fn cover_bad_debt(kusd_amount: Balance) -> DispatchResult {
             let bad_debt = BadDebt::<T>::get();
