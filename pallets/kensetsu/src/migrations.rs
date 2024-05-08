@@ -101,7 +101,7 @@ pub mod init {
 /// Due to bug in stability fee update some extra KUSD were minted, this migration burns and sets
 /// correct amounts.
 pub mod stage_correction {
-    use crate::{CDPDepository, CollateralInfos, Config, Error};
+    use crate::{BadDebt, CDPDepository, CollateralInfos, Config, Error};
     use common::AssetInfoProvider;
     use common::Balance;
     use core::marker::PhantomData;
@@ -142,21 +142,64 @@ pub mod stage_correction {
                 total_debt += accumulated_debt_for_collateral;
             }
 
-            // burn KUSD on tech account
+            let bad_debt = BadDebt::<T>::get();
+            total_debt += bad_debt;
+
+            // kusd supply must be equal to aggregated debt:
+            // kusd_supply == sum(cdp.debt) + bad_debt
+            let kusd_supply = T::AssetInfoProvider::total_issuance(&T::KusdAssetId::get())?;
+            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+
+            let (surplus, shortage) = if kusd_supply > total_debt {
+                (kusd_supply - total_debt, 0)
+            } else {
+                (0, total_debt - kusd_supply)
+            };
+
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            let balance =
+            let profit =
                 T::AssetInfoProvider::free_balance(&T::KusdAssetId::get(), &treasury_account_id)?;
-            let to_burn = balance - total_debt;
-            assets::Pallet::<T>::burn_from(
-                &T::KusdAssetId::get(),
-                &treasury_account_id,
-                &treasury_account_id,
-                to_burn,
-            )?;
+            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
 
-            *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            // burn KUSD surplus on tech acc profit or add to bad debt
+            if surplus > 0 {
+                let (to_burn, to_bad_debt) = if profit > surplus {
+                    (surplus, 0)
+                } else {
+                    (profit, surplus - profit)
+                };
+                assets::Pallet::<T>::burn_from(
+                    &T::KusdAssetId::get(),
+                    &treasury_account_id,
+                    &treasury_account_id,
+                    to_burn,
+                )?;
+
+                BadDebt::<T>::set(bad_debt + to_bad_debt);
+
+                *weight += <T as frame_system::Config>::DbWeight::get().writes(2);
+            }
+
+            // mint KUSD shortage to tech acc or cover bad debt
+            if shortage > 0 {
+                let (from_bad_debt, to_mint) = if bad_debt > shortage {
+                    (shortage, 0)
+                } else {
+                    (bad_debt, shortage - bad_debt)
+                };
+
+                technical::Pallet::<T>::mint(
+                    &T::KusdAssetId::get(),
+                    &T::TreasuryTechAccount::get(),
+                    to_mint,
+                )?;
+
+                BadDebt::<T>::set(bad_debt - from_bad_debt);
+
+                *weight += <T as frame_system::Config>::DbWeight::get().writes(2);
+            }
 
             Ok(())
         }
