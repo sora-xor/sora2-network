@@ -1647,6 +1647,12 @@
 <a href="#1632" id="1632">1632</a>
 <a href="#1633" id="1633">1633</a>
 <a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1758,6 +1764,9 @@
 </span><span class="kw">pub struct </span>CollateralInfo&lt;Moment&gt; {
     <span class="doccomment">/// Collateral Risk parameters set by risk management
     </span><span class="kw">pub </span>risk_parameters: CollateralRiskParameters,
+
+    <span class="doccomment">/// Total collateral locked in all CDPs
+    </span><span class="kw">pub </span>total_collateral: Balance,
 
     <span class="doccomment">/// Amount of KUSD issued for the collateral
     </span><span class="kw">pub </span>kusd_supply: Balance,
@@ -2437,7 +2446,13 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::donate())]
         </span><span class="kw">pub fn </span>donate(origin: OriginFor&lt;T&gt;, kusd_amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::cover_bad_debt(<span class="kw-2">&amp;</span>who, kusd_amount)<span class="question-mark">?</span>;
+            technical::Pallet::&lt;T&gt;::transfer_in(
+                <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
+                <span class="kw-2">&amp;</span>who,
+                <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
+                kusd_amount,
+            )<span class="question-mark">?</span>;
+            <span class="self">Self</span>::cover_bad_debt(kusd_amount)<span class="question-mark">?</span>;
             <span class="self">Self</span>::deposit_event(Event::Donation {
                 debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
@@ -2686,19 +2701,11 @@
             <span class="comment">// stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
             // increases debt
             </span><span class="self">Self</span>::incentivize_ken_token(borrow_tax)<span class="question-mark">?</span>;
-            <span class="kw">let </span>new_debt = cdp
-                .debt
-                .checked_add(borrow_amount_with_tax)
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount_with_tax)<span class="question-mark">?</span>;
             <span class="self">Self</span>::ensure_protocol_cap(borrow_amount_with_tax)<span class="question-mark">?</span>;
             <span class="self">Self</span>::mint_to(who, borrow_amount)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::update_cdp_debt(cdp_id, new_debt)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::increase_collateral_kusd_supply(
-                <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
-                borrow_amount_with_tax,
-            )<span class="question-mark">?</span>;
+            <span class="self">Self</span>::increase_cdp_debt(cdp_id, borrow_amount_with_tax)<span class="question-mark">?</span>;
             <span class="self">Self</span>::deposit_event(Event::DebtIncreased {
                 cdp_id,
                 owner: who.clone(),
@@ -2721,13 +2728,7 @@
             <span class="comment">// if repaying amount exceeds debt, leftover is not burned
             </span><span class="kw">let </span>to_cover_debt = amount.min(cdp.debt);
             <span class="self">Self</span>::burn_from(<span class="kw-2">&amp;</span>cdp.owner, to_cover_debt)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::update_cdp_debt(
-                cdp_id,
-                cdp.debt
-                    .checked_sub(to_cover_debt)
-                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
-            )<span class="question-mark">?</span>;
-            <span class="self">Self</span>::decrease_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, to_cover_debt)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::decrease_cdp_debt(cdp_id, to_cover_debt)<span class="question-mark">?</span>;
             <span class="self">Self</span>::deposit_event(Event::DebtPayment {
                 cdp_id,
                 owner: cdp.owner,
@@ -2744,27 +2745,14 @@
         ///
         /// ## Parameters
         ///
-        /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
-        </span><span class="kw">fn </span>cover_bad_debt(from: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;, kusd_amount: Balance) -&gt; DispatchResult {
+        </span><span class="kw">fn </span>cover_bad_debt(kusd_amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>bad_debt = BadDebt::&lt;T&gt;::get();
-            <span class="kw">let </span>to_cover_debt = <span class="kw">if </span>kusd_amount &lt;= bad_debt {
-                kusd_amount
-            } <span class="kw">else </span>{
-                technical::Pallet::&lt;T&gt;::transfer_in(
-                    <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
-                    from,
-                    <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
-                    kusd_amount
-                        .checked_sub(bad_debt)
-                        .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
-                )<span class="question-mark">?</span>;
-                bad_debt
-            };
-            <span class="self">Self</span>::burn_from(from, to_cover_debt)<span class="question-mark">?</span>;
+            <span class="kw">let </span>bad_debt_change = bad_debt.min(kusd_amount);
+            <span class="self">Self</span>::burn_treasury(bad_debt_change)<span class="question-mark">?</span>;
             BadDebt::&lt;T&gt;::try_mutate(|bad_debt| {
                 <span class="kw-2">*</span>bad_debt = bad_debt
-                    .checked_sub(to_cover_debt)
+                    .checked_sub(bad_debt_change)
                     .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                 DispatchResult::Ok(())
             })<span class="question-mark">?</span>;
@@ -2889,7 +2877,7 @@
                     DispatchResult::Ok(())
                 })<span class="question-mark">?</span>;
             }
-            <span class="self">Self</span>::increase_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, stability_fee)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::increase_collateral_stablecoin_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, stability_fee)<span class="question-mark">?</span>;
             <span class="self">Self</span>::mint_treasury(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), stability_fee)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(cdp)
@@ -3025,6 +3013,7 @@
 
             <span class="comment">// penalty is a protocol profit which stays on treasury tech account
             </span><span class="kw">let </span>penalty = <span class="self">Self</span>::liquidation_penalty() * kusd_swapped.min(cdp.debt);
+            <span class="self">Self</span>::cover_bad_debt(penalty)<span class="question-mark">?</span>;
             <span class="kw">let </span>proceeds = kusd_swapped - penalty;
             <span class="self">Self</span>::update_cdp_collateral(
                 cdp_id,
@@ -3032,33 +3021,27 @@
                     .checked_sub(collateral_liquidated)
                     .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
             )<span class="question-mark">?</span>;
-            <span class="comment">// stablecoin supply change for collateral.
-            </span><span class="kw">let </span>kusd_supply_change: Balance;
             <span class="kw">if </span>cdp.debt &gt; proceeds {
                 <span class="self">Self</span>::burn_treasury(proceeds)<span class="question-mark">?</span>;
-                <span class="kw">let </span>shortage = cdp
-                    .debt
-                    .checked_sub(proceeds)
-                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                 <span class="kw">if </span>cdp.collateral_amount &lt;= collateral_liquidated {
                     <span class="comment">// no collateral, total default
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
-                    </span><span class="kw">let </span>profit_burnt = <span class="self">Self</span>::cover_with_protocol(shortage)<span class="question-mark">?</span>;
-                    <span class="comment">// close empty CDP, debt == 0, collateral == 0
-                    </span><span class="self">Self</span>::delete_cdp(cdp_id)<span class="question-mark">?</span>;
-                    kusd_supply_change = proceeds
-                        .checked_add(profit_burnt)
+                    </span><span class="kw">let </span>shortage = cdp
+                        .debt
+                        .checked_sub(proceeds)
                         .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                    <span class="self">Self</span>::cover_with_protocol(shortage)<span class="question-mark">?</span>;
+                    <span class="comment">// close empty CDP, debt == 0, collateral == 0
+                    </span><span class="self">Self</span>::decrease_cdp_debt(cdp_id, cdp.debt)<span class="question-mark">?</span>;
+                    <span class="self">Self</span>::delete_cdp(cdp_id)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     <span class="comment">// partly covered
-                    </span><span class="self">Self</span>::update_cdp_debt(cdp_id, shortage)<span class="question-mark">?</span>;
-                    kusd_supply_change = proceeds;
+                    </span><span class="self">Self</span>::decrease_cdp_debt(cdp_id, proceeds)<span class="question-mark">?</span>;
                 }
             } <span class="kw">else </span>{
                 <span class="self">Self</span>::burn_treasury(cdp.debt)<span class="question-mark">?</span>;
                 <span class="comment">// CDP debt is covered
-                </span><span class="self">Self</span>::update_cdp_debt(cdp_id, <span class="number">0</span>)<span class="question-mark">?</span>;
-                kusd_supply_change = cdp.debt;
+                </span><span class="self">Self</span>::decrease_cdp_debt(cdp_id, cdp.debt)<span class="question-mark">?</span>;
                 <span class="comment">// There is more stablecoins than to cover debt and penalty, leftover goes to cdp.owner
                 </span><span class="kw">let </span>leftover = proceeds
                     .checked_sub(cdp.debt)
@@ -3070,7 +3053,6 @@
                     leftover,
                 )<span class="question-mark">?</span>;
             };
-            <span class="self">Self</span>::decrease_collateral_kusd_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, kusd_supply_change)<span class="question-mark">?</span>;
             LiquidatedThisBlock::&lt;T&gt;::put(<span class="bool-val">true</span>);
 
             <span class="prelude-val">Ok</span>((collateral_liquidated, proceeds, penalty))
@@ -3111,7 +3093,7 @@
 
         <span class="doccomment">/// Cover CDP debt with protocol balance
         /// If protocol balance is less than amount to cover, it is a bad debt
-        </span><span class="kw">fn </span>cover_with_protocol(amount: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+        </span><span class="kw">fn </span>cover_with_protocol(amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
@@ -3134,7 +3116,7 @@
             };
             <span class="self">Self</span>::burn_treasury(to_burn)<span class="question-mark">?</span>;
 
-            <span class="prelude-val">Ok</span>(to_burn)
+            <span class="prelude-val">Ok</span>(())
         }
 
         <span class="doccomment">/// Increments CDP Id counter, changes storage state.
@@ -3161,17 +3143,54 @@
         </span><span class="kw">fn </span>update_cdp_collateral(cdp_id: CdpId, collateral_amount: Balance) -&gt; DispatchResult {
             CDPDepository::&lt;T&gt;::try_mutate(cdp_id, |cdp| {
                 <span class="kw">let </span>cdp = cdp.as_mut().ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
+                <span class="kw">let </span>old_collateral = cdp.collateral_amount;
+                CollateralInfos::&lt;T&gt;::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                    <span class="kw">let </span>collateral_info = collateral_info
+                        .as_mut()
+                        .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
+                    collateral_info.total_collateral = collateral_info
+                        .total_collateral
+                        .checked_sub(old_collateral)
+                        .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?
+                        </span>.checked_add(collateral_amount)
+                        .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                    <span class="prelude-val">Ok</span>::&lt;(), Error&lt;T&gt;&gt;(())
+                })<span class="question-mark">?</span>;
                 cdp.collateral_amount = collateral_amount;
                 <span class="prelude-val">Ok</span>(())
             })
         }
 
-        <span class="doccomment">/// Updates CDP debt balance
-        </span><span class="kw">fn </span>update_cdp_debt(cdp_id: CdpId, debt: Balance) -&gt; DispatchResult {
+        <span class="doccomment">/// Updates CDP debt by increasing the value.
+        </span><span class="kw">fn </span>increase_cdp_debt(cdp_id: CdpId, debt_change: Balance) -&gt; DispatchResult {
             CDPDepository::&lt;T&gt;::try_mutate(cdp_id, |cdp| {
                 <span class="kw">let </span>cdp = cdp.as_mut().ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
-                cdp.debt = debt;
-                <span class="prelude-val">Ok</span>(())
+                cdp.debt = cdp
+                    .debt
+                    .checked_add(debt_change)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                <span class="self">Self</span>::increase_collateral_stablecoin_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, debt_change)
+            })
+        }
+
+        <span class="doccomment">/// Updates CDP debt by decreasing the value.
+        </span><span class="kw">fn </span>decrease_cdp_debt(cdp_id: CdpId, debt_change: Balance) -&gt; DispatchResult {
+            CDPDepository::&lt;T&gt;::try_mutate(cdp_id, |cdp| {
+                <span class="kw">let </span>cdp = cdp.as_mut().ok_or(Error::&lt;T&gt;::CDPNotFound)<span class="question-mark">?</span>;
+                cdp.debt = cdp
+                    .debt
+                    .checked_sub(debt_change)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                CollateralInfos::&lt;T&gt;::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                    <span class="kw">let </span>collateral_info = collateral_info
+                        .as_mut()
+                        .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
+                    collateral_info.kusd_supply = collateral_info
+                        .kusd_supply
+                        .checked_sub(debt_change)
+                        .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                    <span class="prelude-val">Ok</span>(())
+                })
             })
         }
 
@@ -3185,6 +3204,16 @@
                 <span class="kw-2">&amp;</span>cdp.owner,
                 transfer_out,
             )<span class="question-mark">?</span>;
+            CollateralInfos::&lt;T&gt;::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                <span class="kw">let </span>collateral_info = collateral_info
+                    .as_mut()
+                    .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
+                collateral_info.total_collateral = collateral_info
+                    .total_collateral
+                    .checked_sub(transfer_out)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>::&lt;(), Error&lt;T&gt;&gt;(())
+            })<span class="question-mark">?</span>;
             <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>cdp_ids) = CdpOwnerIndex::&lt;T&gt;::take(<span class="kw-2">&amp;</span>cdp.owner) {
                 cdp_ids.retain(|<span class="kw-2">&amp;</span>x| x != cdp_id);
                 <span class="kw">if </span>!cdp_ids.is_empty() {
@@ -3198,40 +3227,6 @@
                 collateral_amount: transfer_out,
             });
             <span class="prelude-val">Ok</span>(())
-        }
-
-        <span class="doccomment">/// Increases tracker of KUSD supply for collateral asset
-        </span><span class="kw">fn </span>increase_collateral_kusd_supply(
-            collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-            additional_kusd_supply: Balance,
-        ) -&gt; DispatchResult {
-            CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |collateral_info| {
-                <span class="kw">let </span>collateral_info = collateral_info
-                    .as_mut()
-                    .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
-                collateral_info.kusd_supply = collateral_info
-                    .kusd_supply
-                    .checked_add(additional_kusd_supply)
-                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(())
-            })
-        }
-
-        <span class="doccomment">/// Decreases tracker of KUSD supply for collateral asset
-        </span><span class="kw">fn </span>decrease_collateral_kusd_supply(
-            collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-            seized_kusd_supply: Balance,
-        ) -&gt; DispatchResult {
-            CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |collateral_info| {
-                <span class="kw">let </span>collateral_info = collateral_info
-                    .as_mut()
-                    .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
-                collateral_info.kusd_supply = collateral_info
-                    .kusd_supply
-                    .checked_sub(seized_kusd_supply)
-                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(())
-            })
         }
 
         <span class="doccomment">/// Inserts or updates `CollateralRiskParameters` for collateral asset id.
@@ -3260,12 +3255,29 @@
                     <span class="prelude-val">None </span>=&gt; {
                         <span class="kw">let _ </span>= option_collateral_info.insert(CollateralInfo {
                             risk_parameters: new_risk_parameters,
-                            kusd_supply: <span class="macro">balance!</span>(<span class="number">0</span>),
+                            total_collateral: Balance::zero(),
+                            kusd_supply: Balance::zero(),
                             last_fee_update_time: Timestamp::&lt;T&gt;::get(),
                             interest_coefficient: FixedU128::one(),
                         });
                     }
                 }
+                <span class="prelude-val">Ok</span>(())
+            })
+        }
+
+        <span class="kw">fn </span>increase_collateral_stablecoin_supply(
+            collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+            supply_change: Balance,
+        ) -&gt; DispatchResult {
+            CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |collateral_info| {
+                <span class="kw">let </span>collateral_info = collateral_info
+                    .as_mut()
+                    .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
+                collateral_info.kusd_supply = collateral_info
+                    .kusd_supply
+                    .checked_add(supply_change)
+                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(())
             })
         }
