@@ -1046,19 +1046,11 @@ pub mod pallet {
             // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
             // increases debt
             Self::incentivize_ken_token(borrow_tax)?;
-            let new_debt = cdp
-                .debt
-                .checked_add(borrow_amount_with_tax)
-                .ok_or(Error::<T>::ArithmeticError)?;
 
             Self::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount_with_tax)?;
             Self::ensure_protocol_cap(borrow_amount_with_tax)?;
             Self::mint_to(who, borrow_amount)?;
-            Self::update_cdp_debt(cdp_id, new_debt)?;
-            Self::increase_collateral_kusd_supply(
-                &cdp.collateral_asset_id,
-                borrow_amount_with_tax,
-            )?;
+            Self::increase_cdp_debt(cdp_id, borrow_amount_with_tax)?;
             Self::deposit_event(Event::DebtIncreased {
                 cdp_id,
                 owner: who.clone(),
@@ -1081,13 +1073,7 @@ pub mod pallet {
             // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&cdp.owner, to_cover_debt)?;
-            Self::update_cdp_debt(
-                cdp_id,
-                cdp.debt
-                    .checked_sub(to_cover_debt)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-            )?;
-            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, to_cover_debt)?;
+            Self::decrease_cdp_debt(cdp_id, to_cover_debt)?;
             Self::deposit_event(Event::DebtPayment {
                 cdp_id,
                 owner: cdp.owner,
@@ -1236,7 +1222,7 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
-            Self::increase_collateral_kusd_supply(&cdp.collateral_asset_id, stability_fee)?;
+            Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, stability_fee)?;
             Self::mint_treasury(&T::KusdAssetId::get(), stability_fee)?;
 
             Ok(cdp)
@@ -1380,31 +1366,27 @@ pub mod pallet {
                     .checked_sub(collateral_liquidated)
                     .ok_or(Error::<T>::ArithmeticError)?,
             )?;
-            // stablecoin supply change for collateral.
-            let kusd_supply_change: Balance;
             if cdp.debt > proceeds {
                 Self::burn_treasury(proceeds)?;
-                let shortage = cdp
-                    .debt
-                    .checked_sub(proceeds)
-                    .ok_or(Error::<T>::ArithmeticError)?;
                 if cdp.collateral_amount <= collateral_liquidated {
                     // no collateral, total default
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
+                    let shortage = cdp
+                        .debt
+                        .checked_sub(proceeds)
+                        .ok_or(Error::<T>::ArithmeticError)?;
                     Self::cover_with_protocol(shortage)?;
                     // close empty CDP, debt == 0, collateral == 0
+                    Self::decrease_cdp_debt(cdp_id, cdp.debt)?;
                     Self::delete_cdp(cdp_id)?;
-                    kusd_supply_change = cdp.debt;
                 } else {
                     // partly covered
-                    Self::update_cdp_debt(cdp_id, shortage)?;
-                    kusd_supply_change = proceeds;
+                    Self::decrease_cdp_debt(cdp_id, proceeds)?;
                 }
             } else {
                 Self::burn_treasury(cdp.debt)?;
                 // CDP debt is covered
-                Self::update_cdp_debt(cdp_id, 0)?;
-                kusd_supply_change = cdp.debt;
+                Self::decrease_cdp_debt(cdp_id, cdp.debt)?;
                 // There is more stablecoins than to cover debt and penalty, leftover goes to cdp.owner
                 let leftover = proceeds
                     .checked_sub(cdp.debt)
@@ -1416,7 +1398,6 @@ pub mod pallet {
                     leftover,
                 )?;
             };
-            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, kusd_supply_change)?;
             LiquidatedThisBlock::<T>::put(true);
 
             Ok((collateral_liquidated, proceeds, penalty))
@@ -1457,7 +1438,7 @@ pub mod pallet {
 
         /// Cover CDP debt with protocol balance
         /// If protocol balance is less than amount to cover, it is a bad debt
-        fn cover_with_protocol(amount: Balance) -> Result<Balance, DispatchError> {
+        fn cover_with_protocol(amount: Balance) -> DispatchResult {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
@@ -1480,7 +1461,7 @@ pub mod pallet {
             };
             Self::burn_treasury(to_burn)?;
 
-            Ok(to_burn)
+            Ok(())
         }
 
         /// Increments CDP Id counter, changes storage state.
@@ -1525,12 +1506,36 @@ pub mod pallet {
             })
         }
 
-        /// Updates CDP debt balance
-        fn update_cdp_debt(cdp_id: CdpId, debt: Balance) -> DispatchResult {
+        /// Updates CDP debt by increasing the value.
+        fn increase_cdp_debt(cdp_id: CdpId, debt_change: Balance) -> DispatchResult {
             CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                cdp.debt = debt;
-                Ok(())
+                cdp.debt = cdp
+                    .debt
+                    .checked_add(debt_change)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, debt_change)
+            })
+        }
+
+        /// Updates CDP debt by decreasing the value.
+        fn decrease_cdp_debt(cdp_id: CdpId, debt_change: Balance) -> DispatchResult {
+            CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = cdp
+                    .debt
+                    .checked_sub(debt_change)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                    let collateral_info = collateral_info
+                        .as_mut()
+                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                    collateral_info.kusd_supply = collateral_info
+                        .kusd_supply
+                        .checked_sub(debt_change)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    Ok(())
+                })
             })
         }
 
@@ -1569,40 +1574,6 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Increases tracker of KUSD supply for collateral asset
-        fn increase_collateral_kusd_supply(
-            collateral_asset_id: &AssetIdOf<T>,
-            additional_kusd_supply: Balance,
-        ) -> DispatchResult {
-            CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
-                let collateral_info = collateral_info
-                    .as_mut()
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                collateral_info.kusd_supply = collateral_info
-                    .kusd_supply
-                    .checked_add(additional_kusd_supply)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                Ok(())
-            })
-        }
-
-        /// Decreases tracker of KUSD supply for collateral asset
-        fn decrease_collateral_kusd_supply(
-            collateral_asset_id: &AssetIdOf<T>,
-            seized_kusd_supply: Balance,
-        ) -> DispatchResult {
-            CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
-                let collateral_info = collateral_info
-                    .as_mut()
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                collateral_info.kusd_supply = collateral_info
-                    .kusd_supply
-                    .checked_sub(seized_kusd_supply)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                Ok(())
-            })
-        }
-
         /// Inserts or updates `CollateralRiskParameters` for collateral asset id.
         /// If `CollateralRiskParameters` exists for asset id, then updates them.
         /// Else if `CollateralRiskParameters` does not exist, inserts a new value.
@@ -1636,6 +1607,22 @@ pub mod pallet {
                         });
                     }
                 }
+                Ok(())
+            })
+        }
+
+        fn increase_collateral_stablecoin_supply(
+            collateral_asset_id: &T::AssetId,
+            supply_change: Balance,
+        ) -> DispatchResult {
+            CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
+                let collateral_info = collateral_info
+                    .as_mut()
+                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                collateral_info.kusd_supply = collateral_info
+                    .kusd_supply
+                    .checked_add(supply_change)
+                    .ok_or(Error::<T>::ArithmeticError)?;
                 Ok(())
             })
         }
