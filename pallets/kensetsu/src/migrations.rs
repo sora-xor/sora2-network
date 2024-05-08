@@ -101,7 +101,7 @@ pub mod init {
 /// Due to bug in stability fee update some extra KUSD were minted, this migration burns and sets
 /// correct amounts.
 pub mod stage_correction {
-    use crate::{CDPDepository, CollateralInfos, Config, Error};
+    use crate::{BadDebt, CDPDepository, CollateralInfos, Config, Error};
     use common::Balance;
     use common::{AssetInfoProvider, AssetManager};
     use core::marker::PhantomData;
@@ -142,23 +142,67 @@ pub mod stage_correction {
                 total_debt += accumulated_debt_for_collateral;
             }
 
-            // burn KUSD on tech account
+            let bad_debt = BadDebt::<T>::get();
+            total_debt += bad_debt;
+
+            // kusd supply must be equal to aggregated debt:
+            // kusd_supply == sum(cdp.debt) + bad_debt
+            let kusd_supply =
+                <T as Config>::AssetInfoProvider::total_issuance(&T::KusdAssetId::get())?;
+            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+
+            let (surplus, shortage) = if kusd_supply > total_debt {
+                (kusd_supply - total_debt, 0)
+            } else {
+                (0, total_debt - kusd_supply)
+            };
+
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            let balance = <T as Config>::AssetInfoProvider::free_balance(
+            let profit = <T as Config>::AssetInfoProvider::free_balance(
                 &T::KusdAssetId::get(),
                 &treasury_account_id,
             )?;
-            let to_burn = balance - total_debt;
-            T::AssetManager::burn_from(
-                T::KusdAssetId::get(),
-                &treasury_account_id,
-                &treasury_account_id,
-                to_burn,
-            )?;
+            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
 
-            *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            // burn KUSD surplus on tech acc profit or add to bad debt
+            if surplus > 0 {
+                let (to_burn, to_bad_debt) = if profit > surplus {
+                    (surplus, 0)
+                } else {
+                    (profit, surplus - profit)
+                };
+                T::AssetManager::burn_from(
+                    T::KusdAssetId::get(),
+                    &treasury_account_id,
+                    &treasury_account_id,
+                    to_burn,
+                )?;
+
+                BadDebt::<T>::set(bad_debt + to_bad_debt);
+
+                *weight += <T as frame_system::Config>::DbWeight::get().writes(2);
+            }
+
+            // mint KUSD shortage to tech acc or cover bad debt
+            if shortage > 0 {
+                let (from_bad_debt, to_mint) = if bad_debt > shortage {
+                    (shortage, 0)
+                } else {
+                    (bad_debt, shortage - bad_debt)
+                };
+
+                technical::Pallet::<T>::mint(
+                    &T::KusdAssetId::get(),
+                    &T::TreasuryTechAccount::get(),
+                    to_mint,
+                )?;
+
+                BadDebt::<T>::set(bad_debt - from_bad_debt);
+
+                *weight += <T as frame_system::Config>::DbWeight::get().writes(2);
+            }
 
             Ok(())
         }
@@ -173,6 +217,107 @@ pub mod stage_correction {
                 error!("Runtime upgrade error {:?}", err);
             });
             weight
+        }
+    }
+}
+
+pub mod storage_add_total_collateral {
+    use crate::{CDPDepository, CollateralInfos, Config};
+    use common::Balance;
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_arithmetic::traits::Zero;
+    use sp_core::Get;
+
+    mod old {
+        use crate::CollateralRiskParameters;
+        use codec::{Decode, Encode, MaxEncodedLen};
+        use common::Balance;
+        use frame_support::dispatch::TypeInfo;
+        use sp_arithmetic::FixedU128;
+
+        /// Old format without `total_collateral` field.
+        #[derive(
+            Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord,
+        )]
+        pub struct CollateralInfo<Moment> {
+            /// Collateral Risk parameters set by risk management
+            pub risk_parameters: CollateralRiskParameters,
+
+            /// Amount of KUSD issued for the collateral
+            pub kusd_supply: Balance,
+
+            /// the last timestamp when stability fee was accrued
+            pub last_fee_update_time: Moment,
+
+            /// Interest accrued for collateral for all time
+            pub interest_coefficient: FixedU128,
+        }
+
+        impl<Moment> CollateralInfo<Moment> {
+            // Returns new format with provided `total_collateral`.
+            pub fn into_new(self, total_collateral: Balance) -> crate::CollateralInfo<Moment> {
+                crate::CollateralInfo {
+                    risk_parameters: self.risk_parameters,
+                    total_collateral,
+                    kusd_supply: self.kusd_supply,
+                    last_fee_update_time: self.last_fee_update_time,
+                    interest_coefficient: self.interest_coefficient,
+                }
+            }
+        }
+    }
+
+    pub struct StorageAddTotalCollateral<T>(PhantomData<T>);
+
+    impl<T: Config> OnRuntimeUpgrade for StorageAddTotalCollateral<T> {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+            CollateralInfos::<T>::translate::<old::CollateralInfo<T::Moment>, _>(
+                |collateral_asset_id, old_collateral_info| {
+                    let accumulated_collateral = CDPDepository::<T>::iter()
+                        .filter(|(_, cdp)| {
+                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                            cdp.collateral_asset_id == collateral_asset_id
+                        })
+                        .fold(Balance::zero(), |accumulated_collateral, (_, cdp)| {
+                            accumulated_collateral + cdp.collateral_amount
+                        });
+                    weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                    Some(old_collateral_info.into_new(accumulated_collateral))
+                },
+            );
+            weight
+        }
+    }
+}
+
+pub mod remove_managers {
+
+    mod old {
+        use crate::{Config, Pallet};
+        use common::AccountIdOf;
+        use sp_core::bounded::BoundedBTreeSet;
+        use sp_core::ConstU32;
+
+        #[frame_support::storage_alias]
+        pub type RiskManagers<T: Config + frame_system::Config> =
+            StorageValue<Pallet<T>, BoundedBTreeSet<AccountIdOf<T>, ConstU32<100>>>;
+    }
+
+    use crate::Config;
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_core::Get;
+
+    pub struct RemoveManagers<T>(PhantomData<T>);
+
+    impl<T: Config + frame_system::Config> OnRuntimeUpgrade for RemoveManagers<T> {
+        fn on_runtime_upgrade() -> Weight {
+            old::RiskManagers::<T>::kill();
+            <T as frame_system::Config>::DbWeight::get().writes(1)
         }
     }
 }
