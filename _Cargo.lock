@@ -51,19 +51,19 @@ version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "891477e0c6a8957309ee5c45a6368af3ae14bb510732d2684ffa19af310920f9"
 dependencies = [
- "getrandom 0.2.15",
+ "getrandom 0.2.14",
  "once_cell",
  "version_check",
 ]
 
 [[package]]
 name = "ahash"
-version = "0.8.11"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
+checksum = "cd7d5a2cecb58716e47d67d5703a249964b14c7be1ec3cad3affc295b2d1c35d"
 dependencies = [
  "cfg-if",
- "getrandom 0.2.15",
+ "getrandom 0.2.14",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -104,9 +104,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.83"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25bdb32cbbdce2b519a9cd7df3a678443100e265d5e25ca763b7572a5104f5f3"
+checksum = "f538837af36e6f6a9be0faa67f9a314f8119e4e4b5867c6ab40ed60360142519"
 
 [[package]]
 name = "approx"
@@ -360,7 +360,7 @@ name = "assets"
 version = "1.3.1"
 dependencies = [
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -577,7 +577,7 @@ checksum = "c6fa2087f2753a7da8cc1c0dbfcf89579dd57458e36769de5ac750b4671737ca"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -588,9 +588,9 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "autocfg"
-version = "1.3.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
+checksum = "f1fdabc7756949593fe60f30ec81974b613357de856987752631dea1e3394c80"
 
 [[package]]
 name = "backtrace"
@@ -613,7 +613,7 @@ version = "1.0.1"
 dependencies = [
  "common 0.1.0",
  "fallible-iterator 0.3.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -624,7 +624,7 @@ dependencies = [
  "scale-info",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-std 8.0.0",
  "xst",
 ]
@@ -819,7 +819,7 @@ dependencies = [
 [[package]]
 name = "bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git#cfedc198af9f89463f91c55d9fdd174082391dc0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -830,10 +830,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -846,7 +846,7 @@ dependencies = [
  "common 0.1.0",
  "dispatch",
  "evm-fungible-app",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "orml-currencies",
@@ -862,22 +862,23 @@ dependencies = [
  "sp-keyring",
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
- "staging-xcm",
  "technical",
+ "xcm",
 ]
 
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 dependencies = [
  "derivative",
  "ethabi",
  "ethash",
  "ethbloom",
  "ethereum-types",
- "frame-support 4.0.0-dev",
- "frame-system 4.0.0-dev",
- "getrandom 0.2.15",
+ "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "getrandom 0.2.14",
  "hex-literal",
  "libsecp256k1",
  "orml-traits",
@@ -887,12 +888,12 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-consensus-beefy",
- "sp-core 21.0.0",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
- "staging-xcm",
+ "sp-beefy",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "xcm",
 ]
 
 [[package]]
@@ -906,9 +907,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.16.0"
+version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
+checksum = "7f30e7476521f6f8af1a1c4c0b8cc94f0bee37d91763d0ca2665f299b6cd8aec"
 
 [[package]]
 name = "byte-slice-cast"
@@ -942,9 +943,9 @@ checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
 name = "cc"
-version = "1.0.97"
+version = "1.0.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "099a5357d84c4c61eb35fc8eafa9a79a902c2f76911e5747ced4e032edd8d9b4"
+checksum = "d32a725bc159af97c3e629873bb9f88fb8cf8a4867175f76dc987815ea07c83b"
 
 [[package]]
 name = "ceres-governance-platform"
@@ -956,7 +957,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -1018,7 +1019,7 @@ version = "1.0.0"
 dependencies = [
  "assets",
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -1045,7 +1046,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -1196,7 +1197,7 @@ version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9d839f2a20b0aee515dc581a6172f2321f96cab76c1a38a4c584a194955390e"
 dependencies = [
- "getrandom 0.2.15",
+ "getrandom 0.2.14",
  "once_cell",
  "tiny-keccak",
 ]
@@ -1370,7 +1371,6 @@ dependencies = [
  "platforms",
  "rustc_version",
  "subtle",
- "zeroize",
 ]
 
 [[package]]
@@ -1381,7 +1381,7 @@ checksum = "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -1393,7 +1393,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -1467,7 +1467,7 @@ checksum = "d65d7ce8132b7c0e54497a4d9a55a1c2a0912a0d786cf894472ba818fba45762"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -1490,7 +1490,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -1572,18 +1572,19 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 dependencies = [
  "bridge-types",
- "frame-benchmarking 4.0.0-dev",
- "frame-support 4.0.0-dev",
- "frame-system 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -1624,9 +1625,9 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.61",
+ "syn 2.0.60",
  "termcolor",
- "toml",
+ "toml 0.8.12",
  "walkdir",
 ]
 
@@ -1838,9 +1839,9 @@ dependencies = [
 
 [[package]]
 name = "errno"
-version = "0.3.9"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "534c5cf6194dfab3db3242765c03bbe257cf92f22b38f6bc0c58d59108a820ba"
+checksum = "a258e46cdc063eb8519c00b9fc845fc47bcfca4130e2f08e88665ceda8474245"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
@@ -1869,7 +1870,7 @@ dependencies = [
  "ethabi-contract",
  "ethabi-derive",
  "ethereum-types",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-executive",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
@@ -1881,6 +1882,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-multisig 3.2.3",
  "pallet-scheduler",
  "pallet-sudo",
  "pallet-timestamp 4.0.0-dev",
@@ -2037,7 +2039,7 @@ dependencies = [
 [[package]]
 name = "evm-fungible-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git#cfedc198af9f89463f91c55d9fdd174082391dc0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 dependencies = [
  "bridge-types",
  "dispatch",
@@ -2053,24 +2055,23 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
 name = "expander"
-version = "2.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00e83c02035136f1592a47964ea60c05a50e4ed8b5892cfac197063850898d4d"
+checksum = "5f86a749cf851891866c10515ef6c299b5c69661465e9c3bbe7e07a2b77fb0f7"
 dependencies = [
  "blake2",
  "fs-err",
- "prettier-please",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2101,7 +2102,7 @@ dependencies = [
  "demeter-farming-platform",
  "dex-manager",
  "env_logger",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -2152,7 +2153,7 @@ version = "0.1.0"
 dependencies = [
  "assets",
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -2285,13 +2286,63 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-application-crypto 7.0.0",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-runtime 7.0.0",
- "sp-runtime-interface 7.0.0",
- "sp-std 5.0.0",
- "sp-storage 7.0.0",
+ "sp-application-crypto 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "static_assertions",
+]
+
+[[package]]
+name = "frame-benchmarking"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-support-procedural 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-system 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "linregress 0.4.4",
+ "log",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-api 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-application-crypto 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "static_assertions",
+]
+
+[[package]]
+name = "frame-benchmarking"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "frame-support-procedural 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "frame-system 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "linregress 0.5.3",
+ "log",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-api 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "static_assertions",
 ]
 
@@ -2360,10 +2411,10 @@ dependencies = [
  "sp-core 21.0.0",
  "sp-core-hashing-proc-macro 9.0.0",
  "sp-debug-derive 8.0.0",
- "sp-genesis-builder",
+ "sp-genesis-builder 0.1.0",
  "sp-inherents 4.0.0-dev",
  "sp-io 23.0.0",
- "sp-metadata-ir",
+ "sp-metadata-ir 0.1.0",
  "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
  "sp-state-machine 0.28.0",
@@ -2392,17 +2443,89 @@ dependencies = [
  "serde",
  "smallvec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-arithmetic 6.0.0",
- "sp-core 7.0.0",
- "sp-core-hashing-proc-macro 5.0.0",
+ "sp-arithmetic 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core-hashing-proc-macro 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-io 7.0.0",
- "sp-runtime 7.0.0",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-staking 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-state-machine 0.13.0",
- "sp-std 5.0.0",
- "sp-tracing 6.0.0",
- "sp-weights 4.0.0",
+ "sp-state-machine 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-tracing 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "tt-call",
+]
+
+[[package]]
+name = "frame-support"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "bitflags 1.3.2",
+ "frame-metadata 15.1.0",
+ "frame-support-procedural 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "impl-trait-for-tuples",
+ "k256 0.11.6",
+ "log",
+ "once_cell",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "smallvec",
+ "sp-api 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-arithmetic 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core-hashing-proc-macro 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-inherents 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-staking 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-state-machine 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-tracing 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "tt-call",
+]
+
+[[package]]
+name = "frame-support"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "aquamarine",
+ "bitflags 1.3.2",
+ "docify",
+ "environmental",
+ "frame-metadata 16.0.0",
+ "frame-support-procedural 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "impl-trait-for-tuples",
+ "k256 0.13.3",
+ "log",
+ "macro_magic",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "sp-api 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-core-hashing-proc-macro 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-genesis-builder 0.1.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-inherents 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-metadata-ir 0.1.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-staking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "static_assertions",
  "tt-call",
 ]
 
@@ -2420,7 +2543,7 @@ dependencies = [
  "proc-macro-warning",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2439,14 +2562,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "frame-support-procedural"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "Inflector",
+ "cfg-expr 0.10.3",
+ "derive-syn-parse 0.1.5",
+ "frame-support-procedural-tools 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "frame-support-procedural"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "Inflector",
+ "cfg-expr 0.15.8",
+ "derive-syn-parse 0.1.5",
+ "expander",
+ "frame-support-procedural-tools 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "itertools",
+ "macro_magic",
+ "proc-macro-warning",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
+]
+
+[[package]]
 name = "frame-support-procedural-tools"
 version = "4.0.0-dev"
 dependencies = [
  "frame-support-procedural-tools-derive 3.0.0",
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2455,10 +2611,34 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
  "frame-support-procedural-tools-derive 3.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "frame-support-procedural-tools"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "frame-support-procedural-tools-derive 3.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "frame-support-procedural-tools"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "frame-support-procedural-tools-derive 3.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2467,7 +2647,7 @@ version = "3.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2478,6 +2658,26 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "frame-support-procedural-tools-derive"
+version = "3.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "frame-support-procedural-tools-derive"
+version = "3.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2508,12 +2708,49 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
- "sp-version 5.0.0",
- "sp-weights 4.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-version 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "frame-system"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-version 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "frame-system"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "cfg-if",
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-version 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
 ]
 
 [[package]]
@@ -2616,7 +2853,7 @@ checksum = "87750cf4b7a4c0625b1529e4c543c2182106e4dedc60a2a6455e00d212c489ac"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -2630,6 +2867,12 @@ name = "futures-task"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38d84fa142264698cdce1a9f9172cf383a0c82de1bddcf3092901442c4097004"
+
+[[package]]
+name = "futures-timer"
+version = "3.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f288b0a4f20f9a56b5d1da57e2227c661b7b16168e2f72365f57b63326e29b24"
 
 [[package]]
 name = "futures-util"
@@ -2682,24 +2925,15 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.15"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
+checksum = "94b22e06ecb0110981051723910cbf0b5f5e09a2062dd7663334ee79a9d1286c"
 dependencies = [
  "cfg-if",
  "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "getrandom_or_panic"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea1015b5a70616b688dc230cfe50c8af89d972cb132d5a622814d29773b10b9"
-dependencies = [
- "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -2799,14 +3033,14 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash 0.8.11",
+ "ahash 0.8.5",
 ]
 
 [[package]]
 name = "hashbrown"
-version = "0.14.5"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
 
 [[package]]
 name = "heck"
@@ -2824,7 +3058,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hermes-governance-platform",
@@ -3023,7 +3257,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.5",
+ "hashbrown 0.14.3",
 ]
 
 [[package]]
@@ -3069,7 +3303,7 @@ dependencies = [
  "common 0.1.0",
  "ed25519-dalek-iroha",
  "eth-bridge",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex",
@@ -3077,7 +3311,7 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
- "pallet-multisig",
+ "pallet-multisig 4.0.0-dev",
  "parity-scale-codec",
  "parity-util-mem",
  "permissions",
@@ -3085,7 +3319,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sha3 0.9.1",
- "sp-core 21.0.0",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-io 23.0.0",
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
@@ -3190,9 +3424,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.154"
+version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae743338b92ff9146ce83992f766a31066a91a8c84a45e0e9f21e7cf6de6d346"
+checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
 name = "libm"
@@ -3328,7 +3562,7 @@ dependencies = [
  "macro_magic_core",
  "macro_magic_macros",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -3342,7 +3576,7 @@ dependencies = [
  "macro_magic_core_macros",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -3353,7 +3587,7 @@ checksum = "d710e1214dffbab3b5dacb21475dde7d6ed84c69ff722b3a47a782668d44fbac"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -3364,7 +3598,7 @@ checksum = "b8fb85ec1620619edf2984a7693497d4ec88a9665d8b87e942856884c92dbf2a"
 dependencies = [
  "macro_magic_core",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -3513,7 +3747,7 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -3610,19 +3844,20 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "num-bigint"
-version = "0.4.5"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c165a9ab64cf766f73521c0dd2cfdff64f488b8f0b3e621face3462d3db536d7"
+checksum = "608e7659b5c3d7cba262d894801b9ec9d00de989e8a82bd4bef91d08da45cdc0"
 dependencies = [
+ "autocfg",
  "num-integer",
  "num-traits",
 ]
 
 [[package]]
 name = "num-complex"
-version = "0.4.6"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
+checksum = "23c6602fda94a57c990fe0df199a035d83576b496aa29f4e634a8ac6004e68a6"
 dependencies = [
  "num-traits",
 ]
@@ -3648,10 +3883,11 @@ dependencies = [
 
 [[package]]
 name = "num-rational"
-version = "0.4.2"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
+checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
 dependencies = [
+ "autocfg",
  "num-bigint",
  "num-integer",
  "num-traits",
@@ -3659,9 +3895,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.19"
+version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
+checksum = "da0df0e5185db44f69b44f26786fe401b6c293d1907744beaa7fa62b2e5a517a"
 dependencies = [
  "autocfg",
  "libm",
@@ -3734,7 +3970,7 @@ version = "1.0.0"
 dependencies = [
  "band",
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -3745,7 +3981,7 @@ dependencies = [
  "serde",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-std 8.0.0",
 ]
 
@@ -3834,6 +4070,22 @@ dependencies = [
 
 [[package]]
 name = "pallet-multisig"
+version = "3.2.3"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.38#9762e3948a5823a312df658862c2d2311267d6aa"
+dependencies = [
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-system 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "pallet-multisig"
 version = "4.0.0-dev"
 dependencies = [
  "frame-benchmarking 4.0.0-dev",
@@ -3867,22 +4119,22 @@ dependencies = [
 [[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "frame-support 4.0.0-dev",
- "frame-system 4.0.0-dev",
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-system 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "impl-trait-for-tuples",
  "log",
- "pallet-timestamp 4.0.0-dev",
+ "pallet-timestamp 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-session",
- "sp-staking 4.0.0-dev",
- "sp-state-machine 0.28.0",
- "sp-std 8.0.0",
- "sp-trie 22.0.0",
+ "sp-staking 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -3928,9 +4180,27 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-timestamp 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "pallet-timestamp"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-support 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "frame-system 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-inherents 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-timestamp 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -3956,9 +4226,9 @@ checksum = "16b56e3a2420138bdb970f84dfb9c774aea80fa0e7371549eedec0d80c209c67"
 
 [[package]]
 name = "parity-scale-codec"
-version = "3.6.12"
+version = "3.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "306800abfa29c7f16596b5970a588435e3d5b3149683d00c12b699cc19f895ee"
+checksum = "0dec8a8073036902368c2cdc0387e85ff9a37054d7e7c98e592145e0c92cd4fb"
 dependencies = [
  "arrayvec 0.7.4",
  "bitvec",
@@ -3971,11 +4241,11 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec-derive"
-version = "3.6.12"
+version = "3.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d830939c76d294956402033aee57a6da7b438f2294eb94864c37b0569053a42c"
+checksum = "312270ee71e1cd70289dacf597cab7b207aa107d2f28191c2ae45b2ece18a260"
 dependencies = [
- "proc-macro-crate 3.1.0",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -4042,9 +4312,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "1.0.15"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
 name = "pbkdf2"
@@ -4209,16 +4479,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
-name = "prettier-please"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22020dfcf177fcc7bf5deaf7440af371400c67c0de14c399938d8ed4fb4645d3"
-dependencies = [
- "proc-macro2",
- "syn 2.0.61",
-]
-
-[[package]]
 name = "price-tools"
 version = "1.0.0"
 dependencies = [
@@ -4228,7 +4488,7 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -4268,21 +4528,12 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
-version = "1.3.1"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
+checksum = "e17d47ce914bf4de440332250b0edd23ce48c005f59fab39d3335866b114f11a"
 dependencies = [
- "once_cell",
- "toml_edit 0.19.15",
-]
-
-[[package]]
-name = "proc-macro-crate"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d37c51ca738a55da99dc0c4a34860fd675453b8b36209178c2249bb13651284"
-dependencies = [
- "toml_edit 0.21.1",
+ "thiserror",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -4317,14 +4568,14 @@ checksum = "3d1eaa7fa0aa1929ffdf7eeb6eac234dde6268914a14ad44d23521ab6a9b258e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.82"
+version = "1.0.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad3d49ab951a01fbaafe34f2ec74122942fe18a3f9814c3268f1bb72042131b"
+checksum = "3d1597b0c024618f09a9c3b8655b7e430397a36d23fdafec26d6965e9eec3eba"
 dependencies = [
  "unicode-ident",
 ]
@@ -4347,7 +4598,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -4444,7 +4695,7 @@ version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
- "getrandom 0.2.15",
+ "getrandom 0.2.14",
 ]
 
 [[package]]
@@ -4483,22 +4734,22 @@ dependencies = [
 
 [[package]]
 name = "ref-cast"
-version = "1.0.23"
+version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccf0a6f84d5f1d581da8b41b47ec8600871962f2a528115b542b362d4b744931"
+checksum = "c4846d4c50d1721b1a3bef8af76924eef20d5e723647333798c1b519b3a9473f"
 dependencies = [
  "ref-cast-impl",
 ]
 
 [[package]]
 name = "ref-cast-impl"
-version = "1.0.23"
+version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcc303e793d3734489387d205e9b186fac9c6cfacedd98cbb2e8a5943595f3e6"
+checksum = "5fddb4f8d99b0a2ebafc65a87a69a7b9875e4b1ae1f00db265d300ef7f28bccc"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -4507,7 +4758,7 @@ version = "1.1.0"
 dependencies = [
  "assets",
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -4575,7 +4826,7 @@ version = "1.3.0"
 dependencies = [
  "assets",
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex",
@@ -4644,9 +4895,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.24"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
+checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
 
 [[package]]
 name = "rustc-hash"
@@ -4690,7 +4941,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "305efbd14fde4139eb501df5f136994bb520b033fa9fbdce287507dc23b8c7ed"
 dependencies = [
  "bitflags 1.3.2",
- "errno 0.3.9",
+ "errno 0.3.8",
  "io-lifetimes 1.0.11",
  "libc",
  "linux-raw-sys 0.1.4",
@@ -4704,7 +4955,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea8ca367a3a01fe35e6943c400addf443c0f57670e6ec51196f71a4b8762dd2"
 dependencies = [
  "bitflags 1.3.2",
- "errno 0.3.9",
+ "errno 0.3.8",
  "io-lifetimes 1.0.11",
  "libc",
  "linux-raw-sys 0.3.8",
@@ -4718,7 +4969,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70dc5ec042f7a43c4a73241207cecc9873a06d45debb38b329f8541d85c2730f"
 dependencies = [
  "bitflags 2.5.0",
- "errno 0.3.9",
+ "errno 0.3.8",
  "libc",
  "linux-raw-sys 0.4.13",
  "windows-sys 0.52.0",
@@ -4726,15 +4977,15 @@ dependencies = [
 
 [[package]]
 name = "rustversion"
-version = "1.0.16"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "092474d1a01ea8278f69e6a358998405fae5b8b963ddaeb2b0b04a128bf1dfb0"
+checksum = "80af6f9131f277a45a3fba6ce8e2258037bb0477a67e610d3c1fe046ab31de47"
 
 [[package]]
 name = "ryu"
-version = "1.0.18"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
+checksum = "e86697c916019a8588c99b5fac3cead74ec0b4b819707a682fd4d23fa0ce1ba1"
 
 [[package]]
 name = "safe_arch"
@@ -4756,9 +5007,9 @@ dependencies = [
 
 [[package]]
 name = "scale-info"
-version = "2.11.3"
+version = "2.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eca070c12893629e2cc820a9761bedf6ce1dcddc9852984d1dc734b8bd9bd024"
+checksum = "7c453e59a955f81fb62ee5d596b450383d699f152d350e9d23a0db2adb78e4c0"
 dependencies = [
  "bitvec",
  "cfg-if",
@@ -4770,11 +5021,11 @@ dependencies = [
 
 [[package]]
 name = "scale-info-derive"
-version = "2.11.3"
+version = "2.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d35494501194174bda522a32605929eefc9ecf7e0a326c26db1fdd85881eb62"
+checksum = "18cf6c6447f813ef19eb450e985bcce6705f9ce7660db221b59093d15c79c4b7"
 dependencies = [
- "proc-macro-crate 3.1.0",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -4782,11 +5033,11 @@ dependencies = [
 
 [[package]]
 name = "schnellru"
-version = "0.2.2"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b0cf7da6fc4477944d5529807234f66802fcb618fc62b9c05bedca7f9be6c43"
+checksum = "772575a524feeb803e5b0fcbc6dd9f367e579488197c94c6e4023aad2305774d"
 dependencies = [
- "ahash 0.8.11",
+ "ahash 0.8.5",
  "cfg-if",
  "hashbrown 0.13.2",
 ]
@@ -4805,23 +5056,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "sha2 0.8.2",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "schnorrkel"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8de18f6d8ba0aad7045f5feae07ec29899c1112584a38509a84ad7b04451eaa0"
-dependencies = [
- "arrayref",
- "arrayvec 0.7.4",
- "curve25519-dalek 4.1.2",
- "getrandom_or_panic",
- "merlin 3.0.0",
- "rand_core 0.6.4",
- "sha2 0.10.8",
  "subtle",
  "zeroize",
 ]
@@ -4889,15 +5123,15 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.23"
+version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
+checksum = "92d43fe69e652f3df9bdc2b85b2854a0825b86e4fb76bc44d945137d053639ca"
 
 [[package]]
 name = "serde"
-version = "1.0.201"
+version = "1.0.198"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "780f1cebed1629e4753a1a38a3c72d30b97ec044f0aef68cb26650a3c5cf363c"
+checksum = "9846a40c979031340571da2545a4e5b7c4163bdae79b301d5f86d03979451fcc"
 dependencies = [
  "serde_derive",
 ]
@@ -4913,20 +5147,20 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.201"
+version = "1.0.198"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5e405930b9796f1c00bee880d03fc7e0bb4b9a11afc776885ffe84320da2865"
+checksum = "e88edab869b01783ba905e7d0153f9fc1a6505a96e4ad3018011eedb838566d9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.117"
+version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "455182ea6142b14f93f4bc5320a2b31c1f266b66a4a5c858b013302a5d8cbfc3"
+checksum = "3e17db7126d17feb94eb3fad46bf1a96b034e8aacbc2e775fe81505f8b0b2813"
 dependencies = [
  "itoa",
  "ryu",
@@ -5099,7 +5333,7 @@ dependencies = [
  "sp-api-proc-macro 4.0.0-dev",
  "sp-core 21.0.0",
  "sp-externalities 0.19.0",
- "sp-metadata-ir",
+ "sp-metadata-ir 0.1.0",
  "sp-runtime 24.0.0",
  "sp-state-machine 0.28.0",
  "sp-std 8.0.0",
@@ -5117,12 +5351,51 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "sp-api-proc-macro 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-core 7.0.0",
- "sp-runtime 7.0.0",
- "sp-state-machine 0.13.0",
- "sp-std 5.0.0",
- "sp-trie 7.0.0",
- "sp-version 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-state-machine 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-version 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-api"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "hash-db 0.15.2",
+ "log",
+ "parity-scale-codec",
+ "sp-api-proc-macro 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-state-machine 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-version 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-api"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "hash-db 0.16.0",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api-proc-macro 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-metadata-ir 0.1.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-version 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "thiserror",
 ]
 
@@ -5133,10 +5406,10 @@ dependencies = [
  "Inflector",
  "blake2",
  "expander",
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -5145,10 +5418,36 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
  "blake2",
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-api-proc-macro"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "blake2",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-api-proc-macro"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "Inflector",
+ "blake2",
+ "expander",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -5159,9 +5458,22 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-std 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-application-crypto"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5177,6 +5489,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-application-crypto"
+version = "23.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+]
+
+[[package]]
 name = "sp-arithmetic"
 version = "6.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -5186,7 +5511,21 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-std 5.0.0",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "static_assertions",
+]
+
+[[package]]
+name = "sp-arithmetic"
+version = "6.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "integer-sqrt",
+ "num-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "static_assertions",
 ]
 
@@ -5204,22 +5543,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-consensus-beefy"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
+name = "sp-arithmetic"
+version = "16.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
 dependencies = [
- "lazy_static",
+ "integer-sqrt",
+ "num-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0",
- "sp-core 21.0.0",
- "sp-io 23.0.0",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "static_assertions",
+]
+
+[[package]]
+name = "sp-beefy"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-application-crypto 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
- "strum 0.24.1",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5247,16 +5598,58 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "scale-info",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "secp256k1",
  "secrecy",
  "serde",
- "sp-core-hashing 5.0.0",
- "sp-debug-derive 5.0.0",
- "sp-externalities 0.13.0",
- "sp-runtime-interface 7.0.0",
- "sp-std 5.0.0",
- "sp-storage 7.0.0",
+ "sp-core-hashing 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "ss58-registry",
+ "substrate-bip39",
+ "thiserror",
+ "tiny-bip39",
+ "zeroize",
+]
+
+[[package]]
+name = "sp-core"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "array-bytes 4.2.0",
+ "base58",
+ "bitflags 1.3.2",
+ "blake2",
+ "dyn-clonable",
+ "ed25519-zebra",
+ "futures",
+ "hash-db 0.15.2",
+ "hash256-std-hasher",
+ "impl-serde",
+ "lazy_static",
+ "libsecp256k1",
+ "log",
+ "merlin 2.0.1",
+ "parity-scale-codec",
+ "parking_lot",
+ "primitive-types",
+ "rand 0.8.5",
+ "regex",
+ "scale-info",
+ "schnorrkel",
+ "secp256k1",
+ "secrecy",
+ "serde",
+ "sp-core-hashing 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "ss58-registry",
  "substrate-bip39",
  "thiserror",
@@ -5292,7 +5685,7 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "scale-info",
- "schnorrkel 0.9.1",
+ "schnorrkel",
  "secp256k1",
  "secrecy",
  "serde",
@@ -5311,6 +5704,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-core"
+version = "21.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "array-bytes 6.2.2",
+ "arrayvec 0.7.4",
+ "bandersnatch_vrfs",
+ "bitflags 1.3.2",
+ "blake2",
+ "bounded-collections",
+ "bs58",
+ "dyn-clonable",
+ "ed25519-zebra",
+ "futures",
+ "hash-db 0.16.0",
+ "hash256-std-hasher",
+ "impl-serde",
+ "lazy_static",
+ "libsecp256k1",
+ "log",
+ "merlin 2.0.1",
+ "parity-scale-codec",
+ "parking_lot",
+ "paste",
+ "primitive-types",
+ "rand 0.8.5",
+ "regex",
+ "scale-info",
+ "schnorrkel",
+ "secp256k1",
+ "secrecy",
+ "serde",
+ "sp-core-hashing 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "ss58-registry",
+ "substrate-bip39",
+ "thiserror",
+ "tiny-bip39",
+ "tracing",
+ "zeroize",
+]
+
+[[package]]
 name = "sp-core-hashing"
 version = "5.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -5320,7 +5760,21 @@ dependencies = [
  "digest 0.10.7",
  "sha2 0.10.8",
  "sha3 0.10.8",
- "sp-std 5.0.0",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "twox-hash",
+]
+
+[[package]]
+name = "sp-core-hashing"
+version = "5.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "blake2",
+ "byteorder",
+ "digest 0.10.7",
+ "sha2 0.10.8",
+ "sha3 0.10.8",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "twox-hash",
 ]
 
@@ -5337,13 +5791,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-core-hashing"
+version = "9.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "blake2b_simd",
+ "byteorder",
+ "digest 0.10.7",
+ "sha2 0.10.8",
+ "sha3 0.10.8",
+ "twox-hash",
+]
+
+[[package]]
 name = "sp-core-hashing-proc-macro"
 version = "5.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
  "proc-macro2",
  "quote",
- "sp-core-hashing 5.0.0",
+ "sp-core-hashing 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-core-hashing-proc-macro"
+version = "5.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sp-core-hashing 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "syn 1.0.109",
 ]
 
@@ -5353,7 +5831,17 @@ version = "9.0.0"
 dependencies = [
  "quote",
  "sp-core-hashing 9.0.0",
- "syn 2.0.61",
+ "syn 2.0.60",
+]
+
+[[package]]
+name = "sp-core-hashing-proc-macro"
+version = "9.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "quote",
+ "sp-core-hashing 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -5368,11 +5856,21 @@ dependencies = [
 
 [[package]]
 name = "sp-debug-derive"
+version = "5.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-debug-derive"
 version = "8.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -5382,7 +5880,17 @@ source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polk
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
+]
+
+[[package]]
+name = "sp-debug-derive"
+version = "8.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -5392,8 +5900,19 @@ source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.3
 dependencies = [
  "environmental",
  "parity-scale-codec",
- "sp-std 5.0.0",
- "sp-storage 7.0.0",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-externalities"
+version = "0.13.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "environmental",
+ "parity-scale-codec",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5407,6 +5926,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-externalities"
+version = "0.19.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "environmental",
+ "parity-scale-codec",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+]
+
+[[package]]
 name = "sp-genesis-builder"
 version = "0.1.0"
 dependencies = [
@@ -5414,6 +5944,17 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
+]
+
+[[package]]
+name = "sp-genesis-builder"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "serde_json",
+ "sp-api 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
 ]
 
 [[package]]
@@ -5437,9 +5978,37 @@ dependencies = [
  "async-trait",
  "impl-trait-for-tuples",
  "parity-scale-codec",
- "sp-core 7.0.0",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-inherents"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "async-trait",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-inherents"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "async-trait",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "thiserror",
 ]
 
@@ -5456,14 +6025,39 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "secp256k1",
- "sp-core 7.0.0",
- "sp-externalities 0.13.0",
- "sp-keystore 0.13.0",
- "sp-runtime-interface 7.0.0",
- "sp-state-machine 0.13.0",
- "sp-std 5.0.0",
- "sp-tracing 6.0.0",
- "sp-trie 7.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-keystore 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-state-machine 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-tracing 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "tracing",
+ "tracing-core",
+]
+
+[[package]]
+name = "sp-io"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "bytes",
+ "ed25519 1.5.3",
+ "ed25519-dalek 1.0.1",
+ "futures",
+ "libsecp256k1",
+ "log",
+ "parity-scale-codec",
+ "secp256k1",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-keystore 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-state-machine 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-tracing 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "tracing",
  "tracing-core",
 ]
@@ -5492,6 +6086,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-io"
+version = "23.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "bytes",
+ "ed25519-dalek 2.1.1",
+ "libsecp256k1",
+ "log",
+ "parity-scale-codec",
+ "rustversion",
+ "secp256k1",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "tracing",
+ "tracing-core",
+]
+
+[[package]]
 name = "sp-keyring"
 version = "24.0.0"
 dependencies = [
@@ -5511,9 +6129,25 @@ dependencies = [
  "merlin 2.0.1",
  "parity-scale-codec",
  "parking_lot",
- "schnorrkel 0.9.1",
- "sp-core 7.0.0",
- "sp-externalities 0.13.0",
+ "schnorrkel",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-keystore"
+version = "0.13.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "async-trait",
+ "futures",
+ "merlin 2.0.1",
+ "parity-scale-codec",
+ "parking_lot",
+ "schnorrkel",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "thiserror",
 ]
 
@@ -5529,6 +6163,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-keystore"
+version = "0.27.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "parity-scale-codec",
+ "parking_lot",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "thiserror",
+]
+
+[[package]]
 name = "sp-metadata-ir"
 version = "0.1.0"
 dependencies = [
@@ -5539,20 +6185,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-metadata-ir"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "frame-metadata 16.0.0",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+]
+
+[[package]]
 name = "sp-mmr-primitives"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
  "ckb-merkle-mountain-range",
  "log",
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-api 4.0.0-dev",
- "sp-core 21.0.0",
- "sp-debug-derive 8.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
+ "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "thiserror",
 ]
 
@@ -5568,7 +6225,27 @@ dependencies = [
 
 [[package]]
 name = "sp-panic-handler"
+version = "5.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "backtrace",
+ "lazy_static",
+ "regex",
+]
+
+[[package]]
+name = "sp-panic-handler"
 version = "8.0.0"
+dependencies = [
+ "backtrace",
+ "lazy_static",
+ "regex",
+]
+
+[[package]]
+name = "sp-panic-handler"
+version = "8.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -5589,12 +6266,34 @@ dependencies = [
  "rand 0.8.5",
  "scale-info",
  "serde",
- "sp-application-crypto 7.0.0",
- "sp-arithmetic 6.0.0",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-std 5.0.0",
- "sp-weights 4.0.0",
+ "sp-application-crypto 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-arithmetic 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-runtime"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "either",
+ "hash256-std-hasher",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec",
+ "paste",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-application-crypto 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-arithmetic 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-io 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5619,6 +6318,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-runtime"
+version = "24.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "either",
+ "hash256-std-hasher",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec",
+ "paste",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+]
+
+[[package]]
 name = "sp-runtime-interface"
 version = "7.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -5627,12 +6348,30 @@ dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "primitive-types",
- "sp-externalities 0.13.0",
- "sp-runtime-interface-proc-macro 6.0.0",
- "sp-std 5.0.0",
- "sp-storage 7.0.0",
- "sp-tracing 6.0.0",
- "sp-wasm-interface 7.0.0",
+ "sp-externalities 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface-proc-macro 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-tracing 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-wasm-interface 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "static_assertions",
+]
+
+[[package]]
+name = "sp-runtime-interface"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "bytes",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "primitive-types",
+ "sp-externalities 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime-interface-proc-macro 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-storage 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-tracing 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-wasm-interface 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "static_assertions",
 ]
 
@@ -5654,12 +6393,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-runtime-interface"
+version = "17.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "bytes",
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "primitive-types",
+ "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime-interface-proc-macro 11.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "static_assertions",
+]
+
+[[package]]
 name = "sp-runtime-interface-proc-macro"
 version = "6.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
  "Inflector",
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-runtime-interface-proc-macro"
+version = "6.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "Inflector",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -5670,24 +6439,36 @@ name = "sp-runtime-interface-proc-macro"
 version = "11.0.0"
 dependencies = [
  "Inflector",
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
+]
+
+[[package]]
+name = "sp-runtime-interface-proc-macro"
+version = "11.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "Inflector",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
 name = "sp-session"
 version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "sp-api 4.0.0-dev",
- "sp-core 21.0.0",
- "sp-keystore 0.27.0",
- "sp-runtime 24.0.0",
- "sp-staking 4.0.0-dev",
- "sp-std 8.0.0",
+ "sp-api 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-staking 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5710,9 +6491,35 @@ source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.3
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "sp-core 7.0.0",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-staking"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-staking"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "impl-trait-for-tuples",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
 ]
 
 [[package]]
@@ -5726,11 +6533,31 @@ dependencies = [
  "parking_lot",
  "rand 0.8.5",
  "smallvec",
- "sp-core 7.0.0",
- "sp-externalities 0.13.0",
- "sp-panic-handler 5.0.0",
- "sp-std 5.0.0",
- "sp-trie 7.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-panic-handler 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "sp-state-machine"
+version = "0.13.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "hash-db 0.15.2",
+ "log",
+ "parity-scale-codec",
+ "parking_lot",
+ "rand 0.8.5",
+ "smallvec",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-externalities 0.13.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-panic-handler 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-trie 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "thiserror",
  "tracing",
 ]
@@ -5756,13 +6583,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-state-machine"
+version = "0.28.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "hash-db 0.16.0",
+ "log",
+ "parity-scale-codec",
+ "parking_lot",
+ "rand 0.8.5",
+ "smallvec",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-panic-handler 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "thiserror",
+ "tracing",
+ "trie-db 0.27.1",
+]
+
+[[package]]
 name = "sp-std"
 version = "5.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 
 [[package]]
 name = "sp-std"
+version = "5.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+
+[[package]]
+name = "sp-std"
 version = "8.0.0"
+
+[[package]]
+name = "sp-std"
+version = "8.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
 
 [[package]]
 name = "sp-storage"
@@ -5773,8 +6631,21 @@ dependencies = [
  "parity-scale-codec",
  "ref-cast",
  "serde",
- "sp-debug-derive 5.0.0",
- "sp-std 5.0.0",
+ "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-storage"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "impl-serde",
+ "parity-scale-codec",
+ "ref-cast",
+ "serde",
+ "sp-debug-derive 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5787,6 +6658,19 @@ dependencies = [
  "serde",
  "sp-debug-derive 8.0.0",
  "sp-std 8.0.0",
+]
+
+[[package]]
+name = "sp-storage"
+version = "13.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "impl-serde",
+ "parity-scale-codec",
+ "ref-cast",
+ "serde",
+ "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
 ]
 
 [[package]]
@@ -5808,8 +6692,23 @@ source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.3
 dependencies = [
  "parity-scale-codec",
  "sp-inherents 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-timestamp"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "async-trait",
+ "futures-timer",
+ "log",
+ "parity-scale-codec",
+ "sp-inherents 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
 ]
 
 [[package]]
@@ -5818,7 +6717,19 @@ version = "6.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
  "parity-scale-codec",
- "sp-std 5.0.0",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "sp-tracing"
+version = "6.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "parity-scale-codec",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "tracing",
  "tracing-core",
  "tracing-subscriber",
@@ -5836,11 +6747,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-tracing"
+version = "10.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "parity-scale-codec",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "tracing",
+ "tracing-core",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "sp-trie"
 version = "7.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
 dependencies = [
- "ahash 0.8.11",
+ "ahash 0.8.5",
  "hash-db 0.15.2",
  "hashbrown 0.12.3",
  "lazy_static",
@@ -5850,8 +6773,31 @@ dependencies = [
  "parking_lot",
  "scale-info",
  "schnellru",
- "sp-core 7.0.0",
- "sp-std 5.0.0",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+ "tracing",
+ "trie-db 0.24.0",
+ "trie-root 0.17.0",
+]
+
+[[package]]
+name = "sp-trie"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "ahash 0.8.5",
+ "hash-db 0.15.2",
+ "hashbrown 0.12.3",
+ "lazy_static",
+ "memory-db 0.31.0",
+ "nohash-hasher",
+ "parity-scale-codec",
+ "parking_lot",
+ "scale-info",
+ "schnellru",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "thiserror",
  "tracing",
  "trie-db 0.24.0",
@@ -5862,7 +6808,7 @@ dependencies = [
 name = "sp-trie"
 version = "22.0.0"
 dependencies = [
- "ahash 0.8.11",
+ "ahash 0.8.5",
  "hash-db 0.16.0",
  "hashbrown 0.13.2",
  "lazy_static",
@@ -5881,6 +6827,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-trie"
+version = "22.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "ahash 0.8.5",
+ "hash-db 0.16.0",
+ "hashbrown 0.13.2",
+ "lazy_static",
+ "memory-db 0.32.0",
+ "nohash-hasher",
+ "parity-scale-codec",
+ "parking_lot",
+ "scale-info",
+ "schnellru",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "thiserror",
+ "tracing",
+ "trie-db 0.27.1",
+ "trie-root 0.18.0",
+]
+
+[[package]]
 name = "sp-version"
 version = "5.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -5890,10 +6859,27 @@ dependencies = [
  "parity-wasm",
  "scale-info",
  "serde",
- "sp-core-hashing-proc-macro 5.0.0",
- "sp-runtime 7.0.0",
- "sp-std 5.0.0",
- "sp-version-proc-macro 4.0.0-dev",
+ "sp-core-hashing-proc-macro 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-version-proc-macro 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "thiserror",
+]
+
+[[package]]
+name = "sp-version"
+version = "5.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "impl-serde",
+ "parity-scale-codec",
+ "parity-wasm",
+ "scale-info",
+ "serde",
+ "sp-core-hashing-proc-macro 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-runtime 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-version-proc-macro 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "thiserror",
 ]
 
@@ -5914,9 +6900,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-version"
+version = "22.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "impl-serde",
+ "parity-scale-codec",
+ "parity-wasm",
+ "scale-info",
+ "serde",
+ "sp-core-hashing-proc-macro 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-version-proc-macro 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "thiserror",
+]
+
+[[package]]
 name = "sp-version-proc-macro"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
+dependencies = [
+ "parity-scale-codec",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "sp-version-proc-macro"
+version = "4.0.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "parity-scale-codec",
  "proc-macro2",
@@ -5931,7 +6945,18 @@ dependencies = [
  "parity-scale-codec",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
+]
+
+[[package]]
+name = "sp-version-proc-macro"
+version = "8.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "parity-scale-codec",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -5942,7 +6967,20 @@ dependencies = [
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
- "sp-std 5.0.0",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "wasmi",
+ "wasmtime 1.0.2",
+]
+
+[[package]]
+name = "sp-wasm-interface"
+version = "7.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "wasmi",
  "wasmtime 1.0.2",
 ]
@@ -5960,6 +6998,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-wasm-interface"
+version = "14.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "anyhow",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "wasmtime 8.0.1",
+]
+
+[[package]]
 name = "sp-weights"
 version = "4.0.0"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -5968,10 +7019,25 @@ dependencies = [
  "scale-info",
  "serde",
  "smallvec",
- "sp-arithmetic 6.0.0",
- "sp-core 7.0.0",
- "sp-debug-derive 5.0.0",
- "sp-std 5.0.0",
+ "sp-arithmetic 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+]
+
+[[package]]
+name = "sp-weights"
+version = "4.0.0"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "smallvec",
+ "sp-arithmetic 6.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-core 7.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-std 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
 ]
 
 [[package]]
@@ -5986,6 +7052,36 @@ dependencies = [
  "sp-core 21.0.0",
  "sp-debug-derive 8.0.0",
  "sp-std 8.0.0",
+]
+
+[[package]]
+name = "sp-weights"
+version = "20.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "smallvec",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-debug-derive 8.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0",
+]
+
+[[package]]
+name = "sp-weights"
+version = "20.0.0"
+source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "smallvec",
+ "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
 ]
 
 [[package]]
@@ -6032,6 +7128,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "staging-xcm"
 version = "1.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
 dependencies = [
  "bounded-collections",
  "derivative",
@@ -6041,8 +7138,8 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-weights 20.0.0",
- "xcm-procedural",
+ "sp-weights 20.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "xcm-procedural 1.0.0",
 ]
 
 [[package]]
@@ -6105,18 +7202,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
 name = "substrate-bip39"
-version = "0.4.6"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a7590dc041b9bc2825e52ce5af8416c73dbe9d0654402bfd4b4941938b94d8f"
+checksum = "e620c7098893ba667438b47169c00aacdd9e7c10e042250ce2b60b087ec97328"
 dependencies = [
  "hmac 0.11.0",
  "pbkdf2 0.8.0",
- "schnorrkel 0.11.4",
+ "schnorrkel",
  "sha2 0.9.9",
  "zeroize",
 ]
@@ -6140,9 +7237,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.61"
+version = "2.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c993ed8ccba56ae856363b1845da7266a7cb78e1d146c8a32d54b45a8b831fc9"
+checksum = "909518bc7b1c9b779f1bbf07f2929d35af9f0f37e47c6e9ef7f9dddc1e1821f3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6180,7 +7277,7 @@ dependencies = [
  "assets",
  "common 0.1.0",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -6210,22 +7307,22 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.60"
+version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "579e9083ca58dd9dcf91a9923bb9054071b9ebbd800b342194c9feb0ee89fc18"
+checksum = "f0126ad08bff79f29fc3ae6a55cc72352056dfff61e3ff8bb7129476d44b23aa"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.60"
+version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2470041c06ec3ac1ab38d0356a6119054dedaea53e12fbefc0de730a1c08524"
+checksum = "d1cd413b5d558b4c5bf3680e324a6fa5014e7b7c067a51e69dbdf47eb7148b66"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -6300,7 +7397,16 @@ checksum = "5b8a1e28f2deaa14e508979454cb3a223b10b938b45af148bc0986de36f1923b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
+]
+
+[[package]]
+name = "toml"
+version = "0.5.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -6312,7 +7418,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit 0.22.12",
+ "toml_edit",
 ]
 
 [[package]]
@@ -6326,28 +7432,6 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.19.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
-dependencies = [
- "indexmap 2.2.6",
- "toml_datetime",
- "winnow 0.5.40",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
-dependencies = [
- "indexmap 2.2.6",
- "toml_datetime",
- "winnow 0.5.40",
-]
-
-[[package]]
-name = "toml_edit"
 version = "0.22.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3328d4f68a705b2a4498da1d580585d39a6510f98318a2cec3018a7ec61ddef"
@@ -6356,7 +7440,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.6.8",
+ "winnow",
 ]
 
 [[package]]
@@ -6378,7 +7462,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -6441,7 +7525,7 @@ dependencies = [
  "assets",
  "common 0.1.0",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex-literal",
@@ -6604,7 +7688,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "hex",
@@ -6680,7 +7764,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
  "wasm-bindgen-shared",
 ]
 
@@ -6714,7 +7798,7 @@ checksum = "e94f17b526d0a461a191c78ea52bbce64071ed5c04c9ffe424dcb38f74171bb7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -7356,15 +8440,6 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[package]]
 name = "winnow"
-version = "0.5.40"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "winnow"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3c52e9c97a68071b23e836c9380edae937f17b9c4667bd021973efc689f618d"
@@ -7382,13 +8457,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "xcm"
+version = "0.9.38"
+source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.38#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
+dependencies = [
+ "derivative",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core 7.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "xcm-procedural 0.9.38",
+]
+
+[[package]]
 name = "xcm-procedural"
-version = "1.0.0"
+version = "0.9.38"
+source = "git+https://github.com/paritytech/polkadot.git?branch=release-v0.9.38#097ffd245c42aeff28cf80f8a3568e1bee2e7da7"
 dependencies = [
  "Inflector",
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "xcm-procedural"
+version = "1.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
+dependencies = [
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -7397,7 +8500,7 @@ version = "0.1.0"
 dependencies = [
  "assets",
  "common 0.1.0",
- "frame-benchmarking 4.0.0-dev",
+ "frame-benchmarking 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "frame-support 4.0.0-dev",
  "frame-system 4.0.0-dev",
  "orml-currencies",
@@ -7459,22 +8562,22 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.7.34"
+version = "0.7.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae87e3fcd617500e5d106f0380cf7b77f3c6092aae37191433159dda23cfb087"
+checksum = "74d4d3961e53fa4c9a25a8637fc2bfaf2595b3d3ae34875568a5cf64787716be"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.7.34"
+version = "0.7.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15e934569e47891f7d9411f1a451d947a60e000ab3bd24fbb970f000387d1b3b"
+checksum = "9ce1b18ccd8e73a9321186f97e46f9f04b778851177567b1975109d26a08d2a6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[package]]
@@ -7494,56 +8597,63 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.61",
+ "syn 2.0.60",
 ]
 
 [[patch.unused]]
 name = "beefy-light-client"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "bridge-common"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "bridge-data-signer"
 version = "0.1.1"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "leaf-provider"
 version = "0.1.1"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "multisig-verifier"
 version = "0.1.0"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "parachain-bridge-app"
 version = "0.1.1"
-
-[[patch.unused]]
-name = "substrate-bridge-app"
-version = "0.1.1"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.24#cfedc198af9f89463f91c55d9fdd174082391dc0"
 
 [[patch.unused]]
 name = "frame-election-provider-support"
@@ -7615,6 +8725,10 @@ version = "4.0.0-dev"
 
 [[patch.unused]]
 name = "pallet-preimage"
+version = "4.0.0-dev"
+
+[[patch.unused]]
+name = "pallet-session"
 version = "4.0.0-dev"
 
 [[patch.unused]]
@@ -7726,204 +8840,8 @@ name = "sp-rpc"
 version = "6.0.0"
 
 [[patch.unused]]
-name = "sp-transaction-pool"
+name = "sp-session"
 version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "substrate-frame-rpc-system"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "substrate-prometheus-endpoint"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "substrate-wasm-builder"
-version = "5.0.0-dev"
-
-[[patch.unused]]
-name = "try-runtime-cli"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "frame-election-provider-support"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "frame-system-benchmarking"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "frame-system-rpc-runtime-api"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-aura"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-authorship"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-babe"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-bags-list"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-collective"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-democracy"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-election-provider-multi-phase"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-elections-phragmen"
-version = "5.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-grandpa"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-identity"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-im-online"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-insecure-randomness-collective-flip"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-membership"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-offences"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-preimage"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-staking"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-transaction-payment-rpc"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-transaction-payment-rpc-runtime-api"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "pallet-utility"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sc-basic-authorship"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-chain-spec"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sc-cli"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-client-api"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sc-consensus-aura"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-consensus-babe"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-consensus-slots"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-executor"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-informant"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-network"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-rpc"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sc-rpc-api"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-service"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sc-telemetry"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sc-transaction-pool"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sp-block-builder"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sp-blockchain"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sp-consensus-aura"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sp-consensus-babe"
-version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "sp-maybe-compressed-blob"
-version = "4.1.0-dev"
-
-[[patch.unused]]
-name = "sp-npos-elections"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sp-offchain"
-version = "4.0.0-dev"
-
-[[patch.unused]]
-name = "sp-rpc"
-version = "6.0.0"
 
 [[patch.unused]]
 name = "sp-transaction-pool"
