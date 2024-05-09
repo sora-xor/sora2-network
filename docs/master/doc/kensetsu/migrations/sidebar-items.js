@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["init","remove_managers","stage_correction","storage_add_total_collateral"]};
+window.SIDEBAR_ITEMS = {"mod":["init","stage_correction"]};

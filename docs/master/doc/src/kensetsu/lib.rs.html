@@ -2859,6 +2859,7 @@
                     cdp.clone(),
                 )
             })<span class="question-mark">?</span>;
+            <span class="self">Self</span>::increase_collateral_stablecoin_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, stability_fee)<span class="question-mark">?</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>new_bad_debt = BadDebt::&lt;T&gt;::get();
             <span class="kw">if </span>new_bad_debt &gt; <span class="number">0 </span>{
                 <span class="kw">if </span>stability_fee &lt;= new_bad_debt {
@@ -2877,7 +2878,6 @@
                     DispatchResult::Ok(())
                 })<span class="question-mark">?</span>;
             }
-            <span class="self">Self</span>::increase_collateral_stablecoin_supply(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, stability_fee)<span class="question-mark">?</span>;
             <span class="self">Self</span>::mint_treasury(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), stability_fee)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(cdp)
