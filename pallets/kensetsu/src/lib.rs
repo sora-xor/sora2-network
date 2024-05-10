@@ -1360,7 +1360,11 @@ pub mod pallet {
                     cdp.clone(),
                 )
             })?;
-            Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, stability_fee)?;
+            Self::increase_collateral_stablecoin_supply(
+                &cdp.collateral_asset_id,
+                &cdp.stablecoin_asset_id,
+                stability_fee,
+            )?;
             let mut new_bad_debt = StablecoinInfos::<T>::get(cdp.stablecoin_asset_id)
                 .ok_or(Error::<T>::StablecoinInfoNotFound)?
                 .bad_debt;
@@ -1384,11 +1388,6 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
-            Self::increase_collateral_stablecoin_supply(
-                &cdp.collateral_asset_id,
-                &cdp.stablecoin_asset_id,
-                stability_fee,
-            )?;
             Self::mint_treasury(&cdp.stablecoin_asset_id, stability_fee)?;
 
             Ok(cdp)
