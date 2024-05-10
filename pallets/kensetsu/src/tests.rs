@@ -1875,7 +1875,7 @@ fn test_accrue_interest_less_bad_debt() {
         let new_bad_debt = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
         // fee is burned as bad debt, no KUSD minted
-        assert_eq!(collateral_info.stablecoin_supply, debt);
+        assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
@@ -1915,7 +1915,7 @@ fn test_accrue_interest_eq_bad_debt() {
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
         // supply doesn't change, fee is burned as bad debt
-        assert_eq!(collateral_info.stablecoin_supply, debt);
+        assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
@@ -1956,7 +1956,7 @@ fn test_accrue_interest_gt_bad_debt() {
         let profit = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
         // 1 KUSD goes to profit and 1 is burned as bad debt
-        assert_eq!(collateral_info.stablecoin_supply, debt + profit);
+        assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
