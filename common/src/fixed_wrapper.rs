@@ -35,7 +35,7 @@ use core::result::Result;
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::{CheckedAdd, CheckedSub, RoundingDiv, RoundingMul, RoundingSqrt};
 use fixnum::ArithmeticError;
-use frame_support::RuntimeDebug;
+use sp_core::RuntimeDebug;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};

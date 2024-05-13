@@ -33,11 +33,11 @@ use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
-use frame_support::dispatch::TypeInfo;
 use frame_support::traits::ConstU32;
-use frame_support::{ensure, BoundedVec, RuntimeDebug};
+use frame_support::{ensure, BoundedVec};
 use hex_literal::hex;
-use sp_core::H256;
+use scale_info::TypeInfo;
+use sp_core::{RuntimeDebug, H256};
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -135,7 +135,7 @@ mod _allowed_deprecated {
     #![allow(deprecated)]
 
     use codec::{Decode, Encode, MaxEncodedLen};
-    use frame_support::RuntimeDebug;
+    use sp_core::RuntimeDebug;
 
     #[cfg(feature = "std")]
     use serde::{Deserialize, Serialize};

@@ -62,6 +62,7 @@ pub mod utils;
 pub mod weights;
 
 use codec::Encode;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::hash::H512;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_runtime::TransactionOutcome;
@@ -182,12 +183,11 @@ impl IsRepresentation for AccountId32 {
     }
 }
 
-type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 type MomentOf<T> = <T as pallet_timestamp::Config>::Moment;
 /// Converts block_number to timestamp
 pub fn convert_block_number_to_timestamp<T: Config + pallet_timestamp::Config>(
-    unlocking_block: BlockNumberOf<T>,
-    current_block: BlockNumberOf<T>,
+    unlocking_block: BlockNumberFor<T>,
+    current_block: BlockNumberFor<T>,
     current_timestamp: MomentOf<T>,
 ) -> MomentOf<T> {
     if unlocking_block > current_block {
