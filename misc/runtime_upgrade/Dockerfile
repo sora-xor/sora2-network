@@ -1,15 +1,25 @@
-FROM python:3.11-slim
+FROM python:3.11-alpine3.19
 
 WORKDIR /app
 
-RUN adduser --system --no-create-home nonroot
+RUN adduser -DH appuser && \
+    chown -R appuser:appuser /app
 
-COPY requirements.txt .
+COPY ./misc/runtime_upgrade/main.py \
+    ./framenode_runtime.compact.compressed.wasm \
+    ./misc/runtime_upgrade/requirements.txt /app/
 
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PYTHONFAULTHANDLER=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
 
-COPY main.py .
+RUN mv ./framenode_runtime.compact.compressed.wasm wasm.wasm && \
+    pip3 install -r requirements.txt
 
-USER nonroot
+USER appuser
 
-ENTRYPOINT  ["python", "main.py"]
+CMD ["python", "main.py"]

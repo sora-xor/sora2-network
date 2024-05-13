@@ -110,6 +110,9 @@ pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
 
+    /// Total collateral locked in all CDPs
+    pub total_collateral: Balance,
+
     /// Amount of KUSD issued for the collateral
     pub kusd_supply: Balance,
 
@@ -158,7 +161,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
     use sp_arithmetic::Percent;
-    use sp_core::bounded::{BoundedBTreeSet, BoundedVec};
+    use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
     use sp_std::vec::Vec;
@@ -299,10 +302,6 @@ pub mod pallet {
         #[pallet::constant]
         type MaxCdpsPerOwner: Get<u32>;
 
-        /// Maximum number of risk manager team members
-        #[pallet::constant]
-        type MaxRiskManagementTeamSize: Get<u32>;
-
         /// A configuration for base priority of unsigned transactions.
         #[pallet::constant]
         type UnsignedPriority: Get<TransactionPriority>;
@@ -376,12 +375,6 @@ pub mod pallet {
     #[pallet::getter(fn cdp_owner_index)]
     pub type CdpOwnerIndex<T: Config> =
         StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
-
-    /// Accounts of risk management team
-    #[pallet::storage]
-    #[pallet::getter(fn risk_managers)]
-    pub type RiskManagers<T: Config> =
-        StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxRiskManagementTeamSize>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -470,8 +463,6 @@ pub mod pallet {
         CDPUnsafe,
         /// Too many CDPs per user
         CDPLimitPerUser,
-        /// Risk management team size exceeded
-        TooManyManagers,
         OperationNotPermitted,
         /// Outstanding debt prevents closing CDP
         OutstandingDebt,
@@ -685,8 +676,7 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             Self::upsert_collateral_info(&collateral_asset_id, new_risk_parameters)?;
             Self::deposit_event(Event::CollateralRiskParametersUpdated {
                 collateral_asset_id,
@@ -708,8 +698,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             new_hard_cap: Balance,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             let old_hard_cap = KusdHardCap::<T>::get();
             KusdHardCap::<T>::set(new_hard_cap);
             Self::deposit_event(Event::DebtTokenHardCapUpdated {
@@ -729,8 +718,7 @@ pub mod pallet {
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_borrow_tax())]
         pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             let old_borrow_tax = BorrowTax::<T>::get();
             BorrowTax::<T>::set(new_borrow_tax);
             Self::deposit_event(Event::BorrowTaxUpdated {
@@ -753,8 +741,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             new_liquidation_penalty: Percent,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_risk_manager(&who)?;
+            ensure_root(origin)?;
             let old_liquidation_penalty = LiquidationPenalty::<T>::get();
             LiquidationPenalty::<T>::set(new_liquidation_penalty);
             Self::deposit_event(Event::LiquidationPenaltyUpdated {
@@ -770,16 +757,20 @@ pub mod pallet {
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
+        /// - `beneficiary` : The destination account where assets will be withdrawn.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
-        pub fn withdraw_profit(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_protocol_owner(&who)?;
+        pub fn withdraw_profit(
+            origin: OriginFor<T>,
+            beneficiary: T::AccountId,
+            kusd_amount: Balance,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
             technical::Pallet::<T>::transfer_out(
                 &T::KusdAssetId::get(),
                 &T::TreasuryTechAccount::get(),
-                &who,
+                &beneficiary,
                 kusd_amount,
             )?;
             Self::deposit_event(Event::ProfitWithdrawn {
@@ -800,53 +791,16 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::cover_bad_debt(&who, kusd_amount)?;
+            technical::Pallet::<T>::transfer_in(
+                &T::KusdAssetId::get(),
+                &who,
+                &T::TreasuryTechAccount::get(),
+                kusd_amount,
+            )?;
+            Self::cover_bad_debt(kusd_amount)?;
             Self::deposit_event(Event::Donation {
                 debt_asset_id: T::KusdAssetId::get(),
                 amount: kusd_amount,
-            });
-
-            Ok(())
-        }
-
-        /// Adds a new account ID to the set of risk managers.
-        ///
-        /// ## Parameters
-        ///
-        /// - `origin`: The origin of the transaction.
-        /// - `account_id`: The account ID to be added as a risk manager.
-        #[pallet::call_index(13)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_risk_manager())]
-        pub fn add_risk_manager(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
-            RiskManagers::<T>::try_mutate(|option_risk_managers| {
-                option_risk_managers
-                    .get_or_insert(BoundedBTreeSet::new())
-                    .try_insert(account_id)
-                    .map_err(|_| Error::<T>::TooManyManagers)
-            })?;
-
-            Ok(())
-        }
-
-        /// Removes an account ID from the set of risk managers.
-        ///
-        /// ## Parameters
-        ///
-        /// - `origin`: The origin of the transaction.
-        /// - `account_id`: The account ID to be removed from the set of risk managers.
-        #[pallet::call_index(14)]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_risk_manager())]
-        pub fn remove_risk_manager(
-            origin: OriginFor<T>,
-            account_id: T::AccountId,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            RiskManagers::<T>::mutate(|option_risk_managers| match option_risk_managers {
-                Some(risk_managers) => {
-                    let _ = risk_managers.remove(&account_id);
-                }
-                None => {}
             });
 
             Ok(())
@@ -903,26 +857,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Ensures that `who` is a risk manager.
-        /// Risk manager can set protocol risk parameters.
-        fn ensure_risk_manager(who: &AccountIdOf<T>) -> DispatchResult {
-            if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
-                return Err(Error::<T>::OperationNotPermitted.into());
-            }
-
-            Ok(())
-        }
-
-        /// Ensures that `who` is a protocol owner.
-        /// Protocol owner can withdraw profit from the protocol.
-        fn ensure_protocol_owner(who: &AccountIdOf<T>) -> DispatchResult {
-            if !Self::risk_managers().map_or(false, |risk_managers| risk_managers.contains(who)) {
-                return Err(Error::<T>::OperationNotPermitted.into());
-            }
-
-            Ok(())
-        }
-
         /// Checks if liquidation is available now.
         /// Returns `false` if liquidation took place this block since only one liquidation per
         /// block is allowed.
@@ -1112,19 +1046,11 @@ pub mod pallet {
             // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
             // increases debt
             Self::incentivize_ken_token(borrow_tax)?;
-            let new_debt = cdp
-                .debt
-                .checked_add(borrow_amount_with_tax)
-                .ok_or(Error::<T>::ArithmeticError)?;
 
             Self::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount_with_tax)?;
             Self::ensure_protocol_cap(borrow_amount_with_tax)?;
             Self::mint_to(who, borrow_amount)?;
-            Self::update_cdp_debt(cdp_id, new_debt)?;
-            Self::increase_collateral_kusd_supply(
-                &cdp.collateral_asset_id,
-                borrow_amount_with_tax,
-            )?;
+            Self::increase_cdp_debt(cdp_id, borrow_amount_with_tax)?;
             Self::deposit_event(Event::DebtIncreased {
                 cdp_id,
                 owner: who.clone(),
@@ -1147,13 +1073,7 @@ pub mod pallet {
             // if repaying amount exceeds debt, leftover is not burned
             let to_cover_debt = amount.min(cdp.debt);
             Self::burn_from(&cdp.owner, to_cover_debt)?;
-            Self::update_cdp_debt(
-                cdp_id,
-                cdp.debt
-                    .checked_sub(to_cover_debt)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-            )?;
-            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, to_cover_debt)?;
+            Self::decrease_cdp_debt(cdp_id, to_cover_debt)?;
             Self::deposit_event(Event::DebtPayment {
                 cdp_id,
                 owner: cdp.owner,
@@ -1170,27 +1090,14 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `from`: The account from which the stablecoin will be used to cover bad debt.
         /// - `kusd_amount`: The amount of stablecoin to cover bad debt.
-        fn cover_bad_debt(from: &AccountIdOf<T>, kusd_amount: Balance) -> DispatchResult {
+        fn cover_bad_debt(kusd_amount: Balance) -> DispatchResult {
             let bad_debt = BadDebt::<T>::get();
-            let to_cover_debt = if kusd_amount <= bad_debt {
-                kusd_amount
-            } else {
-                technical::Pallet::<T>::transfer_in(
-                    &T::KusdAssetId::get(),
-                    from,
-                    &T::TreasuryTechAccount::get(),
-                    kusd_amount
-                        .checked_sub(bad_debt)
-                        .ok_or(Error::<T>::ArithmeticError)?,
-                )?;
-                bad_debt
-            };
-            Self::burn_from(from, to_cover_debt)?;
+            let bad_debt_change = bad_debt.min(kusd_amount);
+            Self::burn_treasury(bad_debt_change)?;
             BadDebt::<T>::try_mutate(|bad_debt| {
                 *bad_debt = bad_debt
-                    .checked_sub(to_cover_debt)
+                    .checked_sub(bad_debt_change)
                     .ok_or(Error::<T>::ArithmeticError)?;
                 DispatchResult::Ok(())
             })?;
@@ -1297,6 +1204,7 @@ pub mod pallet {
                     cdp.clone(),
                 )
             })?;
+            Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, stability_fee)?;
             let mut new_bad_debt = BadDebt::<T>::get();
             if new_bad_debt > 0 {
                 if stability_fee <= new_bad_debt {
@@ -1315,7 +1223,6 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
-            Self::increase_collateral_kusd_supply(&cdp.collateral_asset_id, stability_fee)?;
             Self::mint_treasury(&T::KusdAssetId::get(), stability_fee)?;
 
             Ok(cdp)
@@ -1451,6 +1358,7 @@ pub mod pallet {
 
             // penalty is a protocol profit which stays on treasury tech account
             let penalty = Self::liquidation_penalty() * kusd_swapped.min(cdp.debt);
+            Self::cover_bad_debt(penalty)?;
             let proceeds = kusd_swapped - penalty;
             Self::update_cdp_collateral(
                 cdp_id,
@@ -1458,33 +1366,27 @@ pub mod pallet {
                     .checked_sub(collateral_liquidated)
                     .ok_or(Error::<T>::ArithmeticError)?,
             )?;
-            // stablecoin supply change for collateral.
-            let kusd_supply_change: Balance;
             if cdp.debt > proceeds {
                 Self::burn_treasury(proceeds)?;
-                let shortage = cdp
-                    .debt
-                    .checked_sub(proceeds)
-                    .ok_or(Error::<T>::ArithmeticError)?;
                 if cdp.collateral_amount <= collateral_liquidated {
                     // no collateral, total default
                     // CDP debt is not covered with liquidation, now it is a protocol bad debt
-                    let profit_burnt = Self::cover_with_protocol(shortage)?;
-                    // close empty CDP, debt == 0, collateral == 0
-                    Self::delete_cdp(cdp_id)?;
-                    kusd_supply_change = proceeds
-                        .checked_add(profit_burnt)
+                    let shortage = cdp
+                        .debt
+                        .checked_sub(proceeds)
                         .ok_or(Error::<T>::ArithmeticError)?;
+                    Self::cover_with_protocol(shortage)?;
+                    // close empty CDP, debt == 0, collateral == 0
+                    Self::decrease_cdp_debt(cdp_id, cdp.debt)?;
+                    Self::delete_cdp(cdp_id)?;
                 } else {
                     // partly covered
-                    Self::update_cdp_debt(cdp_id, shortage)?;
-                    kusd_supply_change = proceeds;
+                    Self::decrease_cdp_debt(cdp_id, proceeds)?;
                 }
             } else {
                 Self::burn_treasury(cdp.debt)?;
                 // CDP debt is covered
-                Self::update_cdp_debt(cdp_id, 0)?;
-                kusd_supply_change = cdp.debt;
+                Self::decrease_cdp_debt(cdp_id, cdp.debt)?;
                 // There is more stablecoins than to cover debt and penalty, leftover goes to cdp.owner
                 let leftover = proceeds
                     .checked_sub(cdp.debt)
@@ -1496,7 +1398,6 @@ pub mod pallet {
                     leftover,
                 )?;
             };
-            Self::decrease_collateral_kusd_supply(&cdp.collateral_asset_id, kusd_supply_change)?;
             LiquidatedThisBlock::<T>::put(true);
 
             Ok((collateral_liquidated, proceeds, penalty))
@@ -1537,7 +1438,7 @@ pub mod pallet {
 
         /// Cover CDP debt with protocol balance
         /// If protocol balance is less than amount to cover, it is a bad debt
-        fn cover_with_protocol(amount: Balance) -> Result<Balance, DispatchError> {
+        fn cover_with_protocol(amount: Balance) -> DispatchResult {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
@@ -1560,7 +1461,7 @@ pub mod pallet {
             };
             Self::burn_treasury(to_burn)?;
 
-            Ok(to_burn)
+            Ok(())
         }
 
         /// Increments CDP Id counter, changes storage state.
@@ -1587,17 +1488,54 @@ pub mod pallet {
         fn update_cdp_collateral(cdp_id: CdpId, collateral_amount: Balance) -> DispatchResult {
             CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                let old_collateral = cdp.collateral_amount;
+                CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                    let collateral_info = collateral_info
+                        .as_mut()
+                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                    collateral_info.total_collateral = collateral_info
+                        .total_collateral
+                        .checked_sub(old_collateral)
+                        .ok_or(Error::<T>::ArithmeticError)?
+                        .checked_add(collateral_amount)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    Ok::<(), Error<T>>(())
+                })?;
                 cdp.collateral_amount = collateral_amount;
                 Ok(())
             })
         }
 
-        /// Updates CDP debt balance
-        fn update_cdp_debt(cdp_id: CdpId, debt: Balance) -> DispatchResult {
+        /// Updates CDP debt by increasing the value.
+        fn increase_cdp_debt(cdp_id: CdpId, debt_change: Balance) -> DispatchResult {
             CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                cdp.debt = debt;
-                Ok(())
+                cdp.debt = cdp
+                    .debt
+                    .checked_add(debt_change)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, debt_change)
+            })
+        }
+
+        /// Updates CDP debt by decreasing the value.
+        fn decrease_cdp_debt(cdp_id: CdpId, debt_change: Balance) -> DispatchResult {
+            CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
+                let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+                cdp.debt = cdp
+                    .debt
+                    .checked_sub(debt_change)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                    let collateral_info = collateral_info
+                        .as_mut()
+                        .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                    collateral_info.kusd_supply = collateral_info
+                        .kusd_supply
+                        .checked_sub(debt_change)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    Ok(())
+                })
             })
         }
 
@@ -1611,6 +1549,16 @@ pub mod pallet {
                 &cdp.owner,
                 transfer_out,
             )?;
+            CollateralInfos::<T>::try_mutate(cdp.collateral_asset_id, |collateral_info| {
+                let collateral_info = collateral_info
+                    .as_mut()
+                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                collateral_info.total_collateral = collateral_info
+                    .total_collateral
+                    .checked_sub(transfer_out)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                Ok::<(), Error<T>>(())
+            })?;
             if let Some(mut cdp_ids) = CdpOwnerIndex::<T>::take(&cdp.owner) {
                 cdp_ids.retain(|&x| x != cdp_id);
                 if !cdp_ids.is_empty() {
@@ -1624,40 +1572,6 @@ pub mod pallet {
                 collateral_amount: transfer_out,
             });
             Ok(())
-        }
-
-        /// Increases tracker of KUSD supply for collateral asset
-        fn increase_collateral_kusd_supply(
-            collateral_asset_id: &AssetIdOf<T>,
-            additional_kusd_supply: Balance,
-        ) -> DispatchResult {
-            CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
-                let collateral_info = collateral_info
-                    .as_mut()
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                collateral_info.kusd_supply = collateral_info
-                    .kusd_supply
-                    .checked_add(additional_kusd_supply)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                Ok(())
-            })
-        }
-
-        /// Decreases tracker of KUSD supply for collateral asset
-        fn decrease_collateral_kusd_supply(
-            collateral_asset_id: &AssetIdOf<T>,
-            seized_kusd_supply: Balance,
-        ) -> DispatchResult {
-            CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
-                let collateral_info = collateral_info
-                    .as_mut()
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
-                collateral_info.kusd_supply = collateral_info
-                    .kusd_supply
-                    .checked_sub(seized_kusd_supply)
-                    .ok_or(Error::<T>::ArithmeticError)?;
-                Ok(())
-            })
         }
 
         /// Inserts or updates `CollateralRiskParameters` for collateral asset id.
@@ -1686,12 +1600,29 @@ pub mod pallet {
                     None => {
                         let _ = option_collateral_info.insert(CollateralInfo {
                             risk_parameters: new_risk_parameters,
-                            kusd_supply: balance!(0),
+                            total_collateral: Balance::zero(),
+                            kusd_supply: Balance::zero(),
                             last_fee_update_time: Timestamp::<T>::get(),
                             interest_coefficient: FixedU128::one(),
                         });
                     }
                 }
+                Ok(())
+            })
+        }
+
+        fn increase_collateral_stablecoin_supply(
+            collateral_asset_id: &T::AssetId,
+            supply_change: Balance,
+        ) -> DispatchResult {
+            CollateralInfos::<T>::try_mutate(collateral_asset_id, |collateral_info| {
+                let collateral_info = collateral_info
+                    .as_mut()
+                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
+                collateral_info.kusd_supply = collateral_info
+                    .kusd_supply
+                    .checked_add(supply_change)
+                    .ok_or(Error::<T>::ArithmeticError)?;
                 Ok(())
             })
         }
