@@ -581,6 +581,26 @@ fn test_borrow_cdp_unsafe() {
     });
 }
 
+/// CDP with collateral exists, hard cap is set in CDP risk parameters.
+/// Borrow results with an error `HardCapSupply`
+#[test]
+fn test_borrow_cdp_type_hard_cap() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            balance!(10),
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
+
+        assert_noop!(
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(20), balance!(20)),
+            KensetsuError::HardCapSupply
+        );
+    });
+}
+
 /// Test borrow call with wrong parameters: min_borrow_amount > max_borrow_amount
 #[test]
 fn test_borrow_wrong_parameters() {

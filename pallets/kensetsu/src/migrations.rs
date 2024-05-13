@@ -101,11 +101,9 @@ pub mod init {
 /// Removes hard_cap. This migration for stage only, will not change storage version.
 pub mod remove_hard_cap {
     use crate::Config;
-    use common::AssetInfoProvider;
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
-    use sp_arithmetic::traits::Zero;
     use sp_core::Get;
 
     mod old {
