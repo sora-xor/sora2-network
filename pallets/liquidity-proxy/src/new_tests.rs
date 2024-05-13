@@ -190,7 +190,10 @@ fn check_small_reserves() {
 
         assert_eq!(
             info.outcome,
-            SwapOutcome::new(balance!(1011.132175661279064843), OutcomeFee::xor(balance!(0.033396526983837194)))
+            SwapOutcome::new(
+                balance!(1011.132175661279064843),
+                OutcomeFee::xor(balance!(0.033396526983837194))
+            )
         );
     });
 }
