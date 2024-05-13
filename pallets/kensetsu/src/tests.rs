@@ -61,7 +61,8 @@ fn test_create_cdp_only_signed_origin() {
                 balance!(0),
                 KUSD,
                 balance!(0),
-                balance!(0)
+                balance!(0),
+                CdpType::Type2,
             ),
             BadOrigin
         );
@@ -72,7 +73,8 @@ fn test_create_cdp_only_signed_origin() {
                 balance!(0),
                 KUSD,
                 balance!(0),
-                balance!(0)
+                balance!(0),
+                CdpType::Type2,
             ),
             BadOrigin
         );
@@ -85,7 +87,15 @@ fn test_create_cdp_only_signed_origin() {
 fn test_create_cdp_for_asset_not_listed_must_result_in_error() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), KUSD, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(
+                alice(),
+                XOR,
+                balance!(0),
+                KUSD,
+                balance!(0),
+                balance!(0),
+                CdpType::Type2,
+            ),
             KensetsuError::CollateralInfoNotFound
         );
     });
@@ -104,7 +114,15 @@ fn test_create_cdp_overflow_error() {
         NextCDPId::<TestRuntime>::set(CdpId::MAX);
 
         assert_noop!(
-            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), KUSD, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(
+                alice(),
+                XOR,
+                balance!(0),
+                KUSD,
+                balance!(0),
+                balance!(0),
+                CdpType::Type2,
+            ),
             KensetsuError::ArithmeticError
         );
     });
@@ -123,7 +141,15 @@ fn test_create_cdp_collateral_below_minimal() {
         );
 
         assert_noop!(
-            KensetsuPallet::create_cdp(alice(), XOR, balance!(0), KUSD, balance!(0), balance!(0)),
+            KensetsuPallet::create_cdp(
+                alice(),
+                XOR,
+                balance!(0),
+                KUSD,
+                balance!(0),
+                balance!(0),
+                CdpType::Type2,
+            ),
             KensetsuError::CollateralBelowMinimal
         );
     });
@@ -147,7 +173,8 @@ fn test_create_cdp_wrong_parameters() {
                 balance!(0),
                 KUSD,
                 balance!(100),
-                balance!(10)
+                balance!(10),
+                CdpType::Type2,
             ),
             KensetsuError::WrongBorrowAmounts
         );
@@ -174,7 +201,8 @@ fn test_create_cdp_sunny_day() {
             collateral,
             KUSD,
             debt,
-            debt
+            debt,
+            CdpType::Type2,
         ));
 
         let cdp_id = 1;
@@ -250,7 +278,8 @@ fn test_create_cdp_gold_sunny_day() {
             collateral,
             KGOLD,
             debt,
-            debt
+            debt,
+            CdpType::Type2,
         ));
 
         let cdp_id = 1;

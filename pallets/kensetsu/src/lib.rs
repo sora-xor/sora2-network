@@ -74,14 +74,14 @@ const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
 /// Staiblecoin may be pegged either to Oracle (like XAU, BTC) or Price tools AssetId (like XOR,
 /// DAI).
-#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
 pub enum PegAsset<AssetId> {
     OracleSymbol(SymbolName),
     SoraAssetId(AssetId),
 }
 
 /// Parameters of the tokens created by the protocol.
-#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
 pub struct StablecoinParameters<AssetId> {
     /// Maximum amount of tokens issued by the system.
     pub hard_cap: Balance,
@@ -498,6 +498,10 @@ pub mod pallet {
             debt_asset_id: AssetIdOf<T>,
             amount: Balance,
         },
+        StablecoinRegistered {
+            stablecoin_asset_id: AssetIdOf<T>,
+            new_stablecoin_parameters: StablecoinParameters<AssetIdOf<T>>,
+        },
     }
 
     #[pallet::error]
@@ -528,6 +532,7 @@ pub mod pallet {
         LiquidationLimit,
         /// Wrong borrow amounts
         WrongBorrowAmounts,
+        StablecoinExcessiveIssuance,
     }
 
     #[pallet::call]
@@ -553,6 +558,7 @@ pub mod pallet {
             stablecoin_asset_id: AssetIdOf<T>,
             borrow_amount_min: Balance,
             borrow_amount_max: Balance,
+            cdp_type: CdpType,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -862,6 +868,35 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Adds new stablecoin mutating StablecoinInfo.
+        ///
+        /// ##Parameters
+        /// - stablecoin_asset_id - asset id of new stablecoin, must be mintable and total supply
+        /// must be 0.
+        /// - new_stablecoin_parameters - parameters for peg.
+        #[pallet::call_index(12)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_stablecoin())]
+        pub fn register_stablecoin(
+            origin: OriginFor<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
+            new_stablecoin_parameters: StablecoinParameters<AssetIdOf<T>>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                T::AssetInfoProvider::total_issuance(&stablecoin_asset_id)? == 0,
+                Error::<T>::StablecoinExcessiveIssuance
+            );
+
+            Self::add_stablecoin(&stablecoin_asset_id, new_stablecoin_parameters.clone())?;
+
+            Self::deposit_event(Event::StablecoinRegistered {
+                stablecoin_asset_id,
+                new_stablecoin_parameters,
+            });
+
+            Ok(())
+        }
     }
 
     /// Validate unsigned call to this pallet.
@@ -917,8 +952,7 @@ pub mod pallet {
         /// Adds stablecoin info.
         /// Stablecoin can be iither symbol supported by Band Oracle or asset id supported by
         /// PriceTools.
-        // TODO decide on visibility (pub)
-        pub fn add_stablecoin(
+        fn add_stablecoin(
             stablecoin_asset_id: &T::AssetId,
             new_stablecoin_parameters: StablecoinParameters<T::AssetId>,
         ) -> DispatchResult {
@@ -1239,7 +1273,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::StablecoinInfoNotFound)?
                 .bad_debt;
             let bad_debt_change = bad_debt.min(amount);
-            Self::burn_treasury(&stablecoin_asset_id, bad_debt_change)?;
+            Self::burn_treasury(stablecoin_asset_id, bad_debt_change)?;
             StablecoinInfos::<T>::try_mutate(stablecoin_asset_id, |stablecoin_info| {
                 let stablecoin_info = stablecoin_info
                     .as_mut()
@@ -1850,14 +1884,14 @@ pub mod pallet {
             )
         }
 
-        /// Returns CDP ids where the account id is owner
-        pub fn get_account_cdp_ids(
-            account_id: &AccountIdOf<T>,
-        ) -> Result<Vec<CdpId>, DispatchError> {
-            Ok(CDPDepository::<T>::iter()
-                .filter(|(_, cdp)| cdp.owner == *account_id)
-                .map(|(cdp_id, _)| cdp_id)
-                .collect())
-        }
+        // Returns CDP ids where the account id is owner
+        // pub fn get_account_cdp_ids(
+        //     account_id: &AccountIdOf<T>,
+        // ) -> Result<Vec<CdpId>, DispatchError> {
+        //     Ok(CDPDepository::<T>::iter()
+        //         .filter(|(_, cdp)| cdp.owner == *account_id)
+        //         .map(|(cdp_id, _)| cdp_id)
+        //         .collect())
+        // }
     }
 }

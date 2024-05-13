@@ -96,8 +96,9 @@ pub fn set_borrow_tax(borrow_tax: Percent) {
 
 /// Configures Kensetsu Dollar stablecoin pegged to DAI.
 pub fn set_kensetsu_dollar_stablecoin() {
-    KensetsuPallet::add_stablecoin(
-        &KUSD,
+    KensetsuPallet::register_stablecoin(
+        RuntimeOrigin::root(),
+        KUSD,
         StablecoinParameters::<AssetId> {
             hard_cap: Balance::MAX,
             peg_asset: PegAsset::SoraAssetId(DAI),
@@ -109,8 +110,9 @@ pub fn set_kensetsu_dollar_stablecoin() {
 
 /// Configures Kensetsu Gold stablecoin pegged to XAU.
 pub fn set_kensetsu_gold_stablecoin() {
-    KensetsuPallet::add_stablecoin(
-        &KGOLD,
+    KensetsuPallet::register_stablecoin(
+        RuntimeOrigin::root(),
+        KGOLD,
         StablecoinParameters::<AssetId> {
             hard_cap: Balance::MAX,
             peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
@@ -169,7 +171,13 @@ pub fn create_cdp_for_xor(
 ) -> CdpId {
     add_balance(alice_account_id(), collateral, XOR);
     assert_ok!(KensetsuPallet::create_cdp(
-        owner, XOR, collateral, KUSD, debt, debt
+        owner,
+        XOR,
+        collateral,
+        KUSD,
+        debt,
+        debt,
+        CdpType::Type2
     ));
     NextCDPId::<TestRuntime>::get()
 }

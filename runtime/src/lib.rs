@@ -1945,13 +1945,14 @@ parameter_types! {
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
+    // 1 Kensetsu dollar of uncollected stability fee triggers accrue
+    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
+
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
-    // 100 blocks, if tx spoils, worker will resend it
-    // pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
-    // TODO set 100 for release
-    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
+    // 10 blocks, if tx spoils, worker will resend it
+    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
 }
 
 #[cfg(feature = "ready-to-test")] // kensetsu
