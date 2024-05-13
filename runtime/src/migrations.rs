@@ -35,4 +35,4 @@ use crate::*;
 pub type Migrations = ();
 
 #[cfg(feature = "ready-to-test")] // kensetsu
-pub type Migrations = (kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,);
+pub type Migrations = (kensetsu::migrations::remove_hard_cap::RemoveHardCap<Runtime>,);
