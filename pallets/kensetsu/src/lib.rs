@@ -1204,6 +1204,7 @@ pub mod pallet {
                     cdp.clone(),
                 )
             })?;
+            Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, stability_fee)?;
             let mut new_bad_debt = BadDebt::<T>::get();
             if new_bad_debt > 0 {
                 if stability_fee <= new_bad_debt {
@@ -1222,7 +1223,6 @@ pub mod pallet {
                     DispatchResult::Ok(())
                 })?;
             }
-            Self::increase_collateral_stablecoin_supply(&cdp.collateral_asset_id, stability_fee)?;
             Self::mint_treasury(&T::KusdAssetId::get(), stability_fee)?;
 
             Ok(cdp)
