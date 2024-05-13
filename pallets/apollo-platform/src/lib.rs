@@ -971,27 +971,77 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidLiquidation.into());
             }
 
-            // Distribute liquidated collaterals to users and reserves
+            // Calculate total borrow and total collateral in dollars
             let mut total_borrowed: Balance = 0;
+
+            // Distributing and calculating total borrwed
             for (collateral_asset, user_info) in user_infos.iter() {
+                // Calculate collateral in dollars
+                let collateral_asset_price = Self::get_price(*collateral_asset);
+                let collateral_amount_in_dollars =
+                    (FixedWrapper::from(user_info.collateral_amount)
+                        * FixedWrapper::from(collateral_asset_price))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                // Calculate user's borrowed amount
+                let borrow_asset_price = Self::get_price(asset_id);
+                let user_borrowed_in_dollars = (FixedWrapper::from(user_info.borrowing_amount)
+                    * FixedWrapper::from(borrow_asset_price))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Calculating amount to distribute in dollars and converting to collateral token amount
+                let amount_to_distribute_in_dollars =
+                    collateral_amount_in_dollars.saturating_sub(user_borrowed_in_dollars);
+                let amount_to_distribute = (FixedWrapper::from(amount_to_distribute_in_dollars)
+                    / FixedWrapper::from(collateral_asset_price))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Distributing the amount calculated as sufficit of collateral asset in dollars over borrowed amount in dollars
                 let _ = Self::distribute_protocol_interest(
                     *collateral_asset,
-                    user_info.collateral_amount,
+                    amount_to_distribute,
                     asset_id,
                 );
+
+                // Amount to exchange
+                let amount_to_exchange = (FixedWrapper::from(user_borrowed_in_dollars)
+                    / FixedWrapper::from(collateral_asset_price))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Exchange collateral asset into borrowed asset  on Pallet
+                T::LiquidityProxyPallet::exchange(
+                    DEXId::Polkaswap.into(),
+                    &Self::account_id(),
+                    &Self::account_id(),
+                    &(*collateral_asset),
+                    &asset_id.into(),
+                    SwapAmount::with_desired_input(amount_to_exchange, Balance::zero()),
+                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                )?;
+
+                // Updating collateral pool total_collateral amount and total_liquidity
                 let mut collateral_pool_info =
                     PoolData::<T>::get(*collateral_asset).unwrap_or_default();
                 collateral_pool_info.total_collateral = collateral_pool_info
                     .total_collateral
                     .saturating_sub(user_info.collateral_amount);
-                total_borrowed += user_info.borrowing_amount;
+                // Get borrowed pool info nad update total_liquidity
+                let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap_or_default();
+                borrow_pool_info.total_liquidity += user_info.borrowing_amount;
                 <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
+                // Add user's borrowed amount tied with this asset to total_borrowed in given asset
+                total_borrowed += user_info.borrowing_amount;
             }
 
+            // Updating total_borrowed for given asset
             let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap_or_default();
             borrow_pool_info.total_borrowed = borrow_pool_info
                 .total_borrowed
-                .saturating_sub(total_borrowed);
+                .saturating_sub(total_borrowed.clone());
 
             <PoolData<T>>::insert(asset_id, borrow_pool_info);
             <UserBorrowingInfo<T>>::remove(asset_id, user.clone());
@@ -1300,6 +1350,15 @@ pub mod pallet {
             .try_into_balance()
             .unwrap_or(0);
 
+            // Transfer amount to developer fund
+            Assets::<T>::transfer_from(
+                &asset_id,
+                &Self::account_id(),
+                &AuthorityAccount::<T>::get(),
+                developer_amount,
+            )
+            .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
+
             // Transfer APOLLO to treasury
             T::LiquidityProxyPallet::exchange(
                 DEXId::Polkaswap.into(),
@@ -1328,15 +1387,6 @@ pub mod pallet {
                 CERES_ASSET_ID.into(),
                 outcome.amount,
             )?;
-
-            // Transfer amount to developer fund
-            Assets::<T>::transfer_from(
-                &asset_id,
-                &Self::account_id(),
-                &AuthorityAccount::<T>::get(),
-                developer_amount,
-            )
-            .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
 
             Ok(().into())
         }
