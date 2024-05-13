@@ -141,7 +141,7 @@ fn check_small_reserves() {
         framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob::<Runtime>());
         let asset = assets::Pallet::<Runtime>::register_from(
             &bob::<Runtime>(),
-            common::AssetSymbol(b"TST".to_vec()),
+            common::AssetSymbol(b"TEST".to_vec()),
             common::AssetName(b"Test".to_vec()),
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
@@ -190,7 +190,7 @@ fn check_small_reserves() {
 
         assert_eq!(
             info.outcome,
-            SwapOutcome::new(balance!(1500), OutcomeFee::xor(balance!(1.5)))
+            SwapOutcome::new(balance!(1011.132175661279064843), OutcomeFee::xor(balance!(0.033396526983837194)))
         );
     });
 }

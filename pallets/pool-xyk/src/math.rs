@@ -34,6 +34,7 @@ use frame_support::ensure;
 use assets::AssetIdOf;
 use common::prelude::{Balance, Fixed, FixedWrapper};
 use common::{fixed_wrapper, AssetInfoProvider, TradingPair};
+use sp_runtime::traits::Zero;
 
 use crate::{to_balance, to_fixed_wrapper};
 
@@ -212,6 +213,28 @@ impl<T: Config> Pallet<T> {
                 to_balance!(x_in - x_in_without_fee),
             ))
         }
+    }
+
+    /// Calculates max amount of output asset for swap with desired output.
+    pub fn calc_max_output(
+        fee_fraction: Fixed,
+        get_fee_from_destination: bool,
+        reserve_output: &Balance,
+        deduce_fee: bool,
+    ) -> Result<Balance, DispatchError> {
+        if reserve_output.is_zero() {
+            return Ok(Balance::zero());
+        }
+
+        let mut max_output = if get_fee_from_destination && deduce_fee {
+            FixedWrapper::from(*reserve_output) * (fixed_wrapper!(1) - fee_fraction)
+        } else {
+            FixedWrapper::from(*reserve_output)
+        };
+
+        // reduce by 1, because (reserve - output) must be > 0
+        max_output -= fixed_wrapper!(1);
+        Ok(to_balance!(max_output))
     }
 
     pub fn get_base_asset_part_from_pool_account(
