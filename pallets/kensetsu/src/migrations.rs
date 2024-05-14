@@ -40,7 +40,7 @@ pub mod init {
 
     pub struct RegisterTreasuryTechAccount<T>(PhantomData<T>);
 
-    /// Registers Kensetsu Treasury technical account and grant premission to [KEN, KUSD, KGLD]
+    /// Registers Kensetsu Treasury technical account and grant premission to [KEN, KUSD]
     impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
         for RegisterTreasuryTechAccount<T>
     {
@@ -104,15 +104,8 @@ pub mod kensetsu_more_stablecoins {
 
     impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for MoreStablecoins<T> {
         fn on_runtime_upgrade() -> Weight {
-            let weight = <T as frame_system::Config>::DbWeight::get().reads(1);
-            // TODO
-            //             let res = frame_support::migration::clear_storage_prefix(
-            //                 <Pallet<T>>::name().as_bytes(),
-            //                 b"StorageName",
-            //                 b"",
-            //                 None,
-            //                 None,
-            //             );
+            // let weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+            // TODO migrate storages
 
             // TODO translate(None)
             // CollateralInfos::<T>::clear(, None);
@@ -123,7 +116,7 @@ pub mod kensetsu_more_stablecoins {
 
             // CdpOwnerIndex drop
 
-            weight
+            <T as frame_system::Config>::DbWeight::get().reads(1)
         }
     }
 }

@@ -427,7 +427,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             ),
             (
                 KUSD,
-                assets_and_permissions_account_id.clone(),
+                assets_and_permissions_account_id,
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
                 DEFAULT_BALANCE_PRECISION,

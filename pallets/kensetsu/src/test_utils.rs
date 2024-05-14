@@ -97,12 +97,12 @@ pub fn set_borrow_tax(borrow_tax: Percent) {
 /// Configures Kensetsu Dollar stablecoin pegged to DAI.
 pub fn set_kensetsu_dollar_stablecoin() {
     StablecoinInfos::<TestRuntime>::set::<AssetIdOf<TestRuntime>>(
-        KUSD.into(),
+        KUSD,
         Some(StablecoinInfo {
             bad_debt: 0,
             stablecoin_parameters: StablecoinParameters {
                 hard_cap: Balance::MAX,
-                peg_asset: PegAsset::SoraAssetId(DAI.into()),
+                peg_asset: PegAsset::SoraAssetId(DAI),
                 minimal_stability_fee_accrue: balance!(1),
             },
         }),

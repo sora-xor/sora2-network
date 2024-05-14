@@ -257,13 +257,13 @@ fn test_create_cdp_gold_sunny_day() {
     new_test_ext().execute_with(|| {
         let vec_symbol = SymbolName(vec![b'K', b'X', b'A', b'U']);
         let stable_asset_id: AssetIdOf<TestRuntime> =
-            AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol).into();
+            AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol);
         let collateral = balance!(5000);
         set_kensetsu_gold_stablecoin();
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             RuntimeOrigin::root(),
             XOR,
-            stable_asset_id.clone(),
+            stable_asset_id,
             CollateralRiskParameters {
                 hard_cap: Balance::MAX,
                 max_liquidation_lot: balance!(1),
@@ -279,7 +279,7 @@ fn test_create_cdp_gold_sunny_day() {
             alice(),
             XOR,
             collateral,
-            stable_asset_id.clone(),
+            stable_asset_id,
             debt,
             debt,
             CdpType::Type2,
@@ -291,7 +291,7 @@ fn test_create_cdp_gold_sunny_day() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
-                debt_asset_id: stable_asset_id.clone(),
+                debt_asset_id: stable_asset_id,
                 cdp_type: CdpType::Type2,
             }
             .into(),
@@ -309,7 +309,7 @@ fn test_create_cdp_gold_sunny_day() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                debt_asset_id: stable_asset_id.clone(),
+                debt_asset_id: stable_asset_id,
                 amount: debt,
             }
             .into(),
@@ -317,7 +317,7 @@ fn test_create_cdp_gold_sunny_day() {
         // CDP is present for the user
         assert_eq!(get_account_cdp_ids(&alice_account_id()), vec!(cdp_id));
         let collateral_info =
-            KensetsuPallet::collateral_infos(XOR, stable_asset_id.clone()).expect("must exists");
+            KensetsuPallet::collateral_infos(XOR, stable_asset_id).expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt);
         assert_eq!(get_total_supply(&stable_asset_id), debt);
         assert_eq!(collateral_info.total_collateral, collateral);
