@@ -362,7 +362,7 @@ benchmarks! {
             borrow_amount
         ).unwrap()
     } verify {
-        assert_last_event::<T>(Event::Borrowed(alice, DOT.into(),collateral_amount , XOR.into(), borrow_amount).into());
+        assert_last_event::<T>(Event::Borrowed(alice, DOT.into(), collateral_amount, XOR.into(), borrow_amount).into());
     }
 
     get_rewards {
@@ -740,7 +740,6 @@ benchmarks! {
             edit_parameter_value,
             edit_parameter_value,
             edit_parameter_value,
-
         ).unwrap()
     }
     verify {
