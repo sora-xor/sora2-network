@@ -479,11 +479,6 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             risk_parameters: CollateralRiskParameters,
         },
-        DebtTokenHardCapUpdated {
-            debt_asset_id: AssetIdOf<T>,
-            new_hard_cap: Balance,
-            old_hard_cap: Balance,
-        },
         BorrowTaxUpdated {
             old_borrow_tax: Percent,
             new_borrow_tax: Percent,
@@ -952,7 +947,7 @@ pub mod pallet {
         fn register_asset_id(
             stablecoin_parameters: &StablecoinParameters<T::AssetId>,
         ) -> Result<T::AssetId, DispatchError> {
-            let peg_symbol = match &stablecoin_parameters.peg_asset {
+            let mut peg_symbol = match &stablecoin_parameters.peg_asset {
                 PegAsset::OracleSymbol(symbol) => symbol.clone(),
                 PegAsset::SoraAssetId(peg_asset_id) => {
                     let (symbol, ..) = T::AssetInfoProvider::get_asset_info(peg_asset_id);

@@ -2137,7 +2137,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
     });
 }
 
-/// Only Signed Origin account can update borrow tax
+/// Only root can update borrow tax
 #[test]
 fn test_update_borrow_tax_only_root() {
     new_test_ext().execute_with(|| {

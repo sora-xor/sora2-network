@@ -31,9 +31,7 @@
 use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
-use common::{
-    AccountIdOf, AssetId32, AssetInfoProvider, Balance, PredefinedAssetId, DAI, KUSD, XOR,
-};
+use common::{AccountIdOf, AssetInfoProvider, Balance, DAI, KUSD, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;

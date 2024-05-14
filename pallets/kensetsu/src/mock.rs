@@ -211,52 +211,52 @@ pub struct MockTradingPairSourceManager;
 
 impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
     fn list_enabled_sources_for_trading_pair(
-        dex_id: &DEXId,
-        base_asset_id: &AssetId,
-        target_asset_id: &AssetId,
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
         unimplemented!();
     }
 
     fn is_source_enabled_for_trading_pair(
-        dex_id: &DEXId,
-        base_asset_id: &AssetId,
-        target_asset_id: &AssetId,
-        source_type: LiquiditySourceType,
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
     ) -> Result<bool, DispatchError> {
         Ok(false)
     }
 
     fn enable_source_for_trading_pair(
-        dex_id: &DEXId,
-        base_asset_id: &AssetId,
-        target_asset_id: &AssetId,
-        source_type: LiquiditySourceType,
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
     ) -> DispatchResult {
         Ok(())
     }
 
     fn disable_source_for_trading_pair(
-        dex_id: &DEXId,
-        base_asset_id: &AssetId,
-        target_asset_id: &AssetId,
-        source_type: LiquiditySourceType,
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
     ) -> DispatchResult {
         unimplemented!();
     }
 
     fn is_trading_pair_enabled(
-        dex_id: &DEXId,
-        base_asset_id: &AssetId,
-        target_asset_id: &AssetId,
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
     ) -> Result<bool, DispatchError> {
         Ok(false)
     }
 
     fn register_pair(
-        dex_id: DEXId,
-        base_asset_id: AssetId,
-        target_asset_id: AssetId,
+        _dex_id: DEXId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
     ) -> Result<(), DispatchError> {
         Ok(())
     }

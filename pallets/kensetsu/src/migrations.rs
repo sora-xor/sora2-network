@@ -104,7 +104,7 @@ pub mod kensetsu_more_stablecoins {
 
     impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for MoreStablecoins<T> {
         fn on_runtime_upgrade() -> Weight {
-            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+            let weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             // TODO
             //             let res = frame_support::migration::clear_storage_prefix(
             //                 <Pallet<T>>::name().as_bytes(),
