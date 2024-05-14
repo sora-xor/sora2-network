@@ -205,7 +205,6 @@ pub mod pallet {
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use permissions::{Scope, BURN, MINT};
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
     use sp_arithmetic::Percent;
     use sp_core::bounded::BoundedVec;
@@ -962,7 +961,7 @@ pub mod pallet {
             };
             let mut vec_symbol = Vec::<u8>::with_capacity(peg_symbol.0.len() + 1);
             vec_symbol.push(b'K');
-            vec_symbol.append(&mut peg_symbol.clone().0);
+            vec_symbol.append(&mut peg_symbol.0);
 
             let stable_asset_id: T::AssetId =
                 AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
@@ -974,7 +973,7 @@ pub mod pallet {
             )?;
 
             assets::Pallet::<T>::register_asset_id(
-                technical_account_id.clone(),
+                technical_account_id,
                 stable_asset_id,
                 AssetSymbol(vec_symbol.clone()),
                 AssetName(vec_symbol),
@@ -984,16 +983,6 @@ pub mod pallet {
                 None,
                 None,
             )?;
-
-            // let scope = Scope::Limited(common::hash(&stable_asset_id));
-            // for permission_id in &[MINT, BURN] {
-            //     permissions::Pallet::<T>::assign_permission(
-            //         technical_account_id.clone(),
-            //         &technical_account_id,
-            //         *permission_id,
-            //         scope,
-            //     )?;
-            // }
 
             Ok(stable_asset_id)
         }
@@ -1049,7 +1038,7 @@ pub mod pallet {
             if T::TradingPairSourceManager::is_trading_pair_enabled(
                 &DEXId::Polkaswap.into(),
                 &XOR.into(),
-                &asset_id,
+                asset_id,
             )? {
                 return Ok(());
             }
@@ -1063,7 +1052,7 @@ pub mod pallet {
             T::TradingPairSourceManager::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &XOR.into(),
-                &asset_id,
+                asset_id,
                 LiquiditySourceType::XYKPool,
             )?;
 
