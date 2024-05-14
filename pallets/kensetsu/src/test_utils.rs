@@ -31,7 +31,9 @@
 use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
-use common::{AccountIdOf, AssetInfoProvider, Balance, DAI, KGOLD, KUSD, XOR};
+use common::{
+    AccountIdOf, AssetId32, AssetInfoProvider, Balance, PredefinedAssetId, DAI, KUSD, XOR,
+};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
@@ -96,24 +98,24 @@ pub fn set_borrow_tax(borrow_tax: Percent) {
 
 /// Configures Kensetsu Dollar stablecoin pegged to DAI.
 pub fn set_kensetsu_dollar_stablecoin() {
-    KensetsuPallet::register_stablecoin(
-        RuntimeOrigin::root(),
-        KUSD,
-        StablecoinParameters::<AssetId> {
-            hard_cap: Balance::MAX,
-            peg_asset: PegAsset::SoraAssetId(DAI),
-            minimal_stability_fee_accrue: balance!(1),
-        },
-    )
-    .expect("Must add Kensetsu Dollar pegged to DAI")
+    StablecoinInfos::<TestRuntime>::set::<AssetIdOf<TestRuntime>>(
+        KUSD.into(),
+        Some(StablecoinInfo {
+            bad_debt: 0,
+            stablecoin_parameters: StablecoinParameters {
+                hard_cap: Balance::MAX,
+                peg_asset: PegAsset::SoraAssetId(DAI.into()),
+                minimal_stability_fee_accrue: balance!(1),
+            },
+        }),
+    );
 }
 
 /// Configures Kensetsu Gold stablecoin pegged to XAU.
 pub fn set_kensetsu_gold_stablecoin() {
     KensetsuPallet::register_stablecoin(
         RuntimeOrigin::root(),
-        KGOLD,
-        StablecoinParameters::<AssetId> {
+        StablecoinParameters {
             hard_cap: Balance::MAX,
             peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
             minimal_stability_fee_accrue: balance!(0.01),

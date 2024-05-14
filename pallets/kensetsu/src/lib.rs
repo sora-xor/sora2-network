@@ -195,9 +195,10 @@ pub mod pallet {
     use crate::weights::WeightInfo;
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
-        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter, PriceToolsProvider,
-        PriceVariant, DAI,
+        AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
+        ContentSource, DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter,
+        LiquiditySourceType, PriceToolsProvider, PriceVariant, TradingPairSourceManager, DAI,
+        DEFAULT_BALANCE_PRECISION, XOR,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
@@ -210,6 +211,7 @@ pub mod pallet {
     use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
+    use sp_std::vec::Vec;
 
     /// CDP id type
     pub type CdpId = u128;
@@ -336,6 +338,7 @@ pub mod pallet {
         type PriceTools: PriceToolsProvider<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type Oracle: DataFeed<SymbolName, Rate, u64>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KenAssetId: Get<Self::AssetId>;
 
@@ -558,7 +561,7 @@ pub mod pallet {
             stablecoin_asset_id: AssetIdOf<T>,
             borrow_amount_min: Balance,
             borrow_amount_max: Balance,
-            cdp_type: CdpType,
+            _cdp_type: CdpType,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -879,19 +882,16 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_stablecoin())]
         pub fn register_stablecoin(
             origin: OriginFor<T>,
-            stablecoin_asset_id: AssetIdOf<T>,
             new_stablecoin_parameters: StablecoinParameters<AssetIdOf<T>>,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            ensure!(
-                T::AssetInfoProvider::total_issuance(&stablecoin_asset_id)? == 0,
-                Error::<T>::StablecoinExcessiveIssuance
-            );
 
-            Self::add_stablecoin(&stablecoin_asset_id, new_stablecoin_parameters.clone())?;
+            let stable_asset_id = Self::register_asset_id(&new_stablecoin_parameters)?;
+            Self::peg_stablecoin(&stable_asset_id, &new_stablecoin_parameters)?;
+            Self::register_trading_pair(&stable_asset_id)?;
 
             Self::deposit_event(Event::StablecoinRegistered {
-                stablecoin_asset_id,
+                stablecoin_asset_id: stable_asset_id,
                 new_stablecoin_parameters,
             });
 
@@ -949,12 +949,61 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Registers asset id for stablecoin.
+        fn register_asset_id(
+            stablecoin_parameters: &StablecoinParameters<T::AssetId>,
+        ) -> Result<T::AssetId, DispatchError> {
+            let peg_symbol = match &stablecoin_parameters.peg_asset {
+                PegAsset::OracleSymbol(symbol) => symbol.clone(),
+                PegAsset::SoraAssetId(peg_asset_id) => {
+                    let (symbol, ..) = T::AssetInfoProvider::get_asset_info(peg_asset_id);
+                    SymbolName(symbol.0)
+                }
+            };
+            let mut vec_symbol = Vec::<u8>::with_capacity(peg_symbol.0.len() + 1);
+            vec_symbol.push(b'K');
+            vec_symbol.append(&mut peg_symbol.clone().0);
+
+            let stable_asset_id: T::AssetId =
+                AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
+                    &SymbolName(vec_symbol.clone()),
+                )
+                .into();
+            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            )?;
+
+            assets::Pallet::<T>::register_asset_id(
+                technical_account_id.clone(),
+                stable_asset_id,
+                AssetSymbol(vec_symbol.clone()),
+                AssetName(vec_symbol),
+                DEFAULT_BALANCE_PRECISION,
+                balance!(0),
+                true,
+                None,
+                None,
+            )?;
+
+            // let scope = Scope::Limited(common::hash(&stable_asset_id));
+            // for permission_id in &[MINT, BURN] {
+            //     permissions::Pallet::<T>::assign_permission(
+            //         technical_account_id.clone(),
+            //         &technical_account_id,
+            //         *permission_id,
+            //         scope,
+            //     )?;
+            // }
+
+            Ok(stable_asset_id)
+        }
+
         /// Adds stablecoin info.
-        /// Stablecoin can be iither symbol supported by Band Oracle or asset id supported by
+        /// Stablecoin can be either symbol supported by Band Oracle or asset id supported by
         /// PriceTools.
-        fn add_stablecoin(
+        fn peg_stablecoin(
             stablecoin_asset_id: &T::AssetId,
-            new_stablecoin_parameters: StablecoinParameters<T::AssetId>,
+            new_stablecoin_parameters: &StablecoinParameters<T::AssetId>,
         ) -> DispatchResult {
             match &new_stablecoin_parameters.peg_asset {
                 PegAsset::OracleSymbol(symbol) => {
@@ -979,33 +1028,46 @@ pub mod pallet {
                 }
             }
 
-            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::TreasuryTechAccount::get(),
-            )?;
-            let scope = Scope::Limited(common::hash(stablecoin_asset_id));
-            for permission_id in &[MINT, BURN] {
-                permissions::Pallet::<T>::assign_permission(
-                    technical_account_id.clone(),
-                    &technical_account_id,
-                    *permission_id,
-                    scope,
-                )?;
-            }
-
             StablecoinInfos::<T>::try_mutate(*stablecoin_asset_id, |option_stablecoin_info| {
                 match option_stablecoin_info {
                     Some(stablecoin_info) => {
-                        stablecoin_info.stablecoin_parameters = new_stablecoin_parameters;
+                        stablecoin_info.stablecoin_parameters = new_stablecoin_parameters.clone();
                     }
                     None => {
                         let _ = option_stablecoin_info.insert(StablecoinInfo {
                             bad_debt: balance!(0),
-                            stablecoin_parameters: new_stablecoin_parameters,
+                            stablecoin_parameters: new_stablecoin_parameters.clone(),
                         });
                     }
                 }
                 Ok(())
             })
+        }
+
+        /// Registers trading pair
+        fn register_trading_pair(asset_id: &T::AssetId) -> sp_runtime::DispatchResult {
+            if T::TradingPairSourceManager::is_trading_pair_enabled(
+                &DEXId::Polkaswap.into(),
+                &XOR.into(),
+                &asset_id,
+            )? {
+                return Ok(());
+            }
+
+            T::TradingPairSourceManager::register_pair(
+                DEXId::Polkaswap.into(),
+                XOR.into(),
+                *asset_id,
+            )?;
+
+            T::TradingPairSourceManager::enable_source_for_trading_pair(
+                &DEXId::Polkaswap.into(),
+                &XOR.into(),
+                &asset_id,
+                LiquiditySourceType::XYKPool,
+            )?;
+
+            Ok(())
         }
 
         /// Checks if liquidation is available now.
@@ -1883,15 +1945,5 @@ pub mod pallet {
                 },
             )
         }
-
-        // Returns CDP ids where the account id is owner
-        // pub fn get_account_cdp_ids(
-        //     account_id: &AccountIdOf<T>,
-        // ) -> Result<Vec<CdpId>, DispatchError> {
-        //     Ok(CDPDepository::<T>::iter()
-        //         .filter(|(_, cdp)| cdp.owner == *account_id)
-        //         .map(|(cdp_id, _)| cdp_id)
-        //         .collect())
-        // }
     }
 }

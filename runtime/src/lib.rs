@@ -1963,6 +1963,7 @@ impl kensetsu::Config for Runtime {
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;

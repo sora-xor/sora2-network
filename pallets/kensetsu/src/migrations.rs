@@ -30,7 +30,7 @@
 
 pub mod init {
     use crate::*;
-    use common::{KEN, KGOLD, KUSD};
+    use common::{KEN, KUSD};
     use core::marker::PhantomData;
     use frame_support::log::error;
     use frame_support::pallet_prelude::Weight;
@@ -62,7 +62,7 @@ pub mod init {
             if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             ) {
-                for token in &[KEN, KUSD, KGOLD] {
+                for token in &[KEN, KUSD] {
                     let scope = Scope::Limited(common::hash(token));
                     for permission_id in &[MINT, BURN] {
                         match permissions::Pallet::<T>::assign_permission(

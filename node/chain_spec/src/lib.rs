@@ -40,8 +40,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KGOLD,
-    KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KUSD,
+    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1402,18 +1402,6 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "ready-to-test")] // kensetsu
-                (
-                    KGOLD.into(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"KGOLD".to_vec()),
-                    AssetName(b"Kensetsu Gold".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
-                    true,
-                    None,
-                    None,
-                ),
                 (
                     common::AssetId32::from_bytes(hex!(
                         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -2093,18 +2081,6 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"KUSD".to_vec()),
             AssetName(b"Kensetsu Stable Dollar".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        ),
-        #[cfg(feature = "ready-to-test")] // kensetsu
-        (
-            KGOLD.into(),
-            assets_and_permissions_account_id.clone(),
-            AssetSymbol(b"KGOLD".to_vec()),
-            AssetName(b"Kensetsu Gold".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

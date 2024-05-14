@@ -5089,6 +5089,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-core",
  "sp-runtime",
+ "sp-std",
  "technical",
  "trading-pair",
 ]

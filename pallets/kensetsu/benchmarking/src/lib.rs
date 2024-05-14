@@ -34,8 +34,8 @@
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{
-    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
-    KEN, KUSD, XOR,
+    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant,
+    SymbolName, DAI, KEN, KUSD, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
@@ -49,6 +49,7 @@ use sp_arithmetic::{Perbill, Percent};
 use sp_core::Get;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::FixedU128;
+use sp_std::vec;
 
 pub struct Pallet<T: Config>(kensetsu::Pallet<T>);
 pub trait Config:
@@ -441,7 +442,9 @@ benchmarks! {
     }
 
     register_stablecoin {
-        let stablecoin_asset_id: AssetIdOf<T> = KUSD.into();
+        let vec_symbol = SymbolName(vec![b'K', b'D', b'A', b'I']);
+        let stablecoin_asset_id: AssetIdOf<T> =
+            AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol).into();
         let stablecoin_parameters = StablecoinParameters::<AssetIdOf<T>> {
             hard_cap: Balance::MAX,
             peg_asset: PegAsset::SoraAssetId(DAI.into()),
@@ -450,7 +453,6 @@ benchmarks! {
     }: {
         kensetsu::Pallet::<T>::register_stablecoin(
             RawOrigin::Root.into(),
-            stablecoin_asset_id.clone(),
             stablecoin_parameters.clone(),
         )
         .unwrap()

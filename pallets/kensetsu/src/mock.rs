@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as kensetsu;
+use std::collections::BTreeSet;
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
@@ -38,8 +39,8 @@ use common::{
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
-    PriceToolsProvider, PriceVariant, Rate, SymbolName, DAI, DEFAULT_BALANCE_PRECISION, KEN, KGOLD,
-    KUSD, XOR, XST,
+    PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
+    DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -206,6 +207,61 @@ impl DataFeed<SymbolName, Rate, u64> for MockOracle {
     }
 }
 
+pub struct MockTradingPairSourceManager;
+
+impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
+    fn list_enabled_sources_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        unimplemented!();
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn enable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Ok(())
+    }
+
+    fn disable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        unimplemented!();
+    }
+
+    fn is_trading_pair_enabled(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn register_pair(
+        dex_id: DEXId,
+        base_asset_id: AssetId,
+        target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
 frame_support::construct_runtime!(
     pub enum TestRuntime where
         Block = Block,
@@ -267,6 +323,7 @@ impl kensetsu::Config for TestRuntime {
     type PriceTools = MockPriceTools;
     type LiquidityProxy = MockLiquidityProxy;
     type Oracle = MockOracle;
+    type TradingPairSourceManager = MockTradingPairSourceManager;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
@@ -373,17 +430,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                KGOLD,
-                assets_and_permissions_account_id,
-                AssetSymbol(b"KGOLD".to_vec()),
-                AssetName(b"Kensetsu Stable Gold".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,

@@ -38,7 +38,7 @@ use crate::test_utils::{
     set_kensetsu_dollar_stablecoin, set_kensetsu_gold_stablecoin, tech_account_id,
 };
 
-use common::{balance, AssetId32, Balance, KEN, KGOLD, KUSD, XOR};
+use common::{balance, AssetId32, Balance, PredefinedAssetId, KEN, KUSD, XOR};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
@@ -255,12 +255,15 @@ fn test_create_cdp_sunny_day() {
 #[test]
 fn test_create_cdp_gold_sunny_day() {
     new_test_ext().execute_with(|| {
+        let vec_symbol = SymbolName(vec![b'K', b'X', b'A', b'U']);
+        let stable_asset_id: AssetIdOf<TestRuntime> =
+            AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol).into();
         let collateral = balance!(5000);
         set_kensetsu_gold_stablecoin();
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             RuntimeOrigin::root(),
             XOR,
-            KGOLD,
+            stable_asset_id.clone(),
             CollateralRiskParameters {
                 hard_cap: Balance::MAX,
                 max_liquidation_lot: balance!(1),
@@ -276,7 +279,7 @@ fn test_create_cdp_gold_sunny_day() {
             alice(),
             XOR,
             collateral,
-            KGOLD,
+            stable_asset_id.clone(),
             debt,
             debt,
             CdpType::Type2,
@@ -288,7 +291,7 @@ fn test_create_cdp_gold_sunny_day() {
                 cdp_id,
                 owner: alice_account_id(),
                 collateral_asset_id: XOR,
-                debt_asset_id: KGOLD,
+                debt_asset_id: stable_asset_id.clone(),
                 cdp_type: CdpType::Type2,
             }
             .into(),
@@ -306,16 +309,17 @@ fn test_create_cdp_gold_sunny_day() {
             Event::DebtIncreased {
                 cdp_id,
                 owner: alice_account_id(),
-                debt_asset_id: KGOLD,
+                debt_asset_id: stable_asset_id.clone(),
                 amount: debt,
             }
             .into(),
         );
         // CDP is present for the user
         assert_eq!(get_account_cdp_ids(&alice_account_id()), vec!(cdp_id));
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KGOLD).expect("must exists");
+        let collateral_info =
+            KensetsuPallet::collateral_infos(XOR, stable_asset_id.clone()).expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt);
-        assert_eq!(get_total_supply(&KGOLD), debt);
+        assert_eq!(get_total_supply(&stable_asset_id), debt);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Shall create CDP");
         assert_eq!(cdp.owner, alice_account_id());

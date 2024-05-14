@@ -75,7 +75,6 @@ pub enum ComicAssetId {
     MichaelJacksonCD,
     JesterMarotte,
     CrackedBrassBell,
-    PyriteStone,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -110,7 +109,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KEN => JesterMarotte,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
-            PredefinedAssetId::KGOLD => PyriteStone,
         }
     }
 }
