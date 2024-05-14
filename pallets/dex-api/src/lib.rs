@@ -38,6 +38,7 @@ use common::{
     DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
+use frame_support::sp_runtime;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use sp_std::vec::Vec;
@@ -508,21 +509,22 @@ pub mod pallet {
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig {
+    pub struct GenesisConfig<T> {
+        pub phantom: PhantomData<T>,
         pub source_types: Vec<LiquiditySourceType>,
     }
 
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
+    impl<T> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
+                phantomL: Default::default(),
                 source_types: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             EnabledSourceTypes::<T>::put(&self.source_types);
         }

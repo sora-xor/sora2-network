@@ -40,7 +40,7 @@ use common::{
     OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
-use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
@@ -386,7 +386,7 @@ impl<T: Config> Pallet<T> {
                         weight_params.shareholders += shareholders;
                     }
                     Err(err) => {
-                        frame_support::log::error!("Incentive distribution failed: {err:?}");
+                        log::error!("Incentive distribution failed: {err:?}");
                         Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
                             dex_id,
                             fees_account,

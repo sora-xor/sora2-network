@@ -37,6 +37,7 @@ use common::prelude::EnsureDEXManager;
 use common::{hash, DexInfoProvider, ManagementMode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
+use frame_support::sp_runtime;
 use frame_support::sp_runtime::DispatchError;
 use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
@@ -158,7 +159,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.dex_list.iter().for_each(|(dex_id, dex_info)| {
                 DEXInfos::<T>::insert(dex_id.clone(), dex_info);

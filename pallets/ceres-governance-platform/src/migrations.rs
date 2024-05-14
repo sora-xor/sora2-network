@@ -2,7 +2,6 @@ use crate::*;
 use codec::{Decode, Encode};
 use common::generate_storage_instance;
 use common::CERES_ASSET_ID;
-use frame_support::log;
 use frame_support::pallet_prelude::*;
 use frame_support::BoundedVec;
 use hex_literal::hex;

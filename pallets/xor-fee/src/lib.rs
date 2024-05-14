@@ -36,13 +36,13 @@ use common::{
     OnValBurned, ReferrerAccountProvider,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
-use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
+use log::error;
 use pallet_transaction_payment as ptp;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
@@ -83,7 +83,6 @@ type BalanceOf<T> =
 type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
 type Assets<T> = assets::Pallet<T>;
 
-// #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
     Paid(T::AccountId, Option<NegativeImbalanceOf<T>>),

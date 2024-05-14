@@ -45,7 +45,6 @@ ethereum-types = { version = "0.14.0", default-features = false, features = [
     'serialize',
     'codec',
 ] }
-# jsonrpc-core = { version = "18.0.0", default-features = false }
 jsonrpc-core = { git = "https://github.com/sora-xor/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
 
 assets = { path = "../assets", default-features = false }

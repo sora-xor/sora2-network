@@ -35,9 +35,10 @@
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
+use sp_runtime::DispatchError;
 use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
@@ -414,7 +415,6 @@ pub mod pallet {
         pub register_tech_accounts: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -424,7 +424,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.register_tech_accounts.iter().for_each(|(k, v)| {
                 frame_system::Pallet::<T>::inc_providers(k);

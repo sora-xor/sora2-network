@@ -33,7 +33,8 @@ use core::marker::PhantomData;
 use frame_support::traits::OnRuntimeUpgrade;
 
 pub mod v2 {
-    use frame_support::{log::info, traits::StorageVersion};
+    use frame_support::traits::StorageVersion;
+    use log::info;
     use sp_std::prelude::Vec;
 
     use super::*;
@@ -47,7 +48,7 @@ pub mod v2 {
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
-                frame_support::log::error!(
+                log::error!(
                     "Expected storage version 1, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );

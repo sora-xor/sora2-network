@@ -39,12 +39,12 @@ use common::{
     balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
 };
 use core::convert::TryInto;
-use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -710,7 +710,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+    impl<T: Config<I>, I: 'static> BuildGenesisConfig for GenesisConfig<T, I> {
         fn build(&self) {
             Pallet::<T, I>::initialize_reserves(&self.reserves)
         }

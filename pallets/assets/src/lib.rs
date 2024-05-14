@@ -58,7 +58,7 @@ use common::{
     hash, Amount, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
     Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::{ensure, Parameter};
@@ -67,6 +67,7 @@ use permissions::{Scope, BURN, MINT};
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use tiny_keccak::{Hasher, Keccak};
 use traits::{
@@ -247,7 +248,7 @@ pub mod pallet {
         /// Currency to transfer, reserve/unreserve, lock/unlock assets
         type Currency: MultiLockableCurrency<
                 Self::AccountId,
-                Moment = Self::BlockNumber,
+                Moment = BlockNumberFor<Self>,
                 CurrencyId = Self::AssetId,
                 Balance = Balance,
             > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
@@ -582,7 +583,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.endowed_assets.iter().cloned().for_each(
                 |(

@@ -32,7 +32,8 @@ use super::pallet::{Config, Pallet};
 use codec::Decode;
 use common::{DEXInfo, XST};
 use frame_support::pallet_prelude::{Get, StorageVersion};
-use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+use frame_support::{traits::GetStorageVersion as _, weights::Weight};
+use log::info;
 
 use crate::DEXInfos;
 

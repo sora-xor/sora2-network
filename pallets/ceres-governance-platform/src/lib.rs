@@ -71,7 +71,6 @@ pub mod pallet {
     use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use common::BoundedString;
-    use frame_support::log;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::pallet_prelude::*;

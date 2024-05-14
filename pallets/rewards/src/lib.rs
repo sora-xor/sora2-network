@@ -39,10 +39,9 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use frame_support::codec::{Decode, Encode};
+use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::storage::StorageMap as StorageMapTrait;
-use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
