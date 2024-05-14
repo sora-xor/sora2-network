@@ -236,6 +236,8 @@ pub mod pallet {
         Liquidated(AccountIdOf<T>, AssetIdOf<T>),
         /// Pool removed [who, asset_id]
         PoolRemoved(AccountIdOf<T>, AssetIdOf<T>),
+        /// Pool info edited [who, asset_id]
+        PoolInfoEdited(AccountIdOf<T>, AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -1095,6 +1097,56 @@ pub mod pallet {
             }
 
             Self::deposit_event(Event::PoolRemoved(user, asset_id_to_remove));
+            Ok(())
+        }
+
+        /// Edit pool info
+        #[pallet::call_index(10)]
+        #[pallet::weight(<T as Config>::WeightInfo::edit_pool_info())]
+        pub fn edit_pool_info(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            new_loan_to_value: Balance,
+            new_liquidation_threshold: Balance,
+            new_optimal_utilization_rate: Balance,
+            new_base_rate: Balance,
+            new_slope_rate_1: Balance,
+            new_slope_rate_2: Balance,
+            new_reserve_factor: Balance,
+        ) -> DispatchResult {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            // Check parameters
+            if new_loan_to_value > balance!(1)
+                || new_liquidation_threshold > balance!(1)
+                || new_optimal_utilization_rate > balance!(1)
+                || new_reserve_factor > balance!(1)
+            {
+                return Err(Error::<T>::InvalidPoolParameters.into());
+            }
+
+            let mut pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
+
+            // Check if pool is removed
+            ensure!(!pool_info.is_removed, Error::<T>::PoolIsRemoved);
+
+            // Update pool info
+            pool_info.loan_to_value = new_loan_to_value;
+            pool_info.liquidation_threshold = new_liquidation_threshold;
+            pool_info.optimal_utilization_rate = new_optimal_utilization_rate;
+            pool_info.base_rate = new_base_rate;
+            pool_info.slope_rate_1 = new_slope_rate_1;
+            pool_info.slope_rate_2 = new_slope_rate_2;
+            pool_info.reserve_factor = new_reserve_factor;
+
+            // Saving new pool info
+            <PoolData<T>>::insert(asset_id, pool_info);
+
+            Self::deposit_event(Event::PoolInfoEdited(user, asset_id));
             Ok(())
         }
     }
