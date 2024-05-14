@@ -108,7 +108,6 @@ pub fn set_xor_as_collateral_type(
             minimal_collateral_deposit,
         }
     ));
-    KusdHardCap::<TestRuntime>::set(hard_cap);
 }
 
 /// Makes CDPs unsafe by changing liquidation ratio.
