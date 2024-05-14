@@ -20,9 +20,6 @@ frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 hex-literal = { version = "0.4.1", optional = true }
-serde = { version = "1.0.101", optional = true, features = [
-    "derive",
-], default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -50,7 +47,6 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
-    'serde/std',
     'sp-core/std',
     'sp-io/std',
     'sp-std/std',

@@ -18,7 +18,6 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-getrandom = { version = "0.2", default-features = false, features = ["js"] }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -34,12 +33,10 @@ trading-pair = { path = "../../trading-pair", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 permissions = { path = "../../permissions", default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.4.1"
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
-serde = { version = "1.0.101", features = ["derive"] }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -52,7 +49,6 @@ common = { path = "../../../common", features = ["test"] }
 [features]
 default = ["std"]
 std = [
-    'serde',
     'codec/std',
     'frame-support/std',
     'frame-system/std',

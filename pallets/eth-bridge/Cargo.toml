@@ -24,7 +24,6 @@ once_cell = { version = "1.5.2", default-features = false, features = [
     'alloc',
     'unstable',
 ] }
-rlp = { version = "0.5.2", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
 serde = { version = "1.0", features = [
     "alloc",
@@ -33,13 +32,10 @@ serde = { version = "1.0", features = [
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-tiny-keccak = { version = "2", default-features = false }
 pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig", default-features = false }
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
-ethabi-contract = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi-contract", default-features = false }
 ethabi-derive = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi-derive", default-features = false }
 ethereum-types = { version = "0.14.0", default-features = false, features = [
     'serialize',
@@ -87,14 +83,12 @@ std = [
     'frame-system/std',
     'jsonrpc-core/std',
     'secp256k1/std',
-    'rlp/std',
     'rustc-hex/std',
     'serde_json/std',
     'serde/std',
     'sp-core/std',
     'sp-std/std',
     'pallet-scheduler/std',
-    'pallet-timestamp/std',
     'common/std',
     'bridge-types/std',
 ]

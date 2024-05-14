@@ -8,14 +8,10 @@ homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
-serde = { version = "1.0.101", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3" }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 trading-pair-runtime-api = { path = "../runtime-api" }
-common = { path = "../../../common" }
