@@ -213,10 +213,6 @@ benchmarks! {
     create_cdp {
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Root.into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         let collateral = balance!(10);
         let debt = balance!(1);
         T::AssetManager::update_balance(
@@ -264,10 +260,6 @@ benchmarks! {
     borrow {
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Root.into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         let cdp_id = create_cdp_with_xor::<T>();
         let amount = balance!(10);
         deposit_xor_collateral::<T>(cdp_id, amount);
@@ -288,10 +280,6 @@ benchmarks! {
         let amount = balance!(10);
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(1);
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Root.into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt, debt)
             .expect("Shall borrow");
     }: {
@@ -309,10 +297,6 @@ benchmarks! {
         let amount = balance!(100);
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(50);
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Root.into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt, debt)
             .expect("Shall borrow");
         make_cdps_unsafe::<T>();
@@ -327,10 +311,6 @@ benchmarks! {
         let amount = balance!(1000);
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(100);
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Root.into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(
             RawOrigin::Signed(caller::<T>()).into(),
             cdp_id,
@@ -353,13 +333,6 @@ benchmarks! {
                 stability_fee_rate: Default::default(),
                 minimal_collateral_deposit: balance!(0),
             }
-        ).unwrap();
-    }
-
-    update_hard_cap_total_supply {}: {
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Root.into(),
-            balance!(1000)
         ).unwrap();
     }
 

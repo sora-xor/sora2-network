@@ -98,125 +98,30 @@ pub mod init {
     }
 }
 
-/// Due to bug in stability fee update some extra KUSD were minted, this migration burns and sets
-/// correct amounts.
-pub mod stage_correction {
-    use crate::{BadDebt, CDPDepository, CollateralInfos, Config, Error};
-    use common::Balance;
-    use common::{AssetInfoProvider, AssetManager};
+/// Removes hard_cap. This migration for stage only, will not change storage version.
+pub mod remove_hard_cap {
+    use crate::Config;
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
-    use frame_support::log::error;
     use frame_support::traits::OnRuntimeUpgrade;
-    use sp_arithmetic::traits::Zero;
     use sp_core::Get;
-    use sp_runtime::DispatchResult;
 
-    pub struct CorrectKusdBalances<T>(PhantomData<T>);
+    mod old {
+        use crate::{Config, Pallet};
+        use common::Balance;
+        use frame_support::pallet_prelude::ValueQuery;
 
-    impl<T: Config + permissions::Config + technical::Config> CorrectKusdBalances<T> {
-        fn runtime_upgrade_internal(weight: &mut Weight) -> DispatchResult {
-            let mut total_debt = Balance::zero();
-
-            for asset_id in CollateralInfos::<T>::iter_keys() {
-                let accumulated_debt_for_collateral = CDPDepository::<T>::iter()
-                    .filter(|(_, cdp)| {
-                        *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
-                        cdp.collateral_asset_id == asset_id
-                    })
-                    .fold(
-                        Balance::zero(),
-                        |accumulated_debt_for_collateral, (_, cdp)| {
-                            accumulated_debt_for_collateral + cdp.debt
-                        },
-                    );
-
-                CollateralInfos::<T>::try_mutate(asset_id, |collateral_info| {
-                    let collateral_info =
-                        collateral_info.as_mut().ok_or(Error::<T>::CDPNotFound)?;
-                    collateral_info.kusd_supply = accumulated_debt_for_collateral;
-                    DispatchResult::Ok(())
-                })?;
-                *weight += <T as frame_system::Config>::DbWeight::get().writes(1);
-
-                total_debt += accumulated_debt_for_collateral;
-            }
-
-            let bad_debt = BadDebt::<T>::get();
-            total_debt += bad_debt;
-
-            // kusd supply must be equal to aggregated debt:
-            // kusd_supply == sum(cdp.debt) + bad_debt
-            let kusd_supply =
-                <T as Config>::AssetInfoProvider::total_issuance(&T::KusdAssetId::get())?;
-            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
-
-            let (surplus, shortage) = if kusd_supply > total_debt {
-                (kusd_supply - total_debt, 0)
-            } else {
-                (0, total_debt - kusd_supply)
-            };
-
-            let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::TreasuryTechAccount::get(),
-            )?;
-            let profit = <T as Config>::AssetInfoProvider::free_balance(
-                &T::KusdAssetId::get(),
-                &treasury_account_id,
-            )?;
-            *weight += <T as frame_system::Config>::DbWeight::get().reads(1);
-
-            // burn KUSD surplus on tech acc profit or add to bad debt
-            if surplus > 0 {
-                let (to_burn, to_bad_debt) = if profit > surplus {
-                    (surplus, 0)
-                } else {
-                    (profit, surplus - profit)
-                };
-                T::AssetManager::burn_from(
-                    T::KusdAssetId::get(),
-                    &treasury_account_id,
-                    &treasury_account_id,
-                    to_burn,
-                )?;
-
-                BadDebt::<T>::set(bad_debt + to_bad_debt);
-
-                *weight += <T as frame_system::Config>::DbWeight::get().writes(2);
-            }
-
-            // mint KUSD shortage to tech acc or cover bad debt
-            if shortage > 0 {
-                let (from_bad_debt, to_mint) = if bad_debt > shortage {
-                    (shortage, 0)
-                } else {
-                    (bad_debt, shortage - bad_debt)
-                };
-
-                technical::Pallet::<T>::mint(
-                    &T::KusdAssetId::get(),
-                    &T::TreasuryTechAccount::get(),
-                    to_mint,
-                )?;
-
-                BadDebt::<T>::set(bad_debt - from_bad_debt);
-
-                *weight += <T as frame_system::Config>::DbWeight::get().writes(2);
-            }
-
-            Ok(())
-        }
+        /// value to remove
+        #[frame_support::storage_alias]
+        pub type KusdHardCap<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
     }
 
-    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
-        for CorrectKusdBalances<T>
-    {
+    pub struct RemoveHardCap<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for RemoveHardCap<T> {
         fn on_runtime_upgrade() -> Weight {
-            let mut weight = Weight::zero();
-            Self::runtime_upgrade_internal(&mut weight).unwrap_or_else(|err| {
-                error!("Runtime upgrade error {:?}", err);
-            });
-            weight
+            old::KusdHardCap::<T>::kill();
+            <T as frame_system::Config>::DbWeight::get().writes(1)
         }
     }
 }
