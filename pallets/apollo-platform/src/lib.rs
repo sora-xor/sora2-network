@@ -1019,8 +1019,8 @@ pub mod pallet {
                     DEXId::Polkaswap.into(),
                     &Self::account_id(),
                     &Self::account_id(),
-                    &(*collateral_asset),
-                    &asset_id.into(),
+                    collateral_asset,
+                    &asset_id,
                     SwapAmount::with_desired_input(amount_to_exchange, Balance::zero()),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
@@ -1043,7 +1043,7 @@ pub mod pallet {
             let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap_or_default();
             borrow_pool_info.total_borrowed = borrow_pool_info
                 .total_borrowed
-                .saturating_sub(total_borrowed.clone());
+                .saturating_sub(total_borrowed);
 
             <PoolData<T>>::insert(asset_id, borrow_pool_info);
             <UserBorrowingInfo<T>>::remove(asset_id, user.clone());
