@@ -140,7 +140,6 @@ pub mod pallet {
     type VestedRewards<T> = vested_rewards::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    // type AssetIdOf<T> = <T as assets::Config>::AssetId;
     type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]
