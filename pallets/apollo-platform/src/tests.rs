@@ -4505,4 +4505,105 @@ mod test {
             }
         });
     }
+
+    #[test]
+    fn edit_pool_info_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let asset_id = XOR;
+            let initial_parameter_value = balance!(1);
+            let edit_parameter_value = balance!(0.8);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                asset_id.clone(),
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+            ));
+
+            let pool_info_before_edit = pallet::PoolData::<Runtime>::get(asset_id.clone()).unwrap();
+
+            assert_ok!(ApolloPlatform::edit_pool_info(
+                user.clone(),
+                asset_id.clone(),
+                edit_parameter_value,
+                edit_parameter_value,
+                edit_parameter_value,
+                edit_parameter_value,
+                edit_parameter_value,
+                edit_parameter_value,
+                edit_parameter_value,
+            ));
+
+            let pool_info_after_edit = pallet::PoolData::<Runtime>::get(asset_id.clone()).unwrap();
+
+            // Asserting pool info basic lending rate not changed
+            assert_eq!(
+                pool_info_before_edit.basic_lending_rate,
+                pool_info_after_edit.basic_lending_rate
+            );
+
+            // Asserting pool info borrowing rewards rate not changed
+            assert_eq!(
+                pool_info_before_edit.borrowing_rewards_rate,
+                pool_info_after_edit.borrowing_rewards_rate
+            );
+
+            // Asserting pool info parameters are changed
+            assert_eq!(pool_info_after_edit.loan_to_value, edit_parameter_value);
+            assert_eq!(
+                pool_info_after_edit.optimal_utilization_rate,
+                edit_parameter_value
+            );
+            assert_eq!(pool_info_after_edit.base_rate, edit_parameter_value);
+            assert_eq!(pool_info_after_edit.slope_rate_1, edit_parameter_value);
+            assert_eq!(pool_info_after_edit.slope_rate_2, edit_parameter_value);
+            assert_eq!(pool_info_after_edit.reserve_factor, edit_parameter_value);
+            assert_eq!(pool_info_after_edit.is_removed, false);
+        });
+    }
+
+    #[test]
+    fn edit_pool_info_unauthorized() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let asset_id = XOR;
+            let initial_parameter_value = balance!(1);
+            let edit_parameter_value = balance!(0.8);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                asset_id.clone(),
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+                initial_parameter_value,
+            ));
+
+            assert_err!(
+                ApolloPlatform::edit_pool_info(
+                    RuntimeOrigin::signed(alice()),
+                    asset_id.clone(),
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
 }
