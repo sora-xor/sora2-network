@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["init","stage_correction"]};
+window.SIDEBAR_ITEMS = {"mod":["init","remove_hard_cap"]};
