@@ -344,12 +344,6 @@ pub mod pallet {
         StorageMap<_, Identity, AssetIdOf<T>, CollateralInfo<T::Moment>>;
 
     /// Risk parameter
-    /// Hard cap of KUSD may be minted by the system
-    #[pallet::storage]
-    #[pallet::getter(fn max_supply)]
-    pub type KusdHardCap<T> = StorageValue<_, Balance, ValueQuery>;
-
-    /// Risk parameter
     /// Borrows tax to buy back and burn KEN
     #[pallet::storage]
     #[pallet::getter(fn borrow_tax)]
@@ -428,11 +422,6 @@ pub mod pallet {
         CollateralRiskParametersUpdated {
             collateral_asset_id: AssetIdOf<T>,
             risk_parameters: CollateralRiskParameters,
-        },
-        DebtTokenHardCapUpdated {
-            debt_asset_id: AssetIdOf<T>,
-            new_hard_cap: Balance,
-            old_hard_cap: Balance,
         },
         BorrowTaxUpdated {
             old_borrow_tax: Percent,
@@ -686,36 +675,13 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Updates the hard cap for the total supply of a stablecoin.
-        ///
-        /// ## Parameters
-        ///
-        /// - `origin`: The origin of the transaction.
-        /// - `new_hard_cap`: The new hard cap value to be set for the total supply.
-        #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_hard_cap_total_supply())]
-        pub fn update_hard_cap_total_supply(
-            origin: OriginFor<T>,
-            new_hard_cap: Balance,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            let old_hard_cap = KusdHardCap::<T>::get();
-            KusdHardCap::<T>::set(new_hard_cap);
-            Self::deposit_event(Event::DebtTokenHardCapUpdated {
-                debt_asset_id: T::KusdAssetId::get(),
-                new_hard_cap,
-                old_hard_cap,
-            });
-            Ok(())
-        }
-
         /// Updates the borrow tax applied during borrow.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_borrow_tax`: The new borrow tax percentage to be set.
-        #[pallet::call_index(9)]
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_borrow_tax())]
         pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
             ensure_root(origin)?;
@@ -735,7 +701,7 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `new_liquidation_penalty`: The new liquidation penalty percentage to be set.
-        #[pallet::call_index(10)]
+        #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
         pub fn update_liquidation_penalty(
             origin: OriginFor<T>,
@@ -759,7 +725,7 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `beneficiary` : The destination account where assets will be withdrawn.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to withdraw as protocol profit.
-        #[pallet::call_index(11)]
+        #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_profit())]
         pub fn withdraw_profit(
             origin: OriginFor<T>,
@@ -787,7 +753,7 @@ pub mod pallet {
         ///
         /// - `origin`: The origin of the transaction.
         /// - `kusd_amount`: The amount of stablecoin (KUSD) to donate to cover bad debt.
-        #[pallet::call_index(12)]
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::donate())]
         pub fn donate(origin: OriginFor<T>, kusd_amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -935,19 +901,6 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Ensures that new emission will not exceed system KUSD hard cap
-        fn ensure_protocol_cap(new_emission: Balance) -> DispatchResult {
-            let current_supply = T::AssetInfoProvider::total_issuance(&T::KusdAssetId::get())?;
-            ensure!(
-                current_supply
-                    .checked_add(new_emission)
-                    .ok_or(Error::<T>::ArithmeticError)?
-                    <= Self::max_supply(),
-                Error::<T>::HardCapSupply
-            );
-            Ok(())
-        }
-
         /// Deposits collateral to CDP.
         /// Handles internal deposit of collateral into a Collateralized Debt Position (CDP).
         ///
@@ -1048,7 +1001,6 @@ pub mod pallet {
             Self::incentivize_ken_token(borrow_tax)?;
 
             Self::ensure_collateral_cap(cdp.collateral_asset_id, borrow_amount_with_tax)?;
-            Self::ensure_protocol_cap(borrow_amount_with_tax)?;
             Self::mint_to(who, borrow_amount)?;
             Self::increase_cdp_debt(cdp_id, borrow_amount_with_tax)?;
             Self::deposit_event(Event::DebtIncreased {
