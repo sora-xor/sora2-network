@@ -956,7 +956,7 @@ pub mod pallet {
             vec_symbol.append(&mut peg_symbol.0);
 
             let stable_asset_id: T::AssetId =
-                AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
+                AssetId32::<common::PredefinedAssetId>::from_kensetsu_reference_symbol(
                     &SymbolName(vec_symbol.clone()),
                 )
                 .into();

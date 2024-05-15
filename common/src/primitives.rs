@@ -364,6 +364,20 @@ impl<AssetId> AssetId32<AssetId> {
 
         Self::from_bytes(bytes)
     }
+
+    /// Construct asset id for Kensetsu debt asset using its `reference_symbol`
+    pub fn from_kensetsu_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
+    where
+        Symbol: From<SymbolName> + PartialEq + Encode,
+    {
+        let mut bytes = [0u8; 32];
+        let symbol_bytes = reference_symbol.encode();
+        let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
+        bytes[0] = 4;
+        bytes[2..18].copy_from_slice(&symbol_hash);
+
+        Self::from_bytes(bytes)
+    }
 }
 
 impl<AssetId> From<H256> for AssetId32<AssetId> {
