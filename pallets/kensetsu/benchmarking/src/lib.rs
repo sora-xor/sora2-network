@@ -441,7 +441,7 @@ benchmarks! {
     }
 
     register_stablecoin {
-        let vec_symbol = SymbolName(vec![b'K', b'D', b'A', b'I']);
+        let vec_symbol = SymbolName(vec![b'K', b'S', b'D', b'A', b'I']);
         let stablecoin_asset_id: AssetIdOf<T> =
             AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol).into();
         let stablecoin_parameters = StablecoinParameters::<AssetIdOf<T>> {

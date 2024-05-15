@@ -255,9 +255,9 @@ fn test_create_cdp_sunny_day() {
 #[test]
 fn test_create_cdp_gold_sunny_day() {
     new_test_ext().execute_with(|| {
-        let vec_symbol = SymbolName(vec![b'K', b'X', b'A', b'U']);
+        let vec_symbol = SymbolName(vec![b'K', b'B', b'X', b'A', b'U']);
         let stable_asset_id: AssetIdOf<TestRuntime> =
-            AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol);
+            AssetId32::<PredefinedAssetId>::from_kensetsu_reference_symbol(&vec_symbol);
         let collateral = balance!(5000);
         set_kensetsu_gold_stablecoin();
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(

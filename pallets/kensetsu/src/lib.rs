@@ -944,15 +944,16 @@ pub mod pallet {
         fn register_asset_id(
             stablecoin_parameters: &StablecoinParameters<T::AssetId>,
         ) -> Result<T::AssetId, DispatchError> {
-            let mut peg_symbol = match &stablecoin_parameters.peg_asset {
-                PegAsset::OracleSymbol(symbol) => symbol.clone(),
+            let (mut peg_symbol, source_symbol) = match &stablecoin_parameters.peg_asset {
+                PegAsset::OracleSymbol(symbol) => (symbol.clone(), b'B'),
                 PegAsset::SoraAssetId(peg_asset_id) => {
                     let (symbol, ..) = T::AssetInfoProvider::get_asset_info(peg_asset_id);
-                    SymbolName(symbol.0)
+                    (SymbolName(symbol.0), b'S')
                 }
             };
-            let mut vec_symbol = Vec::<u8>::with_capacity(peg_symbol.0.len() + 1);
+            let mut vec_symbol = Vec::<u8>::with_capacity(peg_symbol.0.len() + 2);
             vec_symbol.push(b'K');
+            vec_symbol.push(source_symbol);
             vec_symbol.append(&mut peg_symbol.0);
 
             let stable_asset_id: T::AssetId =
