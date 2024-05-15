@@ -32,9 +32,9 @@ pub mod init {
     use crate::*;
     use common::{KEN, KUSD};
     use core::marker::PhantomData;
-    use log::error;
     use frame_support::pallet_prelude::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
+    use log::error;
     use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
@@ -105,8 +105,9 @@ pub mod stage_correction {
     use common::AssetInfoProvider;
     use common::Balance;
     use core::marker::PhantomData;
-    use log::error;
+    use frame_support::pallet_prelude::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
+    use log::error;
     use sp_arithmetic::traits::Zero;
     use sp_core::Get;
     use sp_runtime::DispatchResult;

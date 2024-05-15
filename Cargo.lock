@@ -2274,6 +2274,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "kensetsu"
+version = "0.0.1"
+dependencies = [
+ "assets",
+ "common 0.1.0",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "log",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

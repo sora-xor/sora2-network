@@ -344,7 +344,7 @@ multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
 [workspace]
 members = [
     # "runtime",
-    # "common",
+    "common",
     # "pallets/apollo-platform",
     "pallets/assets",
     "pallets/ceres-governance-platform",
@@ -378,8 +378,8 @@ members = [
     # "pallets/bridge-proxy",
     # "pallets/bridge-proxy/rpc",
     # "pallets/bridge-proxy/runtime-api",
-    # "pallets/kensetsu",
-    # "pallets/band",
+    "pallets/kensetsu",
+    "pallets/band",
     # "pallets/qa-tools",
     # "node/",
     # "utils/parse",
