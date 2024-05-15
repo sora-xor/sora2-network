@@ -828,7 +828,7 @@ mod test {
     }
 
     #[test]
-    fn borrow_nothing_lended() {
+    fn borrow_nothing_lent() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -872,7 +872,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
-                Error::<Runtime>::NothingLended
+                Error::<Runtime>::NothingLent
             );
         });
     }
@@ -1258,7 +1258,7 @@ mod test {
     }
 
     #[test]
-    fn get_lending_rewards_nothing_lended() {
+    fn get_lending_rewards_nothing_lent() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(ApolloPlatform::add_pool(
@@ -1275,7 +1275,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::get_rewards(RuntimeOrigin::signed(alice()), XOR, true),
-                Error::<Runtime>::NothingLended
+                Error::<Runtime>::NothingLent
             );
         });
     }
@@ -1855,7 +1855,7 @@ mod test {
     }
 
     #[test]
-    fn withdraw_nothing_lended() {
+    fn withdraw_nothing_lent() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(ApolloPlatform::add_pool(
@@ -1872,7 +1872,7 @@ mod test {
 
             assert_err!(
                 ApolloPlatform::withdraw(RuntimeOrigin::signed(alice()), XOR, balance!(100)),
-                Error::<Runtime>::NothingLended
+                Error::<Runtime>::NothingLent
             );
         });
     }
@@ -2457,27 +2457,27 @@ mod test {
 
             let borrowing_interest_one_more_block =
                 calculate_borrowing_interest(alice(), XOR, DOT, 150);
-            let repayed_amount = borrowing_interest_one_more_block.0;
+            let repaid_amount = borrowing_interest_one_more_block.0;
 
             // Reserve amounts (treasury, burn, developer)
             let (treasury_reserve, _, developer_reserve) =
-                calculate_reserve_amounts(XOR, repayed_amount);
+                calculate_reserve_amounts(XOR, repaid_amount);
 
             assert_ok!(ApolloPlatform::repay(
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                repayed_amount
+                repaid_amount
             ));
 
             // Check borrowing asset pool values after repay
             let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
             let reserves_amount = (FixedWrapper::from(borrowing_asset_pool_info.reserve_factor)
-                * FixedWrapper::from(repayed_amount))
+                * FixedWrapper::from(repaid_amount))
             .try_into_balance()
             .unwrap_or(0);
-            let rewards_amount = repayed_amount - reserves_amount;
+            let rewards_amount = repaid_amount - reserves_amount;
 
             assert_eq!(borrowing_asset_pool_info.rewards, rewards_amount);
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(200));
@@ -2488,7 +2488,7 @@ mod test {
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
-            let new_alice_balance = balance!(200) - repayed_amount;
+            let new_alice_balance = balance!(200) - repaid_amount;
 
             assert_eq!(borrowing_interest, balance!(0));
 
@@ -2634,7 +2634,7 @@ mod test {
 
             let borrowing_interest_one_more_block =
                 calculate_borrowing_interest(alice(), XOR, DOT, 150);
-            let repayed_amount = borrowing_interest_one_more_block.0 + balance!(1);
+            let repaid_amount = borrowing_interest_one_more_block.0 + balance!(1);
 
             // Reserve amounts (treasury, burn, developer)
             let (treasury_reserve, _, developer_reserve) =
@@ -2644,14 +2644,14 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                repayed_amount
+                repaid_amount
             ));
 
             let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let borrowing_user_debt = borrow_user_info.get(&DOT).unwrap();
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
-            let new_alice_balance = balance!(200) - repayed_amount;
+            let new_alice_balance = balance!(200) - repaid_amount;
 
             // Check Alice position values after repay
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(199));
@@ -2828,7 +2828,7 @@ mod test {
 
             let borrowing_interest_one_more_block =
                 calculate_borrowing_interest(alice(), XOR, DOT, 150);
-            let repayed_amount = borrowing_interest_one_more_block.0 + balance!(200);
+            let repaid_amount = borrowing_interest_one_more_block.0 + balance!(200);
 
             // Reserve amounts (treasury, burn, developer)
             let (treasury_reserve, _, developer_reserve) =
@@ -2838,7 +2838,7 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                repayed_amount
+                repaid_amount
             ));
 
             // Check borrowing asset pool values after repay
@@ -2858,7 +2858,7 @@ mod test {
 
             let borrow_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice());
 
-            let new_alice_balance = balance!(300) - repayed_amount;
+            let new_alice_balance = balance!(300) - repaid_amount;
 
             // Check if Alice's position exists after repay
             assert_eq!(borrow_user_info, None);
@@ -4116,7 +4116,7 @@ mod test {
 
             assert_eq!(
                 borrowing_asset_pool_info_after_lq.total_liquidity,
-                borrowing_pool_before_lq.total_liquidity
+                borrowing_pool_before_lq.total_liquidity + borrowing_pool_before_lq.total_borrowed
             );
 
             assert_eq!(
@@ -4354,7 +4354,7 @@ mod test {
 
             assert_eq!(
                 borrowing_asset_pool_info_after_lq.total_liquidity,
-                borrowing_pool_before_lq.total_liquidity
+                borrowing_pool_before_lq.total_liquidity + borrowing_pool_before_lq.total_borrowed
             );
 
             assert_eq!(

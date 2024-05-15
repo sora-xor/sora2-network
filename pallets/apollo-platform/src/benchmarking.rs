@@ -277,7 +277,7 @@ benchmarks! {
             lending_amount
         ).unwrap()
     } verify {
-        assert_last_event::<T>(Event::Lended(alice, asset_id.into(), lending_amount).into());
+        assert_last_event::<T>(Event::Lent(alice, asset_id.into(), lending_amount).into());
     }
 
     borrow {

@@ -109,7 +109,7 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
-    /// Lended asset -> AccountId -> LendingPosition
+    /// Lent asset -> AccountId -> LendingPosition
     #[pallet::storage]
     #[pallet::getter(fn user_lending_info)]
     pub type UserLendingInfo<T: Config> = StorageDoubleMap<
@@ -216,8 +216,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Pool added [who, asset_id]
         PoolAdded(AccountIdOf<T>, AssetIdOf<T>),
-        /// Lended [who, asset_id, amount]
-        Lended(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// Lent [who, asset_id, amount]
+        Lent(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// Borrowed [who, collateral_asset, collateral_amount, borrow_asset, borrow_amount]
         Borrowed(AccountIdOf<T>, AssetIdOf<T>, Balance, AssetIdOf<T>, Balance),
         /// ClaimedLendingRewards [who, asset_id, amount]
@@ -250,7 +250,7 @@ pub mod pallet {
         InvalidPoolParameters,
         /// Pool does not exist
         PoolDoesNotExist,
-        /// The amount that is being lended is invalid
+        /// The amount that is being lent is invalid
         InvalidLendingAmount,
         /// Collateral token does not exists
         CollateralTokenDoesNotExist,
@@ -260,8 +260,8 @@ pub mod pallet {
         SameCollateralAndBorrowingAssets,
         /// No liquidity for borrowing asset
         NoLiquidityForBorrowingAsset,
-        /// Nothing lended
-        NothingLended,
+        /// Nothing lent
+        NothingLent,
         /// Invalid collateral amount
         InvalidCollateralAmount,
         /// Can not transfer borrowing amount
@@ -460,7 +460,7 @@ pub mod pallet {
             pool_info.total_liquidity += lending_amount;
             <PoolData<T>>::insert(lending_asset, pool_info);
 
-            Self::deposit_event(Event::Lended(user, lending_asset, lending_amount));
+            Self::deposit_event(Event::Lent(user, lending_asset, lending_amount));
             Ok(().into())
         }
 
@@ -503,7 +503,7 @@ pub mod pallet {
                 <PoolData<T>>::get(collateral_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
             ensure!(!collateral_pool_info.is_removed, Error::<T>::PoolIsRemoved);
             let mut user_lending_info = <UserLendingInfo<T>>::get(collateral_asset, user.clone())
-                .ok_or(Error::<T>::NothingLended)?;
+                .ok_or(Error::<T>::NothingLent)?;
             let collateral_asset_price = Self::get_price(collateral_asset);
 
             // Calculate required collateral asset in dollars
@@ -611,10 +611,10 @@ pub mod pallet {
             let block_number = <frame_system::Pallet<T>>::block_number();
             let pool_info = PoolData::<T>::get(asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
 
-            // Check if user has lended or borrowed rewards
+            // Check if user has lent or borrowed rewards
             if is_lending {
                 let mut lend_user_info = <UserLendingInfo<T>>::get(asset_id, user.clone())
-                    .ok_or(Error::<T>::NothingLended)?;
+                    .ok_or(Error::<T>::NothingLent)?;
                 let interests =
                     Self::calculate_lending_earnings(&lend_user_info, &pool_info, block_number);
                 lend_user_info.lending_interest += interests.0 + interests.1;
@@ -695,7 +695,7 @@ pub mod pallet {
             let mut pool_info =
                 <PoolData<T>>::get(withdrawn_asset).ok_or(Error::<T>::PoolDoesNotExist)?;
             let mut user_info = <UserLendingInfo<T>>::get(withdrawn_asset, user.clone())
-                .ok_or(Error::<T>::NothingLended)?;
+                .ok_or(Error::<T>::NothingLent)?;
 
             ensure!(
                 withdrawn_amount <= user_info.lending_amount,
@@ -777,6 +777,9 @@ pub mod pallet {
             user_info.borrowing_interest += interest_and_reward.0;
             user_info.borrowing_rewards += interest_and_reward.1;
             user_info.last_borrowing_block = block_number;
+
+            // Total repaid
+            let mut total_repaid: Balance = amount_to_repay;
 
             if amount_to_repay <= user_info.borrowing_interest {
                 // If user is repaying only part or whole interest
@@ -880,9 +883,12 @@ pub mod pallet {
                     user_info.borrowing_interest,
                     borrowing_asset,
                 )?;
+
+                // Updating total repaid
+                total_repaid = total_borrowed_amount;
             }
 
-            Self::deposit_event(Event::Repaid(user, borrowing_asset, amount_to_repay));
+            Self::deposit_event(Event::Repaid(user, borrowing_asset, total_repaid));
             Ok(().into())
         }
 
@@ -1031,19 +1037,18 @@ pub mod pallet {
                 collateral_pool_info.total_collateral = collateral_pool_info
                     .total_collateral
                     .saturating_sub(user_info.collateral_amount);
-                // Get borrowed pool info nad update total_liquidity
-                let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap_or_default();
-                borrow_pool_info.total_liquidity += user_info.borrowing_amount;
+
                 <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
                 // Add user's borrowed amount tied with this asset to total_borrowed in given asset
                 total_borrowed += user_info.borrowing_amount;
             }
 
-            // Updating total_borrowed for given asset
+            // Updating total_borrowed and total_liquidity for given asset
             let mut borrow_pool_info = PoolData::<T>::get(asset_id).unwrap_or_default();
             borrow_pool_info.total_borrowed = borrow_pool_info
                 .total_borrowed
                 .saturating_sub(total_borrowed);
+            borrow_pool_info.total_liquidity += total_borrowed;
 
             <PoolData<T>>::insert(asset_id, borrow_pool_info);
             <UserBorrowingInfo<T>>::remove(asset_id, user.clone());
