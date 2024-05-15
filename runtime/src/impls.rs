@@ -270,7 +270,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
         self,
         origin: Self::RuntimeOrigin,
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
-        frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
                 let call: parachain_bridge_app::Call<crate::Runtime> = msg.into();

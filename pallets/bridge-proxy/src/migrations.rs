@@ -18,14 +18,14 @@ pub mod init {
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(0) {
-                frame_support::log::error!(
+                log::error!(
                     "Expected storage version 0, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
                 return frame_support::weights::Weight::zero();
             }
 
-            frame_support::log::info!("Migrating PswapDistribution to v2");
+            log::info!("Migrating PswapDistribution to v2");
 
             let assets = ListAssets::get();
             let network_id = NetworkId::get();
@@ -33,7 +33,7 @@ pub mod init {
             for (asset_id, locked) in assets {
                 reads_writes += 1;
                 crate::LockedAssets::<T>::insert(network_id, asset_id, locked);
-                frame_support::log::debug!("Add locked asset {asset_id:?}: {locked:?}");
+                log::debug!("Add locked asset {asset_id:?}: {locked:?}");
             }
 
             StorageVersion::new(1).put::<Pallet<T>>();
@@ -111,14 +111,14 @@ pub mod generic_account_v2 {
     impl<T: Config> OnRuntimeUpgrade for LiberlandGenericAccount<T> {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() >= StorageVersion::new(2) {
-                frame_support::log::error!(
+                log::error!(
                     "Expected storage version less than 2, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
                 return frame_support::weights::Weight::zero();
             }
 
-            frame_support::log::info!("Migrating BridgeProxy to v2");
+            log::info!("Migrating BridgeProxy to v2");
 
             let mut reads_writes = 0;
 
@@ -129,7 +129,7 @@ pub mod generic_account_v2 {
                 },
             );
 
-            frame_support::log::info!(
+            log::info!(
                 "BridgeProxy Migration to v2: {:?} BridgeRequests translated",
                 reads_writes
             );

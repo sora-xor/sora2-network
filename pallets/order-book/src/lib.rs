@@ -148,7 +148,7 @@ pub mod pallet {
         type Unlocker: CurrencyUnlocker<Self::AccountId, Self::AssetId, Self::DEXId, DispatchError>;
         type Scheduler: AlignmentScheduler
             + ExpirationScheduler<
-                Self::BlockNumber,
+                BlockNumberFor<Self>,
                 OrderBookId<Self::AssetId, Self::DEXId>,
                 Self::DEXId,
                 Self::OrderId,

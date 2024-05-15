@@ -59,7 +59,7 @@ use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, Pays};
-use frame_support::log::error;
+use log::error;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::weights::Weight;
 use frame_support::{ensure, RuntimeDebug};
@@ -384,8 +384,8 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
-                frame_support::log::error!("faucet: iroha_public_key: {}", iroha_public_key);
-                frame_support::log::error!("faucet: iroha_signature: {}", iroha_signature);
+                log::error!("faucet: iroha_public_key: {}", iroha_public_key);
+                log::error!("faucet: iroha_signature: {}", iroha_signature);
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(
                     !MigratedAccounts::<T>::contains_key(&iroha_address),

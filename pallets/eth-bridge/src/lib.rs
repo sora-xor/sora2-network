@@ -332,7 +332,7 @@ pub mod pallet {
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
-    use frame_support::log;
+    use log;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;

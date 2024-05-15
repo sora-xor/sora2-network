@@ -108,7 +108,7 @@ impl<T: Config> Pallet<T> {
                 QuoteAmount::with_desired_output(balance!(1)),
                 false,
             )?;
-            frame_support::log::debug!("{outcome:?}");
+            log::debug!("{outcome:?}");
             Ok(FixedWrapper::from(outcome.amount))
         }
     }
@@ -117,21 +117,21 @@ impl<T: Config> Pallet<T> {
         let trading_pair = match pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
             Ok(trading_pair) => trading_pair,
             Err(err) => {
-                frame_support::log::warn!("Failed to get trading pair for {pool:?} pool: {err:?}",);
+                log::warn!("Failed to get trading pair for {pool:?} pool: {err:?}",);
                 return 0;
             }
         };
         let multiplier = match Self::get_multiplier(&trading_pair.base_asset_id) {
             Ok(multiplier) => multiplier,
             Err(err) => {
-                frame_support::log::warn!(
+                log::warn!(
                     "Failed to get farming rewards multiplier for {:?} asset: {err:?}",
                     trading_pair.base_asset_id
                 );
                 return 0;
             }
         };
-        frame_support::log::debug!("Multiplier for TP {trading_pair:?}: {multiplier:?}");
+        log::debug!("Multiplier for TP {trading_pair:?}: {multiplier:?}");
         let mut read_count = 0;
         let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
@@ -341,7 +341,7 @@ pub mod pallet {
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
         type RuntimeCall: Parameter;
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
-        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
+        type Scheduler: Anon<BlockNumberFor<Self>, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.

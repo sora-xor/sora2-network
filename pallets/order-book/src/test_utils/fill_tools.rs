@@ -39,7 +39,7 @@ use order_book_imported::{
 use assets::AssetIdOf;
 use common::prelude::{Balance, BalanceUnit, Scalar};
 use common::PriceVariant;
-use frame_support::log::{debug, trace};
+use log::{debug, trace};
 use frame_support::traits::{Get, Time};
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};
 use sp_std::iter::Peekable;

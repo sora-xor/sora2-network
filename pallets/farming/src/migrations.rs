@@ -47,7 +47,7 @@ pub mod v2 {
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
-                frame_support::log::error!(
+                log::error!(
                     "Expected storage version 1, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
@@ -56,14 +56,10 @@ pub mod v2 {
             for (pool_account, block) in pools {
                 Pools::<T>::mutate(block % T::REFRESH_FREQUENCY, |pools| {
                     if !pools.contains(&pool_account) {
-                        frame_support::log::info!(
-                            "Add pool {pool_account:?} at block {block:?} to farming"
-                        );
+                        log::info!("Add pool {pool_account:?} at block {block:?} to farming");
                         pools.push(pool_account);
                     } else {
-                        frame_support::log::info!(
-                            "Skip {pool_account:?} at block {block:?}, already exist"
-                        );
+                        log::info!("Skip {pool_account:?} at block {block:?}, already exist");
                     }
                 });
             }
@@ -92,8 +88,8 @@ pub mod v2 {
 }
 
 pub mod v3 {
-    use frame_support::log::info;
     use frame_support::traits::StorageVersion;
+    use log::info;
 
     use super::*;
 
@@ -107,7 +103,7 @@ pub mod v3 {
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(2) {
-                frame_support::log::error!(
+                log::error!(
                     "Expected storage version 2, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );

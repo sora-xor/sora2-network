@@ -61,7 +61,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI};
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
-    use frame_support::log::{debug, warn};
+    use log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;

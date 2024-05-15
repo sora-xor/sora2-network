@@ -44,7 +44,7 @@ pub use pallet::*;
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, Balance};
-use frame_support::log::{debug, warn};
+use log::{debug, warn};
 use scale_info::TypeInfo;
 use sp_arithmetic::{FixedU128, Perbill};
 
@@ -275,7 +275,7 @@ pub mod pallet {
         + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
+        type Randomness: Randomness<Option<Self::Hash>, BlockNumberFor<Self>>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,

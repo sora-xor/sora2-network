@@ -31,9 +31,9 @@
 use frame_support::{assert_noop, assert_ok};
 
 use common::{balance, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
-use frame_support::log::debug;
 use frame_system;
 use frame_system::RawOrigin;
+use log::debug;
 use pool_xyk::Properties;
 use sp_runtime::traits::BadOrigin;
 use vested_rewards::Rewards;

@@ -26,7 +26,7 @@ use common::{prelude::FixedWrapper, Balance};
 use common::{AssetInfoProvider, ReferencePriceProvider};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
-use frame_support::log;
+use log;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
