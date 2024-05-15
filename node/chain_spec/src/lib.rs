@@ -896,7 +896,7 @@ fn testnet_genesis(
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
 ) -> GenesisConfig {
-    use common::XSTUSD;
+    use common::{KXOR, XSTUSD};
 
     // Initial balances
     let initial_staking = balance!(1000000000);
@@ -1443,6 +1443,17 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetics USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    KXOR,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KXOR".to_vec()),
+                    AssetName(b"Kensetsu XOR".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -2117,6 +2128,17 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XSTUSD".to_vec()),
             AssetName(b"SORA Synthetics USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            KXOR,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KXOR".to_vec()),
+            AssetName(b"Kensetsu XOR".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

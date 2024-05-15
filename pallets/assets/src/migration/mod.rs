@@ -28,45 +28,4 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "ready-to-test")] // kensetsu
-use crate::*;
-
-#[cfg(not(feature = "ready-to-test"))]
-pub type Migrations = (
-    assets::migration::register_asset::RegisterAsset<
-        Runtime,
-        KXORAssetId,
-        KXORAssetName,
-        KXORAssetSymbol,
-        PredefinedAssetOwnerAccountId,
-    >,
-);
-
-#[cfg(feature = "ready-to-test")] // kensetsu
-pub type Migrations = (
-    kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,
-    assets::migration::register_asset::RegisterAsset<
-        Runtime,
-        KXORAssetId,
-        KXORAssetName,
-        KXORAssetSymbol,
-        PredefinedAssetOwnerAccountId,
-    >,
-);
-
-parameter_types! {
-    pub const MaxMigrations: u32 = 100;
-    pub KXORAssetId: AssetId = common::KXOR;
-    pub KXORAssetSymbol: AssetSymbol = AssetSymbol(b"KXOR".to_vec());
-    pub KXORAssetName: AssetName = AssetName(b"Kensetsu XOR".to_vec());
-    pub PredefinedAssetOwnerAccountId: AccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            b"SYSTEM_ACCOUNT".to_vec(),
-            b"ASSETS_PERMISSIONS".to_vec(),
-        );
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-}
+pub mod register_asset;
