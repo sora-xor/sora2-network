@@ -101,7 +101,6 @@ pub fn set_kensetsu_dollar_stablecoin() {
         Some(StablecoinInfo {
             bad_debt: 0,
             stablecoin_parameters: StablecoinParameters {
-                hard_cap: Balance::MAX,
                 peg_asset: PegAsset::SoraAssetId(DAI),
                 minimal_stability_fee_accrue: balance!(1),
             },
@@ -114,7 +113,6 @@ pub fn set_kensetsu_gold_stablecoin() {
     KensetsuPallet::register_stablecoin(
         RuntimeOrigin::root(),
         StablecoinParameters {
-            hard_cap: Balance::MAX,
             peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
             minimal_stability_fee_accrue: balance!(0.01),
         },

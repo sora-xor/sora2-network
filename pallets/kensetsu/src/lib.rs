@@ -83,9 +83,6 @@ pub enum PegAsset<AssetId> {
 /// Parameters of the tokens created by the protocol.
 #[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
 pub struct StablecoinParameters<AssetId> {
-    /// Maximum amount of tokens issued by the system.
-    pub hard_cap: Balance,
-
     /// Peg of stablecoin.
     pub peg_asset: PegAsset<AssetId>,
 

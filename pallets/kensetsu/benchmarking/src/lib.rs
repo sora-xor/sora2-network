@@ -74,7 +74,6 @@ pub fn set_kensetsu_dollar_stablecoin<T: Config>() {
         Some(kensetsu::StablecoinInfo {
             bad_debt: 0,
             stablecoin_parameters: StablecoinParameters {
-                hard_cap: Balance::MAX,
                 peg_asset: PegAsset::SoraAssetId(DAI.into()),
                 minimal_stability_fee_accrue: balance!(0),
             },
@@ -446,7 +445,6 @@ benchmarks! {
         let stablecoin_asset_id: AssetIdOf<T> =
             AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&vec_symbol).into();
         let stablecoin_parameters = StablecoinParameters::<AssetIdOf<T>> {
-            hard_cap: Balance::MAX,
             peg_asset: PegAsset::SoraAssetId(DAI.into()),
             minimal_stability_fee_accrue: balance!(0.01),
         };
