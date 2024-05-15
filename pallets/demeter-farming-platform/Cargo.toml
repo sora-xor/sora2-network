@@ -18,6 +18,7 @@ ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features 
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
+log = { version = "0.4.20" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }

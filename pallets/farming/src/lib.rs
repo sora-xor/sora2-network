@@ -86,7 +86,7 @@ impl<T: Config> Pallet<T> {
         });
     }
 
-    fn refresh_pools(now: T::BlockNumber) -> Weight {
+    fn refresh_pools(now: BlockNumberFor<T>) -> Weight {
         let mut total_weight = Weight::zero();
         let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
         for pool in pools {
@@ -113,7 +113,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn refresh_pool(pool: T::AccountId, now: T::BlockNumber) -> u32 {
+    fn refresh_pool(pool: T::AccountId, now: BlockNumberFor<T>) -> u32 {
         let trading_pair = match pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
             Ok(trading_pair) => trading_pair,
             Err(err) => {
@@ -200,7 +200,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn vest(now: T::BlockNumber) -> Weight {
+    fn vest(now: BlockNumberFor<T>) -> Weight {
         let mut accounts = BTreeMap::new();
         let function_weight: Weight = Self::prepare_accounts_for_vesting(now, &mut accounts);
         let function_weight = function_weight.saturating_add(
@@ -211,7 +211,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn prepare_accounts_for_vesting(
-        now: T::BlockNumber,
+        now: BlockNumberFor<T>,
         accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
     ) -> Weight {
         let mut pool_count = 0;
@@ -228,8 +228,8 @@ impl<T: Config> Pallet<T> {
 
     fn get_farmer_weight_amplified_by_time(
         farmer_weight: u128,
-        farmer_block: T::BlockNumber,
-        now: T::BlockNumber,
+        farmer_block: BlockNumberFor<T>,
+        now: BlockNumberFor<T>,
     ) -> FixedWrapper {
         // Ti
         let farmer_farming_time: u32 = (now - farmer_block).unique_saturated_into();
@@ -246,7 +246,7 @@ impl<T: Config> Pallet<T> {
 
     fn prepare_pool_accounts_for_vesting(
         farmers: Vec<PoolFarmer<T>>,
-        now: T::BlockNumber,
+        now: BlockNumberFor<T>,
         accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
     ) {
         if farmers.is_empty() {
@@ -359,7 +359,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             if now.is_zero() {
                 return Weight::zero();
             }
@@ -399,7 +399,7 @@ pub mod pallet {
     /// Pools whose farmers are refreshed at the specific block. Block => Pools
     #[pallet::storage]
     pub type Pools<T: Config> =
-        StorageMap<_, Identity, T::BlockNumber, Vec<T::AccountId>, ValueQuery>;
+        StorageMap<_, Identity, BlockNumberFor<T>, Vec<T::AccountId>, ValueQuery>;
 
     /// Farmers of the pool. Pool => Farmers
     #[pallet::storage]
@@ -451,7 +451,7 @@ pub struct PoolFarmer<T: Config> {
     /// The account of the farmer
     account: T::AccountId,
     /// The block that the farmer started farming at
-    block: T::BlockNumber,
+    block: BlockNumberFor<T>,
     /// The weight the farmer has in the pool
     weight: Balance,
 }

@@ -34,7 +34,7 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
 use common::{AssetInfoProvider, Balance, DEXId, TradingPairSourceManager, TBCD};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use pallet_tools::price_tools::AssetPrices;

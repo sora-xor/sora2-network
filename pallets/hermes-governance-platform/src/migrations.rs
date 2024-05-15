@@ -4,7 +4,7 @@ use crate::{
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::BoundedString;
-use frame_support::dispatch::Weight;
+use frame_support::pallet_prelude::Weight;
 use frame_support::traits::Get;
 use frame_support::BoundedVec;
 use sp_core::RuntimeDebug;

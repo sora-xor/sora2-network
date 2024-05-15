@@ -343,7 +343,7 @@ pub struct ReferencePriceProvider;
 impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
     fn get_reference_price(
         _asset_id: &AssetId,
-    ) -> Result<Balance, frame_support::dispatch::DispatchError> {
+    ) -> Result<Balance, sp_runtime::DispatchError> {
         Ok(common::balance!(2.5))
     }
 }

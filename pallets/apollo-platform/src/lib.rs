@@ -1081,7 +1081,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let distribution_rewards = Self::update_interests(now);
             let rates = Self::update_rates(now);
 
@@ -1100,7 +1100,7 @@ pub mod pallet {
         }
 
         /// Off-chain worker procedure - calls liquidations
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -1390,7 +1390,7 @@ pub mod pallet {
                 .saturating_add(T::DbWeight::get().writes(counter + 4))
         }
 
-        fn update_rates(_current_block: T::BlockNumber) -> Weight {
+        fn update_rates(_current_block: BlockNumberFor<T>) -> Weight {
             let mut counter: u64 = 0;
 
             for (asset_id, mut pool_info) in PoolData::<T>::iter() {

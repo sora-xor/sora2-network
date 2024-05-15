@@ -58,9 +58,10 @@ use common::{
     balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
     OnPoolReservesChanged, PriceVariant, XOR,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
+use sp_runtime::DispatchError;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
 
@@ -159,7 +160,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_block_num: T::BlockNumber) -> Weight {
+        fn on_initialize(_block_num: BlockNumberFor<T>) -> Weight {
             let (n_b, m_b) = Pallet::<T>::average_prices_calculation_routine(PriceVariant::Buy);
             let (n_s, m_s) = Pallet::<T>::average_prices_calculation_routine(PriceVariant::Sell);
             <T as Config>::WeightInfo::on_initialize(n_b + n_s, m_b + m_s)

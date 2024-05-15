@@ -12,6 +12,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
     "full",
 ] }
+log = { version = "0.4.20" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }

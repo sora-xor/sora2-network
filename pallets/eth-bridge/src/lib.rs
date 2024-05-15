@@ -83,8 +83,8 @@ use common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
 use core::stringify;
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::log::{debug, error, info, warn};
+use frame_support::dispatch::DispatchResult;
+use log::{debug, error, info, warn};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
@@ -94,7 +94,7 @@ use frame_support::sp_runtime::traits::{
 use frame_support::sp_runtime::KeyTypeId;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, Parameter, RuntimeDebug};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction};
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
@@ -104,7 +104,7 @@ use permissions::{Scope, BURN, MINT};
 use requests::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, H256};
+use sp_core::{H160, H256, RuntimeDebug};
 use sp_std::borrow::Cow;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug};
@@ -398,7 +398,7 @@ pub mod pallet {
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!("Entering off-chain workers {:?}", block_number);
             let value_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
             if value_ref.get::<Vec<u8>>().ok().flatten().is_none() {
@@ -1277,7 +1277,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Identity,
         H256,
-        T::BlockNumber,
+        BlockNumberFor<T>,
         ValueQuery,
     >;
 

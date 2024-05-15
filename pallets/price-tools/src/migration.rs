@@ -1,4 +1,4 @@
-use frame_support::dispatch::GetStorageVersion;
+use frame_support::pallet_prelude::GetStorageVersion;
 use frame_support::traits::StorageVersion;
 
 use crate::PriceInfos;

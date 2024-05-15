@@ -223,7 +223,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             if (block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
                 let elems = Pallet::<T>::free_reserves_distribution_routine().unwrap_or_default();
                 <T as Config>::WeightInfo::on_initialize(elems)
@@ -553,7 +553,6 @@ pub mod pallet {
         pub free_reserves_account_id: Option<T::AccountId>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -568,7 +567,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             frame_system::Pallet::<T>::inc_consumers(&self.incentives_account_id.as_ref().unwrap())
                 .unwrap();
@@ -843,7 +842,7 @@ impl<T: Config> Pallet<T> {
             Ok(())
         })
         .map_err(|err| {
-            frame_support::log::error!("Reserves distribution failed, will try next time: {err:?}");
+            log::error!("Reserves distribution failed, will try next time: {err:?}");
             err
         })
     }

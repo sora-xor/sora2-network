@@ -32,12 +32,13 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 use common::alt::{DiscreteQuotation, SwapChunk};

@@ -14,6 +14,7 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
+log = { version = "0.4.20" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }

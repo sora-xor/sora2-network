@@ -177,7 +177,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Resets liquidation flag.
-        fn on_initialize(_now: T::BlockNumber) -> Weight {
+        fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
             LiquidatedThisBlock::<T>::put(false);
             T::DbWeight::get().writes(1)
         }
@@ -185,7 +185,7 @@ pub mod pallet {
         /// Main off-chain worker procedure.
         ///
         /// Accrues fees and calls liquidations
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number

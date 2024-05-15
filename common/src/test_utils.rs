@@ -40,10 +40,8 @@ macro_rules! assert_noop_msg {
     ( $x:expr, $msg:expr ) => {
         let h = frame_support::storage_root(frame_support::StateVersion::V1);
         if let Err(e) = $crate::with_transaction(|| $x) {
-            if let frame_support::dispatch::DispatchError::Module(sp_runtime::ModuleError {
-                message,
-                ..
-            }) = e.error
+            if let sp_runtime::DispatchError::Module(sp_runtime::ModuleError { message, .. }) =
+                e.error
             {
                 assert_eq!(message, Some($msg));
             } else {

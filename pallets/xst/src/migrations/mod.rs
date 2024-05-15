@@ -32,7 +32,8 @@ use super::pallet::{Config, Pallet};
 use common::{fixed, Fixed, XSTUSD};
 use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
 use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+use frame_support::{traits::GetStorageVersion as _, weights::Weight};
+use log::info;
 use sp_std::collections::btree_set::BTreeSet;
 
 #[cfg(feature = "try-runtime")]

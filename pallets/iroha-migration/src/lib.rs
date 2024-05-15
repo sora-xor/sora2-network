@@ -76,7 +76,7 @@ pub use weights::WeightInfo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-fn blocks_till_migration<T>() -> T::BlockNumber
+fn blocks_till_migration<T>() -> BlockNumberFor<T>
 where
     T: frame_system::Config,
 {
@@ -92,7 +92,7 @@ where
     T: frame_system::Config,
 {
     approving_accounts: Vec<T::AccountId>,
-    migrate_at: Option<T::BlockNumber>,
+    migrate_at: Option<BlockNumberFor<T>>,
 }
 
 impl<T> Default for PendingMultisigAccount<T>
@@ -346,7 +346,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             // Migrate accounts whose quorum has been reached and enough time has passed since then
             PendingMultiSigAccounts::<T>::translate(|key, mut value: PendingMultisigAccount<T>| {
                 if let Some(migrate_at) = value.migrate_at {

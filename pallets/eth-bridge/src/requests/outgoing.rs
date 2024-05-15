@@ -49,7 +49,7 @@ use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
-use frame_support::dispatch::DispatchError;
+use sp_runtime::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;

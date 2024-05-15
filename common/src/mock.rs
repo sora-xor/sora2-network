@@ -30,7 +30,6 @@
 
 use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::DispatchError;
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -40,6 +39,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_runtime::AccountId32;
+use sp_runtime::DispatchError;
 use sp_std::convert::TryFrom;
 
 #[derive(

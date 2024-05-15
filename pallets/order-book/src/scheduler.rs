@@ -112,7 +112,7 @@ impl<T: Config> Pallet<T> {
     /// need to be retried when more weight is available.
     pub fn service_expiration_block(
         data_layer: &mut impl DataLayer<T>,
-        block: T::BlockNumber,
+        block: BlockNumberFor<T>,
         weight: &mut WeightMeter,
     ) -> bool {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_block_base()) {
@@ -172,14 +172,14 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config>
     ExpirationScheduler<
-        T::BlockNumber,
+        BlockNumberFor<T>,
         OrderBookId<AssetIdOf<T>, T::DEXId>,
         T::DEXId,
         T::OrderId,
         DispatchError,
     > for Pallet<T>
 {
-    fn service_expiration(current_block: T::BlockNumber, weight: &mut WeightMeter) {
+    fn service_expiration(current_block: BlockNumberFor<T>, weight: &mut WeightMeter) {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_base()) {
             return;
         }
@@ -203,7 +203,7 @@ impl<T: Config>
     }
 
     fn schedule_expiration(
-        when: T::BlockNumber,
+        when: BlockNumberFor<T>,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
@@ -215,7 +215,7 @@ impl<T: Config>
     }
 
     fn unschedule_expiration(
-        when: T::BlockNumber,
+        when: BlockNumberFor<T>,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {

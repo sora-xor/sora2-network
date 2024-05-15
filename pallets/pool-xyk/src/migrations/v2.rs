@@ -1,5 +1,5 @@
 use common::generate_storage_instance;
-use frame_support::dispatch::Weight;
+use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{StorageMap, StorageVersion, ValueQuery};
 use frame_support::traits::Get;
 use frame_support::Identity;

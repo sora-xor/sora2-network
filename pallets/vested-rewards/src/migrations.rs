@@ -5,10 +5,10 @@ use codec::{Decode, Encode};
 use common::balance;
 use common::{AssetInfoProvider, FromGenericPair};
 use common::{Balance, Fixed, PSWAP, VAL, XSTUSD};
-use frame_support::dispatch::GetStorageVersion;
-use frame_support::log;
+use frame_support::pallet_prelude::GetStorageVersion;
 use frame_support::traits::{Get, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::Weight;
+use frame_system::pallet_prelude::BlockNumberFor;
 use serde::{Deserialize, Serialize};
 use sp_io::MultiRemovalResults;
 use sp_runtime::traits::Zero;
@@ -18,6 +18,7 @@ pub mod v4 {
     use super::*;
     use common::CrowdloanTag;
     use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::BlockNumberFor;
     use sp_runtime::traits::UniqueSaturatedInto;
 
     /// A vested reward for crowdloan.
@@ -78,7 +79,7 @@ pub mod v4 {
         <T as frame_system::Config>::AccountId,
         Blake2_128Concat,
         <T as assets::Config>::AssetId,
-        <T as frame_system::Config>::BlockNumber,
+        BlockNumberFor<T>,
         ValueQuery,
     >;
 

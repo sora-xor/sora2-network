@@ -284,7 +284,7 @@ pub mod pallet {
     pub type ExpirationsAgenda<T: Config> = StorageMap<
         _,
         Identity,
-        T::BlockNumber,
+        BlockNumberFor<T>,
         BoundedVec<(OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
     >;
@@ -305,7 +305,7 @@ pub mod pallet {
     /// so they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
-    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
+    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -518,7 +518,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform scheduled expirations
-        fn on_initialize(current_block: T::BlockNumber) -> Weight {
+        fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
             let mut expiration_weight_counter =
                 WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
             Self::service_expiration(current_block, &mut expiration_weight_counter);

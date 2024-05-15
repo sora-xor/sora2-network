@@ -1,12 +1,12 @@
 use crate::requests::RequestStatus;
 use codec::Decode;
 use codec::Encode;
-use frame_support::dispatch::GetStorageVersion;
+use frame_support::pallet_prelude::GetStorageVersion;
 use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::sp_runtime::ModuleError;
 use frame_support::traits::StorageVersion;
-use frame_support::RuntimeDebug;
+use sp_core::RuntimeDebug;
 
 use crate::Config;
 use crate::Pallet;

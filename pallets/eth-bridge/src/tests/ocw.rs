@@ -42,7 +42,7 @@ use crate::{
 use codec::Encode;
 use common::{DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::assert_ok;
-use frame_support::dispatch::DispatchError;
+use sp_runtime::DispatchError;
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
 use std::str::FromStr;

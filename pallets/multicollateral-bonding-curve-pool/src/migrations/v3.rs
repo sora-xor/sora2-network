@@ -5,11 +5,8 @@ use crate::Pallet;
 use codec::{Decode, Encode};
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::{
-    log::{error, info},
-    pallet_prelude::StorageVersion,
-    traits::GetStorageVersion as _,
-};
+use frame_support::{pallet_prelude::StorageVersion, traits::GetStorageVersion as _};
+use log::{error, info};
 
 #[cfg(feature = "try-runtime")]
 use sp_std::prelude::Vec;

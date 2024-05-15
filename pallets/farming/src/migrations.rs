@@ -43,7 +43,7 @@ pub mod v2 {
     impl<T, G> OnRuntimeUpgrade for Migrate<T, G>
     where
         T: Config,
-        G: Get<Vec<(T::AccountId, T::BlockNumber)>>,
+        G: Get<Vec<(T::AccountId, BlockNumberFor<T>)>>,
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
@@ -103,7 +103,7 @@ pub mod v3 {
     where
         T: Config,
         P: Get<Vec<(T::AccountId, T::AccountId)>>,
-        B: Get<Vec<T::BlockNumber>>,
+        B: Get<Vec<BlockNumberFor<T>>>,
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(2) {

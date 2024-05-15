@@ -33,7 +33,7 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use sp_arithmetic::traits::{CheckedDiv, One};
 

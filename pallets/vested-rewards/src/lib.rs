@@ -43,12 +43,14 @@ use common::FromGenericPair;
 use common::{
     balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
+use frame_system::pallet_prelude::BlockNumberFor;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{CheckedSub, Zero};
+use sp_runtime::DispatchError;
 use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
@@ -308,8 +310,8 @@ impl<T: Config> Pallet<T> {
 
     /// Calculate amount of tokens to send to user
     pub fn calculate_claimable_crowdloan_reward(
-        now: &T::BlockNumber,
-        info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        now: &BlockNumberFor<T>,
+        info: &CrowdloanInfo<T::AssetId, BlockNumberFor<T>, T::AccountId>,
         total_rewards: Balance,
         contribution: Balance,
         rewarded: Balance,
@@ -341,8 +343,8 @@ impl<T: Config> Pallet<T> {
     /// Returns total amount of tokens sent to user for this crowdloan
     pub fn claim_crowdloan_reward_for_asset(
         user: &T::AccountId,
-        now: &T::BlockNumber,
-        info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        now: &BlockNumberFor<T>,
+        info: &CrowdloanInfo<T::AssetId, BlockNumberFor<T>, T::AccountId>,
         asset_id: &T::AssetId,
         total_rewards: Balance,
         contribution: Balance,
@@ -407,8 +409,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn register_crowdloan_unchecked(
         tag: CrowdloanTag,
-        start_block: T::BlockNumber,
-        length: T::BlockNumber,
+        start_block: BlockNumberFor<T>,
+        length: BlockNumberFor<T>,
         rewards: Vec<(T::AssetId, Balance)>,
         contributions: Vec<(T::AccountId, Balance)>,
     ) -> DispatchResult {
@@ -583,8 +585,8 @@ pub mod pallet {
         pub fn register_crowdloan(
             origin: OriginFor<T>,
             tag: CrowdloanTag,
-            start_block: T::BlockNumber,
-            length: T::BlockNumber,
+            start_block: BlockNumberFor<T>,
+            length: BlockNumberFor<T>,
             rewards: Vec<(T::AssetId, Balance)>,
             contributions: Vec<(T::AccountId, Balance)>,
         ) -> DispatchResultWithPostInfo {
@@ -670,7 +672,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         CrowdloanTag,
-        CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        CrowdloanInfo<T::AssetId, BlockNumberFor<T>, T::AccountId>,
         OptionQuery,
     >;
 

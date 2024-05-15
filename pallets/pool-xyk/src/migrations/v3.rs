@@ -30,13 +30,11 @@
 
 use crate::pallet::{Config, Pallet};
 use common::{Balance, EnabledSourcesManager, ToFeeAccount};
+use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;
-use frame_support::{
-    log::{error, info},
-    weights::Weight,
-};
+use log::{error, info};
 use sp_runtime::DispatchResult;
 use sp_std::prelude::Vec;
 
@@ -216,7 +214,8 @@ where
     L: Get<Vec<(T::AssetId, T::AssetId, T::DEXId)>>,
 {
     fn on_runtime_upgrade() -> Weight {
-        let mut weight_meter = WeightMeter::max_limit();
+        // new() returns max limit
+        let mut weight_meter = WeightMeter::new();
 
         if let Err(err) =
             frame_support::storage::with_storage_layer(|| Self::migrate(&mut weight_meter))
@@ -225,7 +224,7 @@ where
         } else {
             info!("Successfully migrated PoolXYK to v3");
         };
-        weight_meter.consumed
+        weight_meter.consumed()
     }
 
     #[cfg(feature = "try-runtime")]

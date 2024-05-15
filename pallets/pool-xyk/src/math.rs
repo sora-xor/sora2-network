@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
+use sp_runtime::DispatchError;
 
 use assets::AssetIdOf;
 use common::prelude::{Balance, Fixed, FixedWrapper};

@@ -517,7 +517,7 @@ pub mod pallet {
     impl<T> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                phantomL: Default::default(),
+                phantom: Default::default(),
                 source_types: Default::default(),
             }
         }

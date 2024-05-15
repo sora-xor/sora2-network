@@ -36,6 +36,7 @@ use common::{
     balance, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL, XOR,
 };
 use frame_support::ensure;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_arithmetic::traits::Saturating;
 
@@ -52,7 +53,6 @@ pub use weights::WeightInfo;
 type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;
-type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
@@ -60,7 +60,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 // Value to at least have enough funds for updating the limit
 pub const DEFAULT_LIMIT: Balance = balance!(5);
 
-pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
+pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberFor<T> {
     14400u32.into()
 }
 
@@ -68,14 +68,13 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+    use common::AccountIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
-    use sp_core::H160;
-
-    use common::AccountIdOf;
     use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
+    use sp_core::H160;
 
     use super::*;
 
@@ -212,7 +211,7 @@ pub mod pallet {
         T::AccountId,
         Blake2_256,
         T::AssetId,
-        (BlockNumberOf<T>, Balance),
+        (BlockNumberFor<T>, Balance),
     >;
 
     #[pallet::type_value]
@@ -230,7 +229,6 @@ pub mod pallet {
         pub reserves_account_id: T::TechAccountId,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -240,7 +238,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ReservesAcc::<T>::put(&self.reserves_account_id);
         }
@@ -277,8 +275,8 @@ impl<T: Config> Pallet<T> {
         target: &T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
-        current_block_number: BlockNumberOf<T>,
-    ) -> Result<(BlockNumberOf<T>, Balance), Error<T>> {
+        current_block_number: BlockNumberFor<T>,
+    ) -> Result<(BlockNumberFor<T>, Balance), Error<T>> {
         let balance_limit = Self::transfer_limit();
         ensure!(amount <= balance_limit, Error::AmountAboveLimit);
         if let Some((initial_block_number, taken_amount)) = Transfers::<T>::get(target, asset_id) {

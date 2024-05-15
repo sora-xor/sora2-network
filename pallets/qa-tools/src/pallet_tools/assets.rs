@@ -31,7 +31,7 @@
 use crate::Config;
 use assets::AssetIdOf;
 use common::{AccountIdOf, FixedInner};
-use frame_support::dispatch::DispatchError;
+use sp_runtime::DispatchError;
 use sp_std::cmp::Ordering;
 
 #[derive(Debug, Eq, PartialEq)]

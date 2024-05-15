@@ -38,9 +38,9 @@ use crate::{
 };
 use alloc::boxed::Box;
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, GetCallMetadata};
-use frame_support::log::{debug, error};
-use frame_support::sp_io::hashing::blake2_256;
+use sp_runtime::DispatchError;
+use log::{debug, error};
+use sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{BlockNumberProvider, IdentifyAccount, Saturating};
 use frame_support::sp_runtime::RuntimeAppPublic;
@@ -67,14 +67,14 @@ where
     T: Config,
 {
     pub extrinsic_hash: H256,
-    pub submitted_at: Option<T::BlockNumber>,
+    pub submitted_at: Option<BlockNumberFor<T>>,
     pub call: Call<T>,
 }
 
 impl<T: Config> SignedTransactionData<T> {
     pub fn new(
         extrinsic_hash: H256,
-        submitted_at: Option<T::BlockNumber>,
+        submitted_at: Option<BlockNumberFor<T>>,
         call: impl Into<Call<T>>,
     ) -> Self {
         SignedTransactionData {
@@ -91,12 +91,11 @@ impl<T: Config> SignedTransactionData<T> {
     pub fn from_local_call<LocalCall: Clone + Encode + Into<Call<T>>>(
         call: LocalCall,
         account: &Account<T>,
-        submitted_at: Option<T::BlockNumber>,
+        submitted_at: Option<BlockNumberFor<T>>,
     ) -> Option<Self>
     where
         T: CreateSignedTransaction<LocalCall>,
     {
-        use frame_support::inherent::Extrinsic;
         let overarching_call: Call<T> = call.clone().into();
         let account_data = frame_system::Account::<T>::get(&account.id);
         let nonce = if submitted_at.is_some() {

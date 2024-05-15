@@ -417,9 +417,9 @@ fn fill_price_inner<T: Config>(
     price: OrderPrice,
     users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
     lifespans: &mut Peekable<impl Iterator<Item = u64>>,
-    current_block: T::BlockNumber,
+    current_block: BlockNumberFor<T>,
     total_payment: &mut Payment<T::AssetId, T::AccountId, T::DEXId>,
-    to_expire: &mut BTreeMap<T::BlockNumber, Vec<T::OrderId>>,
+    to_expire: &mut BTreeMap<BlockNumberFor<T>, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {
         let Some(user) = users.next() else {

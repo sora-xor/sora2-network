@@ -1,6 +1,7 @@
 use crate::{AssetIdOf, Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
 use common::{convert_block_number_to_timestamp, Balance};
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
@@ -13,7 +14,7 @@ pub fn migrate_token_locker_data<T: Config>() -> Weight {
 
     let current_timestamp = Timestamp::<T>::get();
     let current_block = frame_system::Pallet::<T>::block_number();
-    TokenLockerData::<T>::translate_values::<Vec<(Balance, T::BlockNumber, AssetIdOf<T>)>, _>(
+    TokenLockerData::<T>::translate_values::<Vec<(Balance, BlockNumberFor<T>, AssetIdOf<T>)>, _>(
         |v| {
             Some(
                 v.into_iter()

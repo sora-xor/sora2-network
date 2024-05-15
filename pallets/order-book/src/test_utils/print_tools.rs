@@ -134,9 +134,9 @@ pub fn pretty_print_order_book<T: Config>(
 
 fn print_block_expirations<T: Config>(block: u32)
 where
-    T::BlockNumber: From<u32>,
+    BlockNumberFor<T>: From<u32>,
 {
-    let block = T::BlockNumber::from(block);
+    let block = BlockNumberFor<T>::from(block);
     let expirations: BoundedVec<
         (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId),
         T::MaxExpiringOrdersPerBlock,
@@ -156,7 +156,7 @@ where
 /// ```
 pub fn pretty_print_expirations<T: Config>(blocks: sp_std::ops::Range<u32>)
 where
-    T::BlockNumber: TryFrom<u32>,
+    BlockNumberFor<T>: TryFrom<u32>,
 {
     println!("block |{:>148} | order id", "order book id");
     for block in blocks {
