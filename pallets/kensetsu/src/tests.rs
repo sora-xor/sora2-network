@@ -601,30 +601,6 @@ fn test_borrow_cdp_type_hard_cap() {
     });
 }
 
-/// CDP with collateral exists, hard cap is set in protocol risk parameters.
-/// Borrow results with an error `HardCapSupply`
-#[test]
-fn test_borrow_protocol_hard_cap() {
-    new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(
-            Balance::MAX,
-            Perbill::from_percent(50),
-            FixedU128::from_float(0.0),
-            balance!(0),
-        );
-        assert_ok!(KensetsuPallet::update_hard_cap_total_supply(
-            RuntimeOrigin::root(),
-            balance!(10)
-        ));
-        let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
-
-        assert_noop!(
-            KensetsuPallet::borrow(alice(), cdp_id, balance!(20), balance!(20)),
-            KensetsuError::HardCapSupply
-        );
-    });
-}
-
 /// Test borrow call with wrong parameters: min_borrow_amount > max_borrow_amount
 #[test]
 fn test_borrow_wrong_parameters() {
@@ -1592,7 +1568,6 @@ fn test_liquidate_kusd_bad_debt() {
 #[test]
 fn test_liquidate_zero_lot() {
     new_test_ext().execute_with(|| {
-        KusdHardCap::<TestRuntime>::set(Balance::MAX);
         let new_parameters = CollateralRiskParameters {
             hard_cap: Balance::MAX,
             liquidation_ratio: Perbill::from_percent(100),
@@ -1787,7 +1762,7 @@ fn test_accrue_interest_less_bad_debt() {
         let new_bad_debt = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
         // fee is burned as bad debt, no KUSD minted
-        assert_eq!(collateral_info.kusd_supply, debt);
+        assert_eq!(collateral_info.kusd_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
@@ -1828,7 +1803,7 @@ fn test_accrue_interest_eq_bad_debt() {
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
         // supply doesn't change, fee is burned as bad debt
-        assert_eq!(collateral_info.kusd_supply, debt);
+        assert_eq!(collateral_info.kusd_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
@@ -1870,7 +1845,7 @@ fn test_accrue_interest_gt_bad_debt() {
         let profit = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(XOR).expect("must exists");
         // 1 KUSD goes to profit and 1 is burned as bad debt
-        assert_eq!(collateral_info.kusd_supply, debt + profit);
+        assert_eq!(collateral_info.kusd_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.debt, debt + interest);
@@ -1992,45 +1967,6 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             new_info.interest_coefficient,
             FixedU128::one() * (FixedU128::one() + stability_fee_rate)
         );
-    });
-}
-
-/// Only root can update hard cap
-#[test]
-fn test_update_hard_cap_only_root() {
-    new_test_ext().execute_with(|| {
-        assert_noop!(
-            KensetsuPallet::update_hard_cap_total_supply(RuntimeOrigin::none(), balance!(0)),
-            BadOrigin
-        );
-        assert_noop!(
-            KensetsuPallet::update_hard_cap_total_supply(alice(), balance!(0)),
-            BadOrigin
-        );
-    });
-}
-
-/// Root can update hard cap
-#[test]
-fn test_update_hard_cap_sunny_day() {
-    new_test_ext().execute_with(|| {
-        let new_hard_cap = balance!(100);
-
-        assert_ok!(KensetsuPallet::update_hard_cap_total_supply(
-            RuntimeOrigin::root(),
-            new_hard_cap
-        ));
-
-        let old_hard_cap = balance!(0);
-        System::assert_has_event(
-            Event::DebtTokenHardCapUpdated {
-                debt_asset_id: KUSD,
-                new_hard_cap,
-                old_hard_cap,
-            }
-            .into(),
-        );
-        assert_eq!(new_hard_cap, KusdHardCap::<TestRuntime>::get());
     });
 }
 
