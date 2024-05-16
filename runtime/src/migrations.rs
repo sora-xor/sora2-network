@@ -30,7 +30,6 @@
 
 use crate::*;
 
-#[cfg(not(feature = "ready-to-test"))]
 pub type Migrations = (
     assets::migration::register_asset::RegisterAsset<
         Runtime,
@@ -39,25 +38,40 @@ pub type Migrations = (
         KXORAssetSymbol,
         PredefinedAssetOwnerAccountId,
     >,
+    assets::migration::register_asset::RegisterAsset<
+        Runtime,
+        SBAssetId,
+        SBAssetName,
+        SBAssetSymbol,
+        PredefinedAssetOwnerAccountId,
+    >,
+    assets::migration::register_asset::RegisterAsset<
+        Runtime,
+        KARMAAssetId,
+        KARMAAssetName,
+        KARMAAssetSymbol,
+        PredefinedAssetOwnerAccountId,
+    >,
+    TestMigrations,
 );
 
+#[cfg(not(feature = "ready-to-test"))]
+pub type TestMigrations = ();
+
 #[cfg(feature = "ready-to-test")] // kensetsu
-pub type Migrations = (
-    kensetsu::migrations::remove_hard_cap::RemoveHardCap<Runtime>,
-    assets::migration::register_asset::RegisterAsset<
-        Runtime,
-        KXORAssetId,
-        KXORAssetName,
-        KXORAssetSymbol,
-        PredefinedAssetOwnerAccountId,
-    >,
-);
+pub type TestMigrations = (kensetsu::migrations::remove_hard_cap::RemoveHardCap<Runtime>,);
 
 parameter_types! {
     pub const MaxMigrations: u32 = 100;
     pub KXORAssetId: AssetId = common::KXOR;
     pub KXORAssetSymbol: AssetSymbol = AssetSymbol(b"KXOR".to_vec());
     pub KXORAssetName: AssetName = AssetName(b"Kensetsu XOR".to_vec());
+    pub SBAssetId: AssetId = common::SB;
+    pub SBAssetSymbol: AssetSymbol = AssetSymbol(b"SB".to_vec());
+    pub SBAssetName: AssetName = AssetName(b"SORA Builders".to_vec());
+    pub KARMAAssetId: AssetId = common::KARMA;
+    pub KARMAAssetSymbol: AssetSymbol = AssetSymbol(b"KARMA".to_vec());
+    pub KARMAAssetName: AssetName = AssetName(b"Chameleon".to_vec());
     pub PredefinedAssetOwnerAccountId: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"SYSTEM_ACCOUNT".to_vec(),

@@ -896,7 +896,7 @@ fn testnet_genesis(
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
 ) -> GenesisConfig {
-    use common::{KXOR, XSTUSD};
+    use common::{KARMA, KXOR, SB, XSTUSD};
 
     // Initial balances
     let initial_staking = balance!(1000000000);
@@ -1454,6 +1454,28 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"KXOR".to_vec()),
                     AssetName(b"Kensetsu XOR".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    SB,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"SB".to_vec()),
+                    AssetName(b"SORA Builders".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    KARMA,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KARMA".to_vec()),
+                    AssetName(b"Chameleon".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -2139,6 +2161,28 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"KXOR".to_vec()),
             AssetName(b"Kensetsu XOR".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            SB,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"SB".to_vec()),
+            AssetName(b"SORA Builders".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            KARMA,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KARMA".to_vec()),
+            AssetName(b"Chameleon".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
