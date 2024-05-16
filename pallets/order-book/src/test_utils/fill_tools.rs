@@ -39,8 +39,8 @@ use order_book_imported::{
 use assets::AssetIdOf;
 use common::prelude::{Balance, BalanceUnit, Scalar};
 use common::PriceVariant;
-use log::{debug, trace};
 use frame_support::traits::{Get, Time};
+use log::{debug, trace};
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};
 use sp_std::iter::Peekable;
 use sp_std::{collections::btree_map::BTreeMap, iter::repeat, vec::Vec};
@@ -422,11 +422,9 @@ fn fill_price_inner<T: Config>(
     to_expire: &mut BTreeMap<BlockNumberFor<T>, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {
-        let Some(user) = users.next() else {
-            break
-        };
+        let Some(user) = users.next() else { break };
         let Some(lifespan) = lifespans.next() else {
-            break
+            break;
         };
         let order = LimitOrder::<T>::new(
             order_book.next_order_id(),

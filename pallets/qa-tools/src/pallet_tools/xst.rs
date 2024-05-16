@@ -34,13 +34,12 @@ use codec::{Decode, Encode};
 use common::fixnum::ops::CheckedSub;
 use common::prelude::{BalanceUnit, QuoteAmount};
 use common::{fixed, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
-use frame_support::dispatch::{
-    DispatchError, DispatchResult, DispatchResultWithPostInfo, RawOrigin,
-};
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, RawOrigin};
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use pallet_tools::price_tools::AssetPrices;
+use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::vec;
 use sp_std::vec::Vec;

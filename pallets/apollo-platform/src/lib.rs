@@ -61,7 +61,6 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{balance, DEXId, LiquiditySourceFilter, PriceVariant, CERES_ASSET_ID, DAI};
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
-    use log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
@@ -69,6 +68,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
+    use log::{debug, warn};
     use sp_runtime::traits::{UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
 

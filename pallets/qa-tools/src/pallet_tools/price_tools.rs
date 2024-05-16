@@ -36,6 +36,7 @@ use common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use sp_arithmetic::traits::{CheckedDiv, One};
+use sp_runtime::DispatchError;
 
 /// Directly set buy & sell XOR prices of `asset_id` (prices of XOR in terms of `asset_id`);
 /// verifying the values beforehand.

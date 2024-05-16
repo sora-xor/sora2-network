@@ -136,7 +136,7 @@ fn print_block_expirations<T: Config>(block: u32)
 where
     BlockNumberFor<T>: From<u32>,
 {
-    let block = BlockNumberFor<T>::from(block);
+    let block = BlockNumberFor::<T>::from(block);
     let expirations: BoundedVec<
         (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId),
         T::MaxExpiringOrdersPerBlock,

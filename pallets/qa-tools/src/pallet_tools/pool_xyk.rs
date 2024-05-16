@@ -36,8 +36,9 @@ use common::{
     balance, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, TradingPair,
     TradingPairSourceManager, XOR,
 };
-use frame_support::dispatch::{DispatchError, RawOrigin};
+use frame_support::dispatch::RawOrigin;
 use sp_arithmetic::traits::CheckedMul;
+use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::vec::Vec;
 

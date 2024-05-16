@@ -4,46 +4,47 @@ version = "3.3.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
-[dependencies]
-codec = { package = "parity-scale-codec", version = "3", features = [
-    "derive",
-    "chain-error",
-] }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-hex-literal = "0.4.1"
-sc-finality-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sc-network = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sc-network-common = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sc-service = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# [dependencies]
+# codec = { package = "parity-scale-codec", version = "3", features = [
+#     "derive",
+#     "chain-error",
+# ] }
+# frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# hex-literal = "0.4.1"
+# sc-finality-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sc-network = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sc-network-common = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sc-service = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
-serde = { version = "1.0.101", features = ["derive"] }
-serde_json = "1.0.61"
+# serde = { version = "1.0.101", features = ["derive"] }
+# serde_json = "1.0.61"
 
-# bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
+# # bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 
-common = { path = "../../common" }
-faucet = { path = "../../pallets/faucet", optional = true }
-framenode-runtime = { path = "../../runtime" }
-iroha-migration = { path = "../../pallets/iroha-migration" }
-order-book = { path = "../../pallets/order-book" }
-permissions = { path = "../../pallets/permissions" }
-rewards = { path = "../../pallets/rewards" }
-technical = { path = "../../pallets/technical" }
-xor-fee = { path = "../../pallets/xor-fee" }
+# common = { path = "../../common" }
+# faucet = { path = "../../pallets/faucet", optional = true }
+# framenode-runtime = { path = "../../runtime" }
+# iroha-migration = { path = "../../pallets/iroha-migration" }
+# order-book = { path = "../../pallets/order-book" }
+# permissions = { path = "../../pallets/permissions" }
+# rewards = { path = "../../pallets/rewards" }
+# technical = { path = "../../pallets/technical" }
+# xor-fee = { path = "../../pallets/xor-fee" }
 
-[dev-dependencies]
-common = { path = "../../common", features = ["test"] }
+# [dev-dependencies]
+# common = { path = "../../common", features = ["test"] }
 
-[features]
-include-real-files = []
-main-net-coded = []
-test = ["common/test"]
+# [features]
+# include-real-files = []
+# main-net-coded = []
+# test = ["common/test"]
 
-private-net = ["faucet", "framenode-runtime/private-net"]
-wip = ["framenode-runtime/wip"]
-ready-to-test = ["framenode-runtime/ready-to-test"]
+
+# private-net = ["faucet", "framenode-runtime/private-net"]
+# wip = ["framenode-runtime/wip"]
+# ready-to-test = ["framenode-runtime/ready-to-test"]
