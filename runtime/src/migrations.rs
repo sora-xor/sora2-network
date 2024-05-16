@@ -28,9 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#[cfg(feature = "ready-to-test")] // kensetsu
 use crate::*;
 
+#[cfg(not(feature = "ready-to-test"))]
+pub type Migrations = ();
+
+#[cfg(feature = "ready-to-test")] // kensetsu
 pub type Migrations = (
+    kensetsu::migrations::remove_hard_cap::RemoveHardCap<Runtime>,
     assets::migration::register_asset::RegisterAsset<
         Runtime,
         KXORAssetId,
@@ -52,15 +58,9 @@ pub type Migrations = (
         KARMAAssetSymbol,
         PredefinedAssetOwnerAccountId,
     >,
-    TestMigrations,
 );
 
-#[cfg(not(feature = "ready-to-test"))]
-pub type TestMigrations = ();
-
 #[cfg(feature = "ready-to-test")] // kensetsu
-pub type TestMigrations = (kensetsu::migrations::remove_hard_cap::RemoveHardCap<Runtime>,);
-
 parameter_types! {
     pub const MaxMigrations: u32 = 100;
     pub KXORAssetId: AssetId = common::KXOR;
