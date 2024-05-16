@@ -348,32 +348,30 @@ impl<AssetId> AssetId32<AssetId> {
     }
 
     /// Construct asset id for synthetic asset using its `reference_symbol`
-    pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
-    where
-        Symbol: From<SymbolName> + PartialEq + Encode,
-    {
+    pub fn from_synthetic_reference_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
         if *reference_symbol == SymbolName::usd().into() {
             return Self::from_asset_id(PredefinedAssetId::XSTUSD);
         }
 
-        let mut bytes = [0u8; 32];
-        let symbol_bytes = reference_symbol.encode();
-        let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
-        bytes[0] = 3;
-        bytes[2..18].copy_from_slice(&symbol_hash);
-
-        Self::from_bytes(bytes)
+        Self::from_reference_symbol(3, reference_symbol)
     }
 
-    /// Construct asset id for Kensetsu debt asset using its `reference_symbol`
-    pub fn from_kensetsu_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
-    where
-        Symbol: From<SymbolName> + PartialEq + Encode,
-    {
+    /// Construct asset id for Kensetsu debt asset using its `peg_symbol` on Sora network
+    pub fn from_kensetsu_sora_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+        Self::from_reference_symbol(4, reference_symbol)
+    }
+
+    /// Construct asset id for Kensetsu debt asset using its `peg_symbol` from Oracle
+    pub fn from_kensetsu_oracle_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+        Self::from_reference_symbol(5, reference_symbol)
+    }
+
+    /// Constructs Asset id from symbol with provided zero byte.
+    fn from_reference_symbol<Symbol: Encode>(zero_byte: u8, reference_symbol: &Symbol) -> Self {
         let mut bytes = [0u8; 32];
         let symbol_bytes = reference_symbol.encode();
         let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
-        bytes[0] = 4;
+        bytes[0] = zero_byte;
         bytes[2..18].copy_from_slice(&symbol_hash);
 
         Self::from_bytes(bytes)

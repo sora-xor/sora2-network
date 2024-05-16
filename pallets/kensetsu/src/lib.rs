@@ -207,7 +207,6 @@ pub mod pallet {
     use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
-    use sp_std::vec::Vec;
 
     /// CDP id type
     pub type CdpId = u128;
@@ -944,23 +943,30 @@ pub mod pallet {
         fn register_asset_id(
             stablecoin_parameters: &StablecoinParameters<T::AssetId>,
         ) -> Result<T::AssetId, DispatchError> {
-            let (mut peg_symbol, source_symbol) = match &stablecoin_parameters.peg_asset {
-                PegAsset::OracleSymbol(symbol) => (symbol.clone(), b'B'),
+            let (vec_symbol, stable_asset_id) = match &stablecoin_parameters.peg_asset {
+                PegAsset::OracleSymbol(symbol) => {
+                    let mut vec_symbol = symbol.clone().0;
+                    vec_symbol.insert(0, b'K');
+                    let stable_asset_id: T::AssetId =
+                        AssetId32::<common::PredefinedAssetId>::from_kensetsu_oracle_peg_symbol(
+                            &vec_symbol,
+                        )
+                        .into();
+                    (vec_symbol, stable_asset_id)
+                }
                 PegAsset::SoraAssetId(peg_asset_id) => {
                     let (symbol, ..) = T::AssetInfoProvider::get_asset_info(peg_asset_id);
-                    (SymbolName(symbol.0), b'S')
+                    let mut vec_symbol = symbol.0;
+                    vec_symbol.insert(0, b'K');
+                    let stable_asset_id: T::AssetId =
+                        AssetId32::<common::PredefinedAssetId>::from_kensetsu_sora_peg_symbol(
+                            &vec_symbol,
+                        )
+                        .into();
+                    (vec_symbol, stable_asset_id)
                 }
             };
-            let mut vec_symbol = Vec::<u8>::with_capacity(peg_symbol.0.len() + 2);
-            vec_symbol.push(b'K');
-            vec_symbol.push(source_symbol);
-            vec_symbol.append(&mut peg_symbol.0);
 
-            let stable_asset_id: T::AssetId =
-                AssetId32::<common::PredefinedAssetId>::from_kensetsu_reference_symbol(
-                    &SymbolName(vec_symbol.clone()),
-                )
-                .into();
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
