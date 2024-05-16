@@ -187,6 +187,7 @@ mod _allowed_deprecated {
         KUSD = 12,
         KXOR = 13,
         SB = 14,
+        KARMA = 15,
     }
 }
 
@@ -203,6 +204,7 @@ pub const KEN: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
 pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::SB);
+pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
