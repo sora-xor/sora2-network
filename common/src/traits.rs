@@ -1172,17 +1172,17 @@ pub trait AssetRegulator<AccountId, AssetId> {
         asset_id: &AssetId,
     ) -> Result<(), DispatchError>;
 
-    /// Check asset regulation for minting a specific `asset_id` by a specifc `account_id`
+    /// Check asset regulation for minting a specific `asset_id` by a specific `account_id`
     fn mint(
         issuer: &AccountId,
         to: Option<&AccountId>,
         asset_id: &AssetId,
     ) -> Result<(), DispatchError>;
 
-    /// Check asset regulation for transferring a specific `asset_id` by a specifc `account_id`
+    /// Check asset regulation for transferring a specific `asset_id` by a specific `account_id`
     fn transfer(from: &AccountId, to: &AccountId, asset_id: &AssetId) -> Result<(), DispatchError>;
 
-    /// Check asset regulation for minting a specific `asset_id` by a specifc `account_id`
+    /// Check asset regulation for minting a specific `asset_id` by a specific `account_id`
     fn burn(
         issuer: &AccountId,
         from: Option<&AccountId>,
