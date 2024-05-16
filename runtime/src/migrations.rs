@@ -43,7 +43,7 @@ pub type Migrations = (
 
 #[cfg(feature = "ready-to-test")] // kensetsu
 pub type Migrations = (
-    kensetsu::migrations::stage_correction::CorrectKusdBalances<Runtime>,
+    kensetsu::migrations::remove_hard_cap::RemoveHardCap<Runtime>,
     assets::migration::register_asset::RegisterAsset<
         Runtime,
         KXORAssetId,
