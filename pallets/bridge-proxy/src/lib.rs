@@ -81,7 +81,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
+        frame_system::Config
+        + assets::Config
+        + pallet_timestamp::Config
+        + technical::Config
+        + permissions::Config
     {
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 

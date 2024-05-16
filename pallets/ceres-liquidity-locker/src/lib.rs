@@ -53,7 +53,9 @@ pub mod pallet {
     use sp_std::vec::Vec;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + timestamp::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + timestamp::Config + permissions::Config
+    {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 

@@ -347,6 +347,7 @@ pub mod pallet {
         + CreateSignedTransaction<Call<Self>>
         + CreateSignedTransaction<bridge_multisig::Call<Self>>
         + assets::Config
+        + permissions::Config
         + bridge_multisig::Config<RuntimeCall = <Self as Config>::RuntimeCall>
         + fmt::Debug
     {

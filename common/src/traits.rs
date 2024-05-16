@@ -1164,3 +1164,69 @@ impl<AccountId> ReferrerAccountProvider<AccountId> for () {
         None
     }
 }
+
+pub trait AssetRegulator<AccountId, AssetId> {
+    /// Assign permission on registering new asset id
+    fn assign_permissions_on_register(
+        owner: &AccountId,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError>;
+
+    /// Check asset regulation for minting a specific `asset_id` by a specifc `account_id`
+    fn mint(
+        issuer: &AccountId,
+        to: Option<&AccountId>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError>;
+
+    /// Check asset regulation for transferring a specific `asset_id` by a specifc `account_id`
+    fn transfer(from: &AccountId, to: &AccountId, asset_id: &AssetId) -> Result<(), DispatchError>;
+
+    /// Check asset regulation for minting a specific `asset_id` by a specifc `account_id`
+    fn burn(
+        issuer: &AccountId,
+        from: Option<&AccountId>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<AccountId, AssetId, A, B> AssetRegulator<AccountId, AssetId> for (A, B)
+where
+    A: AssetRegulator<AccountId, AssetId>,
+    B: AssetRegulator<AccountId, AssetId>,
+{
+    fn mint(
+        issuer: &AccountId,
+        to: Option<&AccountId>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        A::mint(issuer, to, asset_id)?;
+        B::mint(issuer, to, asset_id)?;
+        Ok(())
+    }
+
+    fn transfer(from: &AccountId, to: &AccountId, asset_id: &AssetId) -> Result<(), DispatchError> {
+        A::transfer(from, to, asset_id)?;
+        B::transfer(from, to, asset_id)?;
+        Ok(())
+    }
+
+    fn burn(
+        issuer: &AccountId,
+        from: Option<&AccountId>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        A::burn(issuer, from, asset_id)?;
+        B::burn(issuer, from, asset_id)?;
+        Ok(())
+    }
+
+    fn assign_permissions_on_register(
+        owner: &AccountId,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        A::assign_permissions_on_register(owner, asset_id)?;
+        B::assign_permissions_on_register(owner, asset_id)?;
+        Ok(())
+    }
+}

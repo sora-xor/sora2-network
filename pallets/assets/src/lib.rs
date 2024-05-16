@@ -55,15 +55,15 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    hash, Amount, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
+    Amount, AssetInfoProvider, AssetName, AssetRegulator, AssetSymbol, BalancePrecision,
+    ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter,
+    DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT};
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
@@ -75,7 +75,7 @@ use traits::{
 pub use weights::WeightInfo;
 
 pub type AssetIdOf<T> = <T as Config>::AssetId;
-pub type Permissions<T> = permissions::Pallet<T>;
+// pub type Permissions<T> = permissions::Pallet<T>;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type CurrencyIdOf<T> =
@@ -176,7 +176,7 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{ContentSource, Description};
+    use common::{AssetRegulator, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
 
@@ -185,9 +185,7 @@ pub mod pallet {
     >>::Amount;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + permissions::Config + tokens::Config + common::Config
-    {
+    pub trait Config: frame_system::Config + tokens::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
@@ -258,6 +256,8 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        type AssetRegulator: AssetRegulator<Self::AccountId, Self::AssetId>;
     }
 
     /// The current storage version.
@@ -701,16 +701,7 @@ impl<T: Config> Pallet<T> {
             ),
         );
 
-        let scope = Scope::Limited(hash(&asset_id));
-        let permission_ids = [MINT, BURN];
-        for permission_id in &permission_ids {
-            Permissions::<T>::assign_permission(
-                account_id.clone(),
-                &account_id,
-                *permission_id,
-                scope,
-            )?;
-        }
+        T::AssetRegulator::assign_permissions_on_register(&account_id, &asset_id)?;
 
         if !initial_supply.is_zero() {
             T::Currency::deposit(asset_id, &account_id, initial_supply)?;
@@ -757,26 +748,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn check_permission_maybe_with_parameters(
-        issuer: &T::AccountId,
-        permission_id: u32,
-        asset_id: &T::AssetId,
-    ) -> Result<(), DispatchError> {
-        Permissions::<T>::check_permission_with_scope(
-            issuer.clone(),
-            permission_id,
-            &Scope::Limited(hash(asset_id)),
-        )
-        .or_else(|_| {
-            Permissions::<T>::check_permission_with_scope(
-                issuer.clone(),
-                permission_id,
-                &Scope::Unlimited,
-            )
-        })?;
-        Ok(())
-    }
-
     pub fn transfer_from(
         asset_id: &T::AssetId,
         from: &T::AccountId,
@@ -800,8 +771,7 @@ impl<T: Config> Pallet<T> {
         // No need to check if asset exist.
         // `ensure_asset_is_mintable` will get Default::default() aka `is_mintable == false` and return an error.
         Self::ensure_asset_is_mintable(asset_id)?;
-        Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
-
+        T::AssetRegulator::mint(issuer, Some(to), asset_id)?;
         Self::mint_unchecked(asset_id, to, amount)
     }
 
@@ -819,11 +789,7 @@ impl<T: Config> Pallet<T> {
         from: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        // Holder can burn its funds.
-        if issuer != from {
-            Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
-        }
-
+        T::AssetRegulator::burn(issuer, Some(from), asset_id)?;
         Self::burn_unchecked(asset_id, from, amount)
     }
 
@@ -867,8 +833,8 @@ impl<T: Config> Pallet<T> {
         who: &T::AccountId,
         by_amount: Amount,
     ) -> DispatchResult {
-        Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
+        T::AssetRegulator::burn(who, None, asset_id)?;
+        T::AssetRegulator::mint(who, None, asset_id)?;
         if by_amount.is_positive() {
             Self::ensure_asset_is_mintable(asset_id)?;
         }

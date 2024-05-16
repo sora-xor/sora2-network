@@ -48,13 +48,14 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use common::{hash, AssetRegulator};
 use frame_support::codec::{Decode, Encode};
+use frame_support::sp_runtime::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
-
 #[cfg(test)]
 mod mock;
 
@@ -367,5 +368,65 @@ pub mod pallet {
                     Permissions::<T>::insert(holder_id, scope, permissions);
                 });
         }
+    }
+}
+
+impl<T: Config, AssetId: Encode> AssetRegulator<AccountIdOf<T>, AssetId> for Pallet<T> {
+    fn mint(
+        issuer: &AccountIdOf<T>,
+        _to: Option<&AccountIdOf<T>>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        Self::check_permission_with_scope(issuer.clone(), MINT, &Scope::Limited(hash(asset_id)))
+            .or_else(|_| {
+                Self::check_permission_with_scope(issuer.clone(), MINT, &Scope::Unlimited)
+            })?;
+        Ok(())
+    }
+
+    fn transfer(
+        _from: &AccountIdOf<T>,
+        _to: &AccountIdOf<T>,
+        _asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn burn(
+        issuer: &AccountIdOf<T>,
+        from: Option<&AccountIdOf<T>>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        let needs_check = match from {
+            // in case `from` is not known -> run check
+            None => true,
+            // Holder can burn its funds.
+            // in case burn is not by holder -> run check
+            Some(from_account_id) => from_account_id != issuer,
+        };
+
+        if needs_check {
+            Self::check_permission_with_scope(
+                issuer.clone(),
+                BURN,
+                &Scope::Limited(hash(asset_id)),
+            )
+            .or_else(|_| {
+                Self::check_permission_with_scope(issuer.clone(), BURN, &Scope::Unlimited)
+            })?;
+        }
+        Ok(())
+    }
+
+    fn assign_permissions_on_register(
+        owner: &AccountIdOf<T>,
+        asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        let scope = Scope::Limited(hash(asset_id));
+        let permission_ids = [MINT, BURN];
+        for permission_id in &permission_ids {
+            Self::assign_permission(owner.clone(), &owner, *permission_id, scope)?;
+        }
+        Ok(())
     }
 }

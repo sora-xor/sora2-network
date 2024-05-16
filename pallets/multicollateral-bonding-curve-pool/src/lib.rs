@@ -192,6 +192,7 @@ pub mod pallet {
         frame_system::Config
         + common::Config
         + assets::Config
+        + permissions::Config
         + technical::Config
         + pool_xyk::Config
     {

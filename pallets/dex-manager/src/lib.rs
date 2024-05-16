@@ -113,7 +113,10 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {}
+    pub trait Config:
+        frame_system::Config + common::Config + assets::Config + permissions::Config
+    {
+    }
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
