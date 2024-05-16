@@ -53,7 +53,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     fn prepare_and_validate(
         &mut self,
         source_opt: Option<&AccountIdOf<T>>,
-        _base_asset_id: &AssetIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
         let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::is_abstract_checking(self);
 
@@ -112,12 +112,12 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             Err(Error::<T>::AccountBalanceIsInvalid)?;
         }
 
-        // Balance of pool account for asset pair basic asset.
-        let balance_bp =
-            <assets::Pallet<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
-        // Balance of pool account for asset pair target asset.
-        let balance_tp =
-            <assets::Pallet<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
+        let (balance_bp, balance_tp) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
+            &self.source.0.asset,
+            &self.source.1.asset,
+        )?;
 
         let mut empty_pool = false;
         if balance_bp == 0 && balance_tp == 0 {
@@ -320,10 +320,12 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             });
         }
         Pallet::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
-        let balance_a =
-            <assets::Pallet<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
-        let balance_b =
-            <assets::Pallet<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
+        let (balance_a, balance_b) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
+            &self.source.0.asset,
+            &self.source.1.asset,
+        )?;
         Pallet::<T>::update_reserves(
             base_asset_id,
             &self.source.0.asset,

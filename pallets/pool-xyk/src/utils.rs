@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::{ensure, fail};
+use frame_support::ensure;
 use orml_traits::GetByKey;
 
 use crate::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
@@ -46,10 +46,11 @@ impl<T: Config> Pallet<T> {
         asset_a: &AssetIdOf<T>,
         asset_b: &AssetIdOf<T>,
     ) -> Result<bool, DispatchError> {
-        if base_asset_id == asset_a {
-            Ok(false)
-        } else if base_asset_id == asset_b {
+        let tpair = Self::strict_sort_pair(base_asset_id, asset_a, asset_b)?;
+        if &tpair.target_asset_id == asset_a {
             Ok(true)
+        } else if &tpair.target_asset_id == asset_b {
+            Ok(false)
         } else {
             Err(Error::<T>::UnsupportedQuotePath.into())
         }
@@ -94,18 +95,7 @@ impl<T: Config> Pallet<T> {
         let dexinfo = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let ba = base_asset_id;
-        let ta = if base_asset_id == asset_a {
-            asset_b
-        } else if base_asset_id == asset_b {
-            asset_a
-        } else {
-            Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
-        };
-        let tpair = common::TradingPair::<T::AssetId> {
-            base_asset_id: ba,
-            target_asset_id: ta,
-        };
+        let tpair = Self::strict_sort_pair(&base_asset_id, &asset_a, &asset_b)?;
         let tpair: common::TradingPair<TechAssetIdOf<T>> = tpair.map(|a| a.into());
         Ok((
             tpair,
@@ -202,25 +192,47 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    pub fn get_pair_info(
+        base_asset_id: &T::AssetId,
+        asset_a: &T::AssetId,
+        asset_b: &T::AssetId,
+    ) -> Result<(TradingPair<T::AssetId>, Option<T::AssetId>, bool), DispatchError> {
+        ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as GetByKey<_, _>>::get(&base_asset_id);
+        let (ta, is_chameleon_pool) = if base_asset_id == asset_a {
+            (asset_b, false)
+        } else if base_asset_id == asset_b {
+            (asset_a, false)
+        } else if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
+            if &base_chameleon_asset_id == asset_a {
+                (asset_b, true)
+            } else if &base_chameleon_asset_id == asset_b {
+                (asset_a, true)
+            } else {
+                Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
+            }
+        } else {
+            Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
+        };
+        let tpair = common::TradingPair::<T::AssetId> {
+            base_asset_id: *base_asset_id,
+            target_asset_id: *ta,
+        };
+        let is_allowed_chameleon_pool = T::GetChameleonPool::get(&tpair);
+        if is_chameleon_pool && !is_allowed_chameleon_pool {
+            Err(Error::<T>::RestrictedChameleonPool)?
+        }
+        Ok((tpair, base_chameleon_asset_id, is_allowed_chameleon_pool))
+    }
+
     /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
     pub fn strict_sort_pair(
         base_asset_id: &T::AssetId,
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
-        ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        if asset_a == base_asset_id {
-            Ok(TradingPair {
-                base_asset_id: asset_a.clone(),
-                target_asset_id: asset_b.clone(),
-            })
-        } else if asset_b == base_asset_id {
-            Ok(TradingPair {
-                base_asset_id: asset_b.clone(),
-                target_asset_id: asset_a.clone(),
-            })
-        } else {
-            fail!(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)
-        }
+        let (tpair, _, _) = Self::get_pair_info(base_asset_id, asset_a, asset_b)?;
+        Ok(tpair)
     }
 }

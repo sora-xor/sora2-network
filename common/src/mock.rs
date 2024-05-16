@@ -182,6 +182,22 @@ impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedF
     }
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId32<PredefinedAssetId>| -> Option<AssetId32<PredefinedAssetId>> {
+        if base_asset_id == &crate::XOR {
+            Some(crate::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: crate::TradingPair<AssetId32<PredefinedAssetId>>| -> bool {
+        tpair.base_asset_id == crate::XOR && tpair.target_asset_id == crate::ETH
+    };
+}
+
 pub fn alice() -> AccountId32 {
     AccountId32::from([1; 32])
 }

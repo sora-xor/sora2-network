@@ -1000,6 +1000,22 @@ parameter_type_with_key! {
     };
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if base_asset_id == &common::XOR {
+            Some(common::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -1020,6 +1036,8 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
 }
 
 parameter_types! {
@@ -1079,6 +1097,8 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {

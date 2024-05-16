@@ -150,7 +150,7 @@ fn test_swap_weight_considers_available_sources() {
             .saturating_add(exchange_base_weight)
             .saturating_add(quote_single_weight.saturating_mul(1)); // for each available path
         assert_eq!(
-            LiquidityProxy::swap_weight(&DEX_D_ID, &ETH, &XST, &Vec::new(), &FilterMode::Disabled,),
+            LiquidityProxy::swap_weight(&DEX_D_ID, &DAI, &XST, &Vec::new(), &FilterMode::Disabled,),
             swap_weight_without_path
                 .saturating_add(multicollateral_weight)
                 .saturating_add(Weight::zero()) // `MockSource`s are not counted
@@ -249,7 +249,7 @@ fn test_swap_weight_filters_sources() {
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_D_ID,
-                &ETH,
+                &DAI,
                 &XST,
                 &Vec::from([
                     LiquiditySourceType::MockPool,
@@ -264,7 +264,7 @@ fn test_swap_weight_filters_sources() {
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_D_ID,
-                &ETH,
+                &DAI,
                 &XST,
                 &Vec::from([LiquiditySourceType::MockPool]),
                 &FilterMode::AllowSelected,
@@ -276,7 +276,7 @@ fn test_swap_weight_filters_sources() {
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_D_ID,
-                &ETH,
+                &DAI,
                 &XST,
                 &Vec::from([LiquiditySourceType::MulticollateralBondingCurvePool]),
                 &FilterMode::ForbidSelected,
@@ -288,7 +288,7 @@ fn test_swap_weight_filters_sources() {
         assert_eq!(
             LiquidityProxy::swap_weight(
                 &DEX_D_ID,
-                &ETH,
+                &DAI,
                 &XST,
                 &Vec::new(),
                 &FilterMode::AllowSelected,
