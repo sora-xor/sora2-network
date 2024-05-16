@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["init"]};
+window.SIDEBAR_ITEMS = {"mod":["generic_account_v2","init"]};

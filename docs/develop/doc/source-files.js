@@ -4,8 +4,6 @@ var sourcesIndex = JSON.parse('{\
 "assets_rpc":["",[],["lib.rs"]],\
 "assets_runtime_api":["",[],["lib.rs"]],\
 "band":["",[],["lib.rs","migrations.rs","weights.rs"]],\
-"bridge_inbound_channel":["",[],["events.rs","lib.rs","weights.rs"]],\
-"bridge_outbound_channel":["",[],["lib.rs","weights.rs"]],\
 "bridge_proxy":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "bridge_proxy_rpc":["",[],["lib.rs"]],\
 "bridge_proxy_runtime_api":["",[],["lib.rs"]],\
@@ -24,12 +22,9 @@ var sourcesIndex = JSON.parse('{\
 "dex_manager_rpc":["",[],["lib.rs"]],\
 "dex_manager_runtime_api":["",[],["lib.rs"]],\
 "dex_runtime_api":["",[],["lib.rs"]],\
-"erc20_app":["",[],["lib.rs","payload.rs","weights.rs"]],\
-"eth_app":["",[],["lib.rs","payload.rs","weights.rs"]],\
 "eth_bridge":["",[["offchain",[],["handle.rs","http.rs","mod.rs","transaction.rs"]],["requests",[],["encode_packed.rs","incoming.rs","mod.rs","outgoing.rs"]],["types",[],["block.rs","bytes.rs","log.rs","mod.rs","substrate.rs","transaction.rs","transaction_request.rs","uint.rs"]]],["contract.rs","lib.rs","macros.rs","migration.rs","rpc.rs","util.rs","weights.rs"]],\
 "eth_bridge_rpc":["",[],["lib.rs"]],\
 "eth_bridge_runtime_api":["",[],["lib.rs"]],\
-"ethereum_light_client":["",[],["lib.rs","weights.rs"]],\
 "farming":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "farming_rpc":["",[],["lib.rs"]],\
 "farming_runtime_api":["",[],["lib.rs"]],\
@@ -42,13 +37,12 @@ var sourcesIndex = JSON.parse('{\
 "iroha_migration":["",[],["lib.rs","weights.rs"]],\
 "iroha_migration_rpc":["",[],["lib.rs"]],\
 "iroha_migration_runtime_api":["",[],["lib.rs"]],\
-"kensetsu":["",[],["compounding.rs","lib.rs","weights.rs"]],\
+"kensetsu":["",[],["compounding.rs","lib.rs","migrations.rs","weights.rs"]],\
 "kensetsu_benchmarking":["",[],["lib.rs"]],\
 "liquidity_proxy":["",[],["lib.rs","liquidity_aggregator.rs","weights.rs"]],\
 "liquidity_proxy_benchmarking":["",[],["lib.rs"]],\
 "liquidity_proxy_rpc":["",[],["lib.rs"]],\
 "liquidity_proxy_runtime_api":["",[],["lib.rs"]],\
-"migration_app":["",[],["lib.rs","payload.rs"]],\
 "mock_liquidity_source":["",[],["lib.rs"]],\
 "multicollateral_bonding_curve_pool":["",[["migrations",[],["mod.rs","v1.rs","v2.rs","v3.rs"]]],["lib.rs","weights.rs"]],\
 "oracle_proxy":["",[],["lib.rs","weights.rs"]],\

@@ -2534,56 +2534,6 @@
 <a href="#2519" id="2519">2519</a>
 <a href="#2520" id="2520">2520</a>
 <a href="#2521" id="2521">2521</a>
-<a href="#2522" id="2522">2522</a>
-<a href="#2523" id="2523">2523</a>
-<a href="#2524" id="2524">2524</a>
-<a href="#2525" id="2525">2525</a>
-<a href="#2526" id="2526">2526</a>
-<a href="#2527" id="2527">2527</a>
-<a href="#2528" id="2528">2528</a>
-<a href="#2529" id="2529">2529</a>
-<a href="#2530" id="2530">2530</a>
-<a href="#2531" id="2531">2531</a>
-<a href="#2532" id="2532">2532</a>
-<a href="#2533" id="2533">2533</a>
-<a href="#2534" id="2534">2534</a>
-<a href="#2535" id="2535">2535</a>
-<a href="#2536" id="2536">2536</a>
-<a href="#2537" id="2537">2537</a>
-<a href="#2538" id="2538">2538</a>
-<a href="#2539" id="2539">2539</a>
-<a href="#2540" id="2540">2540</a>
-<a href="#2541" id="2541">2541</a>
-<a href="#2542" id="2542">2542</a>
-<a href="#2543" id="2543">2543</a>
-<a href="#2544" id="2544">2544</a>
-<a href="#2545" id="2545">2545</a>
-<a href="#2546" id="2546">2546</a>
-<a href="#2547" id="2547">2547</a>
-<a href="#2548" id="2548">2548</a>
-<a href="#2549" id="2549">2549</a>
-<a href="#2550" id="2550">2550</a>
-<a href="#2551" id="2551">2551</a>
-<a href="#2552" id="2552">2552</a>
-<a href="#2553" id="2553">2553</a>
-<a href="#2554" id="2554">2554</a>
-<a href="#2555" id="2555">2555</a>
-<a href="#2556" id="2556">2556</a>
-<a href="#2557" id="2557">2557</a>
-<a href="#2558" id="2558">2558</a>
-<a href="#2559" id="2559">2559</a>
-<a href="#2560" id="2560">2560</a>
-<a href="#2561" id="2561">2561</a>
-<a href="#2562" id="2562">2562</a>
-<a href="#2563" id="2563">2563</a>
-<a href="#2564" id="2564">2564</a>
-<a href="#2565" id="2565">2565</a>
-<a href="#2566" id="2566">2566</a>
-<a href="#2567" id="2567">2567</a>
-<a href="#2568" id="2568">2568</a>
-<a href="#2569" id="2569">2569</a>
-<a href="#2570" id="2570">2570</a>
-<a href="#2571" id="2571">2571</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2635,20 +2585,18 @@
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 <span class="kw">use </span>framenode_runtime::opaque::SessionKeys;
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="kw">use </span>framenode_runtime::BridgeOutboundChannelConfig;
 <span class="kw">use </span>framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader,
-    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
-    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
-    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
+    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
+    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
-};
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
-</span><span class="kw">use </span>framenode_runtime::{
-    BridgeInboundChannelConfig, BridgeOutboundChannelConfig, EthereumLightClientConfig,
 };
 
 <span class="kw">use </span>hex_literal::hex;
@@ -2796,7 +2744,6 @@
         ChainType::Development,
         <span class="kw">move </span>|| {
             testnet_genesis(
-                <span class="bool-val">true</span>,
                 <span class="macro">hex!</span>(<span class="string">&quot;92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e&quot;</span>).into(),
                 <span class="macro">vec!</span>[
                     authority_keys_from_public_keys(
@@ -2886,7 +2833,6 @@
         ChainType::Development,
         <span class="kw">move </span>|| {
             testnet_genesis(
-                <span class="bool-val">true</span>,
                 <span class="macro">hex!</span>(<span class="string">&quot;92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e&quot;</span>).into(),
                 <span class="macro">vec!</span>[
                     authority_keys_from_public_keys(
@@ -2997,7 +2943,6 @@
         ChainType::Live,
         <span class="kw">move </span>|| {
             testnet_genesis(
-                <span class="bool-val">true</span>,
                 <span class="macro">hex!</span>(<span class="string">&quot;f6d0e31012ebeef4b9cc4cddd0593a8579d226dc17ce725139225e81683f0143&quot;</span>).into(),
                 <span class="macro">vec!</span>[
                     authority_keys_from_public_keys(
@@ -3098,7 +3043,6 @@
                 bridge_contract_address: Default::default(),
             };
             testnet_genesis(
-                <span class="bool-val">false</span>,
                 <span class="macro">hex!</span>(<span class="string">&quot;2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e&quot;</span>).into(),
                 <span class="macro">vec!</span>[
                     authority_keys_from_public_keys(
@@ -3238,7 +3182,6 @@
                 }
             };
             testnet_genesis(
-                <span class="bool-val">false</span>,
                 <span class="macro">hex!</span>(<span class="string">&quot;2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e&quot;</span>).into(),
                 <span class="macro">vec!</span>[
                     authority_keys_from_public_keys(
@@ -3392,7 +3335,6 @@
         ChainType::Development,
         <span class="kw">move </span>|| {
             testnet_genesis(
-                <span class="bool-val">false</span>,
                 get_account_id_from_seed::&lt;sr25519::Public&gt;(<span class="string">&quot;Alice&quot;</span>),
                 <span class="macro">vec!</span>[
                     authority_keys_from_seed(<span class="string">&quot;Alice&quot;</span>),
@@ -3473,7 +3415,6 @@
 <span class="comment">// Some variables are only changed if faucet is enabled
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">fn </span>testnet_genesis(
-    dev: bool,
     root_key: AccountId,
     initial_authorities: Vec&lt;(
         AccountId,
@@ -3492,8 +3433,6 @@
     validator_count: u32,
 ) -&gt; GenesisConfig {
     <span class="kw">use </span>common::XSTUSD;
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
-    </span><span class="kw">use </span>framenode_runtime::EthAppConfig;
 
     <span class="comment">// Initial balances
     </span><span class="kw">let </span>initial_staking = <span class="macro">balance!</span>(<span class="number">1000000000</span>);
@@ -3600,9 +3539,9 @@
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>dex_root_tech_account_id)
             .unwrap();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
     </span><span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
     </span><span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     <span class="kw">let </span><span class="kw-2">mut </span>tech_accounts = <span class="macro">vec!</span>[
@@ -3660,7 +3599,7 @@
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
         </span>(
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
@@ -3689,7 +3628,7 @@
         (mbc_pool_rewards_account_id.clone(), <span class="number">0</span>),
         (mbc_pool_free_reserves_account_id.clone(), <span class="number">0</span>),
         (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
         </span>(kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
     ]
     .into_iter()
@@ -3713,8 +3652,7 @@
     )
     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;include-real-files&quot;</span>))]
-    </span><span class="kw">let </span>rewards_config = RewardsConfig {
+    <span class="kw">let </span>rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
         val_owners: <span class="macro">vec!</span>[
             (
@@ -3744,15 +3682,6 @@
             <span class="macro">hex!</span>(<span class="string">&quot;886021F300dC809269CFC758A2364a2baF63af0c&quot;</span>).into(),
             <span class="macro">balance!</span>(<span class="number">333</span>),
         )],
-        umi_nfts: <span class="macro">vec!</span>[PSWAP.into(), VAL.into()],
-    };
-
-    <span class="attr">#[cfg(feature = <span class="string">&quot;include-real-files&quot;</span>)]
-    </span><span class="kw">let </span>rewards_config = RewardsConfig {
-        reserves_account_id: rewards_tech_account_id,
-        val_owners: <span class="macro">our_include!</span>(<span class="string">&quot;bytes/rewards_val_owners.in&quot;</span>),
-        pswap_farm_owners: <span class="macro">our_include!</span>(<span class="string">&quot;bytes/rewards_pswap_farm_owners.in&quot;</span>),
-        pswap_waifu_owners: <span class="macro">our_include!</span>(<span class="string">&quot;bytes/rewards_pswap_waifu_owners.in&quot;</span>),
         umi_nfts: <span class="macro">vec!</span>[PSWAP.into(), VAL.into()],
     };
 
@@ -3815,13 +3744,10 @@
     };
 
     <span class="kw">let </span>iroha_migration_config = IrohaMigrationConfig {
-        iroha_accounts: <span class="kw">if </span>dev {
-            <span class="macro">our_include!</span>(<span class="string">&quot;bytes/iroha_migration_accounts_dev.in&quot;</span>)
-        } <span class="kw">else </span>{
-            <span class="macro">our_include!</span>(<span class="string">&quot;bytes/iroha_migration_accounts_staging.in&quot;</span>)
-        },
+        iroha_accounts: Default::default(),
         account_id: <span class="prelude-val">Some</span>(iroha_migration_account_id.clone()),
     };
+
     <span class="kw">let </span>initial_collateral_assets = <span class="macro">vec!</span>[
         DAI.into(),
         VAL.into(),
@@ -3831,6 +3757,8 @@
         TBCD.into(),
     ];
     GenesisConfig {
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+        </span>evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
@@ -3838,21 +3766,7 @@
         </span>beefy_light_client: Default::default(),
 
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>migration_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>erc20_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>eth_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>ethereum_light_client: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>bridge_inbound_channel: BridgeInboundChannelConfig {
-            reward_fraction: Perbill::from_percent(<span class="number">80</span>),
-            ..Default::default()
-        },
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
-            fee: <span class="number">10000</span>,
             interval: <span class="number">10</span>,
             ..Default::default()
         },
@@ -4000,7 +3914,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
                 </span>(
                     KEN.into(),
                     assets_and_permissions_account_id.clone(),
@@ -4012,7 +3926,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
                 </span>(
                     KUSD.into(),
                     assets_and_permissions_account_id.clone(),
@@ -4143,7 +4057,7 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
                 </span>(
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
@@ -4512,9 +4426,9 @@
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>dex_root_tech_account_id)
             .unwrap();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
     </span><span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
     </span><span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     <span class="kw">let </span><span class="kw-2">mut </span>tech_accounts = <span class="macro">vec!</span>[
@@ -4572,7 +4486,7 @@
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
         </span>(
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
@@ -4685,7 +4599,7 @@
             <span class="prelude-val">None</span>,
             <span class="prelude-val">None</span>,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
         </span>(
             KEN.into(),
             assets_and_permissions_account_id.clone(),
@@ -4697,7 +4611,7 @@
             <span class="prelude-val">None</span>,
             <span class="prelude-val">None</span>,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
         </span>(
             KUSD.into(),
             assets_and_permissions_account_id.clone(),
@@ -4768,6 +4682,7 @@
         )
     }));
     GenesisConfig {
+        evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
@@ -4775,23 +4690,8 @@
         </span>beefy_light_client: Default::default(),
 
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>migration_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>erc20_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>eth_app: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>ethereum_light_client: Default::default(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
-        </span>bridge_inbound_channel: BridgeInboundChannelConfig {
-            reward_fraction: Perbill::from_percent(<span class="number">80</span>),
-            ..Default::default()
-        },
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
-            fee: <span class="number">10000</span>,
             interval: <span class="number">10</span>,
-            ..Default::default()
         },
 
         system: SystemConfig {
@@ -4920,7 +4820,7 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
                 </span>(
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
@@ -4943,7 +4843,7 @@
                 (mbc_pool_free_reserves_account_id.clone(), <span class="number">0</span>),
                 (market_maker_rewards_account_id.clone(), <span class="number">0</span>),
                 (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// kensetsu
+                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
                 </span>(kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
             ]
             .into_iter()

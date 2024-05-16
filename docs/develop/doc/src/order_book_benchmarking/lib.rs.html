@@ -665,14 +665,6 @@
 <a href="#650" id="650">650</a>
 <a href="#651" id="651">651</a>
 <a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -821,7 +813,7 @@
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>order_book_imported::cache_data_layer::CacheDataLayer;
-    <span class="kw">use </span>order_book_imported::test_utils::fill_tools::FillSettings;
+    <span class="kw">use </span>order_book_imported::test_utils::fill_tools::{AmountVariant, FillSettings};
     <span class="kw">use </span>order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     <span class="kw">use </span>order_book_imported::{
         CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
@@ -897,8 +889,8 @@
         }
 
         delete_orderbook {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>order_book_id = periphery::delete_orderbook::init(settings.clone());
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
+            <span class="kw">let </span>order_book_id = periphery::delete_orderbook::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::delete_orderbook(
                 RawOrigin::Root.into(),
@@ -906,7 +898,7 @@
             ).unwrap();
         }
         verify {
-            periphery::delete_orderbook::verify(settings, order_book_id);
+            periphery::delete_orderbook::verify::&lt;T&gt;(order_book_id);
         }
 
         update_orderbook {
@@ -977,8 +969,8 @@
         }
 
         place_limit_order_without_cross_spread {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::place_limit_order::init(settings.clone());
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
+            <span class="kw">let </span>context = periphery::place_limit_order::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::place_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -990,12 +982,12 @@
             ).unwrap();
         }
         verify {
-            periphery::place_limit_order::verify(settings, context);
+            periphery::place_limit_order::verify(context);
         }
 
         cancel_limit_order_first_expiration {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::cancel_limit_order::init(settings.clone(), <span class="bool-val">true</span>);
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
+            <span class="kw">let </span>context = periphery::cancel_limit_order::init(settings, <span class="bool-val">true</span>);
         }: {
             OrderBookPallet::&lt;T&gt;::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -1004,12 +996,12 @@
             ).unwrap();
         }
         verify {
-            periphery::cancel_limit_order::verify(settings, context);
+            periphery::cancel_limit_order::verify(context);
         }
 
         cancel_limit_order_last_expiration {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::cancel_limit_order::init(settings.clone(), <span class="bool-val">false</span>);
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
+            <span class="kw">let </span>context = periphery::cancel_limit_order::init(settings, <span class="bool-val">false</span>);
         }: {
             OrderBookPallet::&lt;T&gt;::cancel_limit_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
@@ -1018,26 +1010,26 @@
             ).unwrap();
         }
         verify {
-            periphery::cancel_limit_order::verify(settings, context);
+            periphery::cancel_limit_order::verify(context);
         }
 
         execute_market_order {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
-            <span class="kw">let </span>context = periphery::execute_market_order_scattered::init(settings);
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
+            <span class="kw">let </span>context = periphery::execute_market_order::init(settings, AmountVariant::Max);
         }: {
             OrderBookPallet::&lt;T&gt;::execute_market_order(
                 RawOrigin::Signed(context.caller.clone()).into(),
                 context.order_book_id,
-                context.side,
+                context.direction,
                 <span class="kw-2">*</span>context.amount.balance()
             ).unwrap();
         }
         verify {
-            periphery::execute_market_order_scattered::verify(context);
+            periphery::execute_market_order::verify(context);
         }
 
         quote {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
             <span class="kw">let </span>context = periphery::quote::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::quote(
@@ -1054,19 +1046,14 @@
         </span>}
 
         step_quote {
-            <span class="kw">let </span>order_book_id = OrderBookId::&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt; {
-                dex_id: DEX.into(),
-                base: VAL.into(),
-                quote: XOR.into(),
-            };
-
-            create_and_fill_order_book::&lt;T&gt;(order_book_id);
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
+            <span class="kw">let </span>context = periphery::quote::init(settings);
         }: {
             OrderBookPallet::&lt;T&gt;::step_quote(
                 <span class="kw-2">&amp;</span>DEX.into(),
                 <span class="kw-2">&amp;</span>VAL.into(),
                 <span class="kw-2">&amp;</span>XOR.into(),
-                QuoteAmount::with_desired_output(<span class="macro">balance!</span>(<span class="number">2500</span>)),
+                QuoteAmount::with_desired_input(<span class="macro">balance!</span>(<span class="number">1000</span>)),
                 <span class="number">10</span>,
                 <span class="bool-val">true
             </span>)
@@ -1077,10 +1064,13 @@
         </span>}
 
         exchange {
-            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            <span class="kw">let </span><span class="kw-2">mut </span>settings = FillSettings::&lt;T&gt;::max();
-            settings.executed_orders_limit = e;
-            <span class="kw">let </span>context = periphery::exchange_scattered::init(settings);
+            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::SOFT_MIN_MAX_RATIO.try_into().unwrap();
+
+            <span class="kw">let </span>order_amount = <span class="macro">balance!</span>(<span class="number">1</span>);
+            <span class="kw">let </span>swap_amount = order_amount * e <span class="kw">as </span>u128;
+
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular_with_custom_amount(order_amount);
+            <span class="kw">let </span>context = periphery::exchange::init(settings, AmountVariant::Custom(swap_amount));
         }: {
             OrderBookPallet::&lt;T&gt;::exchange(
                 <span class="kw-2">&amp;</span>context.caller,
@@ -1088,18 +1078,16 @@
                 <span class="kw-2">&amp;</span>context.order_book_id.dex_id,
                 <span class="kw-2">&amp;</span>context.order_book_id.base,
                 <span class="kw-2">&amp;</span>context.order_book_id.quote,
-                SwapAmount::with_desired_output(
-                    context.expected_out, context.expected_in + <span class="macro">balance!</span>(<span class="number">1.5</span>)
-                ),
+                SwapAmount::with_desired_input(swap_amount, <span class="macro">balance!</span>(<span class="number">0</span>)),
             )
             .unwrap();
         }
         verify {
-            periphery::exchange_scattered::verify(context);
+            periphery::exchange::verify(context);
         }
 
         align_single_order {
-            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::max();
+            <span class="kw">let </span>settings = FillSettings::&lt;T&gt;::regular();
             <span class="kw">let </span>context = periphery::align_single_order::init(settings);
 
             <span class="kw">let </span><span class="kw-2">mut </span>data = order_book_imported::storage_data_layer::StorageDataLayer::&lt;T&gt;::new();
@@ -1263,22 +1251,22 @@
         <span class="attr">#[extra]
         </span>execute_market_order_1 {
             <span class="kw">use </span>periphery::execute_market_order::{init, Context};
-            <span class="kw">let </span>Context { caller, order_book_id: id, amount, side, .. } =
-                init::&lt;T&gt;(preset_1::&lt;T&gt;());
+            <span class="kw">let </span>Context { caller, order_book_id: id, amount, direction, .. } =
+                init::&lt;T&gt;(preset_1::&lt;T&gt;(), AmountVariant::Max);
         }: {
             OrderBookPallet::&lt;T&gt;::execute_market_order(
-                RawOrigin::Signed(caller).into(), id, side, <span class="kw-2">*</span>amount.balance()
+                RawOrigin::Signed(caller).into(), id, direction, <span class="kw-2">*</span>amount.balance()
             ).unwrap();
         }
 
         <span class="attr">#[extra]
         </span>execute_market_order_2 {
             <span class="kw">use </span>periphery::execute_market_order::{init, Context};
-            <span class="kw">let </span>Context { caller, order_book_id: id, amount, side, .. } =
-                init::&lt;T&gt;(preset_2::&lt;T&gt;());
+            <span class="kw">let </span>Context { caller, order_book_id: id, amount, direction, .. } =
+                init::&lt;T&gt;(preset_2::&lt;T&gt;(), AmountVariant::Max);
         }: {
             OrderBookPallet::&lt;T&gt;::execute_market_order(
-                RawOrigin::Signed(caller).into(), id, side, <span class="kw-2">*</span>amount.balance()
+                RawOrigin::Signed(caller).into(), id, direction, <span class="kw-2">*</span>amount.balance()
             ).unwrap();
         }
 
@@ -1286,7 +1274,7 @@
         <span class="attr">#[extra]
         </span>quote_1 {
             <span class="kw">use </span>periphery::quote::{init, Context};
-            <span class="kw">let </span>Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee } =
+            <span class="kw">let </span>Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee, .. } =
                 init::&lt;T&gt;(preset_1::&lt;T&gt;());
         }: {
             OrderBookPallet::&lt;T&gt;::quote(<span class="kw-2">&amp;</span>dex_id, <span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, amount, deduce_fee)
@@ -1296,7 +1284,7 @@
         <span class="attr">#[extra]
         </span>quote_2 {
             <span class="kw">use </span>periphery::quote::{init, Context};
-            <span class="kw">let </span>Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee } =
+            <span class="kw">let </span>Context { dex_id, input_asset_id, output_asset_id, amount, deduce_fee, .. } =
                 init::&lt;T&gt;(preset_2::&lt;T&gt;());
         }: {
             OrderBookPallet::&lt;T&gt;::quote(<span class="kw-2">&amp;</span>dex_id, <span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, amount, deduce_fee)
@@ -1306,29 +1294,25 @@
 
         <span class="attr">#[extra]
         </span>exchange_1 {
-            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            <span class="kw">use </span>periphery::exchange_scattered::{init, Context};
-            <span class="kw">let </span><span class="kw-2">mut </span>settings = preset_1::&lt;T&gt;();
-            settings.executed_orders_limit = e;
-            <span class="kw">let </span>Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
+            <span class="kw">use </span>periphery::exchange::{init, Context};
+            <span class="kw">let </span>settings = preset_1::&lt;T&gt;();
+            <span class="kw">let </span>Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings, AmountVariant::Max);
         } : {
             OrderBookPallet::&lt;T&gt;::exchange(
                 <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>id.dex_id, <span class="kw-2">&amp;</span>id.base, <span class="kw-2">&amp;</span>id.quote,
-                SwapAmount::with_desired_output(expected_out, expected_in + <span class="macro">balance!</span>(<span class="number">1.5</span>)),
+                SwapAmount::with_desired_output(<span class="kw-2">*</span>output_amount.value().balance(), input_amount.value().balance() + <span class="macro">balance!</span>(<span class="number">1.5</span>)),
             ).unwrap();
         }
 
         <span class="attr">#[extra]
         </span>exchange_2 {
-            <span class="kw">let </span>e <span class="kw">in </span><span class="number">1u32 </span>.. &lt;T <span class="kw">as </span>order_book_imported::Config&gt;::HARD_MIN_MAX_RATIO.try_into().unwrap();
-            <span class="kw">use </span>periphery::exchange_scattered::{init, Context};
-            <span class="kw">let </span><span class="kw-2">mut </span>settings = preset_1::&lt;T&gt;();
-            settings.executed_orders_limit = e;
-            <span class="kw">let </span>Context { caller, order_book_id: id, expected_in, expected_out, .. } = init(settings);
+            <span class="kw">use </span>periphery::exchange::{init, Context};
+            <span class="kw">let </span>settings = preset_1::&lt;T&gt;();
+            <span class="kw">let </span>Context { caller, order_book_id: id, input_amount, output_amount, .. } = init(settings, AmountVariant::Max);
         } : {
             OrderBookPallet::&lt;T&gt;::exchange(
                 <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>caller, <span class="kw-2">&amp;</span>id.dex_id, <span class="kw-2">&amp;</span>id.base, <span class="kw-2">&amp;</span>id.quote,
-                SwapAmount::with_desired_output(expected_out, expected_in + <span class="macro">balance!</span>(<span class="number">1.5</span>)),
+                SwapAmount::with_desired_output(<span class="kw-2">*</span>output_amount.value().balance(), input_amount.value().balance() + <span class="macro">balance!</span>(<span class="number">1.5</span>)),
             ).unwrap();
         }
     }

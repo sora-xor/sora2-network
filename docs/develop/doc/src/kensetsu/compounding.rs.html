@@ -224,8 +224,8 @@
 </span><span class="kw">fn </span>tests_compound_zero_rate() {
     <span class="kw">let </span>initial_balance = <span class="macro">balance!</span>(<span class="number">10000</span>);
     <span class="kw">let </span>rate = FixedU128::from(<span class="number">0</span>);
-    <span class="comment">// 1 year in seconds
-    </span><span class="kw">let </span>time = <span class="number">31556952</span>;
+    <span class="comment">// 1 year in milliseconds
+    </span><span class="kw">let </span>time = <span class="number">31556952000</span>;
     <span class="comment">// balance shall not change
     </span><span class="macro">assert_eq!</span>(
         compound(initial_balance, rate, time).unwrap(),
@@ -237,8 +237,8 @@
 </span><span class="kw">fn </span>test_compound_zero_principal() {
     <span class="kw">let </span>initial_balance = <span class="macro">balance!</span>(<span class="number">0</span>);
     <span class="kw">let </span>rate = FixedU128::from(<span class="number">11</span>);
-    <span class="comment">// 1 year in seconds
-    </span><span class="kw">let </span>time = <span class="number">31556952</span>;
+    <span class="comment">// 1 year in milliseconds
+    </span><span class="kw">let </span>time = <span class="number">31556952000</span>;
     <span class="comment">// shall not change
     </span><span class="macro">assert_eq!</span>(
         compound(initial_balance, rate, time).unwrap(),

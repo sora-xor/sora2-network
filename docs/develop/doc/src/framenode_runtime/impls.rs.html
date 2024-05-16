@@ -587,6 +587,14 @@
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
 <a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -880,19 +888,22 @@
                 <span class="kw">let </span>call: <span class="kw">crate</span>::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Generic Susbtrate Bridge
-            </span>bridge_types::substrate::BridgeCall::SubstrateApp(msg) =&gt; {
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) =&gt; {
                 <span class="kw">let </span>call: substrate_bridge_app::Call&lt;<span class="kw">crate</span>::Runtime&gt; = msg.try_into()<span class="question-mark">?</span>;
                 <span class="kw">let </span>call: <span class="kw">crate</span>::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// Generic Susbtrate Bridge
-            </span>bridge_types::substrate::BridgeCall::SubstrateApp(<span class="kw">_</span>) =&gt; {
-                <span class="prelude-val">Err</span>(DispatchErrorWithPostInfo {
-                    post_info: Default::default(),
-                    error: DispatchError::Other(<span class="string">&quot;Unavailable&quot;</span>),
-                })
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+            </span>bridge_types::substrate::BridgeCall::FAApp(msg) =&gt; {
+                <span class="kw">let </span>call: evm_fungible_app::Call&lt;<span class="kw">crate</span>::Runtime&gt; = msg.into();
+                <span class="kw">let </span>call: <span class="kw">crate</span>::RuntimeCall = call.into();
+                call.dispatch(origin)
             }
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
+            </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(DispatchErrorWithPostInfo {
+                post_info: Default::default(),
+                error: DispatchError::Other(<span class="string">&quot;Unavailable&quot;</span>),
+            }),
         }
     }
 }
@@ -913,8 +924,7 @@
                 <span class="kw">let </span>call: multisig_verifier::Call&lt;<span class="kw">crate</span>::Runtime&gt; = msg.clone().into();
                 call.get_dispatch_info()
             }
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Generic Susbtrate Bridge
-            </span>bridge_types::substrate::BridgeCall::SubstrateApp(msg) =&gt; {
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) =&gt; {
                 <span class="kw">let </span>call: substrate_bridge_app::Call&lt;<span class="kw">crate</span>::Runtime&gt; =
                     <span class="kw">match </span>substrate_bridge_app::Call::try_from(msg.clone()) {
                         <span class="prelude-val">Ok</span>(c) =&gt; c,
@@ -922,8 +932,13 @@
                     };
                 call.get_dispatch_info()
             }
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// Generic Susbtrate Bridge
-            </span>bridge_types::substrate::BridgeCall::SubstrateApp(<span class="kw">_</span>) =&gt; Default::default(),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+            </span>bridge_types::substrate::BridgeCall::FAApp(msg) =&gt; {
+                <span class="kw">let </span>call: evm_fungible_app::Call&lt;<span class="kw">crate</span>::Runtime&gt; = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
+            </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; Default::default(),
         }
     }
 }
@@ -1064,10 +1079,11 @@
             bridge_types::substrate::BridgeCall::XCMApp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             bridge_types::substrate::BridgeCall::DataSigner(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             bridge_types::substrate::BridgeCall::MultisigVerifier(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Generic Susbtrate Bridge
-            </span>bridge_types::substrate::BridgeCall::SubstrateApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;ready-to-test&quot;</span>))] </span><span class="comment">// Generic Susbtrate Bridge
-            </span>bridge_types::substrate::BridgeCall::SubstrateApp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            bridge_types::substrate::BridgeCall::SubstrateApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+            </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
+            </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 }
@@ -1079,7 +1095,7 @@
 </span><span class="kw">impl </span>Contains&lt;<span class="kw">crate</span>::RuntimeCall&gt; <span class="kw">for </span>EVMBridgeCallFilter {
     <span class="kw">fn </span>contains(call: <span class="kw-2">&amp;</span><span class="kw">crate</span>::RuntimeCall) -&gt; bool {
         <span class="kw">match </span>call {
-            <span class="kw">crate</span>::RuntimeCall::ERC20App(<span class="kw">_</span>) | <span class="kw">crate</span>::RuntimeCall::EthApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="kw">crate</span>::RuntimeCall::EVMFungibleApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }

@@ -1787,6 +1787,9 @@
 <a href="#1772" id="1772">1772</a>
 <a href="#1773" id="1773">1773</a>
 <a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1853,7 +1856,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;runtime-benchmarks&quot;</span>))]
+<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test&quot;</span>, feature = <span class="string">&quot;runtime-benchmarks&quot;</span>))]
 </span><span class="kw">pub mod </span>test_utils;
 
 <span class="kw">pub mod </span>cache_data_layer;
@@ -1915,6 +1918,9 @@
         /// In particular, it defines the max number of limit orders that could be executed by one big market order in one block.
         /// During update of parameters, the limits must satisfy this ratio.
         </span><span class="kw">const </span>HARD_MIN_MAX_RATIO: usize;
+        <span class="doccomment">/// The number of executed limit orders by one market orders.
+        /// It is used to estimate the weight of `exchange` before calling.
+        </span><span class="kw">const </span>REGULAR_NUBMER_OF_EXECUTED_ORDERS: usize;
 
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -3552,9 +3558,9 @@
     }
 
     <span class="kw">fn </span>exchange_weight() -&gt; Weight {
-        <span class="comment">// SOFT_MIN_MAX_RATIO is approximately the max number of limit orders
-        // that can be executed by one market order
-        </span>&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange(T::SOFT_MIN_MAX_RATIO.try_into().unwrap())
+        &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::exchange(
+            T::REGULAR_NUBMER_OF_EXECUTED_ORDERS.try_into().unwrap(),
+        )
     }
 
     <span class="kw">fn </span>check_rewards_weight() -&gt; Weight {
