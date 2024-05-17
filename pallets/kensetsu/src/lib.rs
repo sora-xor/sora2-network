@@ -1544,7 +1544,7 @@ pub mod pallet {
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
             ensure!(
-                T::AssetInfoProvider::asset_exists(collateral_asset_id),
+                <T as Config>::AssetInfoProvider::asset_exists(collateral_asset_id),
                 Error::<T>::WrongAssetId
             );
             ensure!(
