@@ -51,7 +51,10 @@ use frame_system::RawOrigin;
 use order_book_benchmarking_imported::Config;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{
-    test_utils::{accounts, fill_tools::FillSettings},
+    test_utils::{
+        accounts,
+        fill_tools::{AmountVariant, FillSettings},
+    },
     CancelReason, Event, LimitOrder, LimitOrders, MarketRole, MomentOf, OrderAmount, OrderBook,
     OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
 };
@@ -98,7 +101,6 @@ pub(crate) mod delete_orderbook {
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(
-        _settings: FillSettings<T>,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) {
         assert_last_event::<T>(Event::<T>::OrderBookDeleted { order_book_id }.into());
@@ -112,6 +114,7 @@ pub(crate) mod place_limit_order {
     use sp_runtime::traits::One;
 
     pub struct Context<T: Config> {
+        pub settings: FillSettings<T>,
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         pub price: OrderPrice,
@@ -126,12 +129,13 @@ pub(crate) mod place_limit_order {
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = accounts::alice::<T>();
         let (order_book_id, price, amount, side, lifespan) =
-            place_limit_order_without_cross_spread::<T>(settings, caller.clone());
+            place_limit_order_without_cross_spread::<T>(settings.clone(), caller.clone());
         let next_order_id = OrderBookPallet::<T>::order_books(order_book_id)
             .unwrap()
             .last_order_id
             + T::OrderId::one();
         Context {
+            settings,
             caller,
             order_book_id,
             price,
@@ -142,11 +146,9 @@ pub(crate) mod place_limit_order {
         }
     }
 
-    pub fn verify<T: Config + core::fmt::Debug>(
-        settings: FillSettings<T>,
-        init_values: Context<T>,
-    ) {
+    pub fn verify<T: Config + core::fmt::Debug>(init_values: Context<T>) {
         let Context {
+            settings,
             caller,
             order_book_id,
             price,
@@ -191,6 +193,7 @@ pub(crate) mod cancel_limit_order {
     use common::Balance;
 
     pub struct Context<T: Config> {
+        pub settings: FillSettings<T>,
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         pub order_id: T::OrderId,
@@ -203,7 +206,7 @@ pub(crate) mod cancel_limit_order {
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let caller = accounts::alice::<T>();
         let (order_book_id, order_id) =
-            cancel_limit_order(settings, caller.clone(), first_expiration);
+            cancel_limit_order(settings.clone(), caller.clone(), first_expiration);
         let order =
             OrderBookPallet::<T>::limit_orders::<_, T::OrderId>(order_book_id, order_id).unwrap();
         let balance_before = <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
@@ -212,6 +215,7 @@ pub(crate) mod cancel_limit_order {
         )
         .unwrap();
         Context {
+            settings,
             caller,
             order_book_id,
             order_id,
@@ -220,8 +224,9 @@ pub(crate) mod cancel_limit_order {
         }
     }
 
-    pub fn verify<T: Config + core::fmt::Debug>(_settings: FillSettings<T>, context: Context<T>) {
+    pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
+            settings: _,
             caller: _,
             order_book_id,
             order_id,
@@ -252,60 +257,32 @@ pub(crate) mod cancel_limit_order {
 pub(crate) mod execute_market_order {
     use super::*;
     use common::prelude::BalanceUnit;
-    use common::{balance, Balance};
-    use sp_runtime::traits::Zero;
+    use common::Balance;
 
     pub struct Context<T: Config> {
+        pub settings: FillSettings<T>,
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         pub amount: BalanceUnit,
-        pub side: PriceVariant,
+        pub direction: PriceVariant,
         pub caller_base_balance: Balance,
         pub caller_quote_balance: Balance,
-        pub expected_average_price: OrderPrice,
-    }
-
-    /// returns `(expected_base, expected_quote)` if executing all orders in `side`
-    pub(crate) fn expected_side_total<T: Config>(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        side: PriceVariant,
-        is_divisible: bool,
-    ) -> (OrderVolume, OrderVolume) {
-        let aggregated_side = match side {
-            PriceVariant::Buy => OrderBookPallet::<T>::aggregated_asks(order_book_id),
-            PriceVariant::Sell => OrderBookPallet::<T>::aggregated_bids(order_book_id),
-        };
-        let mut aggregated_side = aggregated_side.into_iter();
-        // account for partial execution
-        let (worst_price, worst_price_sum) = match side {
-            // for asks it's max price
-            PriceVariant::Buy => aggregated_side.next_back().unwrap(),
-            // for bids - min price
-            PriceVariant::Sell => aggregated_side.next().unwrap(),
-        };
-        let min_lot_size = if is_divisible {
-            OrderVolume::divisible(balance!(1))
-        } else {
-            OrderVolume::indivisible(1)
-        };
-        let worst_price_sum = worst_price_sum - min_lot_size;
-        let aggregated_side =
-            aggregated_side.chain(sp_std::iter::once((worst_price, worst_price_sum)));
-
-        let bases_quotes = aggregated_side.map(|(price, volume)| (volume, volume * price));
-        bases_quotes.fold((OrderVolume::zero(), OrderVolume::zero()), |acc, next| {
-            (acc.0 + next.0, acc.1 + next.1)
-        })
+        pub average_price: OrderPrice,
+        pub expected_executed_orders: usize,
     }
 
     pub(crate) fn init_inner<T: Config + trading_pair::Config>(
         settings: FillSettings<T>,
-        scatter: bool,
+        market_order_amount_variant: AmountVariant,
     ) -> Context<T> {
         let caller = accounts::alice::<T>();
         let is_divisible = false;
-        let (order_book_id, amount, side) =
-            market_order_execution(settings, caller.clone(), is_divisible, scatter);
+        let (order_book_id, info, expected_executed_orders) = market_order_execution(
+            market_order_amount_variant,
+            settings.clone(),
+            caller.clone(),
+            is_divisible,
+        );
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -318,49 +295,58 @@ pub(crate) mod execute_market_order {
                 &caller,
             )
             .unwrap();
-        let (expected_base, expected_quote) =
-            expected_side_total::<T>(order_book_id, side, is_divisible);
-        assert_eq!(amount, expected_base);
         Context {
+            settings,
             caller,
             order_book_id,
-            amount,
-            side,
+            amount: info.base_amount(),
+            direction: info.direction,
             caller_base_balance,
             caller_quote_balance,
-            expected_average_price: expected_quote / expected_base,
+            average_price: info.average_price,
+            expected_executed_orders,
         }
     }
 
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+    pub fn init<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+        market_order_amount_variant: AmountVariant,
+    ) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        init_inner(settings, false)
+        init_inner(settings, market_order_amount_variant)
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
+            settings,
             caller,
             order_book_id,
             amount,
-            side,
+            direction,
             caller_base_balance,
             caller_quote_balance,
-            expected_average_price,
+            average_price,
+            expected_executed_orders,
         } = context;
-        let average_price = expected_average_price;
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
                 owner_id: caller.clone(),
-                direction: side,
+                direction,
                 amount: OrderAmount::Base(OrderVolume::indivisible(*amount.balance())),
                 average_price,
                 to: None,
             }
             .into(),
         );
-        assert_orders_numbers::<T>(order_book_id, Some(1), Some(0), None, None);
+        assert_orders_numbers::<T>(
+            order_book_id,
+            Some(settings.max_side_orders() as usize - expected_executed_orders),
+            Some(0),
+            None,
+            None,
+        );
         assert_eq!(
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -380,52 +366,13 @@ pub(crate) mod execute_market_order {
     }
 }
 
-pub(crate) mod execute_market_order_scattered {
-    //! Same as `execute_market_order` benchmark but with orders evenly spread across
-    //! the order book.
-    //!
-    //! This might be slower because of working with storages aggregated by price.
-    //!
-    //! Update: it is indeed worse than just `mod execute_market_order` benchmark
-
-    use super::*;
-
-    pub fn init<T: Config + trading_pair::Config>(
-        settings: FillSettings<T>,
-    ) -> execute_market_order::Context<T> {
-        // https://github.com/paritytech/polkadot-sdk/issues/383
-        frame_system::Pallet::<T>::set_block_number(1u32.into());
-
-        let context = execute_market_order::init_inner(settings.clone(), true);
-        let aggregated_side_executed = match context.side.switched() {
-            PriceVariant::Buy => {
-                order_book_imported::Pallet::<T>::aggregated_bids(context.order_book_id)
-            }
-            PriceVariant::Sell => {
-                order_book_imported::Pallet::<T>::aggregated_asks(context.order_book_id)
-            }
-        };
-        assert_eq!(
-            aggregated_side_executed.len(),
-            sp_std::cmp::min(
-                settings.max_side_price_count,
-                settings.executed_orders_limit
-            ) as usize
-        );
-        context
-    }
-
-    pub fn verify<T: Config + core::fmt::Debug>(context: execute_market_order::Context<T>) {
-        execute_market_order::verify(context)
-    }
-}
-
 pub(crate) mod quote {
     use super::*;
     use common::prelude::QuoteAmount;
     use common::Balance;
 
     pub struct Context<T: Config> {
+        pub settings: FillSettings<T>,
         pub dex_id: T::DEXId,
         pub input_asset_id: AssetIdOf<T>,
         pub output_asset_id: AssetIdOf<T>,
@@ -436,8 +383,10 @@ pub(crate) mod quote {
     pub fn init<T: Config>(settings: FillSettings<T>) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) = quote::<T>(settings);
+        let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
+            quote::<T>(settings.clone());
         Context {
+            settings,
             dex_id,
             input_asset_id,
             output_asset_id,
@@ -450,27 +399,34 @@ pub(crate) mod quote {
 pub(crate) mod exchange {
 
     use super::*;
+    use common::prelude::SwapAmount;
     use common::Balance;
 
     pub struct Context<T: Config> {
+        pub settings: FillSettings<T>,
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
-        pub expected_in: Balance,
-        pub expected_out: Balance,
+        pub input_amount: OrderAmount,
+        pub output_amount: OrderAmount,
         pub caller_base_balance: Balance,
         pub caller_quote_balance: Balance,
-        pub expected_average_price: OrderPrice,
-        pub side: PriceVariant,
+        pub average_price: OrderPrice,
+        pub direction: PriceVariant,
+        pub max_swap_amount: SwapAmount<Balance>,
     }
 
     pub(crate) fn init_inner<T: Config + trading_pair::Config>(
         settings: FillSettings<T>,
-        scatter: bool,
+        exchange_amount_variant: AmountVariant,
     ) -> Context<T> {
         let caller = accounts::alice::<T>();
         let is_divisible = true;
-        let (order_book_id, amount, side) =
-            market_order_execution(settings.clone(), caller.clone(), is_divisible, scatter);
+        let (order_book_id, info, _) = market_order_execution(
+            exchange_amount_variant,
+            settings.clone(),
+            caller.clone(),
+            is_divisible,
+        );
         let caller_base_balance =
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
                 &order_book_id.base,
@@ -483,16 +439,24 @@ pub(crate) mod exchange {
                 &caller,
             )
             .unwrap();
-        let (expected_base, expected_quote) =
-            execute_market_order::expected_side_total::<T>(order_book_id, side, is_divisible);
-        assert_eq!(amount, expected_base);
-        let expected_orders = sp_std::cmp::min(
-            settings.executed_orders_limit,
-            settings.max_side_price_count * settings.max_orders_per_price,
-        ) as usize;
-        let (expected_bids, expected_asks) = match side {
-            PriceVariant::Buy => (0, expected_orders),
-            PriceVariant::Sell => (expected_orders, 0),
+        let expected_orders = settings.max_side_orders() as usize;
+        let (expected_bids, expected_asks, max_swap_amount) = match info.direction {
+            PriceVariant::Buy => (
+                0,
+                expected_orders,
+                SwapAmount::with_desired_output(
+                    *info.base_amount().balance(),
+                    *info.quote_amount().balance(),
+                ),
+            ),
+            PriceVariant::Sell => (
+                expected_orders,
+                0,
+                SwapAmount::with_desired_input(
+                    *info.base_amount().balance(),
+                    *info.quote_amount().balance(),
+                ),
+            ),
         };
         assert_orders_numbers::<T>(
             order_book_id,
@@ -501,49 +465,49 @@ pub(crate) mod exchange {
             None,
             None,
         );
-        let expected_average_price = expected_quote / expected_base;
-        let (expected_in, expected_out) = match side {
-            PriceVariant::Buy => (expected_quote, expected_base),
-            PriceVariant::Sell => (expected_base, expected_quote),
-        };
-        let (expected_in, expected_out) = (*expected_in.balance(), *expected_out.balance());
         Context {
+            settings,
             caller,
             order_book_id,
-            expected_in,
-            expected_out,
+            input_amount: info.input_amount,
+            output_amount: info.output_amount,
             caller_base_balance,
             caller_quote_balance,
-            expected_average_price,
-            side,
+            average_price: info.average_price,
+            direction: info.direction,
+            max_swap_amount,
         }
     }
 
-    #[allow(unused)]
-    pub fn init<T: Config + trading_pair::Config>(settings: FillSettings<T>) -> Context<T> {
+    pub fn init<T: Config + trading_pair::Config>(
+        settings: FillSettings<T>,
+        exchange_amount_variant: AmountVariant,
+    ) -> Context<T> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        init_inner(settings, false)
+        init_inner(settings, exchange_amount_variant)
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
+            settings: _,
             caller,
             order_book_id,
-            expected_in,
-            expected_out,
+            input_amount,
+            output_amount,
             caller_base_balance,
             caller_quote_balance,
-            expected_average_price,
-            side,
+            average_price,
+            direction,
+            max_swap_amount: _,
         } = context;
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
                 order_book_id,
                 owner_id: caller.clone(),
-                direction: side,
-                amount: OrderAmount::Base(expected_in.into()),
-                average_price: expected_average_price,
+                direction,
+                amount: input_amount,
+                average_price,
                 to: None,
             }
             .into(),
@@ -554,7 +518,7 @@ pub(crate) mod exchange {
                 &caller
             )
             .unwrap(),
-            caller_base_balance - expected_in
+            caller_base_balance - input_amount.value().balance()
         );
         assert_eq!(
             <T as order_book_imported::Config>::AssetInfoProvider::free_balance(
@@ -562,48 +526,8 @@ pub(crate) mod exchange {
                 &caller
             )
             .unwrap(),
-            caller_quote_balance + expected_out
+            caller_quote_balance + output_amount.value().balance()
         );
-    }
-}
-
-pub(crate) mod exchange_scattered {
-    //! Same as `exchange` benchmark but with orders (more or less) evenly scattered across
-    //! the order book.
-    //!
-    //! This might be slower because of working with storages aggregated by price.
-    //!
-    //! Update: it is indeed worse than just `mod exchange` benchmark
-
-    use super::*;
-    pub use exchange::Context;
-
-    pub fn init<T: Config + trading_pair::Config>(
-        settings: FillSettings<T>,
-    ) -> exchange::Context<T> {
-        // https://github.com/paritytech/polkadot-sdk/issues/383
-        frame_system::Pallet::<T>::set_block_number(1u32.into());
-        let context = exchange::init_inner(settings.clone(), true);
-        let aggregated_side_executed = match context.side.switched() {
-            PriceVariant::Buy => {
-                order_book_imported::Pallet::<T>::aggregated_bids(context.order_book_id)
-            }
-            PriceVariant::Sell => {
-                order_book_imported::Pallet::<T>::aggregated_asks(context.order_book_id)
-            }
-        };
-        assert_eq!(
-            aggregated_side_executed.len(),
-            sp_std::cmp::min(
-                settings.max_side_price_count,
-                settings.executed_orders_limit
-            ) as usize
-        );
-        context
-    }
-
-    pub fn verify<T: Config + core::fmt::Debug>(context: exchange::Context<T>) {
-        exchange::verify(context)
     }
 }
 
@@ -612,6 +536,7 @@ pub(crate) mod align_single_order {
     use common::balance;
 
     pub struct Context<T: Config> {
+        pub settings: FillSettings<T>,
         pub order_book: OrderBook<T>,
         pub order_to_align: LimitOrder<T>,
     }
@@ -620,7 +545,7 @@ pub(crate) mod align_single_order {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
         let (mut order_book, mut order_to_align) =
-            align_single_order::<T>(settings, PriceVariant::Buy);
+            align_single_order::<T>(settings.clone(), PriceVariant::Buy);
 
         let old_step_lot_size = *order_book.step_lot_size.balance();
 
@@ -639,6 +564,7 @@ pub(crate) mod align_single_order {
         );
 
         Context {
+            settings,
             order_book,
             order_to_align,
         }

@@ -1,0 +1,26 @@
+[package]
+name = "bridge-proxy-rpc"
+version = "0.1.0"
+edition = "2021"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3" }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
+serde = { version = "1.0.101", features = ["derive"] }
+sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+
+bridge-proxy-runtime-api = { path = "../runtime-api" }
+common = { path = "../../../common" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }

@@ -54,8 +54,6 @@ pub mod mock;
 pub mod tests;
 pub mod weights;
 
-#[cfg(feature = "wip")] // EVM bridge
-use crate::impls::EVMBridgeCallFilter;
 use crate::impls::PreimageWeightInfo;
 use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 #[cfg(feature = "wip")] // Trustless bridges
@@ -132,7 +130,6 @@ pub use common::{
     TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
-pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::dispatch::DispatchClass;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -161,11 +158,11 @@ pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
 pub use {
-    assets, dex_api, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book,
-    trading_pair, xst,
+    assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
+    order_book, trading_pair, xst,
 };
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 pub use kensetsu;
 
 /// An index to a block.
@@ -259,10 +256,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 75,
+    spec_version: 83,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 75,
+    transaction_version: 83,
     state_version: 0,
 };
 
@@ -1930,7 +1927,7 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 parameter_types! {
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
@@ -1944,11 +1941,13 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
 
+    pub const KenAssetId: AssetId = common::KEN;
     pub const KusdAssetId: AssetId = common::KUSD;
 
-    // 1 day = 86_400_000
-    // TODO set 86_400_000
-    pub const AccrueInterestPeriod: Moment = 30_000;
+    pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+
+    // 1 Kensetsu dollar of uncollected stability fee triggers accrue
+    pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
@@ -1959,17 +1958,19 @@ parameter_types! {
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
 }
 
-#[cfg(feature = "wip")] // kensetsu
+#[cfg(feature = "ready-to-test")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
     type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
-    type MaxCdpsPerOwner = ConstU32<100>;
-    type MaxRiskManagementTeamSize = ConstU32<100>;
-    type AccrueInterestPeriod = AccrueInterestPeriod;
+    type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type MaxCdpsPerOwner = ConstU32<10000>;
+    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
@@ -2005,6 +2006,7 @@ impl order_book::Config for Runtime {
     const MILLISECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK;
     const SOFT_MIN_MAX_RATIO: usize = 1000;
     const HARD_MIN_MAX_RATIO: usize = 4000;
+    const REGULAR_NUBMER_OF_EXECUTED_ORDERS: usize = 100;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
     type Locker = OrderBook;
@@ -2067,8 +2069,8 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
-    type Call = RuntimeCall;
-    type CallFilter = EVMBridgeCallFilter;
+    type Call = DispatchableSubstrateBridgeCall;
+    type CallFilter = SubstrateBridgeCallFilter;
     type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
 
@@ -2079,6 +2081,7 @@ parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u32 = 256;
     pub const BridgeMaxMessagesPerCommit: u32 = 20;
     pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
+    pub const BridgeMaxGasPerMessage: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
 
@@ -2099,33 +2102,38 @@ parameter_types! {
 }
 
 #[cfg(feature = "wip")] // EVM bridge
-impl bridge_inbound_channel::Config for Runtime {
+impl bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Verifier = ethereum_light_client::Pallet<Runtime>;
-    type MessageDispatch = Dispatch;
-    type Hashing = Keccak256;
-    type GasTracker = BridgeProxy;
-    type MessageStatusNotifier = BridgeProxy;
-    type FeeConverter = FeeConverter;
+    type Verifier = MultiVerifier;
+    type EVMMessageDispatch = Dispatch;
+    type SubstrateMessageDispatch = SubstrateDispatch;
     type WeightInfo = ();
-    type FeeAssetId = FeeCurrency;
-    type OutboundChannel = BridgeOutboundChannel;
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type TreasuryTechAccountId = GetTreasuryTechAccountId;
     type ThisNetworkId = ThisNetworkId;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
+    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type MessageStatusNotifier = BridgeProxy;
+    type OutboundChannel = BridgeOutboundChannel;
+    type EVMFeeHandler = EVMFungibleApp;
+    type EVMPriorityFee = EVMBridgePriorityFee;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
-impl bridge_outbound_channel::Config for Runtime {
+impl bridge_channel::outbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
-    type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
-    type FeeCurrency = FeeCurrency;
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = BridgeProxy;
     type AuxiliaryDigestHandler = LeafProvider;
     type ThisNetworkId = ThisNetworkId;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type MaxGasPerCommit = BridgeMaxTotalGasLimit;
+    type MaxGasPerMessage = BridgeMaxGasPerMessage;
+    type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
@@ -2138,37 +2146,16 @@ parameter_types! {
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
+    pub EVMBridgePriorityFee: u128 = 5_000_000_000; // 5 Gwei
 }
 
 #[cfg(feature = "wip")] // EVM bridge
-impl ethereum_light_client::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DescendantsUntilFinalized = DescendantsUntilFinalized;
-    type VerifyPoW = VerifyPoW;
-    type WeightInfo = ();
-    type UnsignedPriority = EthereumLightClientPriority;
-    type UnsignedLongevity = EthereumLightClientLongevity;
-    type ImportSignature = Signature;
-    type Submitter = <Signature as Verify>::Signer;
+parameter_types! {
+    pub const BaseFeeLifetime: BlockNumber = 10 * MINUTES;
 }
 
 #[cfg(feature = "wip")] // EVM bridge
-impl eth_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
-    >;
-    type MessageStatusNotifier = BridgeProxy;
-    type AssetRegistry = BridgeProxy;
-    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = ();
-}
-
-#[cfg(feature = "wip")] // EVM bridge
-impl erc20_app::Config for Runtime {
+impl evm_fungible_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
@@ -2180,13 +2167,8 @@ impl erc20_app::Config for Runtime {
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = ();
-}
-
-#[cfg(feature = "wip")] // EVM bridge
-impl migration_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type OutboundChannel = BridgeOutboundChannel;
+    type BaseFeeLifetime = BaseFeeLifetime;
+    type PriorityFee = EVMBridgePriorityFee;
     type WeightInfo = ();
 }
 
@@ -2199,22 +2181,14 @@ impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 
     #[cfg(feature = "wip")] // EVM bridge
-    type ERC20App = ERC20App;
+    type FAApp = EVMFungibleApp;
     #[cfg(not(feature = "wip"))] // EVM bridge
-    type ERC20App = ();
-
-    #[cfg(feature = "wip")] // EVM bridge
-    type EthApp = EthApp;
-    #[cfg(not(feature = "wip"))] // EVM bridge
-    type EthApp = ();
+    type FAApp = ();
 
     type HashiBridge = EthBridge;
     type ParachainApp = ParachainBridgeApp;
 
-    #[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
     type LiberlandApp = SubstrateBridgeApp;
-    #[cfg(not(feature = "ready-to-test"))] // Generic Susbtrate Bridge
-    type LiberlandApp = ();
 
     type TimepointProvider = GenericTimepointProvider;
     type ReferencePriceProvider =
@@ -2265,6 +2239,9 @@ pub enum MultiProof {
     Beefy(<BeefyLightClient as Verifier>::Proof),
     #[codec(index = 1)]
     Multisig(<MultisigVerifier as Verifier>::Proof),
+    #[cfg(feature = "wip")] // EVM bridge
+    #[codec(index = 2)]
+    EVMMultisig(<multisig_verifier::MultiEVMVerifier<Runtime> as Verifier>::Proof),
     /// This proof is only used for benchmarking purposes
     #[cfg(feature = "runtime-benchmarks")]
     #[codec(skip)]
@@ -2283,6 +2260,10 @@ impl Verifier for MultiVerifier {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
+            #[cfg(feature = "wip")] // EVM bridge
+            MultiProof::EVMMultisig(proof) => {
+                multisig_verifier::MultiEVMVerifier::<Runtime>::verify(network_id, message, proof)
+            }
             #[cfg(feature = "runtime-benchmarks")]
             MultiProof::Empty => Ok(()),
         }
@@ -2293,6 +2274,10 @@ impl Verifier for MultiVerifier {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify_weight(proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
+            #[cfg(feature = "wip")] // EVM bridge
+            MultiProof::EVMMultisig(proof) => {
+                multisig_verifier::MultiEVMVerifier::<Runtime>::verify_weight(proof)
+            }
             #[cfg(feature = "runtime-benchmarks")]
             MultiProof::Empty => Default::default(),
         }
@@ -2339,7 +2324,6 @@ impl parachain_bridge_app::Config for Runtime {
     type WeightInfo = crate::weights::parachain_bridge_app::WeightInfo<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // Generic Susbtrate Bridge
 impl substrate_bridge_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
@@ -2457,7 +2441,7 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
-        #[cfg(feature = "wip")] // kensetsu
+        #[cfg(feature = "ready-to-test")] // kensetsu
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -2468,19 +2452,13 @@ construct_runtime! {
 
         // Trustless EVM bridge
         #[cfg(feature = "wip")] // EVM bridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
+        BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
         #[cfg(feature = "wip")] // EVM bridge
-        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        #[cfg(feature = "wip")] // EVM bridge
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>} = 97,
+        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         #[cfg(feature = "wip")] // EVM bridge
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        #[cfg(feature = "wip")] // EVM bridge
-        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
-        #[cfg(feature = "wip")] // EVM bridge
-        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
+        EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
 
         // Trustless substrate bridge
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -2494,7 +2472,6 @@ construct_runtime! {
         BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
-        #[cfg(feature = "ready-to-test")] // Generic Substrate Bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
@@ -3220,7 +3197,7 @@ impl_runtime_apis! {
             use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
 
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3238,7 +3215,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
             list_benchmark!(list, extra, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             list_benchmark!(list, extra, kensetsu, KensetsuBench::<Runtime>);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3267,17 +3244,11 @@ impl_runtime_apis! {
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
-            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, eth_app, EthApp);
-            #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, erc20_app, ERC20App);
-            #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, migration_app, MigrationApp);
+            list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
@@ -3287,7 +3258,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
-            #[cfg(feature = "wip")] // Liberland bridge
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
@@ -3302,7 +3272,7 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3311,7 +3281,7 @@ impl_runtime_apis! {
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
             use order_book_benchmarking::Pallet as OrderBookBench;
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             impl kensetsu_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
@@ -3344,7 +3314,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            #[cfg(feature = "wip")] // kensetsu
+            #[cfg(feature = "ready-to-test")] // kensetsu
             add_benchmark!(params, batches, kensetsu, KensetsuBench::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3373,17 +3343,11 @@ impl_runtime_apis! {
 
             // Trustless bridge
             #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
-            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, eth_app, EthApp);
-            #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, erc20_app, ERC20App);
-            #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, migration_app, MigrationApp);
+            add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
@@ -3393,7 +3357,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
-            #[cfg(feature = "wip")] // Liberland bridge
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);

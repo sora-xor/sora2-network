@@ -1,3 +1,0 @@
-# Kensetsu
-
-TODO
