@@ -107,7 +107,7 @@ pub mod v1_to_v2 {
         use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
         use assets::AssetIdOf;
         use codec::{Decode, Encode, MaxEncodedLen};
-        use common::{AccountIdOf, Balance, KUSD};
+        use common::{AccountIdOf, Balance};
         use frame_support::dispatch::TypeInfo;
         use frame_support::pallet_prelude::ValueQuery;
         use frame_support::Identity;
@@ -221,7 +221,7 @@ pub mod v1_to_v2 {
                 }
 
                 v1::CDPDepository::<T>::translate(
-                    |cdp_id, mut cdp: v1::CollateralizedDebtPosition<T::AccountId, T::AssetId>| {
+                    |_, cdp: v1::CollateralizedDebtPosition<T::AccountId, T::AssetId>| {
                         weight += <T as frame_system::Config>::DbWeight::get().writes(1);
                         Some(cdp.into_v2(T::AssetId::from(KUSD)))
                     },
