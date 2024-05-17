@@ -234,4 +234,86 @@ pub mod v1_to_v2 {
             weight
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::migrations::v1_to_v2::{v1, UpgradeToV2};
+        use crate::mock::{new_test_ext, TestRuntime};
+        use crate::{CollateralInfos, Pallet, PegAsset, StablecoinInfos, StablecoinParameters};
+        use common::{balance, DAI, KUSD, XOR};
+        use core::default::Default;
+        use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+        use sp_arithmetic::FixedU128;
+
+        #[test]
+        fn test() {
+            new_test_ext().execute_with(|| {
+                StorageVersion::new(1).put::<Pallet<TestRuntime>>();
+                let kusd_bad_debt = balance!(2989);
+                v1::BadDebt::<TestRuntime>::set(kusd_bad_debt);
+
+                let total_collateral = balance!(500100);
+                let kusd_supply = balance!(100500);
+                let last_fee_update_time = 12345;
+                let interest_coefficient = FixedU128::from_inner(54321);
+                let old_dai_collateral_info = v1::CollateralInfo {
+                    risk_parameters: Default::default(),
+                    total_collateral,
+                    kusd_supply,
+                    last_fee_update_time,
+                    interest_coefficient,
+                };
+                v1::CollateralInfos::<TestRuntime>::set(DAI, Some(old_dai_collateral_info));
+                let old_xor_collateral_info = v1::CollateralInfo {
+                    risk_parameters: Default::default(),
+                    total_collateral,
+                    kusd_supply,
+                    last_fee_update_time,
+                    interest_coefficient,
+                };
+                v1::CollateralInfos::<TestRuntime>::set(XOR, Some(old_xor_collateral_info));
+
+                UpgradeToV2::<TestRuntime>::on_runtime_upgrade();
+
+                assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 2);
+
+                assert_eq!(1, StablecoinInfos::<TestRuntime>::iter().count());
+                let kusd_info = StablecoinInfos::<TestRuntime>::get(KUSD).unwrap();
+                assert_eq!(kusd_bad_debt, kusd_info.bad_debt);
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::SoraAssetId(DAI),
+                        minimal_stability_fee_accrue: balance!(1),
+                    },
+                    kusd_info.stablecoin_parameters
+                );
+
+                assert_eq!(2, CollateralInfos::<TestRuntime>::iter().count());
+                let dai_kusd_collateral_info =
+                    CollateralInfos::<TestRuntime>::get(DAI, KUSD).unwrap();
+                assert_eq!(total_collateral, dai_kusd_collateral_info.total_collateral);
+                assert_eq!(kusd_supply, dai_kusd_collateral_info.stablecoin_supply);
+                assert_eq!(
+                    last_fee_update_time,
+                    dai_kusd_collateral_info.last_fee_update_time
+                );
+                assert_eq!(
+                    interest_coefficient,
+                    dai_kusd_collateral_info.interest_coefficient
+                );
+                let xor_kusd_collateral_info =
+                    CollateralInfos::<TestRuntime>::get(XOR, KUSD).unwrap();
+                assert_eq!(total_collateral, xor_kusd_collateral_info.total_collateral);
+                assert_eq!(kusd_supply, xor_kusd_collateral_info.stablecoin_supply);
+                assert_eq!(
+                    last_fee_update_time,
+                    xor_kusd_collateral_info.last_fee_update_time
+                );
+                assert_eq!(
+                    interest_coefficient,
+                    xor_kusd_collateral_info.interest_coefficient
+                );
+            });
+        }
+    }
 }
