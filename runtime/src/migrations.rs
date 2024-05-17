@@ -35,4 +35,4 @@ use crate::*;
 pub type Migrations = ();
 
 #[cfg(feature = "ready-to-test")] // kensetsu
-pub type Migrations = (kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,);
+pub type Migrations = (kensetsu::migrations::v1_to_v2::UpgradeToV2<Runtime>,);
