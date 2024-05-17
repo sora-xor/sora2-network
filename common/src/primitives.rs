@@ -348,7 +348,10 @@ impl<AssetId> AssetId32<AssetId> {
     }
 
     /// Construct asset id for synthetic asset using its `reference_symbol`
-    pub fn from_synthetic_reference_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+    pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
+    where
+        Symbol: From<SymbolName> + PartialEq + Encode,
+    {
         if *reference_symbol == SymbolName::usd().into() {
             return Self::from_asset_id(PredefinedAssetId::XSTUSD);
         }
