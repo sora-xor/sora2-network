@@ -455,22 +455,13 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             amount.amount(),
         );
 
-        if input_asset_id == &DAI && output_asset_id != &APOLLO_ASSET_ID {
-            let _ = Assets::transfer(
-                RawOrigin::Signed(exchange_account()).into(),
-                *output_asset_id,
-                receiver.clone(),
-                amount.amount() * balance!(0.1) / balance!(1),
-            );
-        } else {
-            // Transfer from exchange account (output asset)
-            let _ = Assets::transfer(
-                RawOrigin::Signed(exchange_account()).into(),
-                *output_asset_id,
-                receiver.clone(),
-                amount.amount(),
-            );
-        }
+        // Transfer from exchange account (output asset)
+        let _ = Assets::transfer(
+            RawOrigin::Signed(exchange_account()).into(),
+            *output_asset_id,
+            receiver.clone(),
+            amount.amount(),
+        );
 
         Ok(SwapOutcome::new(amount.amount(), Default::default()))
     }

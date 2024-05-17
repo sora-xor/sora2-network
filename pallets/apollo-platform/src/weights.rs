@@ -44,7 +44,6 @@ pub trait WeightInfo {
 	fn change_rewards_per_block() -> Weight;
 	fn liquidate() -> Weight;
 	fn remove_pool() -> Weight;
-	fn edit_pool_info() -> Weight;
 }
 
 /// Weight functions for `apollo_platform`.
@@ -276,19 +275,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
-	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
-	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: ApolloPlatform PoolData (r:1 w:1)
-	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
-	fn edit_pool_info() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `481`
-		//  Estimated: `3932`
-		// Minimum execution time: 8_660 nanoseconds.
-		Weight::from_parts(10_127_000, 3932)
-			.saturating_add(T::DbWeight::get().reads(2))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
 }
 
 // For backwards compatibility and tests
@@ -517,19 +503,6 @@ impl WeightInfo for () {
 		// Minimum execution time: 69_823 nanoseconds.
 		Weight::from_parts(74_262_000, 8371)
 			.saturating_add(RocksDbWeight::get().reads(5))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
-	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: ApolloPlatform PoolData (r:1 w:1)
-	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
-	fn edit_pool_info() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `481`
-		//  Estimated: `3932`
-		// Minimum execution time: 8_660 nanoseconds.
-		Weight::from_parts(10_127_000, 3932)
-			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 }
