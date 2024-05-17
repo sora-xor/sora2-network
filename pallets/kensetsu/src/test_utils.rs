@@ -74,26 +74,6 @@ pub fn tech_account_id() -> AccountId {
         .expect("Failed to get ordinary account id for technical account id.")
 }
 
-/// Returns Risk Manager account
-pub fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
-/// Returns risk manager account id
-pub fn risk_manager_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account id
-pub fn protocol_owner_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account
-pub fn protocol_owner() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
 /// Sets protocol bad debt in KUSD.
 pub fn set_bad_debt(bad_debt: Balance) {
     BadDebt::<TestRuntime>::set(bad_debt);
@@ -109,23 +89,16 @@ pub fn set_borrow_tax(borrow_tax: Percent) {
     BorrowTax::<TestRuntime>::set(borrow_tax);
 }
 
-/// Sets risk manager for protocol
-pub fn set_up_risk_manager() {
-    KensetsuPallet::add_risk_manager(RuntimeOrigin::root(), risk_manager_account_id())
-        .expect("Must set risk manager");
-}
-
 /// Sets XOR asset id as collateral with default parameters
-/// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
+/// As if was called `update_collateral_risk_parameters(XOR, some_info)`
 pub fn set_xor_as_collateral_type(
     hard_cap: Balance,
     liquidation_ratio: Perbill,
     stability_fee_rate: FixedU128,
     minimal_collateral_deposit: Balance,
 ) {
-    set_up_risk_manager();
     assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
-        risk_manager(),
+        RuntimeOrigin::root(),
         XOR,
         CollateralRiskParameters {
             hard_cap,
@@ -135,7 +108,6 @@ pub fn set_xor_as_collateral_type(
             minimal_collateral_deposit,
         }
     ));
-    KusdHardCap::<TestRuntime>::set(hard_cap);
 }
 
 /// Makes CDPs unsafe by changing liquidation ratio.
@@ -159,7 +131,7 @@ pub fn create_cdp_for_xor(
     collateral: Balance,
     debt: Balance,
 ) -> CdpId {
-    set_balance(alice_account_id(), collateral);
+    add_balance(alice_account_id(), collateral, XOR);
     assert_ok!(KensetsuPallet::create_cdp(
         owner, XOR, collateral, debt, debt
     ));
@@ -172,7 +144,7 @@ pub fn deposit_xor_to_cdp(
     cdp_id: CdpId,
     collateral_amount: Balance,
 ) {
-    set_balance(alice_account_id(), collateral_amount);
+    add_balance(alice_account_id(), collateral_amount, XOR);
     assert_ok!(KensetsuPallet::deposit_collateral(
         owner,
         cdp_id,
@@ -181,11 +153,11 @@ pub fn deposit_xor_to_cdp(
 }
 
 /// Updates account balance
-pub fn set_balance(account: AccountId, balance: Balance) {
+pub fn add_balance(account: AccountId, balance: Balance, asset_id: AssetId) {
     assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
         RuntimeOrigin::root(),
         account,
-        XOR,
+        asset_id,
         balance.try_into().unwrap()
     ));
 }

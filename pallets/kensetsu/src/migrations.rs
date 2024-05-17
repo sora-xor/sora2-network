@@ -97,3 +97,31 @@ pub mod init {
         }
     }
 }
+
+/// Removes hard_cap. This migration for stage only, will not change storage version.
+pub mod remove_hard_cap {
+    use crate::Config;
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use sp_core::Get;
+
+    mod old {
+        use crate::{Config, Pallet};
+        use common::Balance;
+        use frame_support::pallet_prelude::ValueQuery;
+
+        /// value to remove
+        #[frame_support::storage_alias]
+        pub type KusdHardCap<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
+    }
+
+    pub struct RemoveHardCap<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for RemoveHardCap<T> {
+        fn on_runtime_upgrade() -> Weight {
+            old::KusdHardCap::<T>::kill();
+            <T as frame_system::Config>::DbWeight::get().writes(1)
+        }
+    }
+}

@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.3.0"
+version = "3.4.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -36,20 +36,16 @@ bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", def
 multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
-ethereum-light-client = { path = "../pallets/trustless-bridge/ethereum-light-client", default-features = false, optional = true }
 dispatch = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-bridge-inbound-channel = { path = "../pallets/trustless-bridge/bridge-inbound-channel", default-features = false, optional = true }
-bridge-outbound-channel = { path = "../pallets/trustless-bridge/bridge-outbound-channel", default-features = false, optional = true }
-eth-app = { path = "../pallets/trustless-bridge/eth-app", default-features = false, optional = true }
-migration-app = { path = "../pallets/trustless-bridge/migration-app", default-features = false, optional = true }
-erc20-app = { path = "../pallets/trustless-bridge/erc20-app", default-features = false, optional = true }
 leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-bridge-proxy = { path = "../pallets/trustless-bridge/bridge-proxy", default-features = false }
-bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/bridge-proxy/runtime-api", default-features = false }
+bridge-proxy = { path = "../pallets/bridge-proxy", default-features = false }
+bridge-proxy-runtime-api = { path = "../pallets/bridge-proxy/runtime-api", default-features = false }
 parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false, optional = true }
 assets = { path = "../pallets/assets", default-features = false }
@@ -208,19 +204,15 @@ std = [
     "dex-runtime-api/std",
     "eth-bridge-runtime-api/std",
     "eth-bridge/std",
-    "ethereum-light-client/std",
-    "bridge-inbound-channel/std",
-    "bridge-outbound-channel/std",
     "dispatch/std",
-    "eth-app/std",
-    "migration-app/std",
-    "erc20-app/std",
     "leaf-provider/std",
     "leaf-provider-runtime-api/std",
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
+    "evm-fungible-app/std",
     "parachain-bridge-app/std",
     "substrate-bridge-channel/std",
+    "bridge-channel/std",
     "bridge-data-signer/std",
     "multisig-verifier/std",
     "bridge-types/std",
@@ -319,12 +311,8 @@ wip = [
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
-    "ethereum-light-client",
-    "bridge-inbound-channel",
-    "bridge-outbound-channel",
-    "eth-app",
-    "migration-app",
-    "erc20-app",
+    "evm-fungible-app",
+    "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
 ]
@@ -346,18 +334,14 @@ runtime-benchmarks = [
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
-    "ethereum-light-client/runtime-benchmarks",
-    "bridge-inbound-channel/runtime-benchmarks",
-    "bridge-outbound-channel/runtime-benchmarks",
     "dispatch/runtime-benchmarks",
-    "eth-app/runtime-benchmarks",
-    "migration-app/runtime-benchmarks",
-    "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
+    "evm-fungible-app/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
     "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
+    "bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",
@@ -421,16 +405,12 @@ try-runtime = [
     "dex-api/try-runtime",
     "dex-manager/try-runtime",
     "eth-bridge/try-runtime",
-    "ethereum-light-client/try-runtime",
-    "bridge-inbound-channel/try-runtime",
-    "bridge-outbound-channel/try-runtime",
     "dispatch/try-runtime",
-    "eth-app/try-runtime",
-    "migration-app/try-runtime",
-    "erc20-app/try-runtime",
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
+    "evm-fungible-app/try-runtime",
     "parachain-bridge-app/try-runtime",
+    "bridge-channel/try-runtime",
     "substrate-bridge-app/try-runtime",
     "substrate-bridge-channel/try-runtime",
     "bridge-types/try-runtime",
