@@ -3411,21 +3411,6 @@
 <a href="#3396" id="3396">3396</a>
 <a href="#3397" id="3397">3397</a>
 <a href="#3398" id="3398">3398</a>
-<a href="#3399" id="3399">3399</a>
-<a href="#3400" id="3400">3400</a>
-<a href="#3401" id="3401">3401</a>
-<a href="#3402" id="3402">3402</a>
-<a href="#3403" id="3403">3403</a>
-<a href="#3404" id="3404">3404</a>
-<a href="#3405" id="3405">3405</a>
-<a href="#3406" id="3406">3406</a>
-<a href="#3407" id="3407">3407</a>
-<a href="#3408" id="3408">3408</a>
-<a href="#3409" id="3409">3409</a>
-<a href="#3410" id="3410">3410</a>
-<a href="#3411" id="3411">3411</a>
-<a href="#3412" id="3412">3412</a>
-<a href="#3413" id="3413">3413</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3586,12 +3571,9 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">pub use </span>qa_tools;
 <span class="kw">pub use </span>{
-    assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
-    order_book, trading_pair, xst,
+    assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
+    multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
 };
-
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-</span><span class="kw">pub use </span>kensetsu;
 
 <span class="doccomment">/// An index to a block.
 </span><span class="kw">pub type </span>BlockNumber = u32;
@@ -3684,10 +3666,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">83</span>,
+    spec_version: <span class="number">84</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">83</span>,
+    transaction_version: <span class="number">84</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -5355,8 +5337,7 @@
     <span class="kw">type </span>WeightInfo = hermes_governance_platform::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-</span><span class="macro">parameter_types! </span>{
+<span class="macro">parameter_types! </span>{
     <span class="kw">pub </span>KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -5380,14 +5361,11 @@
     <span class="comment">// Not as important as some essential transactions (e.g. im_online or similar ones)
     </span><span class="kw">pub </span>KensetsuOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(<span class="number">10</span>) * TransactionPriority::max_value();
-    <span class="comment">// 100 blocks, if tx spoils, worker will resend it
-    // pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
-    // TODO set 100 for release
-    </span><span class="kw">pub </span>KensetsuOffchainWorkerTxLongevity: TransactionLongevity = <span class="number">5</span>;
+    <span class="comment">// 10 blocks, if tx spoils, worker will resend it
+    </span><span class="kw">pub </span>KensetsuOffchainWorkerTxLongevity: TransactionLongevity = <span class="number">10</span>;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-</span><span class="kw">impl </span>kensetsu::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>kensetsu::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
     <span class="kw">type </span>AssetInfoProvider = Assets;
@@ -5868,9 +5846,7 @@
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">55</span>,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">56</span>,
         OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
-
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-        </span>Kensetsu: kensetsu::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
 
         <span class="comment">// Leaf provider should be placed before any pallet which is uses it
         </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,
@@ -6624,9 +6600,7 @@
         ) {
             <span class="kw">use </span>frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             <span class="kw">use </span>frame_support::traits::StorageInfoTrait;
-
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-            </span><span class="kw">use </span>kensetsu_benchmarking::Pallet <span class="kw">as </span>KensetsuBench;
+            <span class="kw">use </span>kensetsu_benchmarking::Pallet <span class="kw">as </span>KensetsuBench;
             <span class="kw">use </span>liquidity_proxy_benchmarking::Pallet <span class="kw">as </span>LiquidityProxyBench;
             <span class="kw">use </span>pool_xyk_benchmarking::Pallet <span class="kw">as </span>XYKPoolBench;
             <span class="kw">use </span>pswap_distribution_benchmarking::Pallet <span class="kw">as </span>PswapDistributionBench;
@@ -6643,8 +6617,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, farming, Farming);
             <span class="macro">list_benchmark!</span>(list, extra, iroha_migration, IrohaMigration);
             <span class="macro">list_benchmark!</span>(list, extra, dex_api, DEXAPI);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-            </span><span class="macro">list_benchmark!</span>(list, extra, kensetsu, KensetsuBench::&lt;Runtime&gt;);
+            <span class="macro">list_benchmark!</span>(list, extra, kensetsu, KensetsuBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, liquidity_proxy, LiquidityProxyBench::&lt;Runtime&gt;);
             <span class="macro">list_benchmark!</span>(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             <span class="macro">list_benchmark!</span>(list, extra, pswap_distribution, PswapDistributionBench::&lt;Runtime&gt;);
@@ -6699,9 +6672,7 @@
             config: frame_benchmarking::BenchmarkConfig
         ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;frame_benchmarking::BenchmarkBatch&gt;, sp_runtime::RuntimeString&gt; {
             <span class="kw">use </span>frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-            </span><span class="kw">use </span>kensetsu_benchmarking::Pallet <span class="kw">as </span>KensetsuBench;
+            <span class="kw">use </span>kensetsu_benchmarking::Pallet <span class="kw">as </span>KensetsuBench;
             <span class="kw">use </span>liquidity_proxy_benchmarking::Pallet <span class="kw">as </span>LiquidityProxyBench;
             <span class="kw">use </span>pool_xyk_benchmarking::Pallet <span class="kw">as </span>XYKPoolBench;
             <span class="kw">use </span>pswap_distribution_benchmarking::Pallet <span class="kw">as </span>PswapDistributionBench;
@@ -6709,8 +6680,8 @@
             <span class="kw">use </span>demeter_farming_platform_benchmarking::Pallet <span class="kw">as </span>DemeterFarmingPlatformBench;
             <span class="kw">use </span>xst_benchmarking::Pallet <span class="kw">as </span>XSTPoolBench;
             <span class="kw">use </span>order_book_benchmarking::Pallet <span class="kw">as </span>OrderBookBench;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-            </span><span class="kw">impl </span>kensetsu_benchmarking::Config <span class="kw">for </span>Runtime {}
+
+            <span class="kw">impl </span>kensetsu_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>liquidity_proxy_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pool_xyk_benchmarking::Config <span class="kw">for </span>Runtime {}
             <span class="kw">impl </span>pswap_distribution_benchmarking::Config <span class="kw">for </span>Runtime {}
@@ -6742,8 +6713,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, farming, Farming);
             <span class="macro">add_benchmark!</span>(params, batches, iroha_migration, IrohaMigration);
             <span class="macro">add_benchmark!</span>(params, batches, dex_api, DEXAPI);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-            </span><span class="macro">add_benchmark!</span>(params, batches, kensetsu, KensetsuBench::&lt;Runtime&gt;);
+            <span class="macro">add_benchmark!</span>(params, batches, kensetsu, KensetsuBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, liquidity_proxy, LiquidityProxyBench::&lt;Runtime&gt;);
             <span class="macro">add_benchmark!</span>(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             <span class="macro">add_benchmark!</span>(params, batches, pswap_distribution, PswapDistributionBench::&lt;Runtime&gt;);
