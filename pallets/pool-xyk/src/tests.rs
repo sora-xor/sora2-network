@@ -2359,9 +2359,6 @@ fn withdraw_all_liquidity_chameleon() {
              _,
              repr: AccountId,
              _fee_repr: AccountId| {
-                let gt_balance = assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap();
-                let bp_balance = assets::Pallet::<Runtime>::free_balance(&bp, &ALICE()).unwrap();
-
                 assert_noop!(
                     crate::Pallet::<Runtime>::withdraw_liquidity(
                         RuntimeOrigin::signed(ALICE()),

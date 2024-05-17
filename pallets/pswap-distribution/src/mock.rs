@@ -194,6 +194,7 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type PoolXykPallet = PoolXYK;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
 }
 
 impl tokens::Config for Runtime {

@@ -244,6 +244,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
 }
 
 impl pallet_timestamp::Config for Runtime {

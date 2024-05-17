@@ -273,6 +273,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
 }
 
 impl demeter_farming_platform::Config for Runtime {

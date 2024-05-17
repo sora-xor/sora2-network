@@ -1636,6 +1636,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
 }
 
 parameter_types! {

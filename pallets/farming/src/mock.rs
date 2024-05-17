@@ -317,6 +317,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
