@@ -91,32 +91,147 @@ pub mod init {
     }
 }
 
-pub mod kensetsu_more_stablecoins {
-    use crate::Config;
+/// Kensetsu version 2 adds configurable debt asset id.
+pub mod v1_to_v2 {
+    use crate::{
+        CollateralInfos, Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos,
+        StablecoinParameters,
+    };
+    use common::{balance, DAI, KUSD};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
-    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
     use sp_core::Get;
 
-    mod old_storage {}
+    mod v1 {
+        use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
+        use assets::AssetIdOf;
+        use codec::{Decode, Encode, MaxEncodedLen};
+        use common::{AccountIdOf, Balance, KUSD};
+        use frame_support::dispatch::TypeInfo;
+        use frame_support::pallet_prelude::ValueQuery;
+        use frame_support::Identity;
+        use sp_arithmetic::FixedU128;
 
-    pub struct MoreStablecoins<T>(PhantomData<T>);
+        #[derive(
+            Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord,
+        )]
+        pub struct CollateralInfo<Moment> {
+            pub risk_parameters: CollateralRiskParameters,
+            pub total_collateral: Balance,
+            // field was renamed to stablecoin_supply
+            pub kusd_supply: Balance,
+            pub last_fee_update_time: Moment,
+            pub interest_coefficient: FixedU128,
+        }
 
-    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for MoreStablecoins<T> {
+        impl<Moment> CollateralInfo<Moment> {
+            pub fn into_v2(self) -> crate::CollateralInfo<Moment> {
+                crate::CollateralInfo {
+                    risk_parameters: self.risk_parameters,
+                    total_collateral: self.total_collateral,
+                    stablecoin_supply: self.kusd_supply,
+                    last_fee_update_time: self.last_fee_update_time,
+                    interest_coefficient: self.interest_coefficient,
+                }
+            }
+        }
+
+        #[derive(
+            Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord,
+        )]
+        pub struct CollateralizedDebtPosition<AccountId, AssetId> {
+            pub owner: AccountId,
+            pub collateral_asset_id: AssetId,
+            pub collateral_amount: Balance,
+            // stablecoin_asset_id was added
+            pub debt: Balance,
+            pub interest_coefficient: FixedU128,
+        }
+
+        impl<AccountId, AssetId> CollateralizedDebtPosition<AccountId, AssetId> {
+            pub fn into_v2(
+                self,
+                kusd_asset_id: AssetId,
+            ) -> crate::CollateralizedDebtPosition<AccountId, AssetId> {
+                crate::CollateralizedDebtPosition {
+                    owner: self.owner,
+                    collateral_asset_id: self.collateral_asset_id,
+                    collateral_amount: self.collateral_amount,
+                    stablecoin_asset_id: kusd_asset_id,
+                    debt: self.debt,
+                    interest_coefficient: self.interest_coefficient,
+                }
+            }
+        }
+
+        #[frame_support::storage_alias]
+        pub type BadDebt<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
+
+        #[frame_support::storage_alias]
+        pub type CollateralInfos<T: Config> = StorageMap<
+            Pallet<T>,
+            Identity,
+            AssetIdOf<T>,
+            CollateralInfo<<T as pallet_timestamp::Config>::Moment>,
+        >;
+
+        #[frame_support::storage_alias]
+        pub type CDPDepository<T: Config> = StorageMap<
+            Pallet<T>,
+            Identity,
+            CdpId,
+            crate::CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
+        >;
+    }
+
+    pub struct UpgradeToV2<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV2<T>
+    {
         fn on_runtime_upgrade() -> Weight {
-            // let weight = <T as frame_system::Config>::DbWeight::get().reads(1);
-            // TODO migrate storages
+            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
 
-            // TODO translate(None)
-            // CollateralInfos::<T>::clear(, None);
+            let version = Pallet::<T>::on_chain_storage_version();
+            if version == 1 {
+                let kusd_bad_debt = v1::BadDebt::<T>::take();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
-            // NextCDPId set 0
+                StablecoinInfos::<T>::insert(
+                    T::AssetId::from(KUSD),
+                    StablecoinInfo {
+                        bad_debt: kusd_bad_debt,
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::SoraAssetId(T::AssetId::from(DAI)),
+                            minimal_stability_fee_accrue: balance!(1),
+                        },
+                    },
+                );
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
-            // CDPDepository drop
+                for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
+                {
+                    CollateralInfos::<T>::insert(
+                        collateral_asset_id,
+                        T::AssetId::from(KUSD),
+                        old_collateral_info.into_v2(),
+                    );
+                    weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                }
 
-            // CdpOwnerIndex drop
+                v1::CDPDepository::<T>::translate(
+                    |cdp_id, mut cdp: v1::CollateralizedDebtPosition<T::AccountId, T::AssetId>| {
+                        weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                        Some(cdp.into_v2(T::AssetId::from(KUSD)))
+                    },
+                );
 
-            <T as frame_system::Config>::DbWeight::get().reads(1)
+                StorageVersion::new(2).put::<Pallet<T>>();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            }
+
+            weight
         }
     }
 }
