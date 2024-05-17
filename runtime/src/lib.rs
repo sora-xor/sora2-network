@@ -159,7 +159,7 @@ pub use order_book_benchmarking;
 pub use qa_tools;
 pub use {
     assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
-    order_book, trading_pair, xst,
+    order_book, regulated_assets, trading_pair, xst,
 };
 
 #[cfg(feature = "ready-to-test")] // kensetsu
@@ -2369,6 +2369,12 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
+impl regulated_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = Assets;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2496,6 +2502,8 @@ construct_runtime! {
 
         #[cfg(feature = "ready-to-test")] // Apollo
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
+
+        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
 
@@ -3211,6 +3219,7 @@ impl_runtime_apis! {
             let mut list = Vec::<BenchmarkList>::new();
 
             list_benchmark!(list, extra, assets, Assets);
+            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
             #[cfg(feature = "private-net")]
             list_benchmark!(list, extra, faucet, Faucet);
             list_benchmark!(list, extra, farming, Farming);
@@ -3310,6 +3319,7 @@ impl_runtime_apis! {
             let params = (&config, &whitelist);
 
             add_benchmark!(params, batches, assets, Assets);
+            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);

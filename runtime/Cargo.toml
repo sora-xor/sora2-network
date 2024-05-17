@@ -101,6 +101,7 @@ vested-rewards = { path = "../pallets/vested-rewards", default-features = false 
 vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", default-features = false }
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xst = { path = "../pallets/xst", default-features = false }
+regulated-assets = { path = "../pallets/regulated-assets", default-features = false }
 xst-benchmarking = { path = "../pallets/xst/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
@@ -293,6 +294,7 @@ std = [
     "xor-fee/std",
     "xst/std",
     "xst-benchmarking/std",
+    "regulated-assets/std",
 ]
 
 private-net = [
@@ -381,6 +383,7 @@ runtime-benchmarks = [
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
+    "regulated-assets/runtime-benchmarks"
 ]
 
 reduced-pswap-reward-periods = []

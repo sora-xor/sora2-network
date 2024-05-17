@@ -65,6 +65,7 @@ mock_assets_config!(TestRuntime);
 impl regulated_assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<TestRuntime>;
+    type WeightInfo = ();
 }
 
 construct_runtime! {

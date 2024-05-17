@@ -32,11 +32,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{
-    AssetInfoProvider, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
-    Description,
-};
-use frame_support::sp_runtime::DispatchError;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -44,10 +41,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod weights;
+
+use common::{
+    AssetInfoProvider, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
+    Description,
+};
+use frame_support::sp_runtime::DispatchError;
+use weights::WeightInfo;
+
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-
-impl<T: Config> Pallet<T> {}
 
 pub use pallet::*;
 
@@ -61,6 +65,9 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+        type WeightInfo: WeightInfo;
+
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -85,14 +92,41 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
+        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+            // validate
+            let who = ensure_signed(origin)?;
+            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                T::AssetInfoProvider::is_asset_owner(&asset_id, &who),
+                <Error<T>>::OnlyAssetOwnerCanRegulate
+            );
+            ensure!(
+                !<AssetRegulated<T>>::get(asset_id),
+                <Error<T>>::AssetAlreadyRegulated
+            );
+
+            // act
+            <AssetRegulated<T>>::set(asset_id, true);
+            Self::deposit_event(Event::AssetRegulated { asset_id });
+
+            Ok(())
+        }
+    }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {}
+    pub enum Event<T: Config> {
+        AssetRegulated { asset_id: AssetIdOf<T> },
+    }
 
     #[pallet::error]
-    pub enum Error<T> {}
+    pub enum Error<T> {
+        OnlyAssetOwnerCanRegulate,
+        AssetAlreadyRegulated,
+    }
 
     #[pallet::type_value]
     pub fn DefaultAssetRegulated<T: Config>() -> bool {
@@ -107,9 +141,9 @@ pub mod pallet {
 
 impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
     fn mint(
-        issuer: &AccountIdOf<T>,
+        _issuer: &AccountIdOf<T>,
         _to: Option<&AccountIdOf<T>>,
-        asset_id: &AssetIdOf<T>,
+        _asset_id: &AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         Ok(())
     }
@@ -123,16 +157,16 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
     }
 
     fn burn(
-        issuer: &AccountIdOf<T>,
-        from: Option<&AccountIdOf<T>>,
-        asset_id: &AssetIdOf<T>,
+        _issuer: &AccountIdOf<T>,
+        _from: Option<&AccountIdOf<T>>,
+        _asset_id: &AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         Ok(())
     }
 
     fn assign_permissions_on_register(
-        owner: &AccountIdOf<T>,
-        asset_id: &AssetIdOf<T>,
+        _owner: &AccountIdOf<T>,
+        _asset_id: &AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         Ok(())
     }

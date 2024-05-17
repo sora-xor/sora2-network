@@ -3928,6 +3928,7 @@ dependencies = [
  "pswap-distribution-runtime-api",
  "qa-tools",
  "referrals",
+ "regulated-assets",
  "rewards",
  "rewards-runtime-api",
  "scale-info",
@@ -8645,6 +8646,7 @@ version = "1.0.0"
 dependencies = [
  "assets",
  "common",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
