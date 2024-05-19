@@ -203,6 +203,7 @@ impl technical::Config for Test {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Test>;
 }
 
 impl dispatch::Config for Test {

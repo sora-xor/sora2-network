@@ -81,8 +81,8 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::Fixed;
     use common::{balance, AssetInfoProvider, DEXId, XykPool, PSWAP, XSTUSD};
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -97,7 +97,6 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -119,6 +118,17 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -438,13 +448,19 @@ pub mod pallet {
 
             ensure!(
                 CeresBurnFeeAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get(), &user).unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
             let total_tokens = tokens_for_liquidity + tokens_for_ilo;
             ensure!(
-                total_tokens <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total_tokens
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughTokens
             );
 
@@ -521,7 +537,11 @@ pub mod pallet {
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
-                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get(), &user).unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
@@ -820,7 +840,9 @@ pub mod pallet {
                     .unwrap_or(0);
 
                 ensure!(
-                    tokens_to_lock <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                    tokens_to_lock
+                        <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                            .unwrap_or(0),
                     Error::<T>::NotEnoughTeamTokensToLock
                 );
 
@@ -1100,7 +1122,8 @@ pub mod pallet {
                 VestedRewards::<T>::claim_rewards(RawOrigin::Signed(pallet_account.clone()).into());
 
             let pswap_rewards =
-                Assets::<T>::free_balance(&PSWAP.into(), &pallet_account).unwrap_or(0);
+                <T as Config>::AssetInfoProvider::free_balance(&PSWAP.into(), &pallet_account)
+                    .unwrap_or(0);
 
             // Claim PSWAP rewards
             Assets::<T>::transfer_from(

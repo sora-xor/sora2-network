@@ -332,6 +332,7 @@ pub mod pallet {
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
+    use common::{ContentSource, Description};
     use frame_support::log;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
@@ -340,7 +341,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -379,6 +379,17 @@ pub mod pallet {
         type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -984,7 +995,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
-            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownAssetId)?;
             RegisteredAsset::<T>::remove(network_id, &asset_id);
@@ -1011,14 +1022,13 @@ pub mod pallet {
                 asset_id
             );
             ensure_root(origin)?;
-            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             ensure!(
                 !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
                 Error::<T>::TokenIsAlreadyAdded
             );
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
-            let (_, _, precision, ..) = assets::Pallet::<T>::get_asset_info(&asset_id);
+            let (_, _, precision, ..) = T::AssetInfoProvider::get_asset_info(&asset_id);
             RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
             RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
             RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
