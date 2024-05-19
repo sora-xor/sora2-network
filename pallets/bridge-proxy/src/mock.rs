@@ -341,9 +341,7 @@ impl TimepointProvider for GenericTimepointProvider {
 pub struct ReferencePriceProvider;
 
 impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
-    fn get_reference_price(
-        _asset_id: &AssetId,
-    ) -> Result<Balance, sp_runtime::DispatchError> {
+    fn get_reference_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
         Ok(common::balance!(2.5))
     }
 }

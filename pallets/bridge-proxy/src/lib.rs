@@ -24,12 +24,13 @@ use bridge_types::{
 use codec::{Decode, Encode};
 use common::{prelude::FixedWrapper, Balance};
 use common::{AssetInfoProvider, ReferencePriceProvider};
-use frame_support::dispatch::{DispatchResult, RuntimeDebug};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use log;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_runtime::Saturating;
 use sp_std::prelude::*;
 

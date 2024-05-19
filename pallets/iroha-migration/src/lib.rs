@@ -54,16 +54,18 @@ mod tests;
 
 pub mod weights;
 
+use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
-use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, Pays};
-use log::error;
+use frame_support::dispatch::Pays;
+use frame_support::ensure;
+use frame_support::pallet_prelude::{DispatchError, RuntimeDebug};
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::weights::Weight;
-use frame_support::ensure;
 use frame_system::ensure_signed;
+use frame_system::pallet_prelude::BlockNumberFor;
+use log::error;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::Sha3_256;
@@ -324,6 +326,7 @@ pub mod pallet {
     use common::AccountIdOf;
     use frame_support::dispatch::PostDispatchInfo;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
@@ -481,7 +484,6 @@ pub mod pallet {
         pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -492,7 +494,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
             Account::<T>::put(&self.account_id.as_ref().unwrap());
