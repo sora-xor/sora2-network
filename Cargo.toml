@@ -337,7 +337,7 @@ substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" 
 bridge-types = { path = "../sora2-common/pallets/types" }
 bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
 multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
-# evm-fungible-app = { path = "../sora2-common/pallets/evm-fungible-app" }
+evm-fungible-app = { path = "../sora2-common/pallets/evm-fungible-app" }
 # bridge-channel = { path = "../sora2-common/pallets/channel" }
 # substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
 
@@ -367,7 +367,7 @@ members = [
     "pallets/rewards",
     "pallets/xor-fee",
     "pallets/referrals",
-    # "pallets/eth-bridge",
+    "pallets/eth-bridge",
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
     "pallets/vested-rewards",

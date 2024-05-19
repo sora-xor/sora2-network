@@ -47,15 +47,17 @@ use crate::{
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode};
-use log::{debug, error, info, trace, warn};
-use sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{One, Saturating, Zero};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
+use frame_system::pallet_prelude::BlockNumberFor;
+use log::{debug, error, info, trace, warn};
+use sp_core::RuntimeDebug;
 use sp_core::H256;
+use sp_io::hashing::blake2_256;
 use sp_std::collections::btree_map::BTreeMap;
 
 impl<T: Config> Pallet<T> {
@@ -480,7 +482,7 @@ impl<T: Config> Pallet<T> {
                     return Ok(substrate_finalized_height);
                 }
             };
-            from_block += BlockNumberFor<T>::one();
+            from_block += BlockNumberFor::<T>::one();
             // Will not process block with height bigger than finalized height
             s_sub_to_handle_from_height.set(&from_block);
         }
@@ -609,7 +611,7 @@ impl<T: Config> Pallet<T> {
             }
         };
 
-        if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into() == BlockNumberFor<T>::zero() {
+        if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into() == BlockNumberFor::<T>::zero() {
             Self::handle_pending_multisig_calls(network_id, current_eth_height);
         }
 
@@ -624,9 +626,9 @@ impl<T: Config> Pallet<T> {
             }
             let request_submission_height: BlockNumberFor<T> =
                 Self::request_submission_height(network_id, &request_hash);
-            let number = BlockNumberFor<T>::from(MAX_PENDING_TX_BLOCKS_PERIOD);
+            let number = BlockNumberFor::<T>::from(MAX_PENDING_TX_BLOCKS_PERIOD);
             let diff = substrate_finalized_height.saturating_sub(request_submission_height);
-            let should_reapprove = diff >= number && diff % number == BlockNumberFor<T>::zero();
+            let should_reapprove = diff >= number && diff % number == BlockNumberFor::<T>::zero();
             if !should_reapprove && substrate_finalized_height < request_submission_height {
                 continue;
             }

@@ -42,13 +42,14 @@ use crate::{
 };
 use alloc::string::String;
 use alloc::vec::Vec;
-use log::{error, trace, warn};
+use frame_support::fail;
 use frame_support::sp_runtime::offchain as rt_offchain;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::traits::Get;
-use frame_support::fail;
 use frame_system::offchain::CreateSignedTransaction;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
+use log::{error, trace, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sp_core::{H160, H256};
@@ -293,7 +294,9 @@ impl<T: Config> Pallet<T> {
 
     /// Queries a block at the given height of the local node with `chain_getBlockHash` and
     /// `chain_getBlock` RPC calls.
-    pub fn load_substrate_block(number: BlockNumberFor<T>) -> Result<SubstrateBlockLimited, Error<T>>
+    pub fn load_substrate_block(
+        number: BlockNumberFor<T>,
+    ) -> Result<SubstrateBlockLimited, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {

@@ -62,7 +62,7 @@ use frame_support::dispatch::{DispatchError, Pays};
 use log::error;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::weights::Weight;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::ensure;
 use frame_system::ensure_signed;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

@@ -84,7 +84,6 @@ use common::{
 };
 use core::stringify;
 use frame_support::dispatch::DispatchResult;
-use log::{debug, error, info, warn};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
@@ -96,15 +95,18 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction};
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
+use log::{debug, error, info, warn};
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, H256, RuntimeDebug};
+use sp_core::{RuntimeDebug, H160, H256};
+use sp_runtime::DispatchError;
 use sp_std::borrow::Cow;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug};
@@ -176,7 +178,8 @@ const RE_HANDLE_TXS_PERIOD: u32 = 200;
 pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
+// type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
+type Timepoint<T> = bridge_multisig::BridgeTimepoint<BlockNumberFor<T>>;
 type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
@@ -332,13 +335,14 @@ pub mod pallet {
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
-    use log;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use log;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
@@ -1470,7 +1474,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             AuthorityAccount::<T>::put(&self.authority_account.as_ref().unwrap());
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);

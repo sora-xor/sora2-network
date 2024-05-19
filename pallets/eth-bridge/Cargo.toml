@@ -33,12 +33,14 @@ serde = { version = "1.0", features = [
 ], default-features = false }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 tiny-keccak = { version = "2", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 
-# bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
 ethabi-contract = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi-contract", default-features = false }
 ethabi-derive = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi-derive", default-features = false }
@@ -79,7 +81,7 @@ permissions = { path = "../permissions" }
 [features]
 default = ['std']
 std = [
-    # 'bridge-multisig/std',
+    'bridge-multisig/std',
     'codec/std',
     "scale-info/std",
     'ethereum-types/std',
@@ -92,7 +94,9 @@ std = [
     'serde_json/std',
     'serde/std',
     'sp-core/std',
+    'sp-io/std',
     'sp-std/std',
+    'sp-runtime/std',
     'pallet-scheduler/std',
     'pallet-timestamp/std',
     'common/std',
