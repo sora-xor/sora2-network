@@ -75,7 +75,10 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, HermesPollInfo, HermesVotingInfo, StorageVersion, WeightInfo};
     use common::prelude::Balance;
-    use common::{balance, AssetInfoProvider, BoundedString};
+    use common::{
+        balance, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, BoundedString,
+        ContentSource, Description,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::transactional;
@@ -90,7 +93,6 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
@@ -121,6 +123,17 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -303,8 +316,11 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesVotingAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &T::HermesAssetId::get().into(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForVoting
             );
 
@@ -374,8 +390,11 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesAmountForCreatingPoll::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &T::HermesAssetId::get().into(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
 
