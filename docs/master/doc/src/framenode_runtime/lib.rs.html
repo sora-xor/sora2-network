@@ -3411,6 +3411,18 @@
 <a href="#3396" id="3396">3396</a>
 <a href="#3397" id="3397">3397</a>
 <a href="#3398" id="3398">3398</a>
+<a href="#3399" id="3399">3399</a>
+<a href="#3400" id="3400">3400</a>
+<a href="#3401" id="3401">3401</a>
+<a href="#3402" id="3402">3402</a>
+<a href="#3403" id="3403">3403</a>
+<a href="#3404" id="3404">3404</a>
+<a href="#3405" id="3405">3405</a>
+<a href="#3406" id="3406">3406</a>
+<a href="#3407" id="3407">3407</a>
+<a href="#3408" id="3408">3408</a>
+<a href="#3409" id="3409">3409</a>
+<a href="#3410" id="3410">3410</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4379,6 +4391,7 @@
     <span class="kw">type </span>EnsureDEXManager = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>WeightInfo = ();
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>dex_manager::Config <span class="kw">for </span>Runtime {}
@@ -4394,6 +4407,7 @@
     <span class="kw">type </span>Trigger = ();
     <span class="kw">type </span>Condition = ();
     <span class="kw">type </span>SwapAction = pool_xyk::PolySwapAction&lt;DEXId, AssetId, AccountId, TechAccountId&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -4430,6 +4444,7 @@
     <span class="kw">type </span>WeightInfo = pool_xyk::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>XSTMarketInfo = XSTPool;
     <span class="kw">type </span>GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -4489,6 +4504,7 @@
     &gt;;
     <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>mock_liquidity_source::Config&lt;mock_liquidity_source::Instance1&gt; <span class="kw">for </span>Runtime {
@@ -4870,6 +4886,7 @@
     <span class="kw">type </span>WeightToFee = XorFee;
     <span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
     <span class="kw">type </span>BridgeAssetLockChecker = BridgeProxy;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
@@ -5026,6 +5043,7 @@
     <span class="kw">type </span>PoolXykPallet = PoolXYK;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -5113,6 +5131,7 @@
     <span class="kw">type </span>WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -5165,6 +5184,7 @@
     <span class="kw">type </span>GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     <span class="kw">type </span>GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     <span class="kw">type </span>WeightInfo = vested_rewards::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>price_tools::Config <span class="kw">for </span>Runtime {
@@ -5246,6 +5266,7 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>WeightInfo = ceres_launchpad::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>ceres_staking::Config <span class="kw">for </span>Runtime {
@@ -5270,6 +5291,7 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>CeresAssetId = CeresAssetId;
     <span class="kw">type </span>WeightInfo = ceres_token_locker::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>ceres_governance_platform::Config <span class="kw">for </span>Runtime {
@@ -5290,6 +5312,7 @@
     <span class="kw">type </span>DemeterAssetId = DemeterAssetId;
     <span class="kw">const </span>BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = <span class="number">3 </span>* HOURS / <span class="number">2</span>;
     <span class="kw">type </span>WeightInfo = demeter_farming_platform::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>oracle_proxy::Config <span class="kw">for </span>Runtime {
@@ -5335,6 +5358,7 @@
     <span class="kw">type </span>TitleLimit = TitleLimit;
     <span class="kw">type </span>DescriptionLimit = DescriptionLimit;
     <span class="kw">type </span>WeightInfo = hermes_governance_platform::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{

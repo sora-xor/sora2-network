@@ -1790,6 +1790,10 @@
 <a href="#1775" id="1775">1775</a>
 <a href="#1776" id="1776">1776</a>
 <a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2363,12 +2367,14 @@
             <span class="kw">let </span>origin_check_result = T::PermittedCreateOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span>maybe_who = <span class="kw">match </span>origin_check_result {
                 Either::Left(who) =&gt; {
-                    <span class="kw">if </span>T::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
+                    <span class="kw">if </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
                         <span class="comment">// nft
                         // ensure the user has nft
                         </span><span class="macro">ensure!</span>(
-                            T::AssetInfoProvider::total_balance(<span class="kw-2">&amp;</span>order_book_id.base, <span class="kw-2">&amp;</span>who)<span class="question-mark">?
-                                </span>&gt; Balance::zero(),
+                            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_balance(
+                                <span class="kw-2">&amp;</span>order_book_id.base,
+                                <span class="kw-2">&amp;</span>who
+                            )<span class="question-mark">? </span>&gt; Balance::zero(),
                             Error::&lt;T&gt;::UserHasNoNft
                         );
                         <span class="prelude-val">Some</span>(who)
@@ -2642,7 +2648,8 @@
             <span class="kw">let </span>now = T::Time::now();
             <span class="kw">let </span>current_block = frame_system::Pallet::&lt;T&gt;::block_number();
             <span class="kw">let </span>lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
-            <span class="kw">let </span>amount = <span class="kw">if </span>T::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
+            <span class="kw">let </span>amount = <span class="kw">if </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base)
+            {
                 OrderVolume::indivisible(amount)
             } <span class="kw">else </span>{
                 OrderVolume::divisible(amount)
@@ -2795,7 +2802,7 @@
         ) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
-                T::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base),
+                &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base),
                 Error::&lt;T&gt;::MarketOrdersAllowedOnlyForIndivisibleAssets
             );
             <span class="kw">let </span>order_book =
@@ -3054,7 +3061,7 @@
             Error::&lt;T&gt;::NotAllowedQuoteAsset
         );
 
-        T::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
+        &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             <span class="kw-2">&amp;</span>order_book_id.dex_id,
             <span class="kw-2">&amp;</span>order_book_id.quote,
@@ -3114,7 +3121,7 @@
             Error::&lt;T&gt;::InvalidMaxLotSize
         );
 
-        <span class="kw">if </span>!T::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
+        <span class="kw">if </span>!&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
             <span class="comment">// Even if `tick_size` &amp; `step_lot_size` meet precision conditions the min possible deal amount could not match.
             // The min possible deal amount = `tick_size` * `step_lot_size`.
             // We need to be sure that the value doesn&#39;t overflow Balance if `tick_size` &amp; `step_lot_size` are too big
@@ -3127,7 +3134,7 @@
         }
 
         <span class="comment">// `max_lot_size` couldn&#39;t be more then total supply of `base` asset
-        </span><span class="kw">let </span>total_supply = T::AssetInfoProvider::total_issuance(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>total_supply = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_issuance(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
         <span class="macro">ensure!</span>(
             max_lot_size &lt;= total_supply,
             Error::&lt;T&gt;::MaxLotSizeIsMoreThanTotalSupply
@@ -3143,7 +3150,8 @@
         min_lot_size: Balance,
         max_lot_size: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">let </span>order_book = <span class="kw">if </span>T::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
+        <span class="kw">let </span>order_book = <span class="kw">if </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base)
+        {
             OrderBook::&lt;T&gt;::new(
                 <span class="kw-2">*</span>order_book_id,
                 OrderPrice::divisible(tick_size),

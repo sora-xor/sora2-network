@@ -1947,6 +1947,29 @@
 <a href="#1932" id="1932">1932</a>
 <a href="#1933" id="1933">1933</a>
 <a href="#1934" id="1934">1934</a>
+<a href="#1935" id="1935">1935</a>
+<a href="#1936" id="1936">1936</a>
+<a href="#1937" id="1937">1937</a>
+<a href="#1938" id="1938">1938</a>
+<a href="#1939" id="1939">1939</a>
+<a href="#1940" id="1940">1940</a>
+<a href="#1941" id="1941">1941</a>
+<a href="#1942" id="1942">1942</a>
+<a href="#1943" id="1943">1943</a>
+<a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
+<a href="#1948" id="1948">1948</a>
+<a href="#1949" id="1949">1949</a>
+<a href="#1950" id="1950">1950</a>
+<a href="#1951" id="1951">1951</a>
+<a href="#1952" id="1952">1952</a>
+<a href="#1953" id="1953">1953</a>
+<a href="#1954" id="1954">1954</a>
+<a href="#1955" id="1955">1955</a>
+<a href="#1956" id="1956">1956</a>
+<a href="#1957" id="1957">1957</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2130,13 +2153,13 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::Vesting;
+    <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::ensure_root;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
-    <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    </span><span class="attr">#[pallet::config]
+    <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
         + common::Config
@@ -2159,6 +2182,16 @@
         <span class="kw">type </span>BuyBackTBCDPercent: Get&lt;Fixed&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
+        <span class="doccomment">/// To retrieve asset info
+        </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
+            <span class="self">Self</span>::AssetId,
+            <span class="self">Self</span>::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        &gt;;
     }
 
     <span class="doccomment">/// The current storage version.
@@ -2802,7 +2835,8 @@
         collateral_asset: <span class="kw-2">&amp;</span>T::AssetId,
         reserves_account: <span class="kw-2">&amp;</span>T::AccountId,
     ) -&gt; DispatchResult {
-        <span class="kw">let </span>collateral_balance = Assets::&lt;T&gt;::free_balance(collateral_asset, reserves_account)<span class="question-mark">?</span>;
+        <span class="kw">let </span>collateral_balance =
+            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(collateral_asset, reserves_account)<span class="question-mark">?</span>;
         CollateralReserves::&lt;T&gt;::insert(collateral_asset, collateral_balance);
         <span class="prelude-val">Ok</span>(())
     }
@@ -2879,7 +2913,8 @@
                 .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed.into())
         } <span class="kw">else </span>{
             <span class="comment">// Everything other than TBCD
-            </span><span class="kw">let </span>total_supply: FixedWrapper = Assets::&lt;T&gt;::total_issuance(main_asset_id)<span class="question-mark">?</span>.into();
+            </span><span class="kw">let </span>total_supply: FixedWrapper =
+                &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_issuance(main_asset_id)<span class="question-mark">?</span>.into();
             <span class="kw">let </span>initial_price: FixedWrapper = <span class="self">Self</span>::initial_price().into();
             <span class="kw">let </span>price_change_step: FixedWrapper = <span class="self">Self</span>::price_change_step().into();
             <span class="kw">let </span>price_change_rate: FixedWrapper = <span class="self">Self</span>::price_change_rate().into();
@@ -3029,8 +3064,11 @@
         <span class="kw">let </span>reserves_tech_account_id = ReservesAcc::&lt;T&gt;::get();
         <span class="kw">let </span>reserves_account_id =
             Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>collateral_supply: FixedWrapper =
-            Assets::&lt;T&gt;::free_balance(collateral_asset_id, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?</span>.into();
+        <span class="kw">let </span>collateral_supply: FixedWrapper = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+            collateral_asset_id,
+            <span class="kw-2">&amp;</span>reserves_account_id,
+        )<span class="question-mark">?
+        </span>.into();
         <span class="comment">// Get reference prices for base and collateral to understand token value.
         </span><span class="kw">let </span>main_price_per_reference_unit: FixedWrapper =
             <span class="self">Self</span>::sell_function(main_asset_id, collateral_asset_id, Fixed::ZERO)<span class="question-mark">?</span>.into();
@@ -3298,8 +3336,10 @@
                 Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
             <span class="kw">let </span>(input_amount, output_amount, fee_amount) =
                 <span class="self">Self</span>::decide_sell_amounts(main_asset_id, collateral_asset_id, amount.into(), <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-            <span class="kw">let </span>reserves_amount =
-                Assets::&lt;T&gt;::total_balance(collateral_asset_id, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>reserves_amount = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_balance(
+                collateral_asset_id,
+                <span class="kw-2">&amp;</span>reserves_account_id,
+            )<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
                 reserves_amount &gt;= output_amount,
                 Error::&lt;T&gt;::NotEnoughReserves
@@ -3397,7 +3437,10 @@
         collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>reserve = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>collateral_asset_id, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>reserve = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+            <span class="kw-2">&amp;</span>collateral_asset_id,
+            <span class="kw-2">&amp;</span>reserves_account_id,
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>price = <span class="self">Self</span>::reference_price(<span class="kw-2">&amp;</span>collateral_asset_id, price_variant)<span class="question-mark">?</span>;
         (FixedWrapper::from(reserve) * price)
             .try_into_balance()
@@ -3412,7 +3455,7 @@
         delta: Fixed,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>base_asset_id = T::GetBaseAssetId::get();
-        <span class="kw">let </span>base_total_supply = Assets::&lt;T&gt;::total_issuance(<span class="kw-2">&amp;</span>base_asset_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>base_total_supply = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_issuance(<span class="kw-2">&amp;</span>base_asset_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>initial_state = FixedWrapper::from(<span class="self">Self</span>::initial_price());
         <span class="kw">let </span>current_state =
             <span class="self">Self</span>::buy_function(<span class="kw-2">&amp;</span>base_asset_id, collateral_asset_id, price_variant, delta)<span class="question-mark">?</span>;
@@ -3619,8 +3662,11 @@
             <span class="kw">let </span>reserves_tech_account_id = ReservesAcc::&lt;T&gt;::get();
             <span class="kw">let </span>reserves_account_id =
                 Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>collateral_supply: FixedWrapper =
-                Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?</span>.into();
+            <span class="kw">let </span>collateral_supply: FixedWrapper = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>output_asset_id,
+                <span class="kw-2">&amp;</span>reserves_account_id,
+            )<span class="question-mark">?
+            </span>.into();
 
             quotation.limits.max_amount = <span class="kw">match </span>amount.variant() {
                 SwapVariant::WithDesiredInput =&gt; {

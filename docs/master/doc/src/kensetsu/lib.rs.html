@@ -1605,6 +1605,16 @@
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
 <a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2884,10 +2894,14 @@
             </span><span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
-            <span class="kw">let </span>kusd_balance_before =
-                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>collateral_balance_before =
-                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>kusd_balance_before = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
+                <span class="kw-2">&amp;</span>treasury_account_id,
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>collateral_balance_before = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
+                <span class="kw-2">&amp;</span>treasury_account_id,
+            )<span class="question-mark">?</span>;
 
             <span class="kw">let </span>technical_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
@@ -2902,10 +2916,14 @@
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>kusd_balance_after =
-                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>collateral_balance_after =
-                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>cdp.collateral_asset_id, <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>kusd_balance_after = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
+                <span class="kw-2">&amp;</span>treasury_account_id,
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>collateral_balance_after = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
+                <span class="kw-2">&amp;</span>treasury_account_id,
+            )<span class="question-mark">?</span>;
             <span class="comment">// This value may differ from `desired_kusd_amount`, so this is calculation of actual
             // amount swapped.
             </span><span class="kw">let </span>kusd_swapped = kusd_balance_after
@@ -3001,8 +3019,10 @@
             <span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
-            <span class="kw">let </span>protocol_positive_balance =
-                T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>T::KusdAssetId::get(), <span class="kw-2">&amp;</span>treasury_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>protocol_positive_balance = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
+                <span class="kw-2">&amp;</span>treasury_account_id,
+            )<span class="question-mark">?</span>;
             <span class="kw">let </span>to_burn = <span class="kw">if </span>amount &lt;= protocol_positive_balance {
                 amount
             } <span class="kw">else </span>{
@@ -3141,7 +3161,7 @@
             new_risk_parameters: CollateralRiskParameters,
         ) -&gt; DispatchResult {
             <span class="macro">ensure!</span>(
-                T::AssetInfoProvider::asset_exists(collateral_asset_id),
+                &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::asset_exists(collateral_asset_id),
                 Error::&lt;T&gt;::WrongAssetId
             );
             <span class="macro">ensure!</span>(

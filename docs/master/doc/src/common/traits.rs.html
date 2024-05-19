@@ -1179,6 +1179,12 @@
 <a href="#1164" id="1164">1164</a>
 <a href="#1165" id="1165">1165</a>
 <a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2201,6 +2207,8 @@
     <span class="kw">fn </span>free_balance(asset_id: <span class="kw-2">&amp;</span>AssetId, who: <span class="kw-2">&amp;</span>AccountId) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt;;
 
     <span class="kw">fn </span>ensure_can_withdraw(asset_id: <span class="kw-2">&amp;</span>AssetId, who: <span class="kw-2">&amp;</span>AccountId, amount: Balance) -&gt; DispatchResult;
+
+    <span class="kw">fn </span>get_asset_owner(asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;AccountId, DispatchError&gt;;
 }
 
 <span class="kw">impl</span>&lt;AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description&gt;
@@ -2268,6 +2276,10 @@
         _who: <span class="kw-2">&amp;</span>AccountId,
         _amount: Balance,
     ) -&gt; DispatchResult {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>get_asset_owner(_asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;AccountId, DispatchError&gt; {
         <span class="macro">unimplemented!</span>()
     }
 }

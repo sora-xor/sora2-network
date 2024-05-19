@@ -357,6 +357,14 @@
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -456,11 +464,11 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>source = source_opt.unwrap();
             (
-                <span class="prelude-val">Some</span>(&lt;assets::Pallet&lt;T&gt;&gt;::free_balance(
+                <span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset,
                     <span class="kw-2">&amp;</span>source,
                 )<span class="question-mark">?</span>),
-                <span class="prelude-val">Some</span>(&lt;assets::Pallet&lt;T&gt;&gt;::free_balance(
+                <span class="prelude-val">Some</span>(&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">1</span>.asset,
                     <span class="kw-2">&amp;</span>source,
                 )<span class="question-mark">?</span>),
@@ -472,11 +480,15 @@
         }
 
         <span class="comment">// Balance of pool account for asset pair basic asset.
-        </span><span class="kw">let </span>balance_bp =
-            &lt;assets::Pallet&lt;T&gt;&gt;::free_balance(<span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset, <span class="kw-2">&amp;</span>pool_account_repr_sys)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>balance_bp = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset,
+            <span class="kw-2">&amp;</span>pool_account_repr_sys,
+        )<span class="question-mark">?</span>;
         <span class="comment">// Balance of pool account for asset pair target asset.
-        </span><span class="kw">let </span>balance_tp =
-            &lt;assets::Pallet&lt;T&gt;&gt;::free_balance(<span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">1</span>.asset, <span class="kw-2">&amp;</span>pool_account_repr_sys)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>balance_tp = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">1</span>.asset,
+            <span class="kw-2">&amp;</span>pool_account_repr_sys,
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>empty_pool = <span class="bool-val">false</span>;
         <span class="kw">if </span>balance_bp == <span class="number">0 </span>&amp;&amp; balance_tp == <span class="number">0 </span>{
@@ -679,10 +691,14 @@
             });
         }
         Pallet::&lt;T&gt;::mint(<span class="kw-2">&amp;</span>pool_account_repr_sys, receiver_account, <span class="self">self</span>.pool_tokens)<span class="question-mark">?</span>;
-        <span class="kw">let </span>balance_a =
-            &lt;assets::Pallet&lt;T&gt;&gt;::free_balance(<span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset, <span class="kw-2">&amp;</span>pool_account_repr_sys)<span class="question-mark">?</span>;
-        <span class="kw">let </span>balance_b =
-            &lt;assets::Pallet&lt;T&gt;&gt;::free_balance(<span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">1</span>.asset, <span class="kw-2">&amp;</span>pool_account_repr_sys)<span class="question-mark">?</span>;
+        <span class="kw">let </span>balance_a = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset,
+            <span class="kw-2">&amp;</span>pool_account_repr_sys,
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>balance_b = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">1</span>.asset,
+            <span class="kw-2">&amp;</span>pool_account_repr_sys,
+        )<span class="question-mark">?</span>;
         Pallet::&lt;T&gt;::update_reserves(
             base_asset_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset,

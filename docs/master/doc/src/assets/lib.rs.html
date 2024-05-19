@@ -1059,6 +1059,11 @@
 <a href="#1044" id="1044">1044</a>
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2103,6 +2108,11 @@
             <span class="self">Self</span>::ensure_asset_exists(asset_id)<span class="question-mark">?</span>;
         }
         r
+    }
+
+    <span class="kw">fn </span>get_asset_owner(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;T::AccountId, DispatchError&gt; {
+        <span class="kw">let </span>owner = <span class="self">Self</span>::asset_owner(asset_id).ok_or(Error::&lt;T&gt;::AssetIdNotExists)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(owner)
     }
 }
 </code></pre></div>

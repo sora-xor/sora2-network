@@ -2798,6 +2798,14 @@
 <a href="#2783" id="2783">2783</a>
 <a href="#2784" id="2784">2784</a>
 <a href="#2785" id="2785">2785</a>
+<a href="#2786" id="2786">2786</a>
+<a href="#2787" id="2787">2787</a>
+<a href="#2788" id="2788">2788</a>
+<a href="#2789" id="2789">2789</a>
+<a href="#2790" id="2790">2790</a>
+<a href="#2791" id="2791">2791</a>
+<a href="#2792" id="2792">2792</a>
+<a href="#2793" id="2793">2793</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3063,14 +3071,13 @@
         is_xyk_only &amp;&amp; reserve_asset_present
     }
 
-    <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    </span><span class="kw">pub fn </span>check_indivisible_assets(
+    <span class="kw">pub fn </span>check_indivisible_assets(
         input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="macro">ensure!</span>(
-            !assets::Pallet::&lt;T&gt;::is_non_divisible(input_asset_id)
-                &amp;&amp; !assets::Pallet::&lt;T&gt;::is_non_divisible(output_asset_id),
+            !T::AssetInfoProvider::is_non_divisible(input_asset_id)
+                &amp;&amp; !T::AssetInfoProvider::is_non_divisible(output_asset_id),
             Error::&lt;T&gt;::UnableToSwapIndivisibleAssets
         );
         <span class="prelude-val">Ok</span>(())
@@ -4810,7 +4817,7 @@
         ));
 
         <span class="kw">let </span>caller_output_asset_balance =
-            assets::Pallet::&lt;T&gt;::total_balance(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>sender)<span class="question-mark">?</span>;
+            T::AssetInfoProvider::total_balance(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>sender)<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder_per_receiver: Balance = <span class="kw">if </span>caller_output_asset_balance &lt; out_amount {
             <span class="kw">let </span>remainder = out_amount.saturating_sub(caller_output_asset_balance);
             remainder / num_of_receivers + remainder % num_of_receivers
@@ -4905,7 +4912,7 @@
                     outcome_asset_reuse,
                 } = swap_batch_info;
 
-                <span class="kw">let </span>balance = assets::Pallet::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>sender)<span class="question-mark">?</span>;
+                <span class="kw">let </span>balance = T::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>sender)<span class="question-mark">?</span>;
 
                 <span class="kw">if </span>balance &lt; outcome_asset_reuse {
                     <span class="macro">fail!</span>(Error::&lt;T&gt;::InsufficientBalance);
@@ -5112,8 +5119,7 @@
         buy_back_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         amount: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>owner = assets::Pallet::&lt;T&gt;::asset_owner(<span class="kw-2">&amp;</span>mint_asset_id)
-            .ok_or(assets::Error::&lt;T&gt;::AssetIdNotExists)<span class="question-mark">?</span>;
+        <span class="kw">let </span>owner = T::AssetInfoProvider::get_asset_owner(<span class="kw-2">&amp;</span>mint_asset_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>transit = T::GetTechnicalAccountId::get();
         assets::Pallet::&lt;T&gt;::mint_to(mint_asset_id, <span class="kw-2">&amp;</span>owner, <span class="kw-2">&amp;</span>transit, amount)<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = <span class="self">Self</span>::buy_back_and_burn(<span class="kw-2">&amp;</span>transit, mint_asset_id, buy_back_asset_id, amount)<span class="question-mark">?</span>;
@@ -5177,13 +5183,13 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::prelude::OutcomeFee;
+    <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::EnsureOrigin;
     <span class="kw">use </span>frame_support::{traits::StorageVersion, transactional};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
-    <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    </span><span class="attr">#[pallet::config]
+    <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + assets::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>LiquidityRegistry: LiquidityRegistry&lt;
@@ -5209,6 +5215,16 @@
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
         <span class="doccomment">/// Weight information for the extrinsics in this Pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
+        <span class="doccomment">/// To retrieve asset info
+        </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
+            <span class="self">Self</span>::AssetId,
+            <span class="self">Self</span>::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        &gt;;
     }
 
     <span class="doccomment">/// The current storage version.

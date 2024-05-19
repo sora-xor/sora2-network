@@ -448,6 +448,17 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -698,7 +709,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>account_id = <span class="self">Self</span>::tech_account_id_to_account_id(tech_id)<span class="question-mark">?</span>;
         <span class="self">Self</span>::ensure_account_registered(<span class="kw-2">&amp;</span>account_id)<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::total_balance(asset_id, <span class="kw-2">&amp;</span>account_id)
+        T::AssetInfoProvider::total_balance(asset_id, <span class="kw-2">&amp;</span>account_id)
     }
 }
 
@@ -707,12 +718,12 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
-    <span class="comment">// TODO: #395 use AssetInfoProvider instead of assets pallet
-    </span><span class="attr">#[pallet::config]
+    <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + assets::Config {
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -752,6 +763,17 @@
         <span class="doccomment">/// Swap action.
         </span><span class="kw">type </span>SwapAction: common::SwapRulesValidation&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::TechAccountId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>&gt;
             + Parameter;
+
+        <span class="doccomment">/// To retrieve asset info
+        </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
+            <span class="self">Self</span>::AssetId,
+            <span class="self">Self</span>::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        &gt;;
     }
 
     <span class="doccomment">/// The current storage version.
