@@ -5092,7 +5092,11 @@ mod tests {
                     .unwrap()
                     .0
                 ),
-                (balance!(24998658.987152486647476893), val_reserve - balance!(1), OutcomeFee::xor(balance!(2324875.285805181258215351)))
+                (
+                    balance!(24998658.987152486647476893),
+                    val_reserve - balance!(1),
+                    OutcomeFee::xor(balance!(2324875.285805181258215351))
+                )
             );
 
             // todo check desired input
