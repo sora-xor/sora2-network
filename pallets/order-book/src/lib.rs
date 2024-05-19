@@ -571,12 +571,14 @@ pub mod pallet {
             let origin_check_result = T::PermittedCreateOrigin::ensure_origin(origin)?;
             let maybe_who = match origin_check_result {
                 Either::Left(who) => {
-                    if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+                    if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
                         // nft
                         // ensure the user has nft
                         ensure!(
-                            T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
-                                > Balance::zero(),
+                            <T as Config>::AssetInfoProvider::total_balance(
+                                &order_book_id.base,
+                                &who
+                            )? > Balance::zero(),
                             Error::<T>::UserHasNoNft
                         );
                         Some(who)
@@ -850,7 +852,8 @@ pub mod pallet {
             let now = T::Time::now();
             let current_block = frame_system::Pallet::<T>::block_number();
             let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
-            let amount = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            let amount = if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
+            {
                 OrderVolume::indivisible(amount)
             } else {
                 OrderVolume::divisible(amount)
@@ -1003,7 +1006,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(
-                T::AssetInfoProvider::is_non_divisible(&order_book_id.base),
+                <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base),
                 Error::<T>::MarketOrdersAllowedOnlyForIndivisibleAssets
             );
             let order_book =
@@ -1262,7 +1265,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotAllowedQuoteAsset
         );
 
-        T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
+        <T as Config>::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
         T::EnsureTradingPairExists::ensure_trading_pair_exists(
             &order_book_id.dex_id,
             &order_book_id.quote,
@@ -1322,7 +1325,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidMaxLotSize
         );
 
-        if !T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+        if !<T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
             // Even if `tick_size` & `step_lot_size` meet precision conditions the min possible deal amount could not match.
             // The min possible deal amount = `tick_size` * `step_lot_size`.
             // We need to be sure that the value doesn't overflow Balance if `tick_size` & `step_lot_size` are too big
@@ -1335,7 +1338,7 @@ impl<T: Config> Pallet<T> {
         }
 
         // `max_lot_size` couldn't be more then total supply of `base` asset
-        let total_supply = T::AssetInfoProvider::total_issuance(&order_book_id.base)?;
+        let total_supply = <T as Config>::AssetInfoProvider::total_issuance(&order_book_id.base)?;
         ensure!(
             max_lot_size <= total_supply,
             Error::<T>::MaxLotSizeIsMoreThanTotalSupply
@@ -1351,7 +1354,8 @@ impl<T: Config> Pallet<T> {
         min_lot_size: Balance,
         max_lot_size: Balance,
     ) -> Result<(), DispatchError> {
-        let order_book = if T::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+        let order_book = if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
+        {
             OrderBook::<T>::new(
                 *order_book_id,
                 OrderPrice::divisible(tick_size),

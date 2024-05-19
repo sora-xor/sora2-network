@@ -158,12 +158,9 @@ pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
 pub use {
-    assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
-    order_book, trading_pair, xst,
+    assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
+    multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
 };
-
-#[cfg(feature = "ready-to-test")] // kensetsu
-pub use kensetsu;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -256,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 83,
+    spec_version: 84,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 83,
+    transaction_version: 84,
     state_version: 0,
 };
 
@@ -970,6 +967,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -985,6 +983,7 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1021,6 +1020,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1080,6 +1080,7 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1461,6 +1462,7 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[cfg(feature = "private-net")]
@@ -1617,6 +1619,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1704,6 +1707,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1756,6 +1760,7 @@ impl vested_rewards::Config for Runtime {
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl price_tools::Config for Runtime {
@@ -1837,6 +1842,7 @@ impl ceres_launchpad::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ceres_launchpad::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
@@ -1861,6 +1867,7 @@ impl ceres_token_locker::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_token_locker::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {
@@ -1881,6 +1888,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
     type WeightInfo = demeter_farming_platform::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -1926,9 +1934,9 @@ impl hermes_governance_platform::Config for Runtime {
     type TitleLimit = TitleLimit;
     type DescriptionLimit = DescriptionLimit;
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // kensetsu
 parameter_types! {
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
@@ -1953,13 +1961,10 @@ parameter_types! {
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
-    // 100 blocks, if tx spoils, worker will resend it
-    // pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
-    // TODO set 100 for release
-    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
+    // 10 blocks, if tx spoils, worker will resend it
+    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
 }
 
-#[cfg(feature = "ready-to-test")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
@@ -2441,8 +2446,6 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
-
-        #[cfg(feature = "ready-to-test")] // kensetsu
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -3197,8 +3200,6 @@ impl_runtime_apis! {
         ) {
             use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
-
-            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3216,7 +3217,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
             list_benchmark!(list, extra, dex_api, DEXAPI);
-            #[cfg(feature = "ready-to-test")] // kensetsu
             list_benchmark!(list, extra, kensetsu, KensetsuBench::<Runtime>);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3272,8 +3272,6 @@ impl_runtime_apis! {
             config: frame_benchmarking::BenchmarkConfig
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-
-            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3282,7 +3280,7 @@ impl_runtime_apis! {
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
             use order_book_benchmarking::Pallet as OrderBookBench;
-            #[cfg(feature = "ready-to-test")] // kensetsu
+
             impl kensetsu_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
@@ -3315,7 +3313,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            #[cfg(feature = "ready-to-test")] // kensetsu
             add_benchmark!(params, batches, kensetsu, KensetsuBench::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);

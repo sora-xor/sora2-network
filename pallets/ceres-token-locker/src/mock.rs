@@ -103,6 +103,7 @@ impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -149,6 +150,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pool_xyk::Config for Runtime {
@@ -171,6 +173,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -189,6 +192,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -214,6 +218,7 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {

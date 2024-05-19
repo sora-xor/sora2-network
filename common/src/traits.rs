@@ -1020,6 +1020,8 @@ pub trait AssetInfoProvider<
     fn free_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
 
     fn ensure_can_withdraw(asset_id: &AssetId, who: &AccountId, amount: Balance) -> DispatchResult;
+
+    fn get_asset_owner(asset_id: &AssetId) -> Result<AccountId, DispatchError>;
 }
 
 impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
@@ -1087,6 +1089,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
         _who: &AccountId,
         _amount: Balance,
     ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn get_asset_owner(_asset_id: &AssetId) -> Result<AccountId, DispatchError> {
         unimplemented!()
     }
 }

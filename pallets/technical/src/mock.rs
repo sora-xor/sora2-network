@@ -197,6 +197,7 @@ impl Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = PolySwapActionExample;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_type_with_key! {
