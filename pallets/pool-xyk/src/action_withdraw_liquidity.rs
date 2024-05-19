@@ -102,11 +102,15 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
 
         // Balance of pool account for asset pair basic asset.
-        let balance_bp =
-            <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
+        let balance_bp = <T as Config>::AssetInfoProvider::free_balance(
+            &self.destination.0.asset,
+            &pool_account_repr_sys,
+        )?;
         // Balance of pool account for asset pair target asset.
-        let balance_tp =
-            <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
+        let balance_tp = <T as Config>::AssetInfoProvider::free_balance(
+            &self.destination.1.asset,
+            &pool_account_repr_sys,
+        )?;
 
         if balance_bp == 0 && balance_tp == 0 {
             Err(Error::<T>::PoolIsEmpty)?;
@@ -259,10 +263,14 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 set.remove(&pair.target_asset_id)
             });
         }
-        let balance_a =
-            <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
-        let balance_b =
-            <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
+        let balance_a = <T as Config>::AssetInfoProvider::free_balance(
+            &self.destination.0.asset,
+            &pool_account_repr_sys,
+        )?;
+        let balance_b = <T as Config>::AssetInfoProvider::free_balance(
+            &self.destination.1.asset,
+            &pool_account_repr_sys,
+        )?;
         Pallet::<T>::update_reserves(
             base_asset_id,
             &self.destination.0.asset,

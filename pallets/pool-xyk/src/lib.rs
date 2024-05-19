@@ -392,8 +392,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input =
+            <T as Config>::AssetInfoProvider::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output =
+            <T as Config>::AssetInfoProvider::free_balance(&output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -470,8 +472,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input =
+            <T as Config>::AssetInfoProvider::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output =
+            <T as Config>::AssetInfoProvider::free_balance(&output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -673,8 +677,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input =
+            <T as Config>::AssetInfoProvider::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output =
+            <T as Config>::AssetInfoProvider::free_balance(&output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -795,13 +801,15 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
+    use common::{
+        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+        EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -842,6 +850,16 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<Self::AssetId>, bool>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -876,10 +894,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                !assets::Pallet::<T>::is_non_divisible(&input_asset_a)
-                    && !assets::Pallet::<T>::is_non_divisible(&input_asset_b),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_a)
+                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -920,10 +937,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                !assets::Pallet::<T>::is_non_divisible(&output_asset_a)
-                    && !assets::Pallet::<T>::is_non_divisible(&output_asset_b),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_a)
+                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -962,10 +978,9 @@ pub mod pallet {
                     ManagementMode::Public,
                 )?;
 
-                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
-                    !assets::Pallet::<T>::is_non_divisible(&asset_a)
-                        && !assets::Pallet::<T>::is_non_divisible(&asset_b),
+                    !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
+                        && !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_b),
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 

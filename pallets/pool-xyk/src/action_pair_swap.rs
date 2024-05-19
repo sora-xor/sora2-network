@@ -104,17 +104,21 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let balance_ss = if abstract_checking {
             None
         } else {
-            Some(<assets::Pallet<T>>::free_balance(
+            Some(<T as Config>::AssetInfoProvider::free_balance(
                 &self.source.asset,
                 &source_opt.unwrap(),
             )?)
         };
         // Source balance of technical account.
-        let balance_st =
-            <assets::Pallet<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+        let balance_st = <T as Config>::AssetInfoProvider::free_balance(
+            &self.source.asset,
+            &pool_account_repr_sys,
+        )?;
         // Destination balance of technical account.
-        let balance_tt =
-            <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+        let balance_tt = <T as Config>::AssetInfoProvider::free_balance(
+            &self.destination.asset,
+            &pool_account_repr_sys,
+        )?;
         if !abstract_checking {
             ensure!(balance_ss.unwrap() > 0, Error::<T>::AccountBalanceIsInvalid);
         }
@@ -398,10 +402,14 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
 
             let pool_account_repr_sys =
                 technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-            let balance_a =
-                <assets::Pallet<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
-            let balance_b =
-                <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+            let balance_a = <T as Config>::AssetInfoProvider::free_balance(
+                &self.source.asset,
+                &pool_account_repr_sys,
+            )?;
+            let balance_b = <T as Config>::AssetInfoProvider::free_balance(
+                &self.destination.asset,
+                &pool_account_repr_sys,
+            )?;
             Pallet::<T>::update_reserves(
                 base_asset_id,
                 &self.source.asset,

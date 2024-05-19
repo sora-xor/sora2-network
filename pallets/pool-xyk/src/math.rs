@@ -242,10 +242,14 @@ impl<T: Config> Pallet<T> {
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let b_in_pool =
-            assets::Pallet::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
-        let t_in_pool =
-            assets::Pallet::<T>::free_balance(&trading_pair.target_asset_id.into(), pool_acc)?;
+        let b_in_pool = <T as Config>::AssetInfoProvider::free_balance(
+            &trading_pair.base_asset_id.into(),
+            pool_acc,
+        )?;
+        let t_in_pool = <T as Config>::AssetInfoProvider::free_balance(
+            &trading_pair.target_asset_id.into(),
+            pool_acc,
+        )?;
         let fxw_liq_in_pool =
             to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
         let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);
