@@ -50,7 +50,7 @@ use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, OutcomeFee,
-    PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
+    PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, DEXId, DexIdOf,
@@ -1642,6 +1642,61 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let base_asset_id = &T::GetBaseAssetId::get();
 
+        // reduce amount if it exceeds reserves
+        let amount = if input_asset_id == base_asset_id {
+            let reserves_tech_account_id = ReservesAcc::<T>::get();
+            let reserves_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let collateral_supply: FixedWrapper = <T as Config>::AssetInfoProvider::free_balance(
+                &output_asset_id,
+                &reserves_account_id,
+            )?
+            .into();
+
+            let (adjusted_amount, max_limit) = match amount {
+                QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                    let main_price_per_reference_unit: FixedWrapper =
+                        Self::sell_function(&input_asset_id, &output_asset_id, Fixed::ZERO)?.into();
+
+                    let collateral_price_per_reference_unit: FixedWrapper =
+                        Self::reference_price(&output_asset_id, PriceVariant::Sell)?.into();
+
+                    let main_supply = collateral_supply * collateral_price_per_reference_unit
+                        / main_price_per_reference_unit;
+
+                    let max_value = main_supply
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?
+                        .saturating_sub(balance!(1));
+
+                    let value = max_value.min(desired_amount_in);
+
+                    (
+                        QuoteAmount::with_desired_input(value),
+                        Some(SideAmount::Input(max_value)),
+                    )
+                }
+                QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                    let max_value = collateral_supply
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?
+                        .saturating_sub(balance!(1));
+
+                    let value = max_value.min(desired_amount_out);
+
+                    (
+                        QuoteAmount::with_desired_output(value),
+                        Some(SideAmount::Output(max_value)),
+                    )
+                }
+            };
+
+            quotation.limits.max_amount = max_limit;
+            adjusted_amount
+        } else {
+            amount
+        };
+
         let step = amount
             .amount()
             .checked_div(samples_count as Balance)
@@ -1684,41 +1739,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             quotation
                 .chunks
                 .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
-        }
-
-        if input_asset_id == base_asset_id {
-            let reserves_tech_account_id = ReservesAcc::<T>::get();
-            let reserves_account_id =
-                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-            let collateral_supply: FixedWrapper = <T as Config>::AssetInfoProvider::free_balance(
-                &output_asset_id,
-                &reserves_account_id,
-            )?
-            .into();
-
-            quotation.limits.max_amount = match amount.variant() {
-                SwapVariant::WithDesiredInput => {
-                    let main_price_per_reference_unit: FixedWrapper =
-                        Self::sell_function(&input_asset_id, &output_asset_id, Fixed::ZERO)?.into();
-
-                    let collateral_price_per_reference_unit: FixedWrapper =
-                        Self::reference_price(&output_asset_id, PriceVariant::Sell)?.into();
-
-                    let main_supply = collateral_supply * collateral_price_per_reference_unit
-                        / main_price_per_reference_unit;
-
-                    Some(SideAmount::Input(
-                        main_supply
-                            .try_into_balance()
-                            .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-                    ))
-                }
-                SwapVariant::WithDesiredOutput => Some(SideAmount::Output(
-                    collateral_supply
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-                )),
-            };
         }
 
         Ok((quotation, Self::step_quote_weight(samples_count)))

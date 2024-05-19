@@ -4823,6 +4823,23 @@ mod tests {
         });
     }
 
+    fn sum_step_quote<AssetId: Ord + Clone>(
+        step_quote_result: DiscreteQuotation<AssetId, Balance>,
+    ) -> (Balance, Balance, OutcomeFee<AssetId, Balance>) {
+        let (step_quote_input, step_quote_output, step_quote_fee) =
+            step_quote_result.chunks.iter().fold(
+                (balance!(0), balance!(0), OutcomeFee::default()),
+                |acc, item| {
+                    (
+                        acc.0 + item.input,
+                        acc.1 + item.output,
+                        acc.2.merge(item.fee.clone()),
+                    )
+                },
+            );
+        (step_quote_input, step_quote_output, step_quote_fee)
+    }
+
     fn compare_quotes(
         dex_id: &DEXId,
         input_asset_id: &AssetId,
@@ -4830,27 +4847,17 @@ mod tests {
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) {
-        let (step_quote_input, step_quote_output, step_quote_fee) = MBCPool::step_quote(
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            10,
-            deduce_fee,
-        )
-        .unwrap()
-        .0
-        .chunks
-        .iter()
-        .fold(
-            (balance!(0), balance!(0), OutcomeFee::default()),
-            |acc, item| {
-                (
-                    acc.0 + item.input,
-                    acc.1 + item.output,
-                    acc.2.merge(item.fee.clone()),
-                )
-            },
+        let (step_quote_input, step_quote_output, step_quote_fee) = sum_step_quote(
+            MBCPool::step_quote(
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                10,
+                deduce_fee,
+            )
+            .unwrap()
+            .0,
         );
 
         let quote_result =
@@ -4999,6 +5006,96 @@ mod tests {
                 QuoteAmount::with_desired_output(balance!(100)),
                 true,
             );
+        });
+    }
+
+    #[test]
+    fn check_exceed_reserves() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                DAI,
+                balance!(0),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XOR,
+                balance!(0),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                balance!(200000),
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XSTUSD,
+                0,
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build();
+        ext.execute_with(|| {
+            let val_reserve = balance!(10000);
+
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, val_reserve)]).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            assert_err!(
+                MBCPool::quote(
+                    &DEXId::Polkaswap,
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_output(val_reserve + balance!(1)),
+                    true
+                ),
+                Error::<Runtime>::NotEnoughReserves
+            );
+
+            assert_eq!(
+                sum_step_quote(
+                    MBCPool::step_quote(
+                        &DEXId::Polkaswap,
+                        &XOR,
+                        &VAL,
+                        QuoteAmount::with_desired_output(val_reserve + balance!(1)),
+                        10,
+                        true
+                    )
+                    .unwrap()
+                    .0
+                ),
+                (balance!(24998658.987152486647476893), val_reserve - balance!(1), OutcomeFee::xor(balance!(2324875.285805181258215351)))
+            );
+
+            // todo check desired input
         });
     }
 }
