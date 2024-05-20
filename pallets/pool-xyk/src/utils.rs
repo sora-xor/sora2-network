@@ -32,12 +32,13 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, fail};
 use orml_traits::GetByKey;
 
-use crate::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
+use crate::aliases::{TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
 use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    AccountIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair, TradingPair,
+    AccountIdOf, AssetIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair,
+    TradingPair,
 };
 
 impl<T: Config> Pallet<T> {
@@ -88,8 +89,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn tech_account_from_dex_and_asset_pair(
         dex_id: T::DEXId,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
+        asset_a: AssetIdOf<T>,
+        asset_b: AssetIdOf<T>,
     ) -> Result<(common::TradingPair<TechAssetIdOf<T>>, TechAccountIdOf<T>), DispatchError> {
         let dexinfo = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
@@ -102,7 +103,7 @@ impl<T: Config> Pallet<T> {
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
-        let tpair = common::TradingPair::<T::AssetId> {
+        let tpair = common::TradingPair::<AssetIdOf<T>> {
             base_asset_id: ba,
             target_asset_id: ta,
         };
@@ -114,7 +115,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn ensure_trading_pair_is_not_restricted(
-        tpair: &common::TradingPair<T::AssetId>,
+        tpair: &common::TradingPair<AssetIdOf<T>>,
     ) -> Result<(), DispatchError> {
         if T::GetTradingPairRestrictedFlag::get(tpair) {
             Err(Error::<T>::TargetAssetIsRestricted.into())
@@ -204,10 +205,10 @@ impl<T: Config> Pallet<T> {
 
     /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
     pub fn strict_sort_pair(
-        base_asset_id: &T::AssetId,
-        asset_a: &T::AssetId,
-        asset_b: &T::AssetId,
-    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        base_asset_id: &AssetIdOf<T>,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+    ) -> Result<TradingPair<AssetIdOf<T>>, DispatchError> {
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         if asset_a == base_asset_id {
             Ok(TradingPair {

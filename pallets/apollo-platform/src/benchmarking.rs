@@ -4,8 +4,8 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, PriceToolsProvider, PriceVariant, APOLLO_ASSET_ID,
-    CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId, PriceToolsProvider,
+    PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Hooks;
@@ -15,7 +15,6 @@ use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
 use crate::Pallet as ApolloPlatform;
-use assets::Pallet as Assets;
 use frame_support::PalletId;
 use pool_xyk::Pallet as XYKPool;
 use price_tools::Pallet as PriceTools;
@@ -58,15 +57,19 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let pallet_account: AccountIdOf<T> = PalletId(*b"apollolb").into_account_truncating();
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
         RawOrigin::Signed(owner.clone()).into();
-    let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
-    let dai_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(DAI.into()).unwrap();
+    let xor_owner: T::AccountId =
+        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&XOR.into()).unwrap();
+    let dai_owner: T::AccountId =
+        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&DAI.into()).unwrap();
     let ceres_owner: T::AccountId =
-        assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.into()).unwrap();
+        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&CERES_ASSET_ID.into())
+            .unwrap();
     let apollo_owner: T::AccountId =
-        assets::AssetOwners::<T>::get::<T::AssetId>(APOLLO_ASSET_ID.into()).unwrap();
+        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&APOLLO_ASSET_ID.into())
+            .unwrap();
 
     // Register assets
-    Assets::<T>::register_asset_id(
+    T::AssetManager::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
@@ -80,7 +83,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     // Mint assets to Alice
-    Assets::<T>::mint(
+    T::AssetManager::mint(
         RawOrigin::Signed(xor_owner).into(),
         XOR.into(),
         owner.clone(),
@@ -88,7 +91,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    Assets::<T>::mint(
+    T::AssetManager::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
@@ -96,7 +99,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    Assets::<T>::mint(
+    T::AssetManager::mint(
         RawOrigin::Signed(dai_owner).into(),
         DAI.into(),
         owner.clone(),
@@ -104,7 +107,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    Assets::<T>::mint(
+    T::AssetManager::mint(
         RawOrigin::Signed(apollo_owner.clone()).into(),
         APOLLO_ASSET_ID.into(),
         owner.clone(),
@@ -112,7 +115,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    Assets::<T>::mint(
+    T::AssetManager::mint(
         RawOrigin::Signed(apollo_owner).into(),
         APOLLO_ASSET_ID.into(),
         pallet_account,
@@ -120,7 +123,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    Assets::<T>::mint(
+    T::AssetManager::mint(
         RawOrigin::Signed(ceres_owner).into(),
         CERES_ASSET_ID.into(),
         owner,
@@ -302,16 +305,16 @@ benchmarks! {
 
         setup_benchmark::<T>()?;
 
-        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+        let xor_owner: T::AccountId = <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&XOR.into()).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(alice.clone()).into(),
             DOT.into(),
             alice.clone(),
             balance!(200)
         ).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(xor_owner).into(),
             XOR.into(),
             bob.clone(),
@@ -425,9 +428,9 @@ benchmarks! {
 
         setup_benchmark::<T>()?;
 
-        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+        let xor_owner: T::AccountId = <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&XOR.into()).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(xor_owner).into(),
             XOR.into(),
             bob.clone(),
@@ -491,9 +494,9 @@ benchmarks! {
 
         setup_benchmark::<T>()?;
 
-        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+        let xor_owner: T::AccountId = <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&XOR.into()).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(xor_owner).into(),
             XOR.into(),
             bob.clone(),
@@ -619,9 +622,9 @@ benchmarks! {
 
         setup_benchmark::<T>()?;
 
-        let xor_owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(XOR.into()).unwrap();
+        let xor_owner: T::AccountId = <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&XOR.into()).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(xor_owner).into(),
             XOR.into(),
             bob.clone(),

@@ -32,8 +32,8 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use assets::AssetIdOf;
 use common::prelude::EnsureDEXManager;
+use common::AssetIdOf;
 use common::{hash, DexInfoProvider, ManagementMode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
@@ -113,7 +113,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {}
+    pub trait Config: frame_system::Config + common::Config + permissions::Config {}
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);

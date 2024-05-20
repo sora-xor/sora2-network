@@ -40,9 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{balance, AssetName, AssetSymbol, Balance, XOR};
-
-use assets::Pallet as Assets;
+use common::{balance, AssetManager, AssetName, AssetSymbol, Balance, XOR};
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -56,7 +54,7 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
         RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
-        Assets::<T>::register(
+        T::AssetManager::register(
             owner_origin.clone(),
             AssetSymbol(b"TOKEN".to_vec()),
             AssetName(b"TOKEN".to_vec()),
