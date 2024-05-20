@@ -1418,7 +1418,7 @@ pub mod pallet {
             .unwrap_or(0);
 
             // Transfer amount to developer fund
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &asset_id,
                 &Self::account_id(),
                 &AuthorityAccount::<T>::get(),
