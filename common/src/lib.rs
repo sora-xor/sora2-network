@@ -72,7 +72,7 @@ pub mod prelude {
     pub use super::balance_unit::*;
     pub use super::fixed_wrapper::*;
     pub use super::outcome_fee::*;
-    pub use super::permissions::*;
+    pub use super::permissions;
     pub use super::primitives::*;
     pub use super::serialization::*;
     pub use super::swap_amount::*;
