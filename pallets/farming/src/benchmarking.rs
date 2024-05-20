@@ -105,14 +105,14 @@ fn prepare_good_accounts<T: Config>(count: u32, assets: &[AssetIdOf<T>]) {
         for j in 0..count {
             let account_id = utils::account::<T>(j);
             assert_ok!(T::AssetManager::mint_to(
-                XOR.into(),
+                &XOR.into(),
                 &xor_owner,
                 &account_id,
                 balance!(50000),
             ));
 
             assert_ok!(T::AssetManager::mint_to(
-                *other_asset,
+                other_asset,
                 &asset_owner::<T>(),
                 &account_id,
                 balance!(50000),
