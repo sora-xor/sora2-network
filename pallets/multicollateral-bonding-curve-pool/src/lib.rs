@@ -682,7 +682,7 @@ impl<T: Config> BuyMainAsset<T> {
 
     fn mint_output(&self, output_amount: Balance) -> Result<(), DispatchError> {
         T::AssetManager::mint_to(
-            self.main_asset_id,
+            &self.main_asset_id,
             &self.reserves_account_id,
             &self.to_account_id,
             output_amount,
@@ -805,7 +805,7 @@ impl<T: Config> Pallet<T> {
             )?
             .amount
             .into();
-            T::AssetManager::burn_from(base_asset_id, &holder, &holder, swapped_xor_amount)?;
+            T::AssetManager::burn_from(&base_asset_id, &holder, &holder, swapped_xor_amount)?;
 
             let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
             let mut undistributed_xor_amount = fw_swapped_xor_amount
@@ -831,7 +831,7 @@ impl<T: Config> Pallet<T> {
                         Technical::<T>::tech_account_id_to_account_id(account)?
                     }
                 };
-                T::AssetManager::mint_to(base_asset_id, &holder, &account, amount)?;
+                T::AssetManager::mint_to(&base_asset_id, &holder, &account, amount)?;
                 undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
 
@@ -1397,7 +1397,7 @@ impl<T: Config> Pallet<T> {
                 output_amount,
             )?;
             T::AssetManager::burn_from(
-                *main_asset_id,
+                main_asset_id,
                 &reserves_account_id,
                 from_account_id,
                 input_amount,

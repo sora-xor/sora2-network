@@ -77,7 +77,7 @@ benchmarks! {
         let val_asset: AssetIdOf<T> = VAL.into();
         let val_owner = T::AssetInfoProvider::get_asset_owner(&val_asset).unwrap();
         T::AssetManager::mint_to(
-            val_asset,
+            &val_asset,
             &val_owner,
             &reserves_acc,
             balance!(50000),
@@ -86,7 +86,7 @@ benchmarks! {
         let pswap_asset: AssetIdOf<T> = PSWAP.into();
         let pswap_owner = T::AssetInfoProvider::get_asset_owner(&pswap_asset).unwrap();
         T::AssetManager::mint_to(
-            pswap_asset,
+            &pswap_asset,
             &pswap_owner,
             &reserves_acc,
             balance!(50000),

@@ -95,9 +95,9 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
             XST.into(),
         )
         .unwrap();
-        T::AssetManager::mint_to(XOR.into(), &authority, &authority, balance!(20000)).unwrap();
-        T::AssetManager::mint_to(XST.into(), &authority, &authority, balance!(100000)).unwrap();
-        T::AssetManager::mint_to(PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
+        T::AssetManager::mint_to(&XOR.into(), &authority, &authority, balance!(20000)).unwrap();
+        T::AssetManager::mint_to(&XST.into(), &authority, &authority, balance!(100000)).unwrap();
+        T::AssetManager::mint_to(&PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
         pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
             authority.clone(),
             common::DEXId::Polkaswap.into(),
@@ -129,7 +129,7 @@ fn add_subscribtion<T: Config + pool_xyk::Config>(pool_index: u128, shareholders
     frame_system::Pallet::<T>::inc_providers(&pool_fee_account);
     let pool_account = create_account::<T>(b"pool".to_vec(), pool_index);
     frame_system::Pallet::<T>::inc_providers(&pool_account);
-    T::AssetManager::mint_to(PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
+    T::AssetManager::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
     PSwap::<T>::subscribe(
         pool_fee_account,
         common::DEXId::Polkaswap.into(),

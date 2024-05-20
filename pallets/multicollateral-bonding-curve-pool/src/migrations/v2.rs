@@ -63,7 +63,7 @@ where
                 return <T as frame_system::Config>::DbWeight::get().reads(1);
             }
             if let Err(err) = T::AssetManager::mint_to(
-                TBCD.into(),
+                &TBCD.into(),
                 &assets_and_permissions_account_id,
                 &SORAMITSU_PAYMENT_ACCOUNT.into(),
                 balance!(1688406),

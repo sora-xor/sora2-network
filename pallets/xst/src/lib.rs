@@ -853,14 +853,14 @@ impl<T: Config> Pallet<T> {
             };
 
             T::AssetManager::burn_from(
-                *input_asset_id,
+                input_asset_id,
                 &permissioned_account_id,
                 &from_account_id,
                 input_amount,
             )?;
 
             T::AssetManager::mint_to(
-                *output_asset_id,
+                output_asset_id,
                 &permissioned_account_id,
                 &to_account_id,
                 output_amount,

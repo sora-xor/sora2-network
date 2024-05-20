@@ -237,7 +237,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&account_id)?;
-        T::AssetManager::mint_to(*asset, &account_id, &account_id, amount)
+        T::AssetManager::mint_to(asset, &account_id, &account_id, amount)
     }
 
     /// Returns total balance for asset from the given `TechAccountId`.

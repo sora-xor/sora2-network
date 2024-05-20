@@ -93,16 +93,16 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    T::AssetManager::mint_to(XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
+    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
     T::AssetManager::mint_to(
-        DAI.into(),
+        &DAI.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000000),
     )
     .unwrap();
     T::AssetManager::mint_to(
-        VAL.into(),
+        &VAL.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000000),
@@ -437,7 +437,7 @@ benchmarks! {
         )
         .unwrap();
         T::AssetManager::mint_to(
-            USDT.into(),
+            &USDT.into(),
             &caller.clone(),
             &caller.clone(),
             balance!(50000000),
@@ -544,7 +544,7 @@ benchmarks! {
         )
         .unwrap();
         T::AssetManager::mint_to(
-            USDT.into(),
+            &USDT.into(),
             &caller.clone(),
             &caller.clone(),
             balance!(50000000),

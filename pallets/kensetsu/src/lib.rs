@@ -1191,7 +1191,7 @@ pub mod pallet {
                 &T::TreasuryTechAccount::get(),
             )?;
             T::AssetManager::mint_to(
-                T::KusdAssetId::get(),
+                &T::KusdAssetId::get(),
                 &technical_account_id,
                 account,
                 amount,
@@ -1205,7 +1205,7 @@ pub mod pallet {
                 &T::TreasuryTechAccount::get(),
             )?;
             T::AssetManager::burn_from(
-                T::KusdAssetId::get(),
+                &T::KusdAssetId::get(),
                 &technical_account_id,
                 &technical_account_id,
                 to_burn,
@@ -1224,7 +1224,7 @@ pub mod pallet {
                 &T::TreasuryTechAccount::get(),
             )?;
             T::AssetManager::burn_from(
-                T::KusdAssetId::get(),
+                &T::KusdAssetId::get(),
                 &technical_account_id,
                 account,
                 amount,
@@ -1383,7 +1383,7 @@ pub mod pallet {
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
                 T::AssetManager::burn_from(
-                    T::KenAssetId::get(),
+                    &T::KenAssetId::get(),
                     &technical_account_id,
                     &technical_account_id,
                     swap_outcome.amount,

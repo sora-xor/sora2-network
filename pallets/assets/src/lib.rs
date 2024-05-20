@@ -1121,12 +1121,12 @@ impl<T: Config>
         )
     }
     fn burn_from(
-        asset_id: Self::AssetId,
+        asset_id: &Self::AssetId,
         issuer: &T::AccountId,
         from: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::burn_from(&asset_id, issuer, from, amount)
+        Self::burn_from(asset_id, issuer, from, amount)
     }
 
     fn transfer_from(
@@ -1139,12 +1139,12 @@ impl<T: Config>
     }
 
     fn mint_to(
-        asset_id: Self::AssetId,
+        asset_id: &Self::AssetId,
         issuer: &T::AccountId,
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::mint_to(&asset_id, issuer, to, amount)
+        Self::mint_to(asset_id, issuer, to, amount)
     }
 
     fn mint_unchecked(

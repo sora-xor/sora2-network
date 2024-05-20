@@ -515,7 +515,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
             bridge_types::types::AssetKind::Sidechain => {
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
-                T::AssetManager::burn_from(*asset_id, &bridge_account, who, *amount)?;
+                T::AssetManager::burn_from(asset_id, &bridge_account, who, *amount)?;
             }
         }
         Ok(())
@@ -537,7 +537,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
             bridge_types::types::AssetKind::Sidechain => {
                 let bridge_account = Self::bridge_account(network_id)?;
                 technical::Pallet::<T>::ensure_account_registered(&bridge_account)?;
-                T::AssetManager::mint_to(*asset_id, &bridge_account, who, *amount)?;
+                T::AssetManager::mint_to(asset_id, &bridge_account, who, *amount)?;
             }
         }
         Ok(())

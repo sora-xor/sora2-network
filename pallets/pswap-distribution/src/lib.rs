@@ -281,7 +281,7 @@ impl<T: Config> Pallet<T> {
             }
 
             T::AssetManager::mint_to(
-                incentive_asset_id,
+                &incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
                 distribution.liquidity_providers,
@@ -320,7 +320,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<PswapRemintInfo, DispatchError> {
         let distribution = Self::calculate_pswap_distribution(incentive_total)?;
         T::AssetManager::burn_from(
-            *incentive_asset_id,
+            incentive_asset_id,
             tech_account_id,
             fees_account_id,
             incentive_total,

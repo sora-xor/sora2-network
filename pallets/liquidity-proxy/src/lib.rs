@@ -2312,7 +2312,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, AssetIdOf<
     ) -> Result<Balance, DispatchError> {
         let owner = T::AssetInfoProvider::get_asset_owner(&mint_asset_id)?;
         let transit = T::GetTechnicalAccountId::get();
-        T::AssetManager::mint_to(*mint_asset_id, &owner, &transit, amount)?;
+        T::AssetManager::mint_to(mint_asset_id, &owner, &transit, amount)?;
         let amount = Self::buy_back_and_burn(&transit, mint_asset_id, buy_back_asset_id, amount)?;
         Ok(amount)
     }
@@ -2336,7 +2336,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, AssetIdOf<
                 vec![LiquiditySourceType::MulticollateralBondingCurvePool],
             ),
         )?;
-        T::AssetManager::burn_from(*buy_back_asset_id, account_id, account_id, outcome.amount)?;
+        T::AssetManager::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
         Ok(outcome.amount)
     }
 }

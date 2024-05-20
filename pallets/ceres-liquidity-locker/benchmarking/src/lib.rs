@@ -87,9 +87,9 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), ceres_asset_id.into())
         .unwrap();
 
-    T::AssetManager::mint_to(XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
     T::AssetManager::mint_to(
-        ceres_asset_id.into(),
+        &ceres_asset_id.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000),

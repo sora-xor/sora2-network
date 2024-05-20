@@ -588,7 +588,7 @@ impl<T: Config> Pallet<T> {
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
-        T::AssetManager::mint_to(xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+        T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         match T::LiquidityProxy::exchange(
@@ -627,14 +627,14 @@ impl<T: Config> Pallet<T> {
                         error!("failed to exchange VAL to TBCD, burning VAL instead of buy back: {err:?}");
                     }
                 }
-                T::AssetManager::burn_from(val, &tech_account_id, &tech_account_id, val_to_burn)?;
+                T::AssetManager::burn_from(&val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
                 error!(
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
                     xor_to_val, e
                 );
-                T::AssetManager::burn_from(xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+                T::AssetManager::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
         }
 

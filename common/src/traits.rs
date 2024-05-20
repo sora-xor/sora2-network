@@ -1207,7 +1207,7 @@ pub trait AssetManager<
     ) -> DispatchResult;
 
     fn burn_from(
-        asset_id: Self::AssetId,
+        asset_id: &Self::AssetId,
         issuer: &T::AccountId,
         from: &T::AccountId,
         amount: Balance,
@@ -1221,7 +1221,7 @@ pub trait AssetManager<
     ) -> DispatchResult;
 
     fn mint_to(
-        asset_id: Self::AssetId,
+        asset_id: &Self::AssetId,
         issuer: &T::AccountId,
         to: &T::AccountId,
         amount: Balance,
@@ -1306,7 +1306,7 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
     }
 
     fn burn_from(
-        _asset_id: Self::AssetId,
+        _asset_id: &Self::AssetId,
         _issuer: &<T as frame_system::Config>::AccountId,
         _from: &<T as frame_system::Config>::AccountId,
         _amount: Balance,
@@ -1324,7 +1324,7 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
     }
 
     fn mint_to(
-        _asset_id: Self::AssetId,
+        _asset_id: &Self::AssetId,
         _issuer: &<T as frame_system::Config>::AccountId,
         _to: &<T as frame_system::Config>::AccountId,
         _amount: Balance,

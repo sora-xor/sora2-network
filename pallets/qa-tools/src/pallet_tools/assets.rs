@@ -58,14 +58,14 @@ pub fn change_balance_by<T: Config>(
             let mint_amount = balance_delta
                 .try_into()
                 .map_err(|_| crate::Error::<T>::ArithmeticError)?;
-            T::AssetManager::mint_to(*asset, &owner, account, mint_amount)?;
+            T::AssetManager::mint_to(asset, &owner, account, mint_amount)?;
         }
         Ordering::Less => {
             let burn_amount = balance_delta
                 .abs()
                 .try_into()
                 .map_err(|_| crate::Error::<T>::ArithmeticError)?;
-            T::AssetManager::burn_from(*asset, &owner, account, burn_amount)?;
+            T::AssetManager::burn_from(asset, &owner, account, burn_amount)?;
         }
         Ordering::Equal => (),
     }
