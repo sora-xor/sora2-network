@@ -197,6 +197,8 @@ impl trading_pair::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl pallet_balances::Config for Runtime {

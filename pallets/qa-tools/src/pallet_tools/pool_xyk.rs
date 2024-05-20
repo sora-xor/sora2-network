@@ -29,12 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{
-    balance, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, TradingPair,
-    TradingPairSourceManager, XOR,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, Balance, DEXInfo, DexIdOf,
+    DexInfoProvider, TradingPair, TradingPairSourceManager, XOR,
 };
 use frame_support::dispatch::{DispatchError, RawOrigin};
 use sp_arithmetic::traits::CheckedMul;
@@ -152,8 +151,8 @@ pub fn initialize<T: Config + pool_xyk::Config>(
             .checked_mul(&price)
             .ok_or(Error::<T>::ArithmeticError)?;
 
-        assets::Pallet::<T>::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
-        assets::Pallet::<T>::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
+        T::AssetManager::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
+        T::AssetManager::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
 
         *actual_price = *(value_b / value_a).balance();
         pool_xyk::Pallet::<T>::deposit_liquidity(

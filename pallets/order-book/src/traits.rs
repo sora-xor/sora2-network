@@ -32,7 +32,7 @@ use crate::{
     Config, LimitOrder, MarketSide, OrderBookEvent, OrderBookId, OrderPrice, OrderVolume,
     PriceOrders, UserOrders,
 };
-use assets::AssetIdOf;
+use common::AssetIdOf;
 use common::PriceVariant;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::WeightMeter;

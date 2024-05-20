@@ -40,8 +40,8 @@ use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
-    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsProvider,
-    PriceVariant, DAI, XST, XSTUSD,
+    balance, fixed, AssetManager, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle,
+    PriceToolsProvider, PriceVariant, DAI, XST, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
@@ -58,7 +58,7 @@ use xst::{Call, Event, Pallet as XSTPool};
 mod mock;
 
 mod utils {
-    use common::AssetId32;
+    use common::{AssetId32, AssetIdOf};
     use frame_support::{dispatch::DispatchErrorWithPostInfo, Parameter};
 
     use super::*;
@@ -70,7 +70,7 @@ mod utils {
         Symbol::decode(&mut &bytes[..]).expect("Failed to decode symbol")
     }
 
-    pub fn symbol_asset_id<T: Config>() -> T::AssetId {
+    pub fn symbol_asset_id<T: Config>() -> AssetIdOf<T> {
         AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(&symbol::<
             <T as xst::Config>::Symbol,
         >())
@@ -83,7 +83,7 @@ mod utils {
             .expect("Expected to generate account id from technical")
     }
 
-    pub fn set_asset_mock_price<T: Config>(asset_id: &T::AssetId)
+    pub fn set_asset_mock_price<T: Config>(asset_id: &AssetIdOf<T>)
     where
         T: price_tools::Config,
     {
@@ -102,7 +102,7 @@ mod utils {
         set_asset_mock_price::<T>(&XST.into());
 
         let amount: i128 = balance!(1).try_into().unwrap();
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             alice::<T>().into(),
             XST.into(),
@@ -124,7 +124,9 @@ mod utils {
         assert_eq!(event, &system_event);
     }
 
-    pub fn assert_last_assets_event<T: Config>(generic_event: <T as assets::Config>::RuntimeEvent) {
+    pub fn assert_last_assets_event<T: assets::Config>(
+        generic_event: <T as assets::Config>::RuntimeEvent,
+    ) {
         let events = frame_system::Pallet::<T>::events();
         let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
         // compare to the event record precending to trading pair and xst event records
@@ -145,7 +147,7 @@ mod utils {
         )
     }
 
-    pub fn enable_synthetic_asset<T: Config>() -> Result<T::AssetId, DispatchErrorWithPostInfo> {
+    pub fn enable_synthetic_asset<T: Config>() -> Result<AssetIdOf<T>, DispatchErrorWithPostInfo> {
         relay_symbol::<T>()?;
         XSTPool::<T>::register_synthetic_asset(
             RawOrigin::Root.into(),
@@ -162,7 +164,10 @@ mod utils {
     }
 }
 pub struct Pallet<T: Config>(xst::Pallet<T>);
-pub trait Config: xst::Config + band::Config + oracle_proxy::Config + price_tools::Config {}
+pub trait Config:
+    xst::Config + band::Config + oracle_proxy::Config + price_tools::Config + assets::Config
+{
+}
 
 benchmarks! {
     set_reference_asset {
@@ -215,6 +220,7 @@ benchmarks! {
         let permissioned_account_id = utils::permissioned_account_id::<T>();
         let reference_symbol = utils::symbol::<<T as xst::Config>::Symbol>();
         utils::relay_symbol::<T>()?;
+
     }: _(
         RawOrigin::Root,
         AssetSymbol(b"XSTEURO".to_vec()),
@@ -225,7 +231,7 @@ benchmarks! {
     verify {
         utils::assert_last_assets_event::<T>(
             AssetsEvent::AssetRegistered(
-                utils::symbol_asset_id::<T>(),
+                utils::symbol_asset_id::<T>().into(),
                 permissioned_account_id
             ).into()
         );

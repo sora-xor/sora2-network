@@ -48,7 +48,6 @@ use common::prelude::SwapAmount;
 use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, USDT, XOR};
 
 use crate::Pallet as MBCPool;
-use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
 
@@ -94,15 +93,15 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
-    Assets::<T>::mint_to(
+    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
+    T::AssetManager::mint_to(
         &DAI.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000000),
     )
     .unwrap();
-    Assets::<T>::mint_to(
+    T::AssetManager::mint_to(
         &VAL.into(),
         &owner.clone(),
         &owner.clone(),
@@ -164,7 +163,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -200,7 +199,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -231,7 +230,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -319,7 +318,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -373,7 +372,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -425,7 +424,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -437,7 +436,7 @@ benchmarks! {
             None,
         )
         .unwrap();
-        Assets::<T>::mint_to(
+        T::AssetManager::mint_to(
             &USDT.into(),
             &caller.clone(),
             &caller.clone(),
@@ -466,7 +465,7 @@ benchmarks! {
             desired_amount_in: balance!(100),
             min_amount_out: balance!(0),
         };
-        let initial_base_balance = Assets::<T>::free_balance(&USDT.into(), &caller).unwrap();
+        let initial_base_balance = <T as Config>::AssetInfoProvider::free_balance(&USDT.into(), &caller).unwrap();
     }: {
         // run only for benchmarks, not for tests
         // TODO: remake when unit tests use chainspec
@@ -476,7 +475,7 @@ benchmarks! {
     verify {
         #[cfg(not(test))]
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&USDT.into(), &caller).unwrap()),
+            Into::<u128>::into(<T as Config>::AssetInfoProvider::free_balance(&USDT.into(), &caller).unwrap()),
             Into::<u128>::into(initial_base_balance) - balance!(100)
         );
     }
@@ -491,7 +490,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -532,7 +531,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -544,7 +543,7 @@ benchmarks! {
             None,
         )
         .unwrap();
-        Assets::<T>::mint_to(
+        T::AssetManager::mint_to(
             &USDT.into(),
             &caller.clone(),
             &caller.clone(),
