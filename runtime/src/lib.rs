@@ -159,7 +159,7 @@ pub use order_book_benchmarking;
 pub use qa_tools;
 pub use {
     assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
-    multicollateral_bonding_curve_pool, order_book, regulated_assets, trading_pair, xst,
+    multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
 };
 
 /// An index to a block.
@@ -2374,6 +2374,7 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
@@ -2505,7 +2506,7 @@ construct_runtime! {
 
         #[cfg(feature = "ready-to-test")] // Apollo
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
-
+        #[cfg(feature = "wip")] // DEFI-R
         RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
@@ -3220,7 +3221,6 @@ impl_runtime_apis! {
             let mut list = Vec::<BenchmarkList>::new();
 
             list_benchmark!(list, extra, assets, Assets);
-            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
             #[cfg(feature = "private-net")]
             list_benchmark!(list, extra, faucet, Faucet);
             list_benchmark!(list, extra, farming, Farming);
@@ -3271,6 +3271,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3317,7 +3319,6 @@ impl_runtime_apis! {
             let params = (&config, &whitelist);
 
             add_benchmark!(params, batches, assets, Assets);
-            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
@@ -3368,6 +3369,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

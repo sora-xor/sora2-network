@@ -101,7 +101,7 @@ vested-rewards = { path = "../pallets/vested-rewards", default-features = false 
 vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", default-features = false }
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xst = { path = "../pallets/xst", default-features = false }
-regulated-assets = { path = "../pallets/regulated-assets", default-features = false }
+regulated-assets = { path = "../pallets/regulated-assets", default-features = false, optional = true }
 xst-benchmarking = { path = "../pallets/xst/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
@@ -317,6 +317,7 @@ wip = [
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
+    "regulated-assets",
 ]
 
 ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
@@ -471,6 +472,7 @@ try-runtime = [
     "bridge-data-signer/try-runtime",
     "multisig-verifier/try-runtime",
     "qa-tools/try-runtime",
+    "regulated-assets/try-runtime",
 ]
 
 test = ["framenode-chain-spec/test", "liquidity-proxy/test", "order-book/test"]
