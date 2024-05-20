@@ -1794,6 +1794,13 @@
 <a href="#1779" id="1779">1779</a>
 <a href="#1780" id="1780">1780</a>
 <a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1829,12 +1836,12 @@
 #![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
 
-</span><span class="kw">use </span>assets::AssetIdOf;
-<span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
+</span><span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
     SwapOutcome, TradingPair,
 };
+<span class="kw">use </span>common::AssetIdOf;
 <span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
@@ -1911,7 +1918,7 @@
     </span><span class="kw">pub struct </span>Pallet&lt;T&gt;(PhantomData&lt;T&gt;);
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config: frame_system::Config + assets::Config + technical::Config {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + technical::Config {
         <span class="kw">const </span>MAX_ORDER_LIFESPAN: MomentOf&lt;<span class="self">Self</span>&gt;;
         <span class="kw">const </span>MIN_ORDER_LIFESPAN: MomentOf&lt;<span class="self">Self</span>&gt;;
         <span class="kw">const </span>MILLISECS_PER_BLOCK: MomentOf&lt;<span class="self">Self</span>&gt;;
@@ -1940,19 +1947,24 @@
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
-        <span class="kw">type </span>Locker: CurrencyLocker&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>::DEXId, DispatchError&gt;;
-        <span class="kw">type </span>Unlocker: CurrencyUnlocker&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>::DEXId, DispatchError&gt;;
+        <span class="kw">type </span>Locker: CurrencyLocker&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;, <span class="self">Self</span>::DEXId, DispatchError&gt;;
+        <span class="kw">type </span>Unlocker: CurrencyUnlocker&lt;
+            <span class="self">Self</span>::AccountId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
+            <span class="self">Self</span>::DEXId,
+            DispatchError,
+        &gt;;
         <span class="kw">type </span>Scheduler: AlignmentScheduler
             + ExpirationScheduler&lt;
                 <span class="self">Self</span>::BlockNumber,
-                OrderBookId&lt;<span class="self">Self</span>::AssetId, <span class="self">Self</span>::DEXId&gt;,
+                OrderBookId&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, <span class="self">Self</span>::DEXId&gt;,
                 <span class="self">Self</span>::DEXId,
                 <span class="self">Self</span>::OrderId,
                 DispatchError,
             &gt;;
         <span class="kw">type </span>Delegate: Delegate&lt;
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::OrderId,
             <span class="self">Self</span>::DEXId,
             MomentOf&lt;<span class="self">Self</span>&gt;,
@@ -1965,12 +1977,12 @@
         <span class="kw">type </span>MaxAlignmentWeightPerBlock: Get&lt;Weight&gt;;
         <span class="kw">type </span>EnsureTradingPairExists: EnsureTradingPairExists&lt;
             <span class="self">Self</span>::DEXId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             DispatchError,
         &gt;;
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -1978,8 +1990,8 @@
             ContentSource,
             Description,
         &gt;;
-        <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
+        <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="kw">type </span>Time: Time;
         <span class="kw">type </span>PermittedCreateOrigin: EnsureOrigin&lt;
             <span class="self">Self</span>::RuntimeOrigin,
@@ -2820,11 +2832,11 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; CurrencyLocker&lt;T::AccountId, T::AssetId, T::DEXId, DispatchError&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; CurrencyLocker&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, DispatchError&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>lock_liquidity(
         account: <span class="kw-2">&amp;</span>T::AccountId,
         order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
@@ -2832,11 +2844,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; CurrencyUnlocker&lt;T::AccountId, T::AssetId, T::DEXId, DispatchError&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; CurrencyUnlocker&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, DispatchError&gt;
+    <span class="kw">for </span>Pallet&lt;T&gt;
+{
     <span class="kw">fn </span>unlock_liquidity(
         account: <span class="kw-2">&amp;</span>T::AccountId,
         order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
@@ -2845,7 +2859,7 @@
 
     <span class="kw">fn </span>unlock_liquidity_batch(
         order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         receivers: <span class="kw-2">&amp;</span>BTreeMap&lt;T::AccountId, OrderVolume&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
@@ -2861,7 +2875,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; Delegate&lt;T::AccountId, T::AssetId, T::OrderId, T::DEXId, MomentOf&lt;T&gt;&gt;
+<span class="kw">impl</span>&lt;T: Config&gt; Delegate&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::OrderId, T::DEXId, MomentOf&lt;T&gt;&gt;
     <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">fn </span>emit_event(
@@ -3182,13 +3196,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError&gt;
+<span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, AssetIdOf&lt;T&gt;, Balance, DispatchError&gt;
     <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">fn </span>can_exchange(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; bool {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
@@ -3203,11 +3217,11 @@
 
     <span class="kw">fn </span>quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
@@ -3237,12 +3251,12 @@
 
     <span class="kw">fn </span>step_quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetIdOf&lt;T&gt;, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
@@ -3385,10 +3399,10 @@
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };
@@ -3464,21 +3478,21 @@
 
     <span class="kw">fn </span>check_rewards(
         _dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        _input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        _output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        _input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        _output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, T::AssetId, RewardReason)&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, AssetIdOf&lt;T&gt;, RewardReason)&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Ok</span>((Vec::new(), Weight::zero())) <span class="comment">// no rewards for Order Book
     </span>}
 
     <span class="kw">fn </span>quote_without_impact(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         _deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span><span class="prelude-val">Some</span>(order_book_id) = <span class="self">Self</span>::assemble_order_book_id(<span class="kw-2">*</span>dex_id, input_asset_id, output_asset_id) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownOrderBook.into());
         };

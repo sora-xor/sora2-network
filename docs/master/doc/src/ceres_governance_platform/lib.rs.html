@@ -450,9 +450,6 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![allow(clippy::type_complexity)]
 
@@ -526,6 +523,7 @@
     <span class="kw">use crate</span>::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     <span class="kw">use </span>common::prelude::Balance;
     <span class="kw">use </span>common::BoundedString;
+    <span class="kw">use </span>common::{AssetIdOf, AssetManager};
     <span class="kw">use </span>frame_support::log;
     <span class="kw">use </span>frame_support::pallet_prelude::OptionQuery;
     <span class="kw">use </span>frame_support::pallet_prelude::ValueQuery;
@@ -544,9 +542,7 @@
     <span class="kw">const </span>PALLET_ID: PalletId = PalletId(<span class="kw-2">*</span><span class="string">b&quot;ceresgov&quot;</span>);
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
-    {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + technical::Config + timestamp::Config {
         <span class="doccomment">/// String limit
         </span><span class="kw">type </span>StringLimit: Get&lt;u32&gt;;
 
@@ -566,10 +562,8 @@
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
-    <span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-    <span class="kw">pub type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub </span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -729,7 +723,7 @@
             }
 
             <span class="comment">// Transfer asset to pallet
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>poll_info.poll_asset,
                 <span class="kw-2">&amp;</span>user,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
@@ -842,7 +836,7 @@
             );
 
             <span class="comment">// Withdraw asset
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>poll_info.poll_asset,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
                 <span class="kw-2">&amp;</span>user,

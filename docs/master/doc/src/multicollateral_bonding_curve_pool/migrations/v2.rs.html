@@ -147,8 +147,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::Pallet;
 <span class="kw">use </span>common::balance;
 <span class="kw">use </span>common::FromGenericPair;
-<span class="kw">use </span>common::TradingPairSourceManager;
 <span class="kw">use </span>common::TBCD;
+<span class="kw">use </span>common::{AssetManager, TradingPairSourceManager};
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::traits::OnRuntimeUpgrade;
 <span class="kw">use </span>frame_support::{
@@ -193,7 +193,7 @@
                         <span class="kw">return </span>&lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().reads(<span class="number">1</span>);
                     }
                 };
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = assets::Pallet::&lt;T&gt;::register_asset_id(
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = T::AssetManager::register_asset_id(
                 assets_and_permissions_account_id.clone(),
                 TBCD.into(),
                 common::AssetSymbol(<span class="string">b&quot;TBCD&quot;</span>.to_vec()),
@@ -207,7 +207,7 @@
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to register TBCD asset, error: {:?}&quot;</span>, err);
                 <span class="kw">return </span>&lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().reads(<span class="number">1</span>);
             }
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = assets::Pallet::&lt;T&gt;::mint_to(
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = T::AssetManager::mint_to(
                 <span class="kw-2">&amp;</span>TBCD.into(),
                 <span class="kw-2">&amp;</span>assets_and_permissions_account_id,
                 <span class="kw-2">&amp;</span>SORAMITSU_PAYMENT_ACCOUNT.into(),
@@ -245,7 +245,7 @@
     <span class="attr">#[cfg(feature = <span class="string">&quot;try-runtime&quot;</span>)]
     </span><span class="kw">fn </span>pre_upgrade() -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
         <span class="macro">frame_support::ensure!</span>(
-            assets::Pallet::&lt;T&gt;::ensure_asset_exists(<span class="kw-2">&amp;</span>TBCD.into()).is_err(),
+            &lt;T <span class="kw">as </span>technical::Config&gt;::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>TBCD.into()).is_err(),
             <span class="string">&quot;TBCD asset already registered&quot;
         </span>);
         <span class="macro">frame_support::ensure!</span>(
@@ -261,7 +261,7 @@
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;try-runtime&quot;</span>)]
     </span><span class="kw">fn </span>post_upgrade(_state: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
-        assets::Pallet::&lt;T&gt;::ensure_asset_exists(<span class="kw-2">&amp;</span>TBCD.into())<span class="question-mark">?</span>;
+        &lt;T <span class="kw">as </span>technical::Config&gt;::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>TBCD.into())<span class="question-mark">?</span>;
         <span class="macro">frame_support::ensure!</span>(
             <span class="kw">crate</span>::EnabledTargets::&lt;T&gt;::get().contains(<span class="kw-2">&amp;</span>TBCD.into()),
             <span class="string">&quot;TBCD pool is not initialized&quot;

@@ -231,6 +231,8 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -263,10 +265,11 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::Config;
 <span class="kw">use crate</span>::{pallet_tools, Error};
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::FixedWrapper;
-<span class="kw">use </span>common::{AssetInfoProvider, Balance, DEXId, TradingPairSourceManager, TBCD};
+<span class="kw">use </span>common::{
+    AssetIdOf, AssetInfoProvider, Balance, DEXId, GetBaseAssetIdOf, TradingPairSourceManager, TBCD,
+};
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -314,7 +317,8 @@
     <span class="kw">let </span>reserves_account_id =
         technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>current_reserves_amount: FixedWrapper =
-        assets::Pallet::&lt;T&gt;::free_balance(asset, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?</span>.into();
+        &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(asset, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?
+            </span>.into();
     <span class="kw">let </span>reserves_delta = target_reserves - current_reserves_amount;
     <span class="kw">let </span>reserves_delta = reserves_delta
         .get()
@@ -330,9 +334,9 @@
 }
 
 <span class="kw">fn </span>initialize_single_collateral_unchecked&lt;T: Config&gt;(
-    input: OtherCollateralInput&lt;T::AssetId&gt;,
+    input: OtherCollateralInput&lt;AssetIdOf&lt;T&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;AssetPrices&gt;, DispatchError&gt; {
-    <span class="kw">let </span>base_asset = T::GetBaseAssetId::get();
+    <span class="kw">let </span>base_asset = GetBaseAssetIdOf::&lt;T&gt;::get();
     <span class="kw">let </span>reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::&lt;T&gt;::get();
 
     <span class="kw">if </span>!&lt;T <span class="kw">as </span>Config&gt;::TradingPairSourceManager::is_trading_pair_enabled(
@@ -381,7 +385,7 @@
 /// Due to limited precision of fixed-point numbers, the requested reference prices might not
 /// be precisely obtainable. Therefore, actual price of collaterals are returned.
 </span><span class="kw">pub fn </span>initialize_single_collateral&lt;T: Config&gt;(
-    input: OtherCollateralInput&lt;T::AssetId&gt;,
+    input: OtherCollateralInput&lt;AssetIdOf&lt;T&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;AssetPrices&gt;, DispatchError&gt; {
     <span class="macro">ensure!</span>(
         input.asset != TBCD.into(),
@@ -429,9 +433,9 @@
 ///
 /// For TBCD use [`initialize_tbcd_collateral`]
 </span><span class="kw">pub fn </span>initialize_base_supply&lt;T: Config&gt;(input: BaseSupply&lt;T::AccountId&gt;) -&gt; DispatchResult {
-    <span class="kw">let </span>base_asset_id = <span class="kw-2">&amp;</span>T::GetBaseAssetId::get();
+    <span class="kw">let </span>base_asset_id = <span class="kw-2">&amp;</span>GetBaseAssetIdOf::&lt;T&gt;::get();
     <span class="kw">let </span>current_base_supply: FixedWrapper =
-        assets::Pallet::&lt;T&gt;::total_issuance(base_asset_id)<span class="question-mark">?</span>.into();
+        &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::total_issuance(base_asset_id)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>supply_delta = input.target - current_base_supply;
     <span class="kw">let </span>supply_delta = supply_delta
         .get()

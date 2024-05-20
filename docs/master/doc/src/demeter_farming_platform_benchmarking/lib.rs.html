@@ -681,7 +681,6 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Demeter farming platform module benchmarking.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
@@ -690,8 +689,8 @@
 
 </span><span class="kw">use </span>codec::Decode;
 <span class="kw">use </span>common::{
-    balance, AssetName, AssetSymbol, Balance, CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION, XOR,
-    XSTUSD,
+    balance, AssetManager, AssetName, AssetSymbol, Balance, CERES_ASSET_ID,
+    DEFAULT_BALANCE_PRECISION, XOR, XSTUSD,
 };
 <span class="kw">use </span>demeter_farming_platform::{AccountIdOf, AuthorityAccount, UserInfos};
 <span class="kw">use </span>frame_benchmarking::benchmarks;
@@ -700,7 +699,6 @@
 <span class="kw">use </span>sp_runtime::traits::AccountIdConversion;
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>assets::Pallet <span class="kw">as </span>Assets;
 <span class="kw">use </span>demeter_farming_platform::Call;
 <span class="kw">use </span>demeter_farming_platform::Pallet <span class="kw">as </span>DemeterFarmingPlatform;
 <span class="kw">use </span>frame_support::traits::Hooks;
@@ -744,7 +742,7 @@
         permissions::Scope::Unlimited,
     );
 
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(<span class="string">b&quot;XOR&quot;</span>.to_vec()),
@@ -756,7 +754,7 @@
         <span class="prelude-val">None</span>,
     );
 
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         XSTUSD.into(),
         AssetSymbol(<span class="string">b&quot;XSTUSD&quot;</span>.to_vec()),
@@ -768,7 +766,7 @@
         <span class="prelude-val">None</span>,
     );
 
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         CERES_ASSET_ID.into(),
         AssetSymbol(<span class="string">b&quot;CERES&quot;</span>.to_vec()),
@@ -879,7 +877,7 @@
 
         setup_benchmark_assets_only::&lt;T&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(team_account.clone()).into(),
             reward_asset.into(),
             authority.clone(),
@@ -930,14 +928,14 @@
 
         setup_benchmark_assets_only::&lt;T&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             pallet_account.clone(),
             <span class="macro">balance!</span>(<span class="number">20000</span>)
         );
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             caller.clone(),
@@ -1007,14 +1005,14 @@
 
         setup_benchmark_assets_only::&lt;T&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             caller.clone(),
             <span class="macro">balance!</span>(<span class="number">20000</span>)
         );
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             pallet_account.clone(),
@@ -1248,14 +1246,14 @@
 
         setup_benchmark_assets_only::&lt;T&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             caller.clone(),
             <span class="macro">balance!</span>(<span class="number">20000</span>)
         );
 
-        <span class="kw">let _ </span>= Assets::&lt;T&gt;::mint(
+        <span class="kw">let _ </span>= T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             pallet_account.clone(),

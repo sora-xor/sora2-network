@@ -313,12 +313,15 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::marker::PhantomData;
 
 <span class="kw">use crate</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::balance;
-<span class="kw">use </span>common::{AssetInfoProvider, FromGenericPair};
+<span class="kw">use </span>common::{AssetInfoProvider, AssetManager, FromGenericPair};
 <span class="kw">use </span>common::{Balance, Fixed, PSWAP, VAL, XSTUSD};
 <span class="kw">use </span>frame_support::dispatch::GetStorageVersion;
 <span class="kw">use </span>frame_support::log;
@@ -392,7 +395,7 @@
         Blake2_128Concat,
         &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId,
         Blake2_128Concat,
-        &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId,
+        AssetIdOf&lt;T&gt;,
         &lt;T <span class="kw">as </span>frame_system::Config&gt;::BlockNumber,
         ValueQuery,
     &gt;;
@@ -548,9 +551,9 @@
     </span><span class="kw">pub type </span>MarketMakingPairs&lt;T: Config&gt; = StorageDoubleMap&lt;
         Pallet&lt;T&gt;,
         Blake2_128Concat,
-        &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId,
+        AssetIdOf&lt;T&gt;,
         Blake2_128Concat,
-        &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId,
+        AssetIdOf&lt;T&gt;,
         (),
         ValueQuery,
     &gt;;
@@ -573,14 +576,17 @@
 
     <span class="kw">let </span>market_making_reward_account = T::GetMarketMakerRewardsAccountId::get();
     <span class="kw">let </span>liquidity_providing_reward_account = T::GetBondingCurveRewardsAccountId::get();
-    <span class="kw">let </span>amount = <span class="kw">match </span>Assets::&lt;T&gt;::total_balance(<span class="kw-2">&amp;</span>PSWAP.into(), <span class="kw-2">&amp;</span>market_making_reward_account) {
+    <span class="kw">let </span>amount = <span class="kw">match </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_balance(
+        <span class="kw-2">&amp;</span>PSWAP.into(),
+        <span class="kw-2">&amp;</span>market_making_reward_account,
+    ) {
         <span class="prelude-val">Ok</span>(amount) =&gt; amount,
         <span class="prelude-val">Err</span>(err) =&gt; {
             <span class="macro">log::error!</span>(target: <span class="string">&quot;runtime&quot;</span>, <span class="string">&quot;Failed to transfer tokens from market maker reward pool to liquidity provider reward pool: {:?}&quot;</span>, err);
             <span class="kw">return </span>T::DbWeight::get().reads(<span class="number">1</span>);
         }
     };
-    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = Assets::&lt;T&gt;::transfer_from(
+    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = T::AssetManager::transfer_from(
         <span class="kw-2">&amp;</span>PSWAP.into(),
         <span class="kw-2">&amp;</span>market_making_reward_account,
         <span class="kw-2">&amp;</span>liquidity_providing_reward_account,

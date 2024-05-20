@@ -237,8 +237,8 @@
 #![cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 
 </span><span class="kw">use </span>common::{
-    balance, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry, LiquiditySourceFilter,
-    LiquiditySourceType, VAL, XOR, XSTUSD,
+    balance, AssetIdOf, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry,
+    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::{EventRecord, RawOrigin};
@@ -310,8 +310,8 @@
         <span class="kw">let </span>to_asset: T::AssetId = VAL.into();
     }: {
         liquidity_proxy::Pallet::&lt;T&gt;::check_indivisible_assets(
-            <span class="kw-2">&amp;</span>from_asset,
-            <span class="kw-2">&amp;</span>to_asset
+            <span class="kw-2">&amp;</span>from_asset.into(),
+            <span class="kw-2">&amp;</span>to_asset.into()
         ).unwrap();
     }
     verify {
@@ -319,8 +319,8 @@
 
     new_trivial {
         <span class="kw">let </span>dex_info = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>DEX.into())<span class="question-mark">?</span>;
-        <span class="kw">let </span>from_asset: T::AssetId = XSTUSD.into();
-        <span class="kw">let </span>to_asset: T::AssetId = VAL.into();
+        <span class="kw">let </span>from_asset: AssetIdOf&lt;T&gt; = XSTUSD.into();
+        <span class="kw">let </span>to_asset: AssetIdOf&lt;T&gt; = VAL.into();
     }: {
         ExchangePath::&lt;T&gt;::new_trivial(
             <span class="kw-2">&amp;</span>dex_info,
@@ -337,7 +337,7 @@
         <span class="kw">let </span>sources = <span class="macro">vec!</span>[LiquiditySourceType::XYKPool, LiquiditySourceType::MulticollateralBondingCurvePool, LiquiditySourceType::XSTPool];
         <span class="kw">let </span>filter = FilterMode::Disabled;
     }: {
-        liquidity_proxy::Pallet::&lt;T&gt;::is_forbidden_filter(<span class="kw-2">&amp;</span>from_asset, <span class="kw-2">&amp;</span>to_asset, <span class="kw-2">&amp;</span>sources, <span class="kw-2">&amp;</span>filter);
+        liquidity_proxy::Pallet::&lt;T&gt;::is_forbidden_filter(<span class="kw-2">&amp;</span>from_asset.into(), <span class="kw-2">&amp;</span>to_asset.into(), <span class="kw-2">&amp;</span>sources, <span class="kw-2">&amp;</span>filter);
     }
     verify {
     }
@@ -355,7 +355,7 @@
             .to_vec()
         );
     }: {
-        T::LiquidityRegistry::list_liquidity_sources(<span class="kw-2">&amp;</span>from_asset, <span class="kw-2">&amp;</span>to_asset, <span class="kw-2">&amp;</span>filter).unwrap();
+        T::LiquidityRegistry::list_liquidity_sources(<span class="kw-2">&amp;</span>from_asset.into(), <span class="kw-2">&amp;</span>to_asset.into(), <span class="kw-2">&amp;</span>filter).unwrap();
     }
     verify {
     }

@@ -307,7 +307,6 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -348,8 +347,8 @@
 </span><span class="kw">use </span>codec::Decode;
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};
 <span class="kw">use </span>common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
-    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId,
+    LiquiditySource, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::RawOrigin;
@@ -357,7 +356,6 @@
 <span class="kw">use </span>pool_xyk::Call;
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>assets::Pallet <span class="kw">as </span>Assets;
 <span class="kw">use </span>permissions::Pallet <span class="kw">as </span>Permissions;
 <span class="kw">use </span>pool_xyk::Pallet <span class="kw">as </span>XYKPool;
 
@@ -392,7 +390,7 @@
         permissions::Scope::Unlimited,
     );
 
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(<span class="string">b&quot;XOR&quot;</span>.to_vec()),
@@ -403,7 +401,7 @@
         <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
     );
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(<span class="string">b&quot;DOT&quot;</span>.to_vec()),
@@ -418,8 +416,8 @@
 
     T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), DOT.into()).unwrap();
 
-    Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
-    Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
+    T::AssetManager::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
+    T::AssetManager::mint_to(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -455,8 +453,8 @@
             desired_amount_in: <span class="macro">balance!</span>(<span class="number">1000</span>),
             min_amount_out: <span class="macro">balance!</span>(<span class="number">0</span>),
         };
-        <span class="kw">let </span>initial_base_balance = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap();
-        <span class="kw">let </span>initial_target_balance = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap();
+        <span class="kw">let </span>initial_base_balance = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap();
+        <span class="kw">let </span>initial_target_balance = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap();
     }: {
         pool_xyk::Pallet::&lt;T&gt;::exchange(<span class="kw-2">&amp;</span>caller,
         <span class="kw-2">&amp;</span>caller,
@@ -468,11 +466,11 @@
 }
     verify {
         <span class="macro">assert_eq!</span>(
-            Into::&lt;u128&gt;::into(Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap()),
+            Into::&lt;u128&gt;::into(&lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap()),
             Into::&lt;u128&gt;::into(initial_base_balance) - <span class="macro">balance!</span>(<span class="number">1000</span>)
         );
         <span class="macro">assert_eq!</span>(
-            Into::&lt;u128&gt;::into(Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap()),
+            Into::&lt;u128&gt;::into(&lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap()),
             Into::&lt;u128&gt;::into(initial_target_balance) + <span class="macro">balance!</span>(<span class="number">997.997997997997997997</span>)
         );
     }
@@ -533,8 +531,8 @@
     deposit_liquidity {
         setup_benchmark::&lt;T&gt;()<span class="question-mark">?</span>;
         <span class="kw">let </span>caller = alice::&lt;T&gt;();
-        <span class="kw">let </span>initial_xor_balance = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap();
-        <span class="kw">let </span>initial_dot_balance = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap();
+        <span class="kw">let </span>initial_xor_balance = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap();
+        <span class="kw">let </span>initial_dot_balance = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap();
     }: <span class="kw">_</span>(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
@@ -548,11 +546,11 @@
     verify {
         <span class="comment">// adding in proportions same as existing, thus call withdraws full deposit
         </span><span class="macro">assert_eq!</span>(
-            Into::&lt;u128&gt;::into(Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
+            Into::&lt;u128&gt;::into(&lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
             Into::&lt;u128&gt;::into(initial_xor_balance) - <span class="macro">balance!</span>(<span class="number">2000</span>)
         );
         <span class="macro">assert_eq!</span>(
-            Into::&lt;u128&gt;::into(Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
+            Into::&lt;u128&gt;::into(&lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
             Into::&lt;u128&gt;::into(initial_dot_balance) - <span class="macro">balance!</span>(<span class="number">3000</span>)
         );
     }
@@ -560,8 +558,8 @@
     withdraw_liquidity {
         setup_benchmark::&lt;T&gt;().unwrap();
         <span class="kw">let </span>caller = alice::&lt;T&gt;();
-        <span class="kw">let </span>initial_xor_balance = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap();
-        <span class="kw">let </span>initial_dot_balance = Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap();
+        <span class="kw">let </span>initial_xor_balance = &lt;T <span class="kw">as  </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller).unwrap();
+        <span class="kw">let </span>initial_dot_balance = &lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller).unwrap();
     }: <span class="kw">_</span>(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
@@ -573,11 +571,11 @@
     )
     verify {
         <span class="macro">assert_eq!</span>(
-            Into::&lt;u128&gt;::into(Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
+            Into::&lt;u128&gt;::into(&lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
             Into::&lt;u128&gt;::into(initial_xor_balance) + <span class="macro">balance!</span>(<span class="number">816.496580927726032746</span>)
         );
         <span class="macro">assert_eq!</span>(
-            Into::&lt;u128&gt;::into(Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
+            Into::&lt;u128&gt;::into(&lt;T <span class="kw">as </span>pool_xyk::Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>DOT.into(), <span class="kw-2">&amp;</span>caller.clone()).unwrap()),
             Into::&lt;u128&gt;::into(initial_dot_balance) + <span class="macro">balance!</span>(<span class="number">1224.744871391589049119</span>)
         );
     }
@@ -585,8 +583,8 @@
     initialize_pool {
         setup_benchmark_assets_only::&lt;T&gt;()<span class="question-mark">?</span>;
         <span class="kw">let </span>caller = alice::&lt;T&gt;();
-        <span class="kw">let </span>asset_xor: T::AssetId = XOR.into();
-        <span class="kw">let </span>asset_dot: T::AssetId = DOT.into();
+        <span class="kw">let </span>asset_xor: AssetIdOf&lt;T&gt; = XOR.into();
+        <span class="kw">let </span>asset_dot: AssetIdOf&lt;T&gt; = DOT.into();
     }: <span class="kw">_</span>(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),

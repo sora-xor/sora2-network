@@ -200,7 +200,6 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -237,8 +236,7 @@
     <span class="kw">use </span><span class="kw">crate</span>::pallet_tools::mcbc::TbcdCollateralInput;
     <span class="kw">use </span><span class="kw">crate</span>::pallet_tools::price_tools::AssetPrices;
     <span class="kw">use </span><span class="kw">crate</span>::Config;
-    <span class="kw">use </span>assets::AssetIdOf;
-    <span class="kw">use </span>common::DexIdOf;
+    <span class="kw">use </span>common::{AssetIdOf, DexIdOf};
     <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
     <span class="kw">use </span>frame_support::ensure;
     <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
@@ -275,7 +273,7 @@
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec&lt;(
-            OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+            OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             pallet_tools::order_book::OrderBookAttributes,
             pallet_tools::order_book::FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
         )&gt;,
@@ -316,7 +314,7 @@
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec&lt;(
-            OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+            OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
             pallet_tools::order_book::FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
         )&gt;,
     ) -&gt; DispatchResult {
@@ -344,9 +342,9 @@
     /// obtainable. Therefore, actual resulting price of synthetics is returned.
     </span><span class="kw">pub fn </span>initialize_xst&lt;T: Config&gt;(
         base: <span class="prelude-ty">Option</span>&lt;BaseInput&gt;,
-        synthetics: Vec&lt;SyntheticInput&lt;T::AssetId, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
+        synthetics: Vec&lt;SyntheticInput&lt;AssetIdOf&lt;T&gt;, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
         relayer: T::AccountId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SyntheticOutput&lt;T::AssetId&gt;&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SyntheticOutput&lt;AssetIdOf&lt;T&gt;&gt;&gt;, DispatchError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(base_prices) = base {
             pallet_tools::xst::initialize_base_assets::&lt;T&gt;(base_prices)<span class="question-mark">?</span>;
         }
@@ -361,9 +359,9 @@
     /// - `tbcd_collateral`: TBCD-specific pricing variables.
     </span><span class="kw">pub fn </span>initialize_mcbc&lt;T: Config&gt;(
         base_supply: <span class="prelude-ty">Option</span>&lt;BaseSupply&lt;T::AccountId&gt;&gt;,
-        other_collaterals: Vec&lt;OtherCollateralInput&lt;T::AssetId&gt;&gt;,
+        other_collaterals: Vec&lt;OtherCollateralInput&lt;AssetIdOf&lt;T&gt;&gt;&gt;,
         tbcd_collateral: <span class="prelude-ty">Option</span>&lt;TbcdCollateralInput&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;T::AssetId, AssetPrices&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;AssetIdOf&lt;T&gt;, AssetPrices&gt;, DispatchError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(base_supply) = base_supply {
             pallet_tools::mcbc::initialize_base_supply::&lt;T&gt;(base_supply)<span class="question-mark">?</span>;
         }

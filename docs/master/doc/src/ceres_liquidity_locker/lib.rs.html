@@ -448,8 +448,6 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -495,7 +493,7 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use crate</span>::{migrations, LockInfo, StorageVersion, WeightInfo};
     <span class="kw">use </span>common::prelude::{Balance, FixedWrapper};
-    <span class="kw">use </span>common::{balance, DemeterFarming, XykPool};
+    <span class="kw">use </span>common::{balance, AssetIdOf, AssetManager, DemeterFarming, XykPool};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::sp_runtime::traits::Zero;
     <span class="kw">use </span>frame_system::ensure_signed;
@@ -505,7 +503,7 @@
     <span class="kw">use </span>sp_std::vec::Vec;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config: frame_system::Config + assets::Config + timestamp::Config {
+    </span><span class="kw">pub trait </span>Config: common::Config + frame_system::Config + timestamp::Config {
         <span class="doccomment">/// One day represented in block number
         </span><span class="kw">const </span>BLOCKS_PER_ONE_DAY: BlockNumberFor&lt;<span class="self">Self</span>&gt;;
 
@@ -513,22 +511,20 @@
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
         <span class="doccomment">/// Reference to pool_xyk pallet
-        </span><span class="kw">type </span>XYKPool: XykPool&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        </span><span class="kw">type </span>XYKPool: XykPool&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Reference to demeter_farming_platform pallet
-        </span><span class="kw">type </span>DemeterFarmingPlatform: DemeterFarming&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        </span><span class="kw">type </span>DemeterFarmingPlatform: DemeterFarming&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Ceres asset id
-        </span><span class="kw">type </span>CeresAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
+        </span><span class="kw">type </span>CeresAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
-    <span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-    <span class="kw">pub type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub </span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -708,8 +704,8 @@
                 )<span class="question-mark">?</span>;
             } <span class="kw">else </span>{
                 <span class="comment">// Transfer CERES fee amount
-                </span>Assets::&lt;T&gt;::transfer_from(
-                    <span class="kw-2">&amp;</span>T::CeresAssetId::get().into(),
+                </span>T::AssetManager::transfer_from(
+                    <span class="kw-2">&amp;</span>T::CeresAssetId::get(),
                     <span class="kw-2">&amp;</span>user,
                     <span class="kw-2">&amp;</span>FeesOptionTwoAccount::&lt;T&gt;::get(),
                     FeesOptionTwoCeresAmount::&lt;T&gt;::get(),

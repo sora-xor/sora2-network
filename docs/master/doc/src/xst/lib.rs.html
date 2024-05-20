@@ -1309,6 +1309,18 @@
 <a href="#1294" id="1294">1294</a>
 <a href="#1295" id="1295">1295</a>
 <a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1358,7 +1370,6 @@
 
 <span class="kw">use </span>core::convert::TryInto;
 
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
@@ -1367,9 +1378,10 @@
     SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 <span class="kw">use </span>common::{
-    balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    balance, fixed, fixed_wrapper, AssetId32, AssetIdOf, AssetInfoProvider, AssetManager,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DataFeed, Description,
+    GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant, Rate,
+    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 <span class="kw">use </span>frame_support::pallet_prelude::DispatchResult;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -1385,7 +1397,6 @@
 
 <span class="kw">pub use </span>weights::WeightInfo;
 
-<span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
 <span class="kw">type </span>Technical&lt;T&gt; = technical::Pallet&lt;T&gt;;
 
 <span class="kw">pub const </span>TECH_ACCOUNT_PREFIX: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;xst-pool&quot;</span>;
@@ -1450,19 +1461,28 @@
     </span><span class="kw">pub trait </span>Config: frame_system::Config + technical::Config + common::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="doccomment">/// AssetId which is convertible to/from XSTUSD
-        </span><span class="kw">type </span>GetSyntheticBaseAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
+        </span><span class="kw">type </span>GetSyntheticBaseAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>GetXSTPoolPermissionedTechAccountId: Get&lt;<span class="self">Self</span>::TechAccountId&gt;;
         <span class="kw">type </span>EnsureDEXManager: EnsureDEXManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, DispatchError&gt;;
-        <span class="kw">type </span>PriceToolsPallet: PriceToolsProvider&lt;<span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>PriceToolsPallet: PriceToolsProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>Oracle: DataFeed&lt;<span class="self">Self</span>::Symbol, Rate, u64&gt;;
         <span class="doccomment">/// Type of symbol received from oracles
         </span><span class="kw">type </span>Symbol: Parameter + From&lt;common::SymbolName&gt; + MaybeSerializeDeserialize;
         <span class="doccomment">/// Maximum tradable amount of XST
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>GetSyntheticBaseBuySellLimit: Get&lt;Balance&gt;;
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
+        <span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
+            <span class="self">Self</span>::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        &gt;;
     }
 
     <span class="doccomment">/// The current storage version.
@@ -1485,13 +1505,13 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::set_reference_asset())]
         </span><span class="kw">pub fn </span>set_reference_asset(
             origin: OriginFor&lt;T&gt;,
-            reference_asset_id: T::AssetId,
+            reference_asset_id: AssetIdOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 
-            Assets::&lt;T&gt;::ensure_asset_exists(<span class="kw-2">&amp;</span>reference_asset_id)<span class="question-mark">?</span>;
+            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>reference_asset_id)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
-                !Assets::&lt;T&gt;::is_non_divisible(<span class="kw-2">&amp;</span>reference_asset_id),
+                !&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>reference_asset_id),
                 Error::&lt;T&gt;::IndivisibleReferenceAsset
             );
 
@@ -1504,7 +1524,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::enable_synthetic_asset())]
         </span><span class="kw">pub fn </span>enable_synthetic_asset(
             origin: OriginFor&lt;T&gt;,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
             reference_symbol: T::Symbol,
             fee_ratio: Fixed,
         ) -&gt; DispatchResultWithPostInfo {
@@ -1526,7 +1546,7 @@
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>synthetic_asset_id: T::AssetId =
+            <span class="kw">let </span>synthetic_asset_id: AssetIdOf&lt;T&gt; =
                 AssetId32::&lt;common::PredefinedAssetId&gt;::from_synthetic_reference_symbol(
                     <span class="kw-2">&amp;</span>reference_symbol,
                 )
@@ -1554,7 +1574,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::disable_synthetic_asset())]
         </span><span class="kw">pub fn </span>disable_synthetic_asset(
             origin: OriginFor&lt;T&gt;,
-            synthetic_asset: T::AssetId,
+            synthetic_asset: AssetIdOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
@@ -1570,7 +1590,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::remove_synthetic_asset())]
         </span><span class="kw">pub fn </span>remove_synthetic_asset(
             origin: OriginFor&lt;T&gt;,
-            synthetic_asset: T::AssetId,
+            synthetic_asset: AssetIdOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
             <span class="kw">let </span>reference_symbol = EnabledSynthetics::&lt;T&gt;::get(synthetic_asset)
@@ -1599,7 +1619,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::set_synthetic_asset_fee())]
         </span><span class="kw">pub fn </span>set_synthetic_asset_fee(
             origin: OriginFor&lt;T&gt;,
-            synthetic_asset: T::AssetId,
+            synthetic_asset: AssetIdOf&lt;T&gt;,
             fee_ratio: Fixed,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
@@ -1692,7 +1712,7 @@
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>enabled_synthetics)]
     </span><span class="kw">pub type </span>EnabledSynthetics&lt;T: Config&gt; =
-        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, T::AssetId, SyntheticInfo&lt;T::Symbol&gt;, OptionQuery&gt;;
+        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, AssetIdOf&lt;T&gt;, SyntheticInfo&lt;T::Symbol&gt;, OptionQuery&gt;;
 
     <span class="doccomment">/// Reference symbols and their synthetic assets.
     ///
@@ -1700,17 +1720,17 @@
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>enabled_symbols)]
     </span><span class="kw">pub type </span>EnabledSymbols&lt;T: Config&gt; =
-        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, T::Symbol, T::AssetId, OptionQuery&gt;;
+        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, T::Symbol, AssetIdOf&lt;T&gt;, OptionQuery&gt;;
 
     <span class="doccomment">/// Asset that is used to compare collateral assets by value, e.g., DAI.
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>reference_asset_id)]
-    </span><span class="kw">pub type </span>ReferenceAssetId&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, T::AssetId, ValueQuery&gt;;
+    </span><span class="kw">pub type </span>ReferenceAssetId&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, AssetIdOf&lt;T&gt;, ValueQuery&gt;;
 
     <span class="doccomment">/// Current reserves balance for collateral tokens, used for client usability.
     </span><span class="attr">#[pallet::storage]
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>CollateralReserves&lt;T: Config&gt; =
-        StorageMap&lt;<span class="kw">_</span>, Twox64Concat, T::AssetId, Balance, ValueQuery&gt;;
+        StorageMap&lt;<span class="kw">_</span>, Twox64Concat, AssetIdOf&lt;T&gt;, Balance, ValueQuery&gt;;
 
     <span class="attr">#[pallet::type_value]
     </span><span class="kw">pub fn </span>SyntheticBaseAssetDefaultFloorPrice() -&gt; Balance {
@@ -1726,10 +1746,10 @@
     <span class="attr">#[pallet::genesis_config]
     </span><span class="kw">pub struct </span>GenesisConfig&lt;T: Config&gt; {
         <span class="doccomment">/// Asset that is used to compare collateral assets by value, e.g., DAI.
-        </span><span class="kw">pub </span>reference_asset_id: T::AssetId,
+        </span><span class="kw">pub </span>reference_asset_id: AssetIdOf&lt;T&gt;,
         <span class="doccomment">/// List of tokens enabled as collaterals initially.
         /// TODO: replace with Vec&lt;T::AssetId&gt; and make corresponding changes to build() function
-        </span><span class="kw">pub </span>initial_synthetic_assets: Vec&lt;(T::AssetId, T::Symbol, Fixed)&gt;,
+        </span><span class="kw">pub </span>initial_synthetic_assets: Vec&lt;(AssetIdOf&lt;T&gt;, T::Symbol, Fixed)&gt;,
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
@@ -1769,7 +1789,7 @@
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="kw">fn </span>enable_synthetic_asset_unchecked(
-        synthetic_asset_id: T::AssetId,
+        synthetic_asset_id: AssetIdOf&lt;T&gt;,
         reference_symbol: T::Symbol,
         fee_ratio: Fixed,
         transactional: bool,
@@ -1781,9 +1801,9 @@
             );
             <span class="self">Self</span>::ensure_symbol_exists(<span class="kw-2">&amp;</span>reference_symbol)<span class="question-mark">?</span>;
 
-            Assets::&lt;T&gt;::ensure_asset_exists(<span class="kw-2">&amp;</span>synthetic_asset_id)<span class="question-mark">?</span>;
+            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>synthetic_asset_id)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
-                Assets::&lt;T&gt;::get_asset_info(<span class="kw-2">&amp;</span>synthetic_asset_id).<span class="number">2 </span>!= <span class="number">0</span>,
+                &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::get_asset_info(<span class="kw-2">&amp;</span>synthetic_asset_id).<span class="number">2 </span>!= <span class="number">0</span>,
                 Error::&lt;T&gt;::CantEnableIndivisibleAsset
             );
 
@@ -1825,7 +1845,9 @@
         }
     }
 
-    <span class="kw">fn </span>enable_synthetic_trading_pair(synthetic_asset_id: T::AssetId) -&gt; sp_runtime::DispatchResult {
+    <span class="kw">fn </span>enable_synthetic_trading_pair(
+        synthetic_asset_id: AssetIdOf&lt;T&gt;,
+    ) -&gt; sp_runtime::DispatchResult {
         <span class="kw">if </span>T::TradingPairSourceManager::is_trading_pair_enabled(
             <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
             <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get(),
@@ -1866,8 +1888,8 @@
     /// ### desired_amount_out variant
     /// returns amount_in = amount_out * main_asset_price / synthetic_asset_price
     </span><span class="kw">pub fn </span>buy_price(
-        main_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        synthetic_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        main_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        synthetic_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         quantity: QuoteAmount&lt;Balance&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Fixed, DispatchError&gt; {
         <span class="kw">let </span>main_asset_price: FixedWrapper =
@@ -1915,8 +1937,8 @@
     /// ### desired_amount_out variant
     /// returns amount_in = amount_out * synthetic_asset_price / main_asset_price
     </span><span class="kw">pub fn </span>sell_price(
-        main_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        synthetic_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        main_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        synthetic_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         quantity: QuoteAmount&lt;Balance&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Fixed, DispatchError&gt; {
         <span class="comment">// Get reference prices for base and synthetic to understand token value.
@@ -1958,8 +1980,8 @@
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     </span><span class="kw">fn </span>decide_buy_amounts(
-        main_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        synthetic_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        main_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        synthetic_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
         check_limits: bool,
@@ -2034,8 +2056,8 @@
     ///
     /// Returns ordered pair: `(input_amount, output_amount, fee_amount)`.
     </span><span class="kw">fn </span>decide_sell_amounts(
-        main_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        synthetic_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        main_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        synthetic_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
         check_limits: bool,
@@ -2102,12 +2124,12 @@
     /// and mint calculated amount of `synthetic_asset_id` to the receiver.
     </span><span class="kw">fn </span>swap_mint_burn_assets(
         _dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         swap_amount: SwapAmount&lt;Balance&gt;,
         from_account_id: <span class="kw-2">&amp;</span>T::AccountId,
         to_account_id: <span class="kw-2">&amp;</span>T::AccountId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         common::with_transaction(|| {
             <span class="kw">let </span>permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
             <span class="kw">let </span>permissioned_account_id =
@@ -2153,14 +2175,14 @@
                 }
             };
 
-            Assets::&lt;T&gt;::burn_from(
+            T::AssetManager::burn_from(
                 input_asset_id,
                 <span class="kw-2">&amp;</span>permissioned_account_id,
                 <span class="kw-2">&amp;</span>from_account_id,
                 input_amount,
             )<span class="question-mark">?</span>;
 
-            Assets::&lt;T&gt;::mint_to(
+            T::AssetManager::mint_to(
                 output_asset_id,
                 <span class="kw-2">&amp;</span>permissioned_account_id,
                 <span class="kw-2">&amp;</span>to_account_id,
@@ -2171,7 +2193,9 @@
         })
     }
 
-    <span class="kw">fn </span>get_aggregated_fee(synthetic_asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;FixedWrapper, DispatchError&gt; {
+    <span class="kw">fn </span>get_aggregated_fee(
+        synthetic_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;FixedWrapper, DispatchError&gt; {
         <span class="kw">let </span>SyntheticInfo {
             reference_symbol,
             fee_ratio,
@@ -2224,7 +2248,7 @@
     ///
     /// Refer to price-tools pallet documentation for clarification.
     </span><span class="kw">pub fn </span>reference_price(
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>reference_asset_id = ReferenceAssetId::&lt;T&gt;::get();
@@ -2264,14 +2288,14 @@
     }
 
     <span class="kw">fn </span>register_synthetic_asset_unchecked(
-        synthetic_asset: T::AssetId,
+        synthetic_asset: AssetIdOf&lt;T&gt;,
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
         <span class="kw">let </span>permissioned_account_id =
             Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>permissioned_tech_account_id)<span class="question-mark">?</span>;
-        Assets::&lt;T&gt;::register_asset_id(
+        T::AssetManager::register_asset_id(
             permissioned_account_id,
             synthetic_asset,
             asset_symbol,
@@ -2286,12 +2310,12 @@
 
     <span class="kw">fn </span>inner_quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
         check_limits: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -2341,13 +2365,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError&gt;
+<span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, AssetIdOf&lt;T&gt;, Balance, DispatchError&gt;
     <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">fn </span>can_exchange(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; bool {
         <span class="kw">if </span><span class="kw-2">*</span>dex_id != DEXId::Polkaswap.into() {
             <span class="kw">return </span><span class="bool-val">false</span>;
@@ -2364,11 +2388,11 @@
     <span class="doccomment">/// Get spot price of synthetic tokens based on desired amount.
     </span><span class="kw">fn </span>quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="self">Self</span>::inner_quote(
             dex_id,
             input_asset_id,
@@ -2381,12 +2405,12 @@
 
     <span class="kw">fn </span>step_quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetIdOf&lt;T&gt;, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -2479,10 +2503,10 @@
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         desired_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">if </span>!<span class="self">Self</span>::can_exchange(dex_id, input_asset_id, output_asset_id) {
             <span class="macro">fail!</span>(Error::&lt;T&gt;::CantExchange);
         }
@@ -2500,21 +2524,21 @@
 
     <span class="kw">fn </span>check_rewards(
         _dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        _input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        _output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        _input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        _output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, T::AssetId, RewardReason)&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, AssetIdOf&lt;T&gt;, RewardReason)&gt;, Weight), DispatchError&gt; {
         <span class="prelude-val">Ok</span>((Vec::new(), Weight::zero())) <span class="comment">// no rewards for XST
     </span>}
 
     <span class="kw">fn </span>quote_without_impact(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="comment">// no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
         </span><span class="self">Self</span>::inner_quote(
@@ -2545,10 +2569,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; GetMarketInfo&lt;T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; GetMarketInfo&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>buy_price(
-        synthetic_base_asset: <span class="kw-2">&amp;</span>T::AssetId,
-        synthetic_asset: <span class="kw-2">&amp;</span>T::AssetId,
+        synthetic_base_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        synthetic_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Fixed, DispatchError&gt; {
         <span class="kw">let </span>base_price_wrt_ref: FixedWrapper =
             <span class="self">Self</span>::reference_price(synthetic_base_asset, PriceVariant::Buy)<span class="question-mark">?</span>.into();
@@ -2561,8 +2585,8 @@
     }
 
     <span class="kw">fn </span>sell_price(
-        synthetic_base_asset: <span class="kw-2">&amp;</span>T::AssetId,
-        synthetic_asset: <span class="kw-2">&amp;</span>T::AssetId,
+        synthetic_base_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        synthetic_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Fixed, DispatchError&gt; {
         <span class="kw">let </span>base_price_wrt_ref: FixedWrapper =
             <span class="self">Self</span>::reference_price(synthetic_base_asset, PriceVariant::Sell)<span class="question-mark">?</span>.into();
@@ -2575,19 +2599,19 @@
     }
 
     <span class="doccomment">/// `target_assets` refer to synthetic assets
-    </span><span class="kw">fn </span>enabled_target_assets() -&gt; BTreeSet&lt;T::AssetId&gt; {
+    </span><span class="kw">fn </span>enabled_target_assets() -&gt; BTreeSet&lt;AssetIdOf&lt;T&gt;&gt; {
         EnabledSynthetics::&lt;T&gt;::iter()
             .map(|(asset_id, <span class="kw">_</span>)| asset_id)
             .collect()
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; SyntheticInfoProvider&lt;T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
-    <span class="kw">fn </span>is_synthetic(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; bool {
+<span class="kw">impl</span>&lt;T: Config&gt; SyntheticInfoProvider&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>is_synthetic(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; bool {
         EnabledSynthetics::&lt;T&gt;::contains_key(asset_id)
     }
 
-    <span class="kw">fn </span>get_synthetic_assets() -&gt; Vec&lt;T::AssetId&gt; {
+    <span class="kw">fn </span>get_synthetic_assets() -&gt; Vec&lt;AssetIdOf&lt;T&gt;&gt; {
         EnabledSynthetics::&lt;T&gt;::iter_keys().collect()
     }
 }

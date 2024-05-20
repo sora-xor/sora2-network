@@ -85,6 +85,7 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -116,8 +117,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::Config;
-<span class="kw">use </span>assets::AssetIdOf;
-<span class="kw">use </span>common::{AccountIdOf, FixedInner};
+<span class="kw">use </span>common::{AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, FixedInner};
 <span class="kw">use </span>frame_support::dispatch::DispatchError;
 <span class="kw">use </span>sp_std::cmp::Ordering;
 
@@ -138,20 +138,22 @@
     asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     balance_delta: FixedInner,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-    <span class="kw">let </span>owner = assets::Pallet::&lt;T&gt;::asset_owner(asset).ok_or(Error::UnknownAsset)<span class="question-mark">?</span>;
+    <span class="kw">let </span>owner = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::get_asset_owner(asset)
+        .map_err(|<span class="kw">_</span>| Error::UnknownAsset)<span class="question-mark">?</span>;
+
     <span class="kw">match </span>balance_delta.cmp(<span class="kw-2">&amp;</span><span class="number">0</span>) {
         Ordering::Greater =&gt; {
             <span class="kw">let </span>mint_amount = balance_delta
                 .try_into()
                 .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-            assets::Pallet::&lt;T&gt;::mint_to(asset, <span class="kw-2">&amp;</span>owner, account, mint_amount)<span class="question-mark">?</span>;
+            T::AssetManager::mint_to(asset, <span class="kw-2">&amp;</span>owner, account, mint_amount)<span class="question-mark">?</span>;
         }
         Ordering::Less =&gt; {
             <span class="kw">let </span>burn_amount = balance_delta
                 .abs()
                 .try_into()
                 .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-            assets::Pallet::&lt;T&gt;::burn_from(asset, <span class="kw-2">&amp;</span>owner, account, burn_amount)<span class="question-mark">?</span>;
+            T::AssetManager::burn_from(asset, <span class="kw-2">&amp;</span>owner, account, burn_amount)<span class="question-mark">?</span>;
         }
         Ordering::Equal =&gt; (),
     }

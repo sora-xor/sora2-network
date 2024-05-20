@@ -66,8 +66,6 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -98,13 +96,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span>common::DexIdOf;
+</span><span class="kw">use </span>common::{AssetIdOf, DexIdOf};
 
 <span class="kw">use </span><span class="kw">crate</span>::operations::<span class="kw-2">*</span>;
 
 <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-
-<span class="kw">pub type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
 
 <span class="kw">pub type </span>TechAssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>technical::Config&gt;::TechAssetId;
 

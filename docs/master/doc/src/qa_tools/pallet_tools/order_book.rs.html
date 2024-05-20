@@ -452,7 +452,7 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::Config;
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::{balance, Balance, PriceVariant, TradingPairSourceManager};
+<span class="kw">use </span>common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, TradingPairSourceManager};
 <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
@@ -546,7 +546,7 @@
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
 </span><span class="kw">pub fn </span>create_empty_batch_unchecked&lt;T: Config&gt;(
-    order_book_settings: Vec&lt;(OrderBookId&lt;T::AssetId, T::DEXId&gt;, OrderBookAttributes)&gt;,
+    order_book_settings: Vec&lt;(OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;, OrderBookAttributes)&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
     <span class="kw">let </span>to_create_ids: Vec&lt;<span class="kw">_</span>&gt; = order_book_settings
         .into_iter()
@@ -590,7 +590,7 @@
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
     settings: Vec&lt;(
-        OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+        OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
     )&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
@@ -674,7 +674,7 @@
 <span class="doccomment">/// Fill a single order book.
 </span><span class="kw">fn </span>fill_order_book&lt;T: Config&gt;(
     data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
-    book_id: OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+    book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
     settings: FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
@@ -733,7 +733,7 @@
             .map(|(quote, base)| <span class="kw-2">*</span>(<span class="kw-2">*</span>quote * (<span class="kw-2">*</span>base)).balance())
             .sum();
         <span class="comment">// mint required amount to make this extrinsic self-sufficient
-        </span>assets::Pallet::&lt;T&gt;::mint_unchecked(<span class="kw-2">&amp;</span>book_id.quote, <span class="kw-2">&amp;</span>bids_owner, buy_quote_locked)<span class="question-mark">?</span>;
+        </span>T::AssetManager::mint_unchecked(<span class="kw-2">&amp;</span>book_id.quote, <span class="kw-2">&amp;</span>bids_owner, buy_quote_locked)<span class="question-mark">?</span>;
 
         <span class="comment">// place buy orders
         </span>place_multiple_orders(
@@ -782,7 +782,7 @@
         <span class="comment">// total amount of assets to be locked
         </span><span class="kw">let </span>sell_base_locked: Balance = sell_orders.iter().map(|(<span class="kw">_</span>, base)| <span class="kw-2">*</span>base.balance()).sum();
         <span class="comment">// mint required amount to make this extrinsic self-sufficient
-        </span>assets::Pallet::&lt;T&gt;::mint_unchecked(<span class="kw-2">&amp;</span>book_id.base, <span class="kw-2">&amp;</span>asks_owner, sell_base_locked)<span class="question-mark">?</span>;
+        </span>T::AssetManager::mint_unchecked(<span class="kw-2">&amp;</span>book_id.base, <span class="kw-2">&amp;</span>asks_owner, sell_base_locked)<span class="question-mark">?</span>;
 
         <span class="comment">// place sell orders
         </span>place_multiple_orders(

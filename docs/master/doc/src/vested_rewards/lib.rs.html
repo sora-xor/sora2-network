@@ -710,9 +710,6 @@
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -756,7 +753,8 @@
 <span class="kw">use </span>common::CrowdloanTag;
 <span class="kw">use </span>common::FromGenericPair;
 <span class="kw">use </span>common::{
-    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, OnPswapBurned, PswapRemintInfo,
+    RewardReason, Vesting, PSWAP,
 };
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::ensure;
@@ -787,7 +785,6 @@
 <span class="kw">pub const </span>TECH_ACCOUNT_FARMING: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;farming&quot;</span>;
 <span class="kw">pub const </span>FARMING_REWARDS: Balance = <span class="macro">balance!</span>(<span class="number">3500000000</span>);
 
-<span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
 <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 
 <span class="doccomment">/// Denotes PSWAP rewards amounts of particular types available for user.
@@ -944,7 +941,7 @@
     </span><span class="kw">pub fn </span>claim_reward_by_reason(
         account_id: <span class="kw-2">&amp;</span>T::AccountId,
         reason: RewardReason,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>source_account = <span class="kw">match </span>reason {
@@ -958,7 +955,7 @@
             <span class="macro">fail!</span>(Error::&lt;T&gt;::RewardsSupplyShortage);
         }
         <span class="kw">let </span>amount = amount.min(available_rewards);
-        Assets::&lt;T&gt;::transfer_from(asset_id, <span class="kw-2">&amp;</span>source_account, account_id, amount)<span class="question-mark">?</span>;
+        T::AssetManager::transfer_from(asset_id, <span class="kw-2">&amp;</span>source_account, account_id, amount)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount)
     }
 
@@ -993,7 +990,7 @@
     </span><span class="kw">pub fn </span>get_claimable_crowdloan_reward(
         tag: <span class="kw-2">&amp;</span>CrowdloanTag,
         user: <span class="kw-2">&amp;</span>T::AccountId,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Balance&gt; {
         <span class="kw">let </span>info = CrowdloanInfos::&lt;T&gt;::get(tag)<span class="question-mark">?</span>;
         <span class="kw">let </span>total_rewards = info
@@ -1025,7 +1022,7 @@
     <span class="doccomment">/// Calculate amount of tokens to send to user
     </span><span class="kw">pub fn </span>calculate_claimable_crowdloan_reward(
         now: <span class="kw-2">&amp;</span>T::BlockNumber,
-        info: <span class="kw-2">&amp;</span>CrowdloanInfo&lt;T::AssetId, T::BlockNumber, T::AccountId&gt;,
+        info: <span class="kw-2">&amp;</span>CrowdloanInfo&lt;AssetIdOf&lt;T&gt;, T::BlockNumber, T::AccountId&gt;,
         total_rewards: Balance,
         contribution: Balance,
         rewarded: Balance,
@@ -1058,8 +1055,8 @@
     </span><span class="kw">pub fn </span>claim_crowdloan_reward_for_asset(
         user: <span class="kw-2">&amp;</span>T::AccountId,
         now: <span class="kw-2">&amp;</span>T::BlockNumber,
-        info: <span class="kw-2">&amp;</span>CrowdloanInfo&lt;T::AssetId, T::BlockNumber, T::AccountId&gt;,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        info: <span class="kw-2">&amp;</span>CrowdloanInfo&lt;AssetIdOf&lt;T&gt;, T::BlockNumber, T::AccountId&gt;,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         total_rewards: Balance,
         contribution: Balance,
         rewarded: Balance,
@@ -1076,7 +1073,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="number">0</span>);
         }
 
-        assets::Pallet::&lt;T&gt;::transfer_from(asset_id, <span class="kw-2">&amp;</span>info.account, user, claimable_reward)<span class="question-mark">?</span>;
+        T::AssetManager::transfer_from(asset_id, <span class="kw-2">&amp;</span>info.account, user, claimable_reward)<span class="question-mark">?</span>;
 
         <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::CrowdloanClaimed(
             user.clone(),
@@ -1125,7 +1122,7 @@
         tag: CrowdloanTag,
         start_block: T::BlockNumber,
         length: T::BlockNumber,
-        rewards: Vec&lt;(T::AssetId, Balance)&gt;,
+        rewards: Vec&lt;(AssetIdOf&lt;T&gt;, Balance)&gt;,
         contributions: Vec&lt;(T::AccountId, Balance)&gt;,
     ) -&gt; DispatchResult {
         <span class="macro">ensure!</span>(
@@ -1177,7 +1174,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; Vesting&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; Vesting&lt;T::AccountId, AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>add_tbc_reward(account_id: <span class="kw-2">&amp;</span>T::AccountId, pswap_amount: Balance) -&gt; DispatchResult {
         Pallet::&lt;T&gt;::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
     }
@@ -1196,7 +1193,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
+    <span class="kw">use </span>common::{AssetIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::dispatch::DispatchResultWithPostInfo;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
@@ -1206,10 +1203,7 @@
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + multicollateral_bonding_curve_pool::Config
+        frame_system::Config + common::Config + multicollateral_bonding_curve_pool::Config
     {
         <span class="kw">const </span>BLOCKS_PER_DAY: BlockNumberFor&lt;<span class="self">Self</span>&gt;;
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -1224,7 +1218,7 @@
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -1311,7 +1305,7 @@
             tag: CrowdloanTag,
             start_block: T::BlockNumber,
             length: T::BlockNumber,
-            rewards: Vec&lt;(T::AssetId, Balance)&gt;,
+            rewards: Vec&lt;(AssetIdOf&lt;T&gt;, Balance)&gt;,
             contributions: Vec&lt;(T::AccountId, Balance)&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
@@ -1373,7 +1367,7 @@
         <span class="doccomment">/// Saving reward for account has failed in a distribution series. [account]
         </span>FailedToSaveCalculatedReward(AccountIdOf&lt;T&gt;),
         <span class="doccomment">/// Claimed crowdloan rewards
-        </span>CrowdloanClaimed(T::AccountId, T::AssetId, Balance),
+        </span>CrowdloanClaimed(T::AccountId, AssetIdOf&lt;T&gt;, Balance),
     }
 
     <span class="doccomment">/// Reserved for future use
@@ -1396,7 +1390,7 @@
         <span class="kw">_</span>,
         Blake2_128Concat,
         CrowdloanTag,
-        CrowdloanInfo&lt;T::AssetId, T::BlockNumber, T::AccountId&gt;,
+        CrowdloanInfo&lt;AssetIdOf&lt;T&gt;, T::BlockNumber, T::AccountId&gt;,
         OptionQuery,
     &gt;;
 
@@ -1409,7 +1403,7 @@
         T::AccountId,
         Blake2_128Concat,
         CrowdloanTag,
-        CrowdloanUserInfo&lt;T::AssetId&gt;,
+        CrowdloanUserInfo&lt;AssetIdOf&lt;T&gt;&gt;,
         OptionQuery,
     &gt;;
 }

@@ -259,7 +259,6 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -291,10 +290,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use crate</span>::{Config, Error};
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::BalanceUnit;
-<span class="kw">use </span>common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
+<span class="kw">use </span>common::{balance, AssetIdOf, Balance, PriceToolsProvider, PriceVariant, XOR};
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>sp_arithmetic::traits::{CheckedDiv, One};
@@ -342,7 +340,7 @@
 /// Note that the values are not checked for sanity; it&#39;s possible to set values that result in
 /// crossed market.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_price_unchecked&lt;T: Config&gt;(
-    asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+    asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     price: Balance,
     variant: PriceVariant,
 ) -&gt; DispatchResult {
@@ -399,8 +397,8 @@
 ///
 /// Note that if both A and B != XOR, then B must already have some price in the `price_tools`.
 </span><span class="kw">pub fn </span>calculate_xor_prices&lt;T: Config&gt;(
-    asset_a: <span class="kw-2">&amp;</span>T::AssetId,
-    asset_b: <span class="kw-2">&amp;</span>T::AssetId,
+    asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+    asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     b_per_a_buy: Balance,
     b_per_a_sell: Balance,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;CalculatedXorPrices, DispatchError&gt; {

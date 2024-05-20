@@ -543,6 +543,7 @@
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -580,7 +581,7 @@
 </span><span class="kw">use </span>common::alt::DiscreteQuotation;
 <span class="kw">use </span>common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 <span class="kw">use </span>common::{
-    DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    AssetIdOf, DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
@@ -602,15 +603,15 @@
     LiquiditySource&lt;
         LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
         T::AccountId,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         Balance,
         DispatchError,
     &gt; <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">fn </span>can_exchange(
         liquidity_source_id: <span class="kw-2">&amp;</span>LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; bool {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>can_exchange {
@@ -637,11 +638,11 @@
 
     <span class="kw">fn </span>quote(
         liquidity_source_id: <span class="kw-2">&amp;</span>LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>quote {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -669,12 +670,12 @@
 
     <span class="kw">fn </span>step_quote(
         liquidity_source_id: <span class="kw-2">&amp;</span>LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetIdOf&lt;T&gt;, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>step_quote {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -705,10 +706,10 @@
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
         liquidity_source_id: <span class="kw-2">&amp;</span>LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         swap_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>exchange {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -737,11 +738,11 @@
 
     <span class="kw">fn </span>check_rewards(
         liquidity_source_id: <span class="kw-2">&amp;</span>LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         input_amount: Balance,
         output_amount: Balance,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, T::AssetId, RewardReason)&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, AssetIdOf&lt;T&gt;, RewardReason)&gt;, Weight), DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>check_rewards {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -769,11 +770,11 @@
 
     <span class="kw">fn </span>quote_without_impact(
         liquidity_source_id: <span class="kw-2">&amp;</span>LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">use </span>LiquiditySourceType::<span class="kw-2">*</span>;
         <span class="macro">macro_rules! </span>quote_without_impact {
             (<span class="macro-nonterminal">$source_type</span>:ident) =&gt; {
@@ -849,15 +850,15 @@
     LiquidityRegistry&lt;
         T::DEXId,
         T::AccountId,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         LiquiditySourceType,
         Balance,
         DispatchError,
     &gt; <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">fn </span>list_liquidity_sources(
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>supported_types = <span class="self">Self</span>::get_supported_types();
@@ -909,67 +910,68 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::WeightInfo;
+    <span class="kw">use </span>common::AssetIdOf;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + assets::Config {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>MockLiquiditySource: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>MockLiquiditySource2: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>MockLiquiditySource3: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>MockLiquiditySource4: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>MulticollateralBondingCurvePool: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>XSTPool: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>XYKPool: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;
-        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="kw">type </span>OrderBook: LiquiditySource&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             Balance,
             DispatchError,
         &gt;;

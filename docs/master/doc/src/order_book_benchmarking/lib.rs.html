@@ -664,7 +664,6 @@
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
 <a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -724,8 +723,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span>framenode_runtime::order_book_benchmarking <span class="kw">as </span>order_book_benchmarking_imported;
 
-<span class="kw">use </span>assets::AssetIdOf;
-<span class="kw">use </span>common::DEXId;
+<span class="kw">use </span>common::{AssetIdOf, DEXId};
 <span class="kw">use </span>frame_system::EventRecord;
 <span class="kw">use </span>order_book_imported::Pallet <span class="kw">as </span>OrderBookPallet;
 <span class="kw">use </span>order_book_imported::{LimitOrder, MomentOf, OrderBookId};
@@ -826,7 +824,7 @@
 
     <span class="macro">benchmarks! </span>{
         where_clause {
-            <span class="kw">where </span>T: trading_pair::Config + core::fmt::Debug
+            <span class="kw">where </span>T: trading_pair::Config + core::fmt::Debug + assets::Config
         }
 
         create_orderbook {
@@ -847,7 +845,7 @@
 
             <span class="kw">let </span>order_book_id = OrderBookId::&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt; {
                 dex_id: DEX.into(),
-                base: nft,
+                base: nft.into(),
                 quote: XOR.into(),
             };
 
@@ -855,7 +853,7 @@
                 RawOrigin::Signed(caller.clone()).into(),
                 DEX.into(),
                 order_book_id.quote,
-                order_book_id.base
+                order_book_id.base,
             ).unwrap();
         }: {
             OrderBookPallet::&lt;T&gt;::create_orderbook(

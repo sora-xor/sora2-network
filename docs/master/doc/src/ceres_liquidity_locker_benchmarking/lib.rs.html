@@ -189,7 +189,6 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Ceres liquidity locker module benchmarking.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
@@ -200,15 +199,14 @@
 <span class="kw">use </span>codec::Decode;
 <span class="kw">use </span>common::prelude::Balance;
 <span class="kw">use </span>common::{
-    balance, AssetName, AssetSymbol, DEXId, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
-    XOR,
+    balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, DEXId, TradingPairSourceManager,
+    DEFAULT_BALANCE_PRECISION, XOR,
 };
 <span class="kw">use </span>frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 <span class="kw">use </span>frame_system::RawOrigin;
 <span class="kw">use </span>hex_literal::hex;
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>assets::Pallet <span class="kw">as </span>Assets;
 <span class="kw">use </span>pallet_timestamp::Pallet <span class="kw">as </span>Timestamp;
 <span class="kw">use </span>permissions::Pallet <span class="kw">as </span>Permissions;
 <span class="kw">use </span>pool_xyk::Pallet <span class="kw">as </span>XYKPool;
@@ -254,7 +252,7 @@
         permissions::Scope::Unlimited,
     );
 
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(<span class="string">b&quot;XOR&quot;</span>.to_vec()),
@@ -265,7 +263,7 @@
         <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
     );
-    <span class="kw">let _ </span>= Assets::&lt;T&gt;::register_asset_id(
+    <span class="kw">let _ </span>= T::AssetManager::register_asset_id(
         owner.clone(),
         ceres_asset_id.into(),
         AssetSymbol(<span class="string">b&quot;CERES&quot;</span>.to_vec()),
@@ -280,8 +278,8 @@
     T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), ceres_asset_id.into())
         .unwrap();
 
-    Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
-    Assets::&lt;T&gt;::mint_to(
+    T::AssetManager::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>owner.clone(), <span class="kw-2">&amp;</span>owner.clone(), <span class="macro">balance!</span>(<span class="number">50000</span>))<span class="question-mark">?</span>;
+    T::AssetManager::mint_to(
         <span class="kw-2">&amp;</span>ceres_asset_id.into(),
         <span class="kw-2">&amp;</span>owner.clone(),
         <span class="kw-2">&amp;</span>owner.clone(),
@@ -329,7 +327,7 @@
         <span class="kw">let </span>caller = alice::&lt;T&gt;();
         <span class="kw">let </span>timestamp = Timestamp::&lt;T&gt;::get() + <span class="number">5u32</span>.into();
         <span class="kw">let </span>lp_percentage = <span class="macro">balance!</span>(<span class="number">0.5</span>);
-        <span class="kw">let </span>ceres_asset_id: T::AssetId = common::AssetId32::from_bytes(<span class="macro">hex!</span>(
+        <span class="kw">let </span>ceres_asset_id: AssetIdOf&lt;T&gt; = common::AssetId32::from_bytes(<span class="macro">hex!</span>(
             <span class="string">&quot;008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440&quot;
         </span>)).into();
     }: {

@@ -522,10 +522,10 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>assets::AssetIdOf;
+
     <span class="kw">use </span>common::{
-        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     <span class="kw">use </span>frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -554,7 +554,7 @@
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -562,9 +562,9 @@
             ContentSource,
             Description,
         &gt;;
-        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
-        <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
+        <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>Symbol: From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>band::Config&gt;::Symbol&gt;
             + From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>xst::Config&gt;::Symbol&gt;
             + Into&lt;&lt;<span class="self">Self </span><span class="kw">as </span>xst::Config&gt;::Symbol&gt;
@@ -592,12 +592,12 @@
         </span>XstInitialized {
             <span class="doccomment">/// Exact `quote`/`exchange` calls achievable after the initialization.
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
-            </span>quotes_achieved: Vec&lt;SyntheticOutput&lt;T::AssetId&gt;&gt;,
+            </span>quotes_achieved: Vec&lt;SyntheticOutput&lt;AssetIdOf&lt;T&gt;&gt;&gt;,
         },
         <span class="doccomment">/// Multicollateral bonding curve liquidity source has been initialized successfully.
         </span>McbcInitialized {
             <span class="doccomment">/// Exact reference prices achieved for the collateral assets.
-            </span>collateral_ref_prices: Vec&lt;(T::AssetId, pallet_tools::price_tools::AssetPrices)&gt;,
+            </span>collateral_ref_prices: Vec&lt;(AssetIdOf&lt;T&gt;, pallet_tools::price_tools::AssetPrices)&gt;,
         },
     }
 
@@ -656,10 +656,10 @@
     }
 
     <span class="kw">impl</span>&lt;AssetId&gt; InputAssetId&lt;AssetId&gt; {
-        <span class="kw">pub fn </span>resolve&lt;T&gt;(<span class="self">self</span>) -&gt; T::AssetId
+        <span class="kw">pub fn </span>resolve&lt;T&gt;(<span class="self">self</span>) -&gt; AssetIdOf&lt;T&gt;
         <span class="kw">where
             </span>T: Config,
-            T::AssetId: From&lt;AssetId&gt;,
+            AssetIdOf&lt;T&gt;: From&lt;AssetId&gt;,
         {
             <span class="kw">match </span><span class="self">self </span>{
                 InputAssetId::McbcReference =&gt; {
@@ -692,7 +692,7 @@
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec&lt;(
-                OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+                OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
                 pallet_tools::order_book::OrderBookAttributes,
                 pallet_tools::order_book::FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
             )&gt;,
@@ -741,7 +741,7 @@
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec&lt;(
-                OrderBookId&lt;T::AssetId, T::DEXId&gt;,
+                OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
                 pallet_tools::order_book::FillInput&lt;MomentOf&lt;T&gt;, BlockNumberFor&lt;T&gt;&gt;,
             )&gt;,
         ) -&gt; DispatchResultWithPostInfo {
@@ -822,7 +822,7 @@
         </span><span class="kw">pub fn </span>xst_initialize(
             origin: OriginFor&lt;T&gt;,
             base_prices: <span class="prelude-ty">Option</span>&lt;BaseInput&gt;,
-            synthetics_prices: Vec&lt;SyntheticInput&lt;T::AssetId, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
+            synthetics_prices: Vec&lt;SyntheticInput&lt;AssetIdOf&lt;T&gt;, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
             relayer: T::AccountId,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
@@ -859,7 +859,7 @@
         </span><span class="kw">pub fn </span>mcbc_initialize(
             origin: OriginFor&lt;T&gt;,
             base_supply: <span class="prelude-ty">Option</span>&lt;pallet_tools::mcbc::BaseSupply&lt;T::AccountId&gt;&gt;,
-            other_collaterals: Vec&lt;pallet_tools::mcbc::OtherCollateralInput&lt;T::AssetId&gt;&gt;,
+            other_collaterals: Vec&lt;pallet_tools::mcbc::OtherCollateralInput&lt;AssetIdOf&lt;T&gt;&gt;&gt;,
             tbcd_collateral: <span class="prelude-ty">Option</span>&lt;pallet_tools::mcbc::TbcdCollateralInput&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
@@ -901,7 +901,7 @@
         </span><span class="kw">pub fn </span>price_tools_set_asset_price(
             origin: OriginFor&lt;T&gt;,
             asset_per_xor: pallet_tools::price_tools::AssetPrices,
-            asset_id: InputAssetId&lt;T::AssetId&gt;,
+            asset_id: InputAssetId&lt;AssetIdOf&lt;T&gt;&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 

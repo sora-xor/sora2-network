@@ -314,6 +314,7 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -349,7 +350,8 @@
 </span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>common::{
-    balance, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL, XOR,
+    balance, AssetIdOf, AssetInfoProvider, Balance, APOLLO_ASSET_ID, HERMES_ASSET_ID, PSWAP, VAL,
+    XOR,
 };
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>hex_literal::hex;
@@ -365,7 +367,6 @@
 <span class="kw">pub mod </span>weights;
 <span class="kw">pub use </span>weights::WeightInfo;
 
-<span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
 <span class="kw">type </span>System&lt;T&gt; = frame_system::Pallet&lt;T&gt;;
 <span class="kw">type </span>Technical&lt;T&gt; = technical::Pallet&lt;T&gt;;
 <span class="kw">type </span>BlockNumberOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::BlockNumber;
@@ -396,9 +397,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + assets::Config + rewards::Config + technical::Config
-    {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + rewards::Config + technical::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>WeightInfo: WeightInfo;
     }
@@ -429,7 +428,7 @@
         #[pallet::weight((WeightInfoOf::&lt;T&gt;::transfer(), Pays::No))]
         </span><span class="kw">pub fn </span>transfer(
             _origin: OriginFor&lt;T&gt;,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
             target: AccountIdOf&lt;T&gt;,
             amount: Balance,
         ) -&gt; DispatchResultWithPostInfo {
@@ -440,7 +439,10 @@
             <span class="kw">let </span>reserves_tech_account_id = <span class="self">Self</span>::reserves_account_id();
             <span class="kw">let </span>reserves_account_id =
                 Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>reserves_amount = Assets::&lt;T&gt;::total_balance(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>reserves_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>reserves_amount = &lt;T <span class="kw">as </span>technical::Config&gt;::AssetInfoProvider::total_balance(
+                <span class="kw-2">&amp;</span>asset_id,
+                <span class="kw-2">&amp;</span>reserves_account_id,
+            )<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(amount &lt;= reserves_amount, Error::&lt;T&gt;::NotEnoughReserves);
             technical::Pallet::&lt;T&gt;::transfer_out(
                 <span class="kw-2">&amp;</span>asset_id,
@@ -527,7 +529,7 @@
         Identity,
         T::AccountId,
         Blake2_256,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         (BlockNumberOf&lt;T&gt;, Balance),
     &gt;;
 
@@ -564,7 +566,7 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-    <span class="kw">fn </span>ensure_asset_supported(asset_id: T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&lt;T&gt;&gt; {
+    <span class="kw">fn </span>ensure_asset_supported(asset_id: AssetIdOf&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&lt;T&gt;&gt; {
         <span class="kw">let </span>xor = XOR.into();
         <span class="kw">let </span>val = VAL.into();
         <span class="kw">let </span>pswap = PSWAP.into();
@@ -591,7 +593,7 @@
     /// If new transfer is allowed, returns content to put in `Transfers` if the transfer is succeeded
     </span><span class="kw">fn </span>prepare_transfer(
         target: <span class="kw-2">&amp;</span>T::AccountId,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf&lt;T&gt;,
         amount: Balance,
         current_block_number: BlockNumberOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(BlockNumberOf&lt;T&gt;, Balance), Error&lt;T&gt;&gt; {

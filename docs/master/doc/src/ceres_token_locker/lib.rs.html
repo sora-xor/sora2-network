@@ -340,6 +340,12 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -386,8 +392,8 @@
     <span class="kw">use crate</span>::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
     <span class="kw">use </span>common::prelude::{Balance, FixedWrapper};
     <span class="kw">use </span>common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        Description,
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
+        BalancePrecision, ContentSource, Description,
     };
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::PalletId;
@@ -401,21 +407,19 @@
     <span class="kw">const </span>PALLET_ID: PalletId = PalletId(<span class="kw-2">*</span><span class="string">b&quot;crstlock&quot;</span>);
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
-    {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + technical::Config + timestamp::Config {
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
         <span class="doccomment">/// Ceres asset id
-        </span><span class="kw">type </span>CeresAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
+        </span><span class="kw">type </span>CeresAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
 
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -425,10 +429,8 @@
         &gt;;
     }
 
-    <span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-    <span class="kw">pub type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub </span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -561,10 +563,15 @@
             );
 
             <span class="comment">// Transfer tokens
-            </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(), number_of_tokens)<span class="question-mark">?</span>;
+            </span>T::AssetManager::transfer_from(
+                <span class="kw-2">&amp;</span>asset_id,
+                <span class="kw-2">&amp;</span>user,
+                <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
+                number_of_tokens,
+            )<span class="question-mark">?</span>;
 
             <span class="comment">// Pay fees
-            </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span>FeesAccount::&lt;T&gt;::get(), fee)<span class="question-mark">?</span>;
+            </span>T::AssetManager::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span>FeesAccount::&lt;T&gt;::get(), fee)<span class="question-mark">?</span>;
 
             &lt;TokenLockerData&lt;T&gt;&gt;::append(<span class="kw-2">&amp;</span>user, token_lock_info);
 
@@ -616,7 +623,12 @@
             }
 
             <span class="comment">// Withdraw tokens
-            </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(), <span class="kw-2">&amp;</span>user, number_of_tokens)<span class="question-mark">?</span>;
+            </span>T::AssetManager::transfer_from(
+                <span class="kw-2">&amp;</span>asset_id,
+                <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
+                <span class="kw-2">&amp;</span>user,
+                number_of_tokens,
+            )<span class="question-mark">?</span>;
 
             token_lock_info_vec.remove(idx);
             &lt;TokenLockerData&lt;T&gt;&gt;::insert(<span class="kw-2">&amp;</span>user, token_lock_info_vec);

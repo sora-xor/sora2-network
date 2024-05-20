@@ -679,13 +679,13 @@
 <span class="kw">use </span>sp_runtime::{Perbill, Percent};
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>common::balance;
 <span class="kw">use </span>common::eth::EthAddress;
 <span class="kw">use </span>common::prelude::FixedWrapper;
 <span class="attr">#[cfg(feature = <span class="string">&quot;include-real-files&quot;</span>)]
 </span><span class="kw">use </span>common::vec_push;
+<span class="kw">use </span>common::AssetIdOf;
 <span class="kw">use </span>common::{eth, AccountIdOf, Balance, OnValBurned, VAL};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;include-real-files&quot;</span>)]
@@ -934,7 +934,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config: frame_system::Config + assets::Config + technical::Config {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + technical::Config {
         <span class="doccomment">/// How often the rewards data are being updated
         </span><span class="kw">const </span>UPDATE_FREQUENCY: BlockNumberFor&lt;<span class="self">Self</span>&gt;;
         <span class="doccomment">/// Vested amount is updated every `BLOCKS_PER_DAY` blocks
@@ -1173,7 +1173,7 @@
 
     <span class="doccomment">/// The storage of available UMI NFTs.
     </span><span class="attr">#[pallet::storage]
-    </span><span class="kw">pub type </span>UmiNfts&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Vec&lt;T::AssetId&gt;, ValueQuery&gt;;
+    </span><span class="kw">pub type </span>UmiNfts&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Vec&lt;AssetIdOf&lt;T&gt;&gt;, ValueQuery&gt;;
 
     <span class="doccomment">/// Stores whether address already claimed UMI NFT rewards.
     </span><span class="attr">#[pallet::storage]
@@ -1185,7 +1185,7 @@
         <span class="kw">pub </span>val_owners: Vec&lt;(EthAddress, RewardInfo)&gt;,
         <span class="kw">pub </span>pswap_farm_owners: Vec&lt;(EthAddress, Balance)&gt;,
         <span class="kw">pub </span>pswap_waifu_owners: Vec&lt;(EthAddress, Balance)&gt;,
-        <span class="kw">pub </span>umi_nfts: Vec&lt;T::AssetId&gt;,
+        <span class="kw">pub </span>umi_nfts: Vec&lt;AssetIdOf&lt;T&gt;&gt;,
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]

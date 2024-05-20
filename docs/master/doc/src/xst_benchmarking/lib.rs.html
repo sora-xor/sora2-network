@@ -313,6 +313,12 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -355,8 +361,8 @@
 <span class="kw">use </span>codec::{Decode <span class="kw">as _</span>, Encode <span class="kw">as _</span>};
 <span class="kw">use </span>common::prelude::{QuoteAmount, SwapAmount};
 <span class="kw">use </span>common::{
-    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsProvider,
-    PriceVariant, DAI, XST, XSTUSD,
+    balance, fixed, AssetManager, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle,
+    PriceToolsProvider, PriceVariant, DAI, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_support::pallet_prelude::DispatchResultWithPostInfo;
@@ -373,7 +379,7 @@
 </span><span class="kw">mod </span>mock;
 
 <span class="kw">mod </span>utils {
-    <span class="kw">use </span>common::AssetId32;
+    <span class="kw">use </span>common::{AssetId32, AssetIdOf};
     <span class="kw">use </span>frame_support::{dispatch::DispatchErrorWithPostInfo, Parameter};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -385,7 +391,7 @@
         Symbol::decode(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).expect(<span class="string">&quot;Failed to decode symbol&quot;</span>)
     }
 
-    <span class="kw">pub fn </span>symbol_asset_id&lt;T: Config&gt;() -&gt; T::AssetId {
+    <span class="kw">pub fn </span>symbol_asset_id&lt;T: Config&gt;() -&gt; AssetIdOf&lt;T&gt; {
         AssetId32::&lt;common::PredefinedAssetId&gt;::from_synthetic_reference_symbol(<span class="kw-2">&amp;</span>symbol::&lt;
             &lt;T <span class="kw">as </span>xst::Config&gt;::Symbol,
         &gt;())
@@ -398,7 +404,7 @@
             .expect(<span class="string">&quot;Expected to generate account id from technical&quot;</span>)
     }
 
-    <span class="kw">pub fn </span>set_asset_mock_price&lt;T: Config&gt;(asset_id: <span class="kw-2">&amp;</span>T::AssetId)
+    <span class="kw">pub fn </span>set_asset_mock_price&lt;T: Config&gt;(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;)
     <span class="kw">where
         </span>T: price_tools::Config,
     {
@@ -417,7 +423,7 @@
         set_asset_mock_price::&lt;T&gt;(<span class="kw-2">&amp;</span>XST.into());
 
         <span class="kw">let </span>amount: i128 = <span class="macro">balance!</span>(<span class="number">1</span>).try_into().unwrap();
-        assets::Pallet::&lt;T&gt;::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             alice::&lt;T&gt;().into(),
             XST.into(),
@@ -439,7 +445,9 @@
         <span class="macro">assert_eq!</span>(event, <span class="kw-2">&amp;</span>system_event);
     }
 
-    <span class="kw">pub fn </span>assert_last_assets_event&lt;T: Config&gt;(generic_event: &lt;T <span class="kw">as </span>assets::Config&gt;::RuntimeEvent) {
+    <span class="kw">pub fn </span>assert_last_assets_event&lt;T: assets::Config&gt;(
+        generic_event: &lt;T <span class="kw">as </span>assets::Config&gt;::RuntimeEvent,
+    ) {
         <span class="kw">let </span>events = frame_system::Pallet::&lt;T&gt;::events();
         <span class="kw">let </span>system_event: &lt;T <span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent = generic_event.into();
         <span class="comment">// compare to the event record precending to trading pair and xst event records
@@ -460,7 +468,7 @@
         )
     }
 
-    <span class="kw">pub fn </span>enable_synthetic_asset&lt;T: Config&gt;() -&gt; <span class="prelude-ty">Result</span>&lt;T::AssetId, DispatchErrorWithPostInfo&gt; {
+    <span class="kw">pub fn </span>enable_synthetic_asset&lt;T: Config&gt;() -&gt; <span class="prelude-ty">Result</span>&lt;AssetIdOf&lt;T&gt;, DispatchErrorWithPostInfo&gt; {
         relay_symbol::&lt;T&gt;()<span class="question-mark">?</span>;
         XSTPool::&lt;T&gt;::register_synthetic_asset(
             RawOrigin::Root.into(),
@@ -477,7 +485,10 @@
     }
 }
 <span class="kw">pub struct </span>Pallet&lt;T: Config&gt;(xst::Pallet&lt;T&gt;);
-<span class="kw">pub trait </span>Config: xst::Config + band::Config + oracle_proxy::Config + price_tools::Config {}
+<span class="kw">pub trait </span>Config:
+    xst::Config + band::Config + oracle_proxy::Config + price_tools::Config + assets::Config
+{
+}
 
 <span class="macro">benchmarks! </span>{
     set_reference_asset {
@@ -530,6 +541,7 @@
         <span class="kw">let </span>permissioned_account_id = utils::permissioned_account_id::&lt;T&gt;();
         <span class="kw">let </span>reference_symbol = utils::symbol::&lt;&lt;T <span class="kw">as </span>xst::Config&gt;::Symbol&gt;();
         utils::relay_symbol::&lt;T&gt;()<span class="question-mark">?</span>;
+
     }: <span class="kw">_</span>(
         RawOrigin::Root,
         AssetSymbol(<span class="string">b&quot;XSTEURO&quot;</span>.to_vec()),
@@ -540,7 +552,7 @@
     verify {
         utils::assert_last_assets_event::&lt;T&gt;(
             AssetsEvent::AssetRegistered(
-                utils::symbol_asset_id::&lt;T&gt;(),
+                utils::symbol_asset_id::&lt;T&gt;().into(),
                 permissioned_account_id
             ).into()
         );

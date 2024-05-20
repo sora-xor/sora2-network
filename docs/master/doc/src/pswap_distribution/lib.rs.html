@@ -681,7 +681,6 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -719,9 +718,9 @@
 </span><span class="kw">use </span>common::fixnum::ops::{CheckedAdd, CheckedSub};
 <span class="kw">use </span>common::prelude::{Balance, FixedWrapper, SwapAmount};
 <span class="kw">use </span>common::{
-    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
-    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
+    fixed, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, BuyBackHandler,
+    DexInfoProvider, EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 <span class="kw">use </span>core::convert::TryInto;
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -744,8 +743,6 @@
 <span class="kw">pub const </span>TECH_ACCOUNT_MAIN: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;main&quot;</span>;
 
 <span class="kw">type </span>DexIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>common::Config&gt;::DEXId;
-<span class="kw">type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
-<span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
 <span class="kw">type </span>System&lt;T&gt; = frame_system::Pallet&lt;T&gt;;
 
 <span class="kw">pub use </span>weights::WeightInfo;
@@ -828,7 +825,7 @@
             });
             <span class="kw">let </span>incentives_asset_id = T::GetIncentiveAssetId::get();
             <span class="kw">let </span>tech_account_id = T::GetTechnicalAccountId::get();
-            <span class="kw">let </span>_result = Assets::&lt;T&gt;::transfer_from(
+            <span class="kw">let </span>_result = T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>incentives_asset_id,
                 <span class="kw-2">&amp;</span>tech_account_id,
                 <span class="kw-2">&amp;</span>account_id,
@@ -966,7 +963,7 @@
                     .saturating_add(undistributed_lp_amount);
             }
 
-            assets::Pallet::&lt;T&gt;::mint_to(
+            T::AssetManager::mint_to(
                 <span class="kw-2">&amp;</span>incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
@@ -1001,12 +998,12 @@
     </span><span class="kw">fn </span>calculate_and_burn_distribution(
         fees_account_id: <span class="kw-2">&amp;</span>T::AccountId,
         tech_account_id: <span class="kw-2">&amp;</span>T::AccountId,
-        incentive_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        incentive_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         incentive_total: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PswapRemintInfo, DispatchError&gt; {
         <span class="kw">let </span>distribution = <span class="self">Self</span>::calculate_pswap_distribution(incentive_total)<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::burn_from(
-            <span class="kw-2">&amp;</span>incentive_asset_id,
+        T::AssetManager::burn_from(
+            incentive_asset_id,
             tech_account_id,
             fees_account_id,
             incentive_total,
@@ -1128,6 +1125,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::AssetIdOf;
     <span class="kw">use </span>common::{
         AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description,
         XykPool,
@@ -1139,13 +1137,13 @@
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config + common::Config + technical::Config + tokens::Config
     {
         <span class="kw">const </span>PSWAP_BURN_PERCENT: Percent;
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
-        <span class="kw">type </span>GetIncentiveAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>GetTBCDAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>GetIncentiveAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>GetTBCDAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>CompatBalance: From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>tokens::Config&gt;::Balance&gt;
             + Into&lt;Balance&gt;
             + From&lt;Balance&gt;
@@ -1158,12 +1156,12 @@
         <span class="kw">type </span>OnPswapBurnedAggregator: OnPswapBurned;
         <span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="kw">type </span>GetParliamentAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
-        <span class="kw">type </span>PoolXykPallet: XykPool&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
+        <span class="kw">type </span>PoolXykPallet: XykPool&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,

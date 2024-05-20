@@ -215,8 +215,8 @@
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
 
-</span><span class="kw">use </span>assets::AssetIdOf;
-<span class="kw">use </span>common::prelude::EnsureDEXManager;
+</span><span class="kw">use </span>common::prelude::EnsureDEXManager;
+<span class="kw">use </span>common::AssetIdOf;
 <span class="kw">use </span>common::{hash, DexInfoProvider, ManagementMode};
 <span class="kw">use </span>frame_support::dispatch::DispatchResult;
 <span class="kw">use </span>frame_support::ensure;
@@ -296,7 +296,7 @@
     <span class="kw">use </span>frame_support::traits::StorageVersion;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + assets::Config {}
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + permissions::Config {}
 
     <span class="doccomment">/// The current storage version.
     </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">2</span>);

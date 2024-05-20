@@ -239,6 +239,7 @@
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -273,12 +274,13 @@
 <span class="kw">use </span>frame_support::{ensure, fail};
 <span class="kw">use </span>orml_traits::GetByKey;
 
-<span class="kw">use </span><span class="kw">crate</span>::aliases::{AssetIdOf, TechAccountIdOf, TechAssetIdOf};
+<span class="kw">use </span><span class="kw">crate</span>::aliases::{TechAccountIdOf, TechAssetIdOf};
 <span class="kw">use </span><span class="kw">crate</span>::bounds::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};
 <span class="kw">use </span>common::{
-    AccountIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair, TradingPair,
+    AccountIdOf, AssetIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair,
+    TradingPair,
 };
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
@@ -329,8 +331,8 @@
 
     <span class="kw">pub fn </span>tech_account_from_dex_and_asset_pair(
         dex_id: T::DEXId,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
+        asset_a: AssetIdOf&lt;T&gt;,
+        asset_b: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(common::TradingPair&lt;TechAssetIdOf&lt;T&gt;&gt;, TechAccountIdOf&lt;T&gt;), DispatchError&gt; {
         <span class="kw">let </span>dexinfo = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>base_asset_id = dexinfo.base_asset_id;
@@ -343,7 +345,7 @@
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)<span class="question-mark">?
         </span>};
-        <span class="kw">let </span>tpair = common::TradingPair::&lt;T::AssetId&gt; {
+        <span class="kw">let </span>tpair = common::TradingPair::&lt;AssetIdOf&lt;T&gt;&gt; {
             base_asset_id: ba,
             target_asset_id: ta,
         };
@@ -355,7 +357,7 @@
     }
 
     <span class="kw">pub fn </span>ensure_trading_pair_is_not_restricted(
-        tpair: <span class="kw-2">&amp;</span>common::TradingPair&lt;T::AssetId&gt;,
+        tpair: <span class="kw-2">&amp;</span>common::TradingPair&lt;AssetIdOf&lt;T&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">if </span>T::GetTradingPairRestrictedFlag::get(tpair) {
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::TargetAssetIsRestricted.into())
@@ -445,10 +447,10 @@
 
     <span class="doccomment">/// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
     </span><span class="kw">pub fn </span>strict_sort_pair(
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        asset_a: <span class="kw-2">&amp;</span>T::AssetId,
-        asset_b: <span class="kw-2">&amp;</span>T::AssetId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;TradingPair&lt;T::AssetId&gt;, DispatchError&gt; {
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;TradingPair&lt;AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="macro">ensure!</span>(asset_a != asset_b, Error::&lt;T&gt;::AssetsMustNotBeSame);
         <span class="kw">if </span>asset_a == base_asset_id {
             <span class="prelude-val">Ok</span>(TradingPair {

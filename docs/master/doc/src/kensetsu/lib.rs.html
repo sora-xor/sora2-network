@@ -1614,7 +1614,6 @@
 <a href="#1599" id="1599">1599</a>
 <a href="#1600" id="1600">1600</a>
 <a href="#1601" id="1601">1601</a>
-<a href="#1602" id="1602">1602</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1658,9 +1657,9 @@
 
 </span><span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
-<span class="kw">use </span>common::{balance, Balance};
+<span class="kw">use </span>common::AssetIdOf;
+<span class="kw">use </span>common::{balance, AssetManager, Balance};
 <span class="kw">use </span>frame_support::log::{debug, warn};
 <span class="kw">use </span>scale_info::TypeInfo;
 <span class="kw">use </span>sp_arithmetic::{FixedU128, Perbill};
@@ -1888,8 +1887,7 @@
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        assets::Config
-        + frame_system::Config
+        frame_system::Config
         + technical::Config
         + timestamp::Config
         + SendTransactionTypes&lt;Call&lt;<span class="self">Self</span>&gt;&gt;
@@ -1897,7 +1895,7 @@
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>Randomness: Randomness&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Hash&gt;, <span class="self">Self</span>::BlockNumber&gt;;
         <span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -1906,10 +1904,10 @@
             Description,
         &gt;;
         <span class="kw">type </span>TreasuryTechAccount: Get&lt;<span class="self">Self</span>::TechAccountId&gt;;
-        <span class="kw">type </span>KenAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>KusdAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>PriceTools: PriceToolsProvider&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>KenAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>KusdAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>PriceTools: PriceToolsProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Percent of KEN that is reminted and goes to Demeter farming incentivization
         </span><span class="attr">#[pallet::constant]
@@ -2769,7 +2767,7 @@
                     .checked_add(stability_fee)
                     .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                 cdp.interest_coefficient = new_coefficient;
-                <span class="prelude-val">Ok</span>::&lt;CollateralizedDebtPosition&lt;T::AccountId, T::AssetId&gt;, DispatchError&gt;(
+                <span class="prelude-val">Ok</span>::&lt;CollateralizedDebtPosition&lt;T::AccountId, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt;(
                     cdp.clone(),
                 )
             })<span class="question-mark">?</span>;
@@ -2798,7 +2796,7 @@
         }
 
         <span class="doccomment">/// Mint token to protocol technical account
-        </span><span class="kw">fn </span>mint_treasury(asset_id: <span class="kw-2">&amp;</span>T::AssetId, amount: Balance) -&gt; DispatchResult {
+        </span><span class="kw">fn </span>mint_treasury(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;, amount: Balance) -&gt; DispatchResult {
             technical::Pallet::&lt;T&gt;::mint(asset_id, <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(), amount)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(())
         }
@@ -2808,7 +2806,7 @@
             <span class="kw">let </span>technical_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
-            assets::Pallet::&lt;T&gt;::mint_to(
+            T::AssetManager::mint_to(
                 <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
                 <span class="kw-2">&amp;</span>technical_account_id,
                 account,
@@ -2822,7 +2820,7 @@
             <span class="kw">let </span>technical_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
-            assets::Pallet::&lt;T&gt;::burn_from(
+            T::AssetManager::burn_from(
                 <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
                 <span class="kw-2">&amp;</span>technical_account_id,
                 <span class="kw-2">&amp;</span>technical_account_id,
@@ -2841,7 +2839,7 @@
             <span class="kw">let </span>technical_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
-            assets::Pallet::&lt;T&gt;::burn_from(
+            T::AssetManager::burn_from(
                 <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
                 <span class="kw-2">&amp;</span>technical_account_id,
                 account,
@@ -2968,7 +2966,7 @@
                 </span><span class="kw">let </span>leftover = proceeds
                     .checked_sub(cdp.debt)
                     .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
-                assets::Pallet::&lt;T&gt;::transfer_from(
+                T::AssetManager::transfer_from(
                     <span class="kw-2">&amp;</span>T::KusdAssetId::get(),
                     <span class="kw-2">&amp;</span>technical_account_id,
                     <span class="kw-2">&amp;</span>cdp.owner,
@@ -3000,7 +2998,7 @@
                     SwapAmount::with_desired_input(borrow_tax_kusd, <span class="macro">balance!</span>(<span class="number">0</span>)),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )<span class="question-mark">?</span>;
-                assets::Pallet::&lt;T&gt;::burn_from(
+                T::AssetManager::burn_from(
                     <span class="kw-2">&amp;</span>T::KenAssetId::get(),
                     <span class="kw-2">&amp;</span>technical_account_id,
                     <span class="kw-2">&amp;</span>technical_account_id,
@@ -3191,7 +3189,7 @@
         }
 
         <span class="kw">fn </span>increase_collateral_stablecoin_supply(
-            collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+            collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
             supply_change: Balance,
         ) -&gt; DispatchResult {
             CollateralInfos::&lt;T&gt;::try_mutate(collateral_asset_id, |collateral_info| {

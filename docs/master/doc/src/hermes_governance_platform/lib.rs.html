@@ -624,7 +624,6 @@
 <a href="#609" id="609">609</a>
 <a href="#610" id="610">610</a>
 <a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -703,8 +702,8 @@
     <span class="kw">use crate</span>::{migrations, HermesPollInfo, HermesVotingInfo, StorageVersion, WeightInfo};
     <span class="kw">use </span>common::prelude::Balance;
     <span class="kw">use </span>common::{
-        balance, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, BoundedString,
-        ContentSource, Description,
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
+        BalancePrecision, BoundedString, ContentSource, Description,
     };
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::sp_runtime::traits::AccountIdConversion;
@@ -722,7 +721,7 @@
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
+        frame_system::Config + technical::Config + timestamp::Config + common::Config
     {
         <span class="doccomment">/// Minimum duration of poll represented in milliseconds
         </span><span class="kw">const </span>MIN_DURATION_OF_POLL: <span class="self">Self</span>::Moment;
@@ -746,14 +745,14 @@
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
         <span class="doccomment">/// Hermes asset id
-        </span><span class="kw">type </span>HermesAssetId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
+        </span><span class="kw">type </span>HermesAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
 
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -763,7 +762,6 @@
         &gt;;
     }
 
-    <span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 
@@ -963,7 +961,7 @@
             };
 
             <span class="comment">// Transfer Hermes to pallet
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>T::HermesAssetId::get().into(),
                 <span class="kw-2">&amp;</span>user,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
@@ -1054,7 +1052,7 @@
             };
 
             <span class="comment">// Transfer Hermes to pallet
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>T::HermesAssetId::get().into(),
                 <span class="kw-2">&amp;</span>user.clone(),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
@@ -1102,7 +1100,7 @@
             );
 
             <span class="comment">// Withdraw Hermes
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>T::HermesAssetId::get().into(),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
                 <span class="kw-2">&amp;</span>user,
@@ -1150,7 +1148,7 @@
             );
 
             <span class="comment">// Withdraw Creator Hermes
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>T::HermesAssetId::get().into(),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
                 <span class="kw-2">&amp;</span>user,

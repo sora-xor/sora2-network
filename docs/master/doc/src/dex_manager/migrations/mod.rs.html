@@ -112,7 +112,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::pallet::{Config, Pallet};
 <span class="kw">use </span>codec::Decode;
-<span class="kw">use </span>common::{DEXInfo, XST};
+<span class="kw">use </span>common::{AssetIdOf, DEXInfo, XST};
 <span class="kw">use </span>frame_support::pallet_prelude::{Get, StorageVersion};
 <span class="kw">use </span>frame_support::{log::info, traits::GetStorageVersion <span class="kw">as _</span>, weights::Weight};
 
@@ -120,7 +120,7 @@
 
 <span class="attr">#[derive(Decode)]
 </span><span class="kw">struct </span>DEXInfoV0&lt;T: Config&gt; {
-    base_asset_id: T::AssetId,
+    base_asset_id: AssetIdOf&lt;T&gt;,
     is_public: bool,
 }
 

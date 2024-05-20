@@ -413,7 +413,6 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -447,11 +446,10 @@
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 
-</span><span class="kw">use </span>assets::AssetIdOf;
-<span class="kw">use </span>codec::Decode;
+</span><span class="kw">use </span>codec::Decode;
 <span class="kw">use </span>common::{
-    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
-    KEN, KUSD, XOR,
+    balance, AssetId32, AssetIdOf, AssetManager, Balance, DEXId, PredefinedAssetId,
+    PriceToolsProvider, PriceVariant, DAI, KEN, KUSD, XOR,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::RawOrigin;
@@ -514,7 +512,7 @@
 
 <span class="doccomment">/// Mints XOR and deposited as collateral to CDP
 </span><span class="kw">fn </span>deposit_xor_collateral&lt;T: Config&gt;(cdp_id: CdpId, amount: Balance) {
-    assets::Pallet::&lt;T&gt;::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::&lt;T&gt;(),
         XOR.into(),
@@ -547,14 +545,14 @@
 <span class="doccomment">/// Initializes and adds liquidity to XYK pool XOR/asset_id.
 </span><span class="kw">fn </span>initialize_xyk_pool&lt;T: Config&gt;(asset_id: AssetIdOf&lt;T&gt;) {
     <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">1000000</span>);
-    assets::Pallet::&lt;T&gt;::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::&lt;T&gt;(),
         XOR.into(),
         amount.try_into().unwrap(),
     )
     .expect(<span class="string">&quot;Shall mint XOR&quot;</span>);
-    assets::Pallet::&lt;T&gt;::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::&lt;T&gt;(),
         asset_id,
@@ -623,7 +621,7 @@
 <span class="macro">benchmarks! </span>{
     where_clause {
         <span class="kw">where
-            </span>T::AssetId: From&lt;AssetId32&lt;PredefinedAssetId&gt;&gt;,
+            </span>AssetIdOf&lt;T&gt;: From&lt;AssetId32&lt;PredefinedAssetId&gt;&gt;,
             T::Moment: From&lt;u32&gt;,
     }
 
@@ -632,7 +630,7 @@
         set_xor_as_collateral_type::&lt;T&gt;();
         <span class="kw">let </span>collateral = <span class="macro">balance!</span>(<span class="number">10</span>);
         <span class="kw">let </span>debt = <span class="macro">balance!</span>(<span class="number">1</span>);
-        assets::Pallet::&lt;T&gt;::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::&lt;T&gt;(),
             XOR.into(),
@@ -660,7 +658,7 @@
         set_xor_as_collateral_type::&lt;T&gt;();
         <span class="kw">let </span>cdp_id = create_cdp_with_xor::&lt;T&gt;();
         <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">10</span>);
-        assets::Pallet::&lt;T&gt;::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::&lt;T&gt;(),
             XOR.into(),
@@ -786,7 +784,7 @@
             <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
         ).expect(<span class="string">&quot;Shall resolve tech account id&quot;</span>);
         <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">10</span>);
-        assets::Pallet::&lt;T&gt;::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             technical_account_id,
             KUSD.into(),
@@ -803,7 +801,7 @@
 
     donate {
         <span class="kw">let </span>amount = <span class="macro">balance!</span>(<span class="number">10</span>);
-        assets::Pallet::&lt;T&gt;::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::&lt;T&gt;(),
             KUSD.into(),

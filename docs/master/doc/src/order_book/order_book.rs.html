@@ -1259,6 +1259,12 @@
 <a href="#1244" id="1244">1244</a>
 <a href="#1245" id="1245">1245</a>
 <a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1294,9 +1300,9 @@
     MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
     OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
 <span class="kw">use </span>common::prelude::QuoteAmount;
+<span class="kw">use </span>common::AssetIdOf;
 <span class="kw">use </span>common::{Balance, PriceVariant};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
@@ -1552,7 +1558,7 @@
         market_order: MarketOrder&lt;T&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span>receiver = market_order.to.unwrap_or(market_order.owner.clone());
@@ -1581,7 +1587,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_order: LimitOrder&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>payment = Payment::new(<span class="self">self</span>.order_book_id);
@@ -1619,7 +1625,7 @@
         reason: CancelReason,
         ignore_unschedule_error: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>limit_orders_to_cancel = BTreeMap::new();
@@ -1658,7 +1664,7 @@
         reason: CancelReason,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>limit_orders_to_cancel = BTreeMap::new();
@@ -1706,7 +1712,7 @@
         market_data: <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OrderPrice, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OrderVolume)&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>remaining_amount = taker_base_amount;
@@ -1842,7 +1848,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         limit_orders: Vec&lt;LimitOrder&lt;T&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>limit_orders_to_cancel = BTreeMap::new();
@@ -2062,7 +2068,13 @@
 
     <span class="kw">pub fn </span>apply_market_change(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        market_change: MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        market_change: MarketChange&lt;
+            T::AccountId,
+            AssetIdOf&lt;T&gt;,
+            T::DEXId,
+            T::OrderId,
+            LimitOrder&lt;T&gt;,
+        &gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         market_change
@@ -2356,7 +2368,7 @@
         limit_order: LimitOrder&lt;T&gt;,
         data: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>DataLayer&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        MarketChange&lt;T::AccountId, T::AssetId, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
+        MarketChange&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, T::OrderId, LimitOrder&lt;T&gt;&gt;,
         DispatchError,
     &gt; {
         <span class="kw">let </span>(<span class="kw-2">mut </span>market_amount, <span class="kw-2">mut </span>limit_amount) = <span class="kw">match </span>limit_order.side {

@@ -1209,6 +1209,8 @@
 <a href="#1194" id="1194">1194</a>
 <a href="#1195" id="1195">1195</a>
 <a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1256,7 +1258,7 @@
     Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::{
-    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    fixed_wrapper, AssetIdOf, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
     RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
     XykPool,
@@ -1264,8 +1266,8 @@
 
 <span class="kw">mod </span>aliases;
 <span class="kw">use </span>aliases::{
-    AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
-    PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
+    AccountIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf, PolySwapActionStructOf,
+    TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
 
@@ -1299,7 +1301,7 @@
 
 <span class="kw">pub use </span>weights::WeightInfo;
 
-<span class="kw">impl</span>&lt;T: Config&gt; XykPool&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; XykPool&lt;T::AccountId, AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">type </span>PoolProvidersOutput = PrefixIterator&lt;(AccountIdOf&lt;T&gt;, Balance)&gt;;
     <span class="kw">type </span>PoolPropertiesOutput =
         PrefixIterator&lt;(AssetIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, (AccountIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;))&gt;;
@@ -1317,8 +1319,8 @@
     }
 
     <span class="kw">fn </span>properties_of_pool(
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
+        base_asset_id: AssetIdOf&lt;T&gt;,
+        target_asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(T::AccountId, T::AccountId)&gt; {
         Properties::&lt;T&gt;::get(base_asset_id, target_asset_id)
     }
@@ -1332,8 +1334,8 @@
 
     <span class="kw">fn </span>transfer_lp_tokens(
         pool_account: T::AccountId,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
+        asset_a: AssetIdOf&lt;T&gt;,
+        asset_b: AssetIdOf&lt;T&gt;,
         base_account_id: T::AccountId,
         target_account_id: T::AccountId,
         pool_tokens: Balance,
@@ -1376,8 +1378,8 @@
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="kw">fn </span>initialize_pool_properties(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        asset_a: <span class="kw-2">&amp;</span>T::AssetId,
-        asset_b: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         reserves_account_id: <span class="kw-2">&amp;</span>T::AccountId,
         fees_account_id: <span class="kw-2">&amp;</span>T::AccountId,
     ) -&gt; DispatchResult {
@@ -1408,9 +1410,9 @@
     }
 
     <span class="kw">fn </span>update_reserves(
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        asset_a: <span class="kw-2">&amp;</span>T::AssetId,
-        asset_b: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         balance_pair: (<span class="kw-2">&amp;</span>Balance, <span class="kw-2">&amp;</span>Balance),
     ) {
         <span class="kw">if </span>base_asset_id == asset_a {
@@ -1551,7 +1553,7 @@
 
     <span class="kw">pub fn </span>get_pool_trading_pair(
         pool_account: <span class="kw-2">&amp;</span>T::AccountId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;TradingPair&lt;T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;TradingPair&lt;AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>tech_acc = technical::Pallet::&lt;T&gt;::lookup_tech_account_id(pool_account)<span class="question-mark">?</span>;
         <span class="kw">match </span>tech_acc.into() {
             TechAccountId::Pure(<span class="kw">_</span>, TechPurpose::XykLiquidityKeeper(trading_pair)) =&gt; {
@@ -1562,13 +1564,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError&gt;
+<span class="kw">impl</span>&lt;T: Config&gt; LiquiditySource&lt;T::DEXId, T::AccountId, AssetIdOf&lt;T&gt;, Balance, DispatchError&gt;
     <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">fn </span>can_exchange(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; bool {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) {
             <span class="kw">let </span>target_asset_id = <span class="kw">if </span><span class="kw-2">*</span>input_asset_id == dex_info.base_asset_id {
@@ -1587,11 +1589,11 @@
 
     <span class="kw">fn </span>quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="comment">// Get pool account.
         </span><span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
@@ -1654,12 +1656,12 @@
 
     <span class="kw">fn </span>step_quote(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;T::AssetId, Balance&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(DiscreteQuotation&lt;AssetIdOf&lt;T&gt;, Balance&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>quotation = DiscreteQuotation::new();
 
         <span class="kw">if </span>amount.amount().is_zero() {
@@ -1782,10 +1784,10 @@
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         swap_amount: SwapAmount&lt;Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, T::AssetId&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
             <span class="kw-2">*</span>dex_id,
@@ -1846,22 +1848,22 @@
 
     <span class="kw">fn </span>check_rewards(
         _target_id: <span class="kw-2">&amp;</span>T::DEXId,
-        _input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        _output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        _input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        _output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, T::AssetId, RewardReason)&gt;, Weight), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;(Balance, AssetIdOf&lt;T&gt;, RewardReason)&gt;, Weight), DispatchError&gt; {
         <span class="comment">// XYK Pool has no rewards currently
         </span><span class="prelude-val">Ok</span>((Vec::new(), Weight::zero()))
     }
 
     <span class="kw">fn </span>quote_without_impact(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(dex_id)<span class="question-mark">?</span>;
         <span class="comment">// Get pool account.
         </span><span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
@@ -1984,8 +1986,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; GetPoolReserves&lt;T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
-    <span class="kw">fn </span>reserves(base_asset: <span class="kw-2">&amp;</span>T::AssetId, other_asset: <span class="kw-2">&amp;</span>T::AssetId) -&gt; (Balance, Balance) {
+<span class="kw">impl</span>&lt;T: Config&gt; GetPoolReserves&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>reserves(base_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;, other_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; (Balance, Balance) {
         Reserves::&lt;T&gt;::get(base_asset, other_asset)
     }
 }
@@ -2011,6 +2013,8 @@
         + technical::Config
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
+        + permissions::Config
+        + orml_tokens::Config
     {
         <span class="doccomment">/// The minimum amount of XOR to deposit as liquidity
         </span><span class="kw">const </span>MIN_XOR: Balance;
@@ -2030,24 +2034,24 @@
             + Into&lt;&lt;<span class="self">Self </span><span class="kw">as </span>technical::Config&gt;::SwapAction&gt;
             + From&lt;PolySwapActionStructOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>EnsureDEXManager: EnsureDEXManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, DispatchError&gt;;
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
-        <span class="kw">type </span>EnabledSourcesManager: EnabledSourcesManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
+        <span class="kw">type </span>EnabledSourcesManager: EnabledSourcesManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>EnsureTradingPairExists: EnsureTradingPairExists&lt;
             <span class="self">Self</span>::DEXId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             DispatchError,
         &gt;;
-        <span class="kw">type </span>XSTMarketInfo: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>XSTMarketInfo: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>GetFee: Get&lt;Fixed&gt;;
         <span class="kw">type </span>OnPoolCreated: OnPoolCreated&lt;AccountId = AccountIdOf&lt;<span class="self">Self</span>&gt;, DEXId = DEXIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>OnPoolReservesChanged: OnPoolReservesChanged&lt;<span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>OnPoolReservesChanged: OnPoolReservesChanged&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
-        <span class="kw">type </span>GetTradingPairRestrictedFlag: GetByKey&lt;TradingPair&lt;<span class="self">Self</span>::AssetId&gt;, bool&gt;;
+        <span class="kw">type </span>GetTradingPairRestrictedFlag: GetByKey&lt;TradingPair&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;, bool&gt;;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -2188,7 +2192,7 @@
                     )<span class="question-mark">?</span>;
 
                 Pallet::&lt;T&gt;::ensure_trading_pair_is_not_restricted(
-                    <span class="kw-2">&amp;</span>trading_pair.map(|a| Into::&lt;T::AssetId&gt;::into(a)),
+                    <span class="kw-2">&amp;</span>trading_pair.map(|a| Into::&lt;AssetIdOf&lt;T&gt;&gt;::into(a)),
                 )<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>ta_repr =
@@ -2360,9 +2364,9 @@
     </span><span class="kw">pub type </span>Reserves&lt;T: Config&gt; = StorageDoubleMap&lt;
         <span class="kw">_</span>,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         (Balance, Balance),
         ValueQuery,
     &gt;;
@@ -2399,9 +2403,9 @@
     </span><span class="kw">pub type </span>Properties&lt;T: Config&gt; = StorageDoubleMap&lt;
         <span class="kw">_</span>,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         (T::AccountId, T::AccountId),
     &gt;;
 }

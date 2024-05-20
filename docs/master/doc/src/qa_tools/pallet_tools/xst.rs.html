@@ -472,7 +472,7 @@
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::fixnum::ops::CheckedSub;
 <span class="kw">use </span>common::prelude::{BalanceUnit, QuoteAmount};
-<span class="kw">use </span>common::{fixed, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
+<span class="kw">use </span>common::{fixed, AssetIdOf, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
 <span class="kw">use </span>frame_support::dispatch::{
     DispatchError, DispatchResult, DispatchResultWithPostInfo, RawOrigin,
 };
@@ -551,8 +551,8 @@
 /// assets.
 </span><span class="kw">fn </span>calculate_xor_prices&lt;T: Config&gt;(
     input_prices: BaseInput,
-    synthetic_base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-    reference_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+    synthetic_base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+    reference_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BaseXorPrices, DispatchError&gt; {
     <span class="comment">// B = reference
     // A = synthetic base
@@ -696,11 +696,11 @@
 }
 
 <span class="kw">fn </span>calculate_actual_quote&lt;T: Config&gt;(
-    asset_id: T::AssetId,
+    asset_id: AssetIdOf&lt;T&gt;,
     expected_quote: SyntheticQuote,
     synthetic_band_price: u64,
     ref_per_synthetic_base: <span class="kw-2">&amp;</span>AssetPrices,
-) -&gt; SyntheticOutput&lt;T::AssetId&gt; {
+) -&gt; SyntheticOutput&lt;AssetIdOf&lt;T&gt;&gt; {
     <span class="kw">let </span>ref_per_synthetic = synthetic_band_price <span class="kw">as </span>Balance * <span class="number">10_u128</span>.pow(<span class="number">9</span>);
     <span class="kw">let </span>actual_quote_result = <span class="kw">match </span>(<span class="kw-2">&amp;</span>expected_quote.direction, <span class="kw-2">&amp;</span>expected_quote.amount) {
         <span class="comment">// sell:
@@ -783,9 +783,9 @@
 }
 
 <span class="kw">fn </span>initialize_single_synthetic&lt;T: Config&gt;(
-    input: SyntheticInput&lt;T::AssetId, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;,
+    input: SyntheticInput&lt;AssetIdOf&lt;T&gt;, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;,
     relayer: T::AccountId,
-) -&gt; <span class="prelude-ty">Result</span>&lt;SyntheticOutput&lt;T::AssetId&gt;, DispatchError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;SyntheticOutput&lt;AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
     <span class="kw">let </span>synthetic_base_asset_id = &lt;T <span class="kw">as </span>xst::Config&gt;::GetSyntheticBaseAssetId::get();
     <span class="kw">let </span>ref_per_synthetic_base = AssetPrices {
         buy: xst::Pallet::&lt;T&gt;::reference_price(<span class="kw-2">&amp;</span>synthetic_base_asset_id, PriceVariant::Buy)
@@ -839,9 +839,9 @@
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>initialize_synthetics&lt;T: Config&gt;(
-    inputs: Vec&lt;SyntheticInput&lt;T::AssetId, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
+    inputs: Vec&lt;SyntheticInput&lt;AssetIdOf&lt;T&gt;, &lt;T <span class="kw">as </span>Config&gt;::Symbol&gt;&gt;,
     relayer: T::AccountId,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SyntheticOutput&lt;T::AssetId&gt;&gt;, DispatchError&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SyntheticOutput&lt;AssetIdOf&lt;T&gt;&gt;&gt;, DispatchError&gt; {
     <span class="kw">if </span>!inputs.is_empty() {
         <span class="kw">if </span>!band::Pallet::&lt;T&gt;::trusted_relayers().is_some_and(|t| t.contains(<span class="kw-2">&amp;</span>relayer)) {
             band::Pallet::&lt;T&gt;::add_relayers(RawOrigin::Root.into(), <span class="macro">vec!</span>[relayer.clone()])

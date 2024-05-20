@@ -2805,7 +2805,6 @@
 <a href="#2790" id="2790">2790</a>
 <a href="#2791" id="2791">2791</a>
 <a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2853,18 +2852,17 @@
 </span><span class="kw">mod </span>tests;
 <span class="kw">pub mod </span>weights;
 
-<span class="kw">use </span>assets::AssetIdOf;
 <span class="kw">use </span>assets::WeightInfo <span class="kw">as _</span>;
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::{
-    Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
+    AssetIdOf, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 <span class="kw">use </span>common::{
-    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
-    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
-    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, Vesting,
+    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, AssetManager, BuyBackHandler, DEXInfo,
+    DexIdOf, DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves,
+    LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason,
+    TradingPair, TradingPairSourceManager, Vesting,
 };
 <span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>fallible_iterator::FallibleIterator <span class="kw">as _</span>;
@@ -2909,7 +2907,7 @@
 <span class="kw">const </span>REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 <span class="doccomment">/// Possible exchange paths for two assets.
-</span><span class="kw">pub struct </span>ExchangePath&lt;T: Config&gt;(Vec&lt;T::AssetId&gt;);
+</span><span class="kw">pub struct </span>ExchangePath&lt;T: Config&gt;(Vec&lt;AssetIdOf&lt;T&gt;&gt;);
 
 <span class="attr">#[derive(Debug, Eq, PartialEq)]
 </span><span class="kw">enum </span>AssetType {
@@ -2921,9 +2919,9 @@
 
 <span class="kw">impl </span>AssetType {
     <span class="kw">fn </span>determine&lt;T: Config&gt;(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        synthetic_assets: <span class="kw-2">&amp;</span>BTreeSet&lt;T::AssetId&gt;,
-        asset_id: T::AssetId,
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
+        synthetic_assets: <span class="kw-2">&amp;</span>BTreeSet&lt;AssetIdOf&lt;T&gt;&gt;,
+        asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">if </span>asset_id == dex_info.base_asset_id {
             AssetType::Base
@@ -2945,9 +2943,9 @@
 
 <span class="kw">impl</span>&lt;T: Config&gt; ExchangePath&lt;T&gt; {
     <span class="kw">pub fn </span>new_trivial(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
+        input_asset_id: AssetIdOf&lt;T&gt;,
+        output_asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="self">Self</span>&gt;&gt; {
         <span class="kw">use </span>AssetType::<span class="kw-2">*</span>;
 
@@ -3043,8 +3041,8 @@
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="doccomment">/// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
     </span><span class="kw">pub fn </span>is_forbidden_filter(
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
         filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; bool {
@@ -3072,8 +3070,8 @@
     }
 
     <span class="kw">pub fn </span>check_indivisible_assets(
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="macro">ensure!</span>(
             !T::AssetInfoProvider::is_non_divisible(input_asset_id)
@@ -3087,8 +3085,8 @@
         sender: T::AccountId,
         receiver: T::AccountId,
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf&lt;T&gt;,
+        output_asset_id: AssetIdOf&lt;T&gt;,
         swap_amount: SwapAmount&lt;Balance&gt;,
         selected_source_types: Vec&lt;LiquiditySourceType&gt;,
         filter_mode: FilterMode,
@@ -3148,13 +3146,13 @@
         dex_id: T::DEXId,
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
             Weight,
         ),
@@ -3183,7 +3181,7 @@
     <span class="doccomment">/// Exchange sequence of assets, where each pair is a direct exchange.
     /// The swaps path is selected via `select_best_path`
     </span><span class="kw">fn </span>exchange_sequence(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
         asset_paths: Vec&lt;ExchangePath&lt;T&gt;&gt;,
@@ -3191,7 +3189,7 @@
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
             Weight,
         ),
@@ -3247,14 +3245,14 @@
     /// - `swaps` - exchange route with amounts
     /// - `filter` - filter for liquidity sources
     </span><span class="kw">fn </span>exchange_sequence_with_desired_amount(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
-        route: <span class="kw-2">&amp;</span>ExchangeRoute&lt;T::AssetId&gt;,
+        route: <span class="kw-2">&amp;</span>ExchangeRoute&lt;AssetIdOf&lt;T&gt;&gt;,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
             Weight,
         ),
@@ -3322,14 +3320,14 @@
     </span><span class="kw">fn </span>exchange_single(
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
             Weight,
         ),
@@ -3366,7 +3364,7 @@
                         outcome
                     })
                 })
-                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;SwapOutcome&lt;Balance, T::AssetId&gt;&gt;, DispatchError&gt;&gt;()<span class="question-mark">?</span>;
+                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;&gt;, DispatchError&gt;&gt;()<span class="question-mark">?</span>;
 
             <span class="kw">let </span>(amount, fee) = res.into_iter().fold(
                 (<span class="macro">fixed_wrapper!</span>(<span class="number">0</span>), OutcomeFee::new()),
@@ -3390,16 +3388,16 @@
     /// This a wrapper for `quote_single`.
     </span><span class="kw">pub fn </span>inner_quote(
         dex_id: T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;,
-            ExchangeRoute&lt;T::AssetId&gt;,
+            QuoteInfo&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;&gt;,
+            ExchangeRoute&lt;AssetIdOf&lt;T&gt;&gt;,
             Weight,
         ),
         DispatchError,
@@ -3431,7 +3429,7 @@
     ///
     /// Returns Result containing a quote result and the selected path
     </span><span class="kw">fn </span>select_best_path(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
         asset_paths: Vec&lt;ExchangePath&lt;T&gt;&gt;,
         swap_variant: SwapVariant,
         amount: Balance,
@@ -3440,14 +3438,14 @@
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            QuoteInfo&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;&gt;,
-            ExchangeRoute&lt;T::AssetId&gt;,
+            QuoteInfo&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;&gt;,
+            ExchangeRoute&lt;AssetIdOf&lt;T&gt;&gt;,
             Weight,
         ),
         DispatchError,
     &gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
-        <span class="kw">let </span><span class="kw-2">mut </span>swaps = ExchangeRoute::&lt;T::AssetId&gt;::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>swaps = ExchangeRoute::&lt;AssetIdOf&lt;T&gt;&gt;::new();
         <span class="kw">let </span><span class="kw-2">mut </span>path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             <span class="kw">let </span>quote = <span class="kw">match </span>swap_variant {
                 SwapVariant::WithDesiredInput =&gt; <span class="self">Self</span>::quote_pairs_with_flexible_amount(
@@ -3516,8 +3514,8 @@
     ///
     /// Performs [`Self::quote_single()`] for each pair and aggregates the results.
     </span><span class="kw">fn </span>quote_pairs_with_flexible_amount&lt;<span class="lifetime">&#39;asset</span>, F: Fn(Balance) -&gt; QuoteAmount&lt;Balance&gt;&gt;(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        asset_pairs: <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span><span class="lifetime">&#39;asset </span>T::AssetId, <span class="kw-2">&amp;</span><span class="lifetime">&#39;asset </span>T::AssetId)&gt;,
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
+        asset_pairs: <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span><span class="lifetime">&#39;asset </span>AssetIdOf&lt;T&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;asset </span>AssetIdOf&lt;T&gt;)&gt;,
         amount_ctr: F,
         amount: Balance,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
@@ -3526,11 +3524,11 @@
         swap_variant: SwapVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            SwapOutcome&lt;Balance, T::AssetId&gt;,
+            SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;,
             <span class="prelude-ty">Option</span>&lt;Balance&gt;,
-            Rewards&lt;T::AssetId&gt;,
+            Rewards&lt;AssetIdOf&lt;T&gt;&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
-            ExchangeRoute&lt;T::AssetId&gt;,
+            ExchangeRoute&lt;AssetIdOf&lt;T&gt;&gt;,
             Weight,
         ),
         DispatchError,
@@ -3631,8 +3629,8 @@
     // because it uses i128 for fixed-point arithmetics.
     // TODO: switch to unsigned internal representation
     </span><span class="kw">fn </span>calculate_amount_without_impact(
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         distribution: <span class="kw-2">&amp;</span>Vec&lt;(
             LiquiditySourceId&lt;T::DEXId, LiquiditySourceType&gt;,
             SwapAmount&lt;Balance&gt;,
@@ -3711,8 +3709,8 @@
 
     <span class="doccomment">/// Obtains only sources available for `quote`
     </span><span class="kw">fn </span>list_quote_liquidity_sources(
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>sources =
@@ -3739,17 +3737,17 @@
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
     </span><span class="kw">fn </span>quote_single(
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
-            Rewards&lt;T::AssetId&gt;,
+            AggregatedSwapOutcome&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            Rewards&lt;AssetIdOf&lt;T&gt;&gt;,
             Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
             Weight,
         ),
@@ -3864,8 +3862,8 @@
     <span class="doccomment">/// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
     </span><span class="kw">pub fn </span>is_path_available(
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf&lt;T&gt;,
+        output_asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>maybe_path = ExchangePath::&lt;T&gt;::new_trivial(<span class="kw-2">&amp;</span>dex_info, input_asset_id, output_asset_id);
@@ -3884,8 +3882,8 @@
     /// available and if it is, then returns Ok(true)
     </span><span class="kw">pub fn </span>check_asset_path(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        path: <span class="kw-2">&amp;</span>[T::AssetId],
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
+        path: <span class="kw-2">&amp;</span>[AssetIdOf&lt;T&gt;],
     ) -&gt; bool {
         path.iter()
             .tuple_windows()
@@ -3904,8 +3902,8 @@
     <span class="doccomment">/// Returns a BTreeSet with all LiquiditySourceTypes, which will be used for swap
     </span><span class="kw">pub fn </span>get_asset_path_sources(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        path: <span class="kw-2">&amp;</span>[T::AssetId],
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
+        path: <span class="kw-2">&amp;</span>[AssetIdOf&lt;T&gt;],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;LiquiditySourceType&gt;, DispatchError&gt; {
         <span class="kw">let </span>sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, DispatchError&gt; {
@@ -3984,8 +3982,8 @@
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
     </span><span class="kw">pub fn </span>inner_exchange_weight(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input: <span class="kw-2">&amp;</span>T::AssetId,
-        output: <span class="kw-2">&amp;</span>T::AssetId,
+        input: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
     ) -&gt; Weight {
         <span class="comment">// Get DEX info or return weight that will be rejected
@@ -4064,8 +4062,8 @@
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
     </span><span class="kw">pub fn </span>swap_weight(
         dex_id: <span class="kw-2">&amp;</span>T::DEXId,
-        input: <span class="kw-2">&amp;</span>T::AssetId,
-        output: <span class="kw-2">&amp;</span>T::AssetId,
+        input: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
         filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; Weight {
@@ -4102,8 +4100,8 @@
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_transfer_batch_weight() and code map above.
     </span><span class="kw">pub fn </span>swap_transfer_batch_weight(
-        swap_batches: <span class="kw-2">&amp;</span>Vec&lt;SwapBatchInfo&lt;T::AssetId, T::DEXId, T::AccountId&gt;&gt;,
-        input: <span class="kw-2">&amp;</span>T::AssetId,
+        swap_batches: <span class="kw-2">&amp;</span>Vec&lt;SwapBatchInfo&lt;AssetIdOf&lt;T&gt;, T::DEXId, T::AccountId&gt;&gt;,
+        input: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
         filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; Weight {
@@ -4150,8 +4148,8 @@
     /// If there are two possible swap paths, then returns a union of used liquidity sources
     </span><span class="kw">pub fn </span>list_enabled_sources_for_path(
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf&lt;T&gt;,
+        output_asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceType&gt;, DispatchError&gt; {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>maybe_path = ExchangePath::&lt;T&gt;::new_trivial(<span class="kw-2">&amp;</span>dex_info, input_asset_id, output_asset_id);
@@ -4186,8 +4184,8 @@
 
     <span class="kw">pub fn </span>list_enabled_sources_for_path_with_xyk_forbidden(
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf&lt;T&gt;,
+        output_asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceType&gt;, DispatchError&gt; {
         <span class="kw">let </span>tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
         <span class="kw">let </span><span class="kw-2">mut </span>initial_result =
@@ -4202,10 +4200,10 @@
 
     <span class="comment">// Not full sort, just ensure that if there is base asset then it&#39;s sorted, otherwise order is unchanged.
     </span><span class="kw">fn </span>weak_sort_pair(
-        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;T::AssetId&gt;,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
-    ) -&gt; TradingPair&lt;T::AssetId&gt; {
+        dex_info: <span class="kw-2">&amp;</span>DEXInfo&lt;AssetIdOf&lt;T&gt;&gt;,
+        asset_a: AssetIdOf&lt;T&gt;,
+        asset_b: AssetIdOf&lt;T&gt;,
+    ) -&gt; TradingPair&lt;AssetIdOf&lt;T&gt;&gt; {
         <span class="kw">use </span>AssetType::<span class="kw-2">*</span>;
 
         <span class="kw">let </span>synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
@@ -4239,16 +4237,16 @@
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>new_smart_split(
         sources: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         skip_info: bool,
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
-            Rewards&lt;T::AssetId&gt;,
+            AggregatedSwapOutcome&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            Rewards&lt;AssetIdOf&lt;T&gt;&gt;,
             Weight,
         ),
         DispatchError,
@@ -4322,16 +4320,16 @@
     </span><span class="kw">fn </span>smart_split(
         primary_source_id: <span class="kw-2">&amp;</span>LiquiditySourceIdOf&lt;T&gt;,
         secondary_source_id: <span class="kw-2">&amp;</span>LiquiditySourceIdOf&lt;T&gt;,
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         skip_info: bool,
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (
-            AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
-            Rewards&lt;T::AssetId&gt;,
+            AggregatedSwapOutcome&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;,
+            Rewards&lt;AssetIdOf&lt;T&gt;&gt;,
             Weight,
         ),
         DispatchError,
@@ -4564,8 +4562,8 @@
     ///
     </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>decide_primary_market_amount_buying_base_asset(
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         secondary_market_reserves: (Balance, Balance),
     ) -&gt; <span class="prelude-ty">Result</span>&lt;QuoteAmount&lt;Balance&gt;, DispatchError&gt; {
@@ -4665,8 +4663,8 @@
     ///
     </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>decide_primary_market_amount_selling_base_asset(
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        collateral_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         secondary_market_reserves: (Balance, Balance),
     ) -&gt; <span class="prelude-ty">Result</span>&lt;QuoteAmount&lt;Balance&gt;, DispatchError&gt; {
@@ -4756,8 +4754,8 @@
     </span><span class="kw">fn </span>exchange_batch_tokens(
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         num_of_receivers: u128,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         max_input_amount: Balance,
         selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
         dex_id: T::DEXId,
@@ -4829,14 +4827,14 @@
 
     <span class="kw">fn </span>transfer_batch_tokens_unchecked(
         sender: <span class="kw-2">&amp;</span>T::AccountId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         receivers: Vec&lt;BatchReceiverInfo&lt;T::AccountId&gt;&gt;,
         remainder_per_receiver: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Weight, DispatchError&gt; {
         <span class="kw">let </span>len = receivers.len();
         fallible_iterator::convert(receivers.into_iter().map(|val| <span class="prelude-val">Ok</span>(val))).for_each(
             |receiver| {
-                assets::Pallet::&lt;T&gt;::transfer_from(
+                T::AssetManager::transfer_from(
                     <span class="kw-2">&amp;</span>output_asset_id,
                     <span class="kw-2">&amp;</span>sender,
                     <span class="kw-2">&amp;</span>receiver.account_id,
@@ -4872,7 +4870,7 @@
         );
 
         <span class="kw">if </span>adar_commission &gt; <span class="number">0 </span>{
-            assets::Pallet::&lt;T&gt;::transfer_from(
+            T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>asset_id,
                 <span class="kw-2">&amp;</span>who,
                 <span class="kw-2">&amp;</span>T::GetADARAccountId::get(),
@@ -4889,13 +4887,13 @@
 
     <span class="kw">fn </span>inner_swap_batch_transfer(
         sender: <span class="kw-2">&amp;</span>T::AccountId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        swap_batches: Vec&lt;SwapBatchInfo&lt;T::AssetId, T::DEXId, T::AccountId&gt;&gt;,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        swap_batches: Vec&lt;SwapBatchInfo&lt;AssetIdOf&lt;T&gt;, T::DEXId, T::AccountId&gt;&gt;,
         <span class="kw-2">mut </span>max_input_amount: Balance,
         selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
         filter_mode: <span class="kw-2">&amp;</span>FilterMode,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Balance, Balance, Weight), DispatchError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>unique_asset_ids: BTreeSet&lt;T::AssetId&gt; = BTreeSet::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>unique_asset_ids: BTreeSet&lt;AssetIdOf&lt;T&gt;&gt; = BTreeSet::new();
 
         <span class="kw">let </span><span class="kw-2">mut </span>executed_batch_input_amount = <span class="macro">balance!</span>(<span class="number">0</span>);
 
@@ -5002,12 +5000,12 @@
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;test&quot;</span>)]
     </span><span class="kw">pub fn </span>test_quote(
         dex_id: T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AggregatedSwapOutcome&lt;T::AssetId, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;, DispatchError&gt;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AggregatedSwapOutcome&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;, Balance&gt;, DispatchError&gt;
     {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         Pallet::&lt;T&gt;::quote_single(
@@ -5023,19 +5021,19 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; LiquidityProxyTrait&lt;T::DEXId, T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; LiquidityProxyTrait&lt;T::DEXId, T::AccountId, AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="doccomment">/// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
     /// This is a wrapper for `quote_single`.
     </span><span class="kw">fn </span>quote(
         dex_id: T::DEXId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: QuoteAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         Pallet::&lt;T&gt;::inner_quote(
             dex_id,
             input_asset_id,
@@ -5056,11 +5054,11 @@
         dex_id: T::DEXId,
         sender: <span class="kw-2">&amp;</span>T::AccountId,
         receiver: <span class="kw-2">&amp;</span>T::AccountId,
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: SwapAmount&lt;Balance&gt;,
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, T::AssetId&gt;, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>(outcome, <span class="kw">_</span>, <span class="kw">_</span>) = Pallet::&lt;T&gt;::inner_exchange(
             dex_id,
             sender,
@@ -5111,25 +5109,25 @@
 
 <span class="kw">pub struct </span>LiquidityProxyBuyBackHandler&lt;T, GetDEXId&gt;(PhantomData&lt;(T, GetDEXId)&gt;);
 
-<span class="kw">impl</span>&lt;T: Config, GetDEXId: Get&lt;T::DEXId&gt;&gt; BuyBackHandler&lt;T::AccountId, T::AssetId&gt;
+<span class="kw">impl</span>&lt;T: Config, GetDEXId: Get&lt;T::DEXId&gt;&gt; BuyBackHandler&lt;T::AccountId, AssetIdOf&lt;T&gt;&gt;
     <span class="kw">for </span>LiquidityProxyBuyBackHandler&lt;T, GetDEXId&gt;
 {
     <span class="kw">fn </span>mint_buy_back_and_burn(
-        mint_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        buy_back_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        mint_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        buy_back_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>owner = T::AssetInfoProvider::get_asset_owner(<span class="kw-2">&amp;</span>mint_asset_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>transit = T::GetTechnicalAccountId::get();
-        assets::Pallet::&lt;T&gt;::mint_to(mint_asset_id, <span class="kw-2">&amp;</span>owner, <span class="kw-2">&amp;</span>transit, amount)<span class="question-mark">?</span>;
+        T::AssetManager::mint_to(mint_asset_id, <span class="kw-2">&amp;</span>owner, <span class="kw-2">&amp;</span>transit, amount)<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = <span class="self">Self</span>::buy_back_and_burn(<span class="kw-2">&amp;</span>transit, mint_asset_id, buy_back_asset_id, amount)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount)
     }
 
     <span class="kw">fn </span>buy_back_and_burn(
         account_id: <span class="kw-2">&amp;</span>T::AccountId,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        buy_back_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        buy_back_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>dex_id = GetDEXId::get();
@@ -5145,7 +5143,7 @@
                 <span class="macro">vec!</span>[LiquiditySourceType::MulticollateralBondingCurvePool],
             ),
         )<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)<span class="question-mark">?</span>;
+        T::AssetManager::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(outcome.amount)
     }
 }
@@ -5154,11 +5152,11 @@
     PhantomData&lt;(T, GetDEXId, GetReferenceAssetId)&gt;,
 );
 
-<span class="kw">impl</span>&lt;T: Config, GetDEXId: Get&lt;T::DEXId&gt;, GetReferenceAssetId: Get&lt;T::AssetId&gt;&gt;
-    common::ReferencePriceProvider&lt;T::AssetId, Balance&gt;
+<span class="kw">impl</span>&lt;T: Config, GetDEXId: Get&lt;T::DEXId&gt;, GetReferenceAssetId: Get&lt;AssetIdOf&lt;T&gt;&gt;&gt;
+    common::ReferencePriceProvider&lt;AssetIdOf&lt;T&gt;, Balance&gt;
     <span class="kw">for </span>ReferencePriceProvider&lt;T, GetDEXId, GetReferenceAssetId&gt;
 {
-    <span class="kw">fn </span>get_reference_price(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+    <span class="kw">fn </span>get_reference_price(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>dex_id = GetDEXId::get();
         <span class="kw">let </span>reference_asset_id = GetReferenceAssetId::get();
         <span class="kw">if </span>asset_id == <span class="kw-2">&amp;</span>reference_asset_id {
@@ -5195,29 +5193,29 @@
         <span class="kw">type </span>LiquidityRegistry: LiquidityRegistry&lt;
             <span class="self">Self</span>::DEXId,
             <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             LiquiditySourceType,
             Balance,
             DispatchError,
         &gt;;
         <span class="kw">type </span>GetNumSamples: Get&lt;usize&gt;;
         <span class="kw">type </span>GetTechnicalAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
-        <span class="kw">type </span>PrimaryMarketTBC: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>PrimaryMarketXST: GetMarketInfo&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>SecondaryMarket: GetPoolReserves&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>VestedRewardsPallet: Vesting&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>PrimaryMarketTBC: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>PrimaryMarketXST: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>SecondaryMarket: GetPoolReserves&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>VestedRewardsPallet: Vesting&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>LockedLiquiditySourcesManager: LockedLiquiditySourcesManager&lt;LiquiditySourceType&gt;;
         <span class="kw">type </span>GetADARAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>ADARCommissionRatioUpdateOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin&gt;;
         <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer: Get&lt;u32&gt;;
         <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch: Get&lt;u32&gt;;
-        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;<span class="self">Self</span>::AssetId&gt;&gt;;
+        <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="doccomment">/// Weight information for the extrinsics in this Pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -5255,8 +5253,8 @@
         </span><span class="kw">pub fn </span>swap(
             origin: OriginFor&lt;T&gt;,
             dex_id: T::DEXId,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
+            input_asset_id: AssetIdOf&lt;T&gt;,
+            output_asset_id: AssetIdOf&lt;T&gt;,
             swap_amount: SwapAmount&lt;Balance&gt;,
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
@@ -5294,8 +5292,8 @@
             origin: OriginFor&lt;T&gt;,
             receiver: T::AccountId,
             dex_id: T::DEXId,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
+            input_asset_id: AssetIdOf&lt;T&gt;,
+            output_asset_id: AssetIdOf&lt;T&gt;,
             swap_amount: SwapAmount&lt;Balance&gt;,
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
@@ -5336,8 +5334,8 @@
         #[pallet::weight(Pallet::&lt;T&gt;::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
         </span><span class="kw">pub fn </span>swap_transfer_batch(
             origin: OriginFor&lt;T&gt;,
-            swap_batches: Vec&lt;SwapBatchInfo&lt;T::AssetId, T::DEXId, T::AccountId&gt;&gt;,
-            input_asset_id: T::AssetId,
+            swap_batches: Vec&lt;SwapBatchInfo&lt;AssetIdOf&lt;T&gt;, T::DEXId, T::AccountId&gt;&gt;,
+            input_asset_id: AssetIdOf&lt;T&gt;,
             max_input_amount: Balance,
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
@@ -5459,7 +5457,7 @@
         </span><span class="kw">pub fn </span>xorless_transfer(
             origin: OriginFor&lt;T&gt;,
             dex_id: T::DEXId,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
             receiver: T::AccountId,
             amount: Balance,
             desired_xor_amount: Balance,
@@ -5488,7 +5486,7 @@
                 )<span class="question-mark">?</span>);
             }
 
-            assets::Pallet::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>sender, <span class="kw-2">&amp;</span>receiver, amount)<span class="question-mark">?</span>;
+            T::AssetManager::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>sender, <span class="kw-2">&amp;</span>receiver, amount)<span class="question-mark">?</span>;
             weight = weight.saturating_add(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer());
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::XorlessTransfer(

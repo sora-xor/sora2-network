@@ -774,11 +774,6 @@
 <a href="#759" id="759">759</a>
 <a href="#760" id="760">760</a>
 <a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
-<a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -813,8 +808,8 @@
 
 </span><span class="kw">use </span>common::prelude::SwapAmount;
 <span class="kw">use </span>common::{
-    Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider,
+    AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
 };
 <span class="kw">use </span>frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 <span class="kw">use </span>frame_support::log::error;
@@ -862,7 +857,6 @@
     &lt;&lt;T <span class="kw">as </span>Config&gt;::XorCurrency <span class="kw">as </span>Currency&lt;&lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId&gt;&gt;::Balance;
 
 <span class="kw">type </span>CallOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::RuntimeCall;
-<span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
 
 <span class="comment">// #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub enum </span>LiquidityInfo&lt;T: Config&gt; {
@@ -1370,7 +1364,7 @@
 
         <span class="comment">// Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
-        </span>Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
+        </span>T::AssetManager::mint_to(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
         <span class="comment">// Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         </span><span class="kw">match </span>T::LiquidityProxy::exchange(
@@ -1409,19 +1403,14 @@
                         <span class="macro">error!</span>(<span class="string">&quot;failed to exchange VAL to TBCD, burning VAL instead of buy back: {err:?}&quot;</span>);
                     }
                 }
-                assets::Pallet::&lt;T&gt;::burn_from(
-                    <span class="kw-2">&amp;</span>val,
-                    <span class="kw-2">&amp;</span>tech_account_id,
-                    <span class="kw-2">&amp;</span>tech_account_id,
-                    val_to_burn,
-                )<span class="question-mark">?</span>;
+                T::AssetManager::burn_from(<span class="kw-2">&amp;</span>val, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, val_to_burn)<span class="question-mark">?</span>;
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">error!</span>(
                     <span class="string">&quot;failed to exchange xor to val, burning {} XOR, e: {:?}&quot;</span>,
                     xor_to_val, e
                 );
-                Assets::&lt;T&gt;::burn_from(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
+                T::AssetManager::burn_from(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
             }
         }
 
@@ -1436,26 +1425,27 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::AssetIdOf;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + pallet_transaction_payment::Config + assets::Config
+        frame_system::Config + pallet_transaction_payment::Config + common::Config
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="doccomment">/// XOR - The native currency of this blockchain.
         </span><span class="kw">type </span>XorCurrency: Currency&lt;<span class="self">Self</span>::AccountId&gt; + Send + Sync;
-        <span class="kw">type </span>XorId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>ValId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>TbcdId: Get&lt;<span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>XorId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>ValId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>TbcdId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>ReferrerWeight: Get&lt;u32&gt;;
         <span class="kw">type </span>XorBurnedWeight: Get&lt;u32&gt;;
         <span class="kw">type </span>XorIntoValBurnedWeight: Get&lt;u32&gt;;
         <span class="kw">type </span>BuyBackTBCDPercent: Get&lt;Percent&gt;;
         <span class="kw">type </span>DEXIdValue: Get&lt;<span class="self">Self</span>::DEXId&gt;;
-        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>OnValBurned: OnValBurned;
         <span class="kw">type </span>CustomFees: ApplyCustomFees&lt;CallOf&lt;<span class="self">Self</span>&gt;, <span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>GetTechnicalAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
@@ -1465,7 +1455,7 @@
             <span class="self">Self</span>::FullIdentification,
         &gt;;
         <span class="kw">type </span>ReferrerAccountProvider: ReferrerAccountProvider&lt;<span class="self">Self</span>::AccountId&gt;;
-        <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="kw">type </span>WithdrawFee: WithdrawFee&lt;<span class="self">Self</span>&gt;;

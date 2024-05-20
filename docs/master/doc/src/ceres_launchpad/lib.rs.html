@@ -1442,6 +1442,9 @@
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::type_complexity)]
@@ -1525,7 +1528,9 @@
     <span class="kw">use crate</span>::{ContributionInfo, ContributorsVesting, ILOInfo};
     <span class="kw">use </span>common::fixnum::ops::RoundMode;
     <span class="kw">use </span>common::prelude::{Balance, FixedWrapper, XOR};
-    <span class="kw">use </span>common::{balance, AssetInfoProvider, DEXId, XykPool, PSWAP, XSTUSD};
+    <span class="kw">use </span>common::{
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, DEXId, XykPool, PSWAP, XSTUSD,
+    };
     <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::transactional;
@@ -1538,13 +1543,11 @@
         AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto, Zero,
     };
     <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
-
     <span class="kw">const </span>PALLET_ID: PalletId = PalletId(<span class="kw-2">*</span><span class="string">b&quot;crslaunc&quot;</span>);
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
-        + assets::Config
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
@@ -1558,14 +1561,14 @@
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
 
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,
@@ -1575,7 +1578,6 @@
         &gt;;
     }
 
-    <span class="kw">type </span>Assets&lt;T&gt; = assets::Pallet&lt;T&gt;;
     <span class="kw">pub type </span>Timestamp&lt;T&gt; = timestamp::Pallet&lt;T&gt;;
     <span class="kw">type </span>PoolXYK&lt;T&gt; = pool_xyk::Pallet&lt;T&gt;;
     <span class="kw">type </span>CeresLiquidityLocker&lt;T&gt; = ceres_liquidity_locker::Pallet&lt;T&gt;;
@@ -1584,7 +1586,6 @@
     <span class="kw">type </span>VestedRewards&lt;T&gt; = vested_rewards::Pallet&lt;T&gt;;
 
     <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-    <span class="kw">type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
     <span class="kw">type </span>CeresAssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>ceres_token_locker::Config&gt;::CeresAssetId;
 
     <span class="attr">#[pallet::pallet]
@@ -1909,14 +1910,14 @@
             );
 
             <span class="comment">// Burn CERES as fee
-            </span>Assets::&lt;T&gt;::burn(
+            </span>T::AssetManager::burn(
                 origin,
                 CeresAssetIdOf::&lt;T&gt;::get(),
                 CeresBurnFeeAmount::&lt;T&gt;::get(),
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Transfer tokens to pallet
-            </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(), total_tokens)<span class="question-mark">?</span>;
+            </span>T::AssetManager::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>user, <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(), total_tokens)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>ilo_info = ILOInfo {
                 ilo_organizer: user.clone(),
@@ -2029,7 +2030,7 @@
             contribution_info.tokens_bought += tokens_bought;
 
             <span class="comment">// Transfer base_asset to pallet
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>user,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::account_id(),
@@ -2085,7 +2086,7 @@
 
             <span class="kw">let </span>pallet_account = <span class="self">Self</span>::account_id();
             <span class="comment">// Emergency withdraw funds
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>user,
@@ -2094,7 +2095,7 @@
 
             <span class="kw">let </span>penalty = contribution_info.funds_contributed - funds_to_claim;
 
-            Assets::&lt;T&gt;::transfer_from(
+            T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>PenaltiesAccount::&lt;T&gt;::get(),
@@ -2151,13 +2152,13 @@
                 </span>ilo_info.failed = <span class="bool-val">true</span>;
                 <span class="kw">let </span>total_tokens = ilo_info.tokens_for_liquidity + ilo_info.tokens_for_ilo;
                 <span class="kw">if </span>!ilo_info.refund_type {
-                    Assets::&lt;T&gt;::burn(
+                    T::AssetManager::burn(
                         RawOrigin::Signed(pallet_account).into(),
                         asset_id,
                         total_tokens,
                     )<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
-                    Assets::&lt;T&gt;::transfer_from(
+                    T::AssetManager::transfer_from(
                         <span class="kw-2">&amp;</span>asset_id,
                         <span class="kw-2">&amp;</span>pallet_account,
                         <span class="kw-2">&amp;</span>ilo_info.ilo_organizer,
@@ -2175,7 +2176,7 @@
                 * FixedWrapper::from(FeePercentOnRaisedFunds::&lt;T&gt;::get()))
             .try_into_balance()
             .unwrap_or(<span class="number">0</span>);
-            Assets::&lt;T&gt;::transfer_from(
+            T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>AuthorityAccount::&lt;T&gt;::get(),
@@ -2189,7 +2190,7 @@
             .try_into_balance()
             .unwrap_or(<span class="number">0</span>);
             <span class="kw">let </span>funds_for_team = raised_funds_without_fee - funds_for_liquidity;
-            Assets::&lt;T&gt;::transfer_from(
+            T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>ilo_info.base_asset,
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>ilo_info.ilo_organizer,
@@ -2237,14 +2238,14 @@
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Burn unused tokens for liquidity
-            </span>Assets::&lt;T&gt;::burn(
+            </span>T::AssetManager::burn(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 asset_id,
                 ilo_info.tokens_for_liquidity - tokens_for_liquidity,
             )<span class="question-mark">?</span>;
 
             <span class="comment">// Burn unused tokens for ilo
-            </span>Assets::&lt;T&gt;::burn(
+            </span>T::AssetManager::burn(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 asset_id,
                 ilo_info.tokens_for_ilo - ilo_info.sold_tokens,
@@ -2401,7 +2402,7 @@
             <span class="comment">// ILO failed
             </span><span class="kw">if </span>ilo_info.failed {
                 <span class="comment">// Claim unused funds
-                </span>Assets::&lt;T&gt;::transfer_from(
+                </span>T::AssetManager::transfer_from(
                     <span class="kw-2">&amp;</span>ilo_info.base_asset,
                     <span class="kw-2">&amp;</span>pallet_account,
                     <span class="kw-2">&amp;</span>user,
@@ -2416,7 +2417,12 @@
                     .try_into_balance()
                     .unwrap_or(<span class="number">0</span>);
                     <span class="comment">// Claim first time
-                    </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>pallet_account, <span class="kw-2">&amp;</span>user, tokens_to_claim)<span class="question-mark">?</span>;
+                    </span>T::AssetManager::transfer_from(
+                        <span class="kw-2">&amp;</span>asset_id,
+                        <span class="kw-2">&amp;</span>pallet_account,
+                        <span class="kw-2">&amp;</span>user,
+                        tokens_to_claim,
+                    )<span class="question-mark">?</span>;
                     contribution_info.tokens_claimed += tokens_to_claim;
                     <span class="kw">if </span>ilo_info.contributors_vesting.first_release_percent == <span class="macro">balance!</span>(<span class="number">1</span>) {
                         contribution_info.claiming_finished = <span class="bool-val">true</span>;
@@ -2454,7 +2460,7 @@
                     }
 
                     <span class="comment">// Claim tokens
-                    </span>Assets::&lt;T&gt;::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>pallet_account, <span class="kw-2">&amp;</span>user, claimable)<span class="question-mark">?</span>;
+                    </span>T::AssetManager::transfer_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>pallet_account, <span class="kw-2">&amp;</span>user, claimable)<span class="question-mark">?</span>;
                     contribution_info.tokens_claimed += claimable;
                     contribution_info.number_of_claims += (claimable / tokens_per_claim) <span class="kw">as </span>u32;
 
@@ -2570,7 +2576,7 @@
                     .unwrap_or(<span class="number">0</span>);
 
             <span class="comment">// Claim PSWAP rewards
-            </span>Assets::&lt;T&gt;::transfer_from(
+            </span>T::AssetManager::transfer_from(
                 <span class="kw-2">&amp;</span>PSWAP.into(),
                 <span class="kw-2">&amp;</span>pallet_account,
                 <span class="kw-2">&amp;</span>AuthorityAccount::&lt;T&gt;::get(),
@@ -2696,13 +2702,13 @@
                             <span class="kw">let </span>total_tokens =
                                 ilo_info.tokens_for_liquidity + ilo_info.tokens_for_ilo;
                             <span class="kw">if </span>!ilo_info.refund_type {
-                                <span class="kw">let _ </span>= Assets::&lt;T&gt;::burn(
+                                <span class="kw">let _ </span>= T::AssetManager::burn(
                                     RawOrigin::Signed(pallet_account.clone()).into(),
                                     ilo_asset,
                                     total_tokens,
                                 );
                             } <span class="kw">else </span>{
-                                <span class="kw">let _ </span>= Assets::&lt;T&gt;::transfer_from(
+                                <span class="kw">let _ </span>= T::AssetManager::transfer_from(
                                     <span class="kw-2">&amp;</span>ilo_asset,
                                     <span class="kw-2">&amp;</span>pallet_account,
                                     <span class="kw-2">&amp;</span>ilo_info.ilo_organizer,

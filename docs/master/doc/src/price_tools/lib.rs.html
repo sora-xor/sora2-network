@@ -491,10 +491,6 @@
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -548,7 +544,7 @@
 
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::{
-    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
+    AssetIdOf, Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
     TradingPairSourceManager,
 };
 <span class="kw">use </span>common::{
@@ -633,15 +629,11 @@
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config
-        + assets::Config
-        + common::Config
-        + technical::Config
-        + pool_xyk::Config
+        frame_system::Config + common::Config + technical::Config + pool_xyk::Config
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
-        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
-        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
@@ -695,14 +687,14 @@
 
     <span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>price_infos)]
-    </span><span class="kw">pub type </span>PriceInfos&lt;T: Config&gt; = StorageMap&lt;<span class="kw">_</span>, Identity, T::AssetId, AggregatedPriceInfo&gt;;
+    </span><span class="kw">pub type </span>PriceInfos&lt;T: Config&gt; = StorageMap&lt;<span class="kw">_</span>, Identity, AssetIdOf&lt;T&gt;, AggregatedPriceInfo&gt;;
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="doccomment">/// Query averaged price from past data for supported paths, i.e. paths with enabled targets or XOR.
     </span><span class="kw">pub fn </span>get_average_price(
-        input_asset: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">if </span>input_asset == output_asset {
@@ -738,7 +730,7 @@
     }
 
     <span class="kw">fn </span>get_asset_average_price(
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>avg_count: usize = AVG_BLOCK_SPAN
@@ -761,7 +753,7 @@
 
     <span class="doccomment">/// Add new price to queue and recalculate average.
     </span><span class="kw">pub fn </span>incoming_spot_price(
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price: Balance,
         price_variant: PriceVariant,
     ) -&gt; DispatchResult {
@@ -819,7 +811,7 @@
     }
 
     <span class="doccomment">/// Register spot price quote failure, continuous failure has to block average price quotation.
-    </span><span class="kw">pub fn </span>incoming_spot_price_failure(asset_id: <span class="kw-2">&amp;</span>T::AssetId, price_variant: PriceVariant) {
+    </span><span class="kw">pub fn </span>incoming_spot_price_failure(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;, price_variant: PriceVariant) {
         PriceInfos::&lt;T&gt;::mutate(asset_id, |opt| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(agg_price_info) = opt.as_mut() {
                 <span class="kw">let </span>val = agg_price_info.price_mut_of(price_variant);
@@ -875,7 +867,7 @@
     }
 
     <span class="doccomment">/// Get current spot price for
-    </span><span class="kw">pub fn </span>spot_price(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+    </span><span class="kw">pub fn </span>spot_price(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         T::LiquidityProxy::quote(
             DEXId::Polkaswap.into(),
             <span class="kw-2">&amp;</span>XOR.into(),
@@ -945,16 +937,16 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; PriceToolsProvider&lt;T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; PriceToolsProvider&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>get_average_price(
-        input_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-        output_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         Pallet::&lt;T&gt;::get_average_price(input_asset_id, output_asset_id, price_variant)
     }
 
-    <span class="kw">fn </span>register_asset(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; DispatchResult {
+    <span class="kw">fn </span>register_asset(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; DispatchResult {
         <span class="kw">if </span>PriceInfos::&lt;T&gt;::get(asset_id).is_none() {
             PriceInfos::&lt;T&gt;::insert(asset_id.clone(), AggregatedPriceInfo::default());
             <span class="prelude-val">Ok</span>(())
@@ -964,8 +956,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; OnPoolReservesChanged&lt;T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
-    <span class="kw">fn </span>reserves_changed(target_asset_id: <span class="kw-2">&amp;</span>T::AssetId) {
+<span class="kw">impl</span>&lt;T: Config&gt; OnPoolReservesChanged&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>reserves_changed(target_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(agg_price_info) = PriceInfos::&lt;T&gt;::get(target_asset_id) {
             <span class="kw">if </span>!agg_price_info.buy.needs_update || !agg_price_info.sell.needs_update {
                 PriceInfos::&lt;T&gt;::mutate(target_asset_id, |opt| {

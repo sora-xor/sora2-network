@@ -746,7 +746,6 @@
 <a href="#731" id="731">731</a>
 <a href="#732" id="732">732</a>
 <a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -771,8 +770,8 @@
     GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::{prelude::FixedWrapper, Balance};
-<span class="kw">use </span>common::{AssetInfoProvider, ReferencePriceProvider};
+<span class="kw">use </span>common::{prelude::FixedWrapper, AssetIdOf, Balance, BalanceOf};
+<span class="kw">use </span>common::{AssetInfoProvider, AssetManager, ReferencePriceProvider};
 <span class="kw">use </span>frame_support::dispatch::{DispatchResult, RuntimeDebug};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::log;
@@ -823,27 +822,23 @@
         weights::Weight,
     };
     <span class="kw">use </span>frame_system::pallet_prelude::{BlockNumberFor, <span class="kw-2">*</span>};
-    <span class="kw">use </span>traits::MultiCurrency;
-
-    <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-    <span class="kw">type </span>BalanceOf&lt;T&gt; = &lt;&lt;T <span class="kw">as </span>assets::Config&gt;::Currency <span class="kw">as </span>MultiCurrency&lt;AccountIdOf&lt;T&gt;&gt;&gt;::Balance;
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
+        frame_system::Config + pallet_timestamp::Config + technical::Config + permissions::Config
     {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
-        <span class="kw">type </span>FAApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;
-            + EVMBridgeWithdrawFee&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
+        <span class="kw">type </span>FAApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, AssetIdOf&lt;<span class="self">Self</span>&gt;, Balance&gt;
+            + EVMBridgeWithdrawFee&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
 
-        <span class="kw">type </span>ParachainApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, ParachainAccountId, <span class="self">Self</span>::AssetId, Balance&gt;;
+        <span class="kw">type </span>ParachainApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, ParachainAccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;, Balance&gt;;
 
-        <span class="kw">type </span>LiberlandApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, GenericAccount, <span class="self">Self</span>::AssetId, Balance&gt;;
+        <span class="kw">type </span>LiberlandApp: BridgeApp&lt;<span class="self">Self</span>::AccountId, GenericAccount, AssetIdOf&lt;<span class="self">Self</span>&gt;, Balance&gt;;
 
-        <span class="kw">type </span>HashiBridge: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, <span class="self">Self</span>::AssetId, Balance&gt;;
+        <span class="kw">type </span>HashiBridge: BridgeApp&lt;<span class="self">Self</span>::AccountId, H160, AssetIdOf&lt;<span class="self">Self</span>&gt;, Balance&gt;;
 
-        <span class="kw">type </span>ReferencePriceProvider: ReferencePriceProvider&lt;<span class="self">Self</span>::AssetId, Balance&gt;;
+        <span class="kw">type </span>ReferencePriceProvider: ReferencePriceProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, Balance&gt;;
 
         <span class="kw">type </span>ManagerOrigin: EnsureOrigin&lt;<span class="self">Self</span>::RuntimeOrigin&gt;;
 
@@ -862,7 +857,7 @@
         (GenericNetworkId, T::AccountId),
         Blake2_128Concat,
         H256,
-        BridgeRequest&lt;T::AssetId&gt;,
+        BridgeRequest&lt;AssetIdOf&lt;T&gt;&gt;,
         OptionQuery,
     &gt;;
 
@@ -886,7 +881,7 @@
         Blake2_128Concat,
         GenericNetworkId,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf&lt;T&gt;,
         Balance,
         ValueQuery,
     &gt;;
@@ -926,7 +921,7 @@
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>is_asset_limited)]
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>LimitedAssets&lt;T: Config&gt; =
-        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, T::AssetId, bool, ValueQuery&gt;;
+        StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, AssetIdOf&lt;T&gt;, bool, ValueQuery&gt;;
 
     <span class="doccomment">/// The current storage version.
     </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">2</span>);
@@ -977,7 +972,7 @@
         </span><span class="kw">pub fn </span>burn(
             origin: OriginFor&lt;T&gt;,
             network_id: GenericNetworkId,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
             recipient: GenericAccount,
             amount: BalanceOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
@@ -1015,7 +1010,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::add_limited_asset())]
         </span><span class="kw">pub fn </span>add_limited_asset(
             origin: OriginFor&lt;T&gt;,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             T::ManagerOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
@@ -1030,7 +1025,7 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::remove_limited_asset())]
         </span><span class="kw">pub fn </span>remove_limited_asset(
             origin: OriginFor&lt;T&gt;,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             T::ManagerOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
@@ -1080,7 +1075,7 @@
             network_id: GenericNetworkId,
             message_id: H256,
             beneficiary: GenericAccount,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf&lt;T&gt;,
             amount: Balance,
         ) -&gt; DispatchResult {
             <span class="kw">let </span>GenericAccount::Sora(beneficiary) = beneficiary <span class="kw">else </span>{
@@ -1111,7 +1106,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; MessageStatusNotifier&lt;T::AssetId, T::AccountId, Balance&gt; <span class="kw">for </span>Pallet&lt;T&gt;
+<span class="kw">impl</span>&lt;T: Config&gt; MessageStatusNotifier&lt;AssetIdOf&lt;T&gt;, T::AccountId, Balance&gt; <span class="kw">for </span>Pallet&lt;T&gt;
 <span class="kw">where
     </span>MainnetAccountId: From&lt;T::AccountId&gt;,
 {
@@ -1165,7 +1160,7 @@
         message_id: H256,
         source: GenericAccount,
         dest: T::AccountId,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf&lt;T&gt;,
         amount: Balance,
         start_timepoint: GenericTimepoint,
         status: MessageStatus,
@@ -1193,7 +1188,7 @@
         message_id: H256,
         source: T::AccountId,
         dest: GenericAccount,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf&lt;T&gt;,
         amount: Balance,
         status: MessageStatus,
     ) {
@@ -1249,7 +1244,7 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; BridgeAssetLocker&lt;T::AccountId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
-    <span class="kw">type </span>AssetId = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
+    <span class="kw">type </span>AssetId = AssetIdOf&lt;T&gt;;
     <span class="kw">type </span>Balance = Balance;
 
     <span class="kw">fn </span>lock_asset(
@@ -1263,12 +1258,12 @@
         <span class="kw">match </span>asset_kind {
             bridge_types::types::AssetKind::Thischain =&gt; {
                 <span class="kw">let </span>bridge_account = <span class="self">Self</span>::bridge_tech_account(network_id);
-                technical::Pallet::&lt;T&gt;::transfer_in(<span class="kw-2">&amp;</span>asset_id, who, <span class="kw-2">&amp;</span>bridge_account, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
+                technical::Pallet::&lt;T&gt;::transfer_in(asset_id, who, <span class="kw-2">&amp;</span>bridge_account, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
             }
             bridge_types::types::AssetKind::Sidechain =&gt; {
                 <span class="kw">let </span>bridge_account = <span class="self">Self</span>::bridge_account(network_id)<span class="question-mark">?</span>;
                 technical::Pallet::&lt;T&gt;::ensure_account_registered(<span class="kw-2">&amp;</span>bridge_account)<span class="question-mark">?</span>;
-                assets::Pallet::&lt;T&gt;::burn_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
+                T::AssetManager::burn_from(asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -1285,12 +1280,12 @@
         <span class="kw">match </span>asset_kind {
             bridge_types::types::AssetKind::Thischain =&gt; {
                 <span class="kw">let </span>bridge_account = <span class="self">Self</span>::bridge_tech_account(network_id);
-                technical::Pallet::&lt;T&gt;::transfer_out(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
+                technical::Pallet::&lt;T&gt;::transfer_out(asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
             }
             bridge_types::types::AssetKind::Sidechain =&gt; {
                 <span class="kw">let </span>bridge_account = <span class="self">Self</span>::bridge_account(network_id)<span class="question-mark">?</span>;
                 technical::Pallet::&lt;T&gt;::ensure_account_registered(<span class="kw-2">&amp;</span>bridge_account)<span class="question-mark">?</span>;
-                assets::Pallet::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
+                T::AssetManager::mint_to(asset_id, <span class="kw-2">&amp;</span>bridge_account, who, <span class="kw-2">*</span>amount)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -1319,11 +1314,11 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; BridgeAssetLockChecker&lt;T::AssetId, Balance&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; BridgeAssetLockChecker&lt;AssetIdOf&lt;T&gt;, Balance&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>before_asset_lock(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: <span class="kw-2">&amp;</span>Balance,
     ) -&gt; DispatchResult {
         LockedAssets::&lt;T&gt;::try_mutate::&lt;<span class="kw">_</span>, <span class="kw">_</span>, (), DispatchError, <span class="kw">_</span>&gt;(
@@ -1380,7 +1375,7 @@
     <span class="kw">fn </span>before_asset_unlock(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: <span class="kw-2">&amp;</span>Balance,
     ) -&gt; DispatchResult {
         LockedAssets::&lt;T&gt;::try_mutate::&lt;<span class="kw">_</span>, <span class="kw">_</span>, (), DispatchError, <span class="kw">_</span>&gt;(
@@ -1405,7 +1400,9 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; bridge_types::traits::BridgeAssetRegistry&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; bridge_types::traits::BridgeAssetRegistry&lt;T::AccountId, AssetIdOf&lt;T&gt;&gt;
+    <span class="kw">for </span>Pallet&lt;T&gt;
+{
     <span class="kw">type </span>AssetName = common::AssetName;
     <span class="kw">type </span>AssetSymbol = common::AssetSymbol;
 
@@ -1413,7 +1410,7 @@
         network_id: GenericNetworkId,
         name: <span class="self">Self</span>::AssetName,
         symbol: <span class="self">Self</span>::AssetSymbol,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;T::AssetId, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AssetIdOf&lt;T&gt;, DispatchError&gt; {
         technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(<span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_tech_account(
             network_id,
         ))<span class="question-mark">?</span>;
@@ -1422,11 +1419,11 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>owner = <span class="self">Self</span>::bridge_account(network_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>asset_id =
-            assets::Pallet::&lt;T&gt;::register_from(<span class="kw-2">&amp;</span>owner, symbol, name, <span class="number">18</span>, <span class="number">0</span>, <span class="bool-val">true</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+            T::AssetManager::register_from(<span class="kw-2">&amp;</span>owner, symbol, name, <span class="number">18</span>, <span class="number">0</span>, <span class="bool-val">true</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(asset_id)
     }
 
-    <span class="kw">fn </span>manage_asset(network_id: GenericNetworkId, asset_id: T::AssetId) -&gt; DispatchResult {
+    <span class="kw">fn </span>manage_asset(network_id: GenericNetworkId, asset_id: AssetIdOf&lt;T&gt;) -&gt; DispatchResult {
         technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(<span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_tech_account(
             network_id,
         ))<span class="question-mark">?</span>;
@@ -1454,8 +1451,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>get_raw_info(asset_id: T::AssetId) -&gt; bridge_types::types::RawAssetInfo {
-        <span class="kw">let </span>(asset_symbol, asset_name, precision, ..) = assets::Pallet::&lt;T&gt;::asset_infos(asset_id);
+    <span class="kw">fn </span>get_raw_info(asset_id: AssetIdOf&lt;T&gt;) -&gt; bridge_types::types::RawAssetInfo {
+        <span class="kw">let </span>(asset_symbol, asset_name, precision, ..) =
+            &lt;T <span class="kw">as </span>technical::Config&gt;::AssetInfoProvider::get_asset_info(<span class="kw-2">&amp;</span>asset_id);
         bridge_types::types::RawAssetInfo {
             name: asset_name.<span class="number">0</span>,
             symbol: asset_symbol.<span class="number">0</span>,
@@ -1463,16 +1461,16 @@
         }
     }
 
-    <span class="kw">fn </span>ensure_asset_exists(asset_id: T::AssetId) -&gt; bool {
-        assets::Pallet::&lt;T&gt;::asset_exists(<span class="kw-2">&amp;</span>asset_id)
+    <span class="kw">fn </span>ensure_asset_exists(asset_id: AssetIdOf&lt;T&gt;) -&gt; bool {
+        &lt;T <span class="kw">as </span>technical::Config&gt;::AssetInfoProvider::asset_exists(<span class="kw-2">&amp;</span>asset_id)
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; EVMBridgeWithdrawFee&lt;T::AccountId, T::AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Config&gt; EVMBridgeWithdrawFee&lt;T::AccountId, AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>withdraw_transfer_fee(
         who: <span class="kw-2">&amp;</span>T::AccountId,
         chain_id: bridge_types::EVMChainId,
-        asset_id: T::AssetId,
+        asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; DispatchResult {
         <span class="kw">if </span>T::FAApp::is_asset_supported(chain_id.into(), asset_id) {
             T::FAApp::withdraw_transfer_fee(who, chain_id.into(), asset_id)

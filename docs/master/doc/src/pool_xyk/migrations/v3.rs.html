@@ -292,7 +292,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::pallet::{Config, Pallet};
-<span class="kw">use </span>common::{Balance, EnabledSourcesManager, ToFeeAccount};
+<span class="kw">use </span>common::{AssetIdOf, Balance, EnabledSourcesManager, ToFeeAccount};
 <span class="kw">use </span>frame_support::pallet_prelude::{Get, StorageVersion};
 <span class="kw">use </span>frame_support::traits::OnRuntimeUpgrade;
 <span class="kw">use </span>frame_support::weights::WeightMeter;
@@ -312,7 +312,7 @@
 <span class="kw">impl</span>&lt;T, L&gt; XYKPoolUpgrade&lt;T, L&gt;
 <span class="kw">where
     </span>T: <span class="kw">crate</span>::Config,
-    L: Get&lt;Vec&lt;(T::AssetId, T::AssetId, T::DEXId)&gt;&gt;,
+    L: Get&lt;Vec&lt;(AssetIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T::DEXId)&gt;&gt;,
 {
     <span class="doccomment">/// Unlocks and withdraws a liquidity portion provided by `user_account`
     /// Returns resulting weight and error flag, indicating that there was some problem
@@ -320,8 +320,8 @@
     </span><span class="kw">fn </span>pull_out_user_from_pool(
         weight_meter: <span class="kw-2">&amp;mut </span>WeightMeter,
         user_account: T::AccountId,
-        base_asset: T::AssetId,
-        target_asset: T::AssetId,
+        base_asset: AssetIdOf&lt;T&gt;,
+        target_asset: AssetIdOf&lt;T&gt;,
         dex_id: T::DEXId,
         lp_tokens: u128,
     ) -&gt; DispatchResult {
@@ -371,8 +371,8 @@
     </span><span class="kw">fn </span>remove_pool(
         weight_meter: <span class="kw-2">&amp;mut </span>WeightMeter,
         dex_id: T::DEXId,
-        base_asset: T::AssetId,
-        target_asset: T::AssetId,
+        base_asset: AssetIdOf&lt;T&gt;,
+        target_asset: AssetIdOf&lt;T&gt;,
         pool_account: T::AccountId,
     ) -&gt; DispatchResult {
         weight_meter.check_accrue(T::DbWeight::get().reads_writes(<span class="number">4</span>, <span class="number">8</span>));
@@ -410,7 +410,7 @@
 
         <span class="macro">info!</span>(<span class="string">&quot;Migrating PoolXYK to v3&quot;</span>);
 
-        <span class="kw">let </span>swap_pairs_to_be_deleted: Vec&lt;(T::AssetId, T::AssetId, T::DEXId)&gt; = L::get();
+        <span class="kw">let </span>swap_pairs_to_be_deleted: Vec&lt;(AssetIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T::DEXId)&gt; = L::get();
 
         <span class="kw">for </span>(base_asset, target_asset, dex_id) <span class="kw">in </span>swap_pairs_to_be_deleted {
             weight_meter.check_accrue(T::DbWeight::get().reads(<span class="number">1</span>));
@@ -476,7 +476,7 @@
 </span><span class="kw">impl</span>&lt;T, L&gt; OnRuntimeUpgrade <span class="kw">for </span>XYKPoolUpgrade&lt;T, L&gt;
 <span class="kw">where
     </span>T: <span class="kw">crate</span>::Config,
-    L: Get&lt;Vec&lt;(T::AssetId, T::AssetId, T::DEXId)&gt;&gt;,
+    L: Get&lt;Vec&lt;(AssetIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T::DEXId)&gt;&gt;,
 {
     <span class="kw">fn </span>on_runtime_upgrade() -&gt; Weight {
         <span class="kw">let </span><span class="kw-2">mut </span>weight_meter = WeightMeter::max_limit();

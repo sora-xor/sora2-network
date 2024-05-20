@@ -261,6 +261,11 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -310,17 +315,18 @@
 <span class="kw">use </span>pswap_distribution::DistributionWeightParams;
 <span class="kw">use </span>pswap_distribution::{Call, ClaimableShares, ShareholderAccounts};
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>traits::MultiCurrencyExtended;
 
 <span class="kw">use </span>common::fixnum::ops::One;
-<span class="kw">use </span>common::{balance, fixed, AssetInfoProvider, Fixed, FromGenericPair, PSWAP};
+<span class="kw">use </span>common::{
+    balance, fixed, AmountOf, AssetIdOf, AssetInfoProvider, AssetManager, CurrencyIdOf, Fixed,
+    FromGenericPair, PSWAP,
+};
+<span class="kw">use </span>traits::currency::MultiCurrencyExtended;
 
-<span class="kw">use </span>assets::Pallet <span class="kw">as </span>Assets;
 <span class="kw">use </span>permissions::Pallet <span class="kw">as </span>Permissions;
 <span class="kw">use </span>pswap_distribution::Pallet <span class="kw">as </span>PSwap;
 <span class="kw">use </span>sp_std::convert::TryFrom;
 <span class="kw">use </span>technical::Pallet <span class="kw">as </span>Technical;
-<span class="kw">use </span>tokens::Pallet <span class="kw">as </span>Tokens;
 
 <span class="kw">pub struct </span>Pallet&lt;T: Config&gt;(pswap_distribution::Pallet&lt;T&gt;);
 
@@ -357,9 +363,9 @@
             XST.into(),
         )
         .unwrap();
-        Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>authority, <span class="macro">balance!</span>(<span class="number">20000</span>)).unwrap();
-        Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>XST.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>authority, <span class="macro">balance!</span>(<span class="number">100000</span>)).unwrap();
-        Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>PSWAP.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>authority, <span class="macro">balance!</span>(<span class="number">1000000</span>)).unwrap();
+        T::AssetManager::mint_to(<span class="kw-2">&amp;</span>XOR.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>authority, <span class="macro">balance!</span>(<span class="number">20000</span>)).unwrap();
+        T::AssetManager::mint_to(<span class="kw-2">&amp;</span>XST.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>authority, <span class="macro">balance!</span>(<span class="number">100000</span>)).unwrap();
+        T::AssetManager::mint_to(<span class="kw-2">&amp;</span>PSWAP.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>authority, <span class="macro">balance!</span>(<span class="number">1000000</span>)).unwrap();
         pool_xyk::Pallet::&lt;T&gt;::deposit_liquidity_unchecked(
             authority.clone(),
             common::DEXId::Polkaswap.into(),
@@ -391,7 +397,7 @@
     frame_system::Pallet::&lt;T&gt;::inc_providers(<span class="kw-2">&amp;</span>pool_fee_account);
     <span class="kw">let </span>pool_account = create_account::&lt;T&gt;(<span class="string">b&quot;pool&quot;</span>.to_vec(), pool_index);
     frame_system::Pallet::&lt;T&gt;::inc_providers(<span class="kw-2">&amp;</span>pool_account);
-    Assets::&lt;T&gt;::mint_to(<span class="kw-2">&amp;</span>PSWAP.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>pool_fee_account, <span class="macro">balance!</span>(<span class="number">1000</span>)).unwrap();
+    T::AssetManager::mint_to(<span class="kw-2">&amp;</span>PSWAP.into(), <span class="kw-2">&amp;</span>authority, <span class="kw-2">&amp;</span>pool_fee_account, <span class="macro">balance!</span>(<span class="number">1000</span>)).unwrap();
     PSwap::&lt;T&gt;::subscribe(
         pool_fee_account,
         common::DEXId::Polkaswap.into(),
@@ -460,7 +466,11 @@
                 <span class="macro">balance!</span>(<span class="number">100</span>)
             );
             <span class="macro">assert!</span>(
-                Assets::&lt;T&gt;::free_balance(<span class="kw-2">&amp;</span>PSWAP.into(), <span class="kw-2">&amp;</span>liquidity_provider).unwrap()
+                &lt;T <span class="kw">as </span>technical::Config&gt;::AssetInfoProvider::free_balance(
+                    <span class="kw-2">&amp;</span>PSWAP.into(),
+                    <span class="kw-2">&amp;</span>liquidity_provider
+                )
+                .unwrap()
                     &gt; <span class="macro">balance!</span>(<span class="number">0</span>)
             );
         }
@@ -474,10 +484,10 @@
         ShareholderAccounts::&lt;T&gt;::insert(caller.clone(), Fixed::ONE);
         ClaimableShares::&lt;T&gt;::put(Fixed::ONE);
         <span class="kw">let </span>pswap_rewards_account = T::GetTechnicalAccountId::get();
-        <span class="kw">let </span>pswap_asset_id: T::AssetId = PSWAP.into();
-        <span class="kw">let </span>pswap_currency = &lt;T::AssetId <span class="kw">as </span>Into&lt;&lt;T <span class="kw">as </span>tokens::Config&gt;::CurrencyId&gt;&gt;::into(pswap_asset_id);
-        <span class="kw">let </span>pswap_amount = &lt;T <span class="kw">as </span>tokens::Config&gt;::Amount::try_from(<span class="macro">balance!</span>(<span class="number">500</span>)).map_err(|<span class="kw">_</span>|()).unwrap();
-        Tokens::&lt;T&gt;::update_balance(pswap_currency, <span class="kw-2">&amp;</span>pswap_rewards_account, pswap_amount).unwrap();
+        <span class="kw">let </span>pswap_asset_id: AssetIdOf&lt;T&gt; = PSWAP.into();
+        <span class="kw">let </span>pswap_currency: CurrencyIdOf&lt;T&gt; = pswap_asset_id.into();
+        <span class="kw">let </span>pswap_amount = AmountOf::&lt;T&gt;::try_from(<span class="macro">balance!</span>(<span class="number">500</span>)).map_err(|<span class="kw">_</span>|()).unwrap();
+        T::MultiCurrency::update_balance(pswap_currency.into(), <span class="kw-2">&amp;</span>pswap_rewards_account, pswap_amount).unwrap();
     }: <span class="kw">_</span>(
         RawOrigin::Signed(caller.clone())
     )

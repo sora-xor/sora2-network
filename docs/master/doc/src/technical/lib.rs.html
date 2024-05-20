@@ -458,7 +458,6 @@
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
 <a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -495,13 +494,13 @@
 
 </span><span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::Balance;
-<span class="kw">use </span>common::{AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
+<span class="kw">use </span>common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::{ensure, Parameter};
 <span class="kw">use </span>sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 <span class="kw">use </span>sp_runtime::RuntimeDebug;
 
-<span class="kw">use </span>common::TECH_ACCOUNT_MAGIC_PREFIX;
+<span class="kw">use </span>common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
 <span class="kw">use </span>sp_core::H256;
 
 <span class="attr">#[cfg(test)]
@@ -512,7 +511,6 @@
 
 <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 <span class="kw">type </span>TechAccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>Config&gt;::TechAccountId;
-<span class="kw">type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>assets::Config&gt;::AssetId;
 <span class="kw">type </span>TechAssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>Config&gt;::TechAssetId;
 <span class="kw">type </span>DEXIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>common::Config&gt;::DEXId;
 
@@ -548,7 +546,7 @@
     </span><span class="kw">pub fn </span>create_swap_unchecked(
         source: AccountIdOf&lt;T&gt;,
         action: <span class="kw-2">&amp;</span>T::SwapAction,
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; DispatchResult {
         common::with_transaction(|| {
             action.reserve(<span class="kw-2">&amp;</span>source, base_asset_id)<span class="question-mark">?</span>;
@@ -577,7 +575,7 @@
     </span><span class="kw">pub fn </span>create_swap(
         source: AccountIdOf&lt;T&gt;,
         action: <span class="kw-2">&amp;mut </span>T::SwapAction,
-        base_asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; DispatchResult {
         <span class="macro">ensure!</span>(
             !action.is_abstract_checking(),
@@ -660,7 +658,7 @@
     ) -&gt; DispatchResult {
         <span class="kw">let </span>to = <span class="self">Self</span>::tech_account_id_to_account_id(tech_dest)<span class="question-mark">?</span>;
         <span class="self">Self</span>::ensure_account_registered(<span class="kw-2">&amp;</span>to)<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::transfer_from(asset, source, <span class="kw-2">&amp;</span>to, amount)<span class="question-mark">?</span>;
+        T::AssetManager::transfer_from(asset, source, <span class="kw-2">&amp;</span>to, amount)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -673,7 +671,7 @@
     ) -&gt; DispatchResult {
         <span class="kw">let </span>from = <span class="self">Self</span>::tech_account_id_to_account_id(tech_source)<span class="question-mark">?</span>;
         <span class="self">Self</span>::ensure_account_registered(<span class="kw-2">&amp;</span>from)<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::transfer_from(asset, <span class="kw-2">&amp;</span>from, to, amount)<span class="question-mark">?</span>;
+        T::AssetManager::transfer_from(asset, <span class="kw-2">&amp;</span>from, to, amount)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -688,7 +686,7 @@
         <span class="self">Self</span>::ensure_account_registered(<span class="kw-2">&amp;</span>from)<span class="question-mark">?</span>;
         <span class="kw">let </span>to = <span class="self">Self</span>::tech_account_id_to_account_id(tech_dest)<span class="question-mark">?</span>;
         <span class="self">Self</span>::ensure_account_registered(<span class="kw-2">&amp;</span>to)<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::transfer_from(asset, <span class="kw-2">&amp;</span>from, <span class="kw-2">&amp;</span>to, amount)
+        T::AssetManager::transfer_from(asset, <span class="kw-2">&amp;</span>from, <span class="kw-2">&amp;</span>to, amount)
     }
 
     <span class="doccomment">/// Mint specific asset to the given `TechAccountId`.
@@ -699,12 +697,12 @@
     ) -&gt; DispatchResult {
         <span class="kw">let </span>account_id = <span class="self">Self</span>::tech_account_id_to_account_id(tech_dest)<span class="question-mark">?</span>;
         <span class="self">Self</span>::ensure_account_registered(<span class="kw-2">&amp;</span>account_id)<span class="question-mark">?</span>;
-        assets::Pallet::&lt;T&gt;::mint_to(asset, <span class="kw-2">&amp;</span>account_id, <span class="kw-2">&amp;</span>account_id, amount)
+        T::AssetManager::mint_to(asset, <span class="kw-2">&amp;</span>account_id, <span class="kw-2">&amp;</span>account_id, amount)
     }
 
     <span class="doccomment">/// Returns total balance for asset from the given `TechAccountId`.
     </span><span class="kw">pub fn </span>total_balance(
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         tech_id: <span class="kw-2">&amp;</span>T::TechAccountId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>account_id = <span class="self">Self</span>::tech_account_id_to_account_id(tech_id)<span class="question-mark">?</span>;
@@ -724,7 +722,7 @@
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config + assets::Config {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + common::Config {
         <span class="doccomment">/// Because this pallet emits events, it depends on the runtime&#39;s definition of an event.
         </span><span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
@@ -761,12 +759,12 @@
         </span><span class="kw">type </span>Condition: Default + Copy + Member + Parameter;
 
         <span class="doccomment">/// Swap action.
-        </span><span class="kw">type </span>SwapAction: common::SwapRulesValidation&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::TechAccountId, <span class="self">Self</span>::AssetId, <span class="self">Self</span>&gt;
+        </span><span class="kw">type </span>SwapAction: common::SwapRulesValidation&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::TechAccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;, <span class="self">Self</span>&gt;
             + Parameter;
 
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
-            <span class="self">Self</span>::AssetId,
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
             <span class="self">Self</span>::AccountId,
             AssetSymbol,
             AssetName,

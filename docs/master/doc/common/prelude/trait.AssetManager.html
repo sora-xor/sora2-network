@@ -1,0 +1,215 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `AssetManager` trait in crate `common`."><title>AssetManager in common::prelude - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="common" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../common/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../common/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">AssetManager</a></h2><div class="sidebar-elems"><section><h3><a href="#required-associated-types">Required Associated Types</a></h3><ul class="block"><li><a href="#associatedtype.AssetId">AssetId</a></li><li><a href="#associatedtype.GetBaseAssetId">GetBaseAssetId</a></li></ul><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.burn">burn</a></li><li><a href="#tymethod.burn_from">burn_from</a></li><li><a href="#tymethod.gen_asset_id_from_any">gen_asset_id_from_any</a></li><li><a href="#tymethod.mint">mint</a></li><li><a href="#tymethod.mint_to">mint_to</a></li><li><a href="#tymethod.mint_unchecked">mint_unchecked</a></li><li><a href="#tymethod.register">register</a></li><li><a href="#tymethod.register_asset_id">register_asset_id</a></li><li><a href="#tymethod.register_from">register_from</a></li><li><a href="#tymethod.transfer_from">transfer_from</a></li><li><a href="#tymethod.update_balance">update_balance</a></li></ul><h3><a href="#foreign-impls">Implementations on Foreign Types</a></h3><ul class="block"><li><a href="#impl-AssetManager%3CT,+AssetSymbol,+AssetName,+BalancePrecision,+ContentSource,+Description%3E-for-()">()</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In common::prelude</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../index.html">common</a>::<wbr><a href="index.html">prelude</a>::<wbr><a class="trait" href="#">AssetManager</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/common/traits.rs.html#1152-1260">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait AssetManager&lt;T: <a class="trait" href="trait.Config.html" title="trait common::prelude::Config">Config</a>, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description&gt; {
+    type <a href="#associatedtype.AssetId" class="associatedtype">AssetId</a>: Parameter + Member + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> + MaybeSerializeDeserialize + <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html" title="trait core::cmp::Ord">Ord</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html" title="trait core::default::Default">Default</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From">From</a>&lt;<a class="struct" href="struct.AssetId32.html" title="struct common::prelude::AssetId32">AssetId32</a>&lt;<a class="enum" href="enum.PredefinedAssetId.html" title="enum common::prelude::PredefinedAssetId">PredefinedAssetId</a>&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From">From</a>&lt;H256&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;H256&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="type" href="type.CurrencyIdOf.html" title="type common::prelude::CurrencyIdOf">CurrencyIdOf</a>&lt;T&gt;&gt; + MaxEncodedLen;
+    type <a href="#associatedtype.GetBaseAssetId" class="associatedtype">GetBaseAssetId</a>: Get&lt;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>&gt;;
+
+    // Required methods
+    fn <a href="#tymethod.register_from" class="fn">register_from</a>(
+        account_id: &amp;T::AccountId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+        is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+        opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+        opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>, DispatchError&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.update_balance" class="fn">update_balance</a>(
+        origin: OriginFor&lt;T&gt;,
+        who: T::AccountId,
+        currency_id: <a class="type" href="type.CurrencyIdOf.html" title="type common::prelude::CurrencyIdOf">CurrencyIdOf</a>&lt;T&gt;,
+        amount: <a class="type" href="type.AmountOf.html" title="type common::prelude::AmountOf">AmountOf</a>&lt;T&gt;
+    ) -&gt; DispatchResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.gen_asset_id_from_any" class="fn">gen_asset_id_from_any</a>(value: &amp;impl Encode) -&gt; Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.register_asset_id" class="fn">register_asset_id</a>(
+        account_id: T::AccountId,
+        asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+        is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+        opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+        opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+    ) -&gt; DispatchResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.burn_from" class="fn">burn_from</a>(
+        asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        issuer: &amp;T::AccountId,
+        from: &amp;T::AccountId,
+        amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+    ) -&gt; DispatchResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.transfer_from" class="fn">transfer_from</a>(
+        asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        from: &amp;T::AccountId,
+        to: &amp;T::AccountId,
+        amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+    ) -&gt; DispatchResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.mint_to" class="fn">mint_to</a>(
+        asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        issuer: &amp;T::AccountId,
+        to: &amp;T::AccountId,
+        amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+    ) -&gt; DispatchResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.mint_unchecked" class="fn">mint_unchecked</a>(
+        asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        to: &amp;T::AccountId,
+        amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+    ) -&gt; DispatchResult;
+<span class="item-spacer"></span>    fn <a href="#tymethod.burn" class="fn">burn</a>(
+        origin: OriginFor&lt;T&gt;,
+        asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+    ) -&gt; DispatchResultWithPostInfo;
+<span class="item-spacer"></span>    fn <a href="#tymethod.mint" class="fn">mint</a>(
+        origin: OriginFor&lt;T&gt;,
+        asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+        to: T::AccountId,
+        amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+    ) -&gt; DispatchResultWithPostInfo;
+<span class="item-spacer"></span>    fn <a href="#tymethod.register" class="fn">register</a>(
+        origin: OriginFor&lt;T&gt;,
+        symbol: AssetSymbol,
+        name: AssetName,
+        initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+        is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+        is_indivisible: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+        opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+        opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+    ) -&gt; DispatchResultWithPostInfo;
+}</code></pre><h2 id="required-associated-types" class="small-section-header">Required Associated Types<a href="#required-associated-types" class="anchor">§</a></h2><div class="methods"><section id="associatedtype.AssetId" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1161-1171">source</a><h4 class="code-header">type <a href="#associatedtype.AssetId" class="associatedtype">AssetId</a>: Parameter + Member + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> + MaybeSerializeDeserialize + <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html" title="trait core::cmp::Ord">Ord</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html" title="trait core::default::Default">Default</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From">From</a>&lt;<a class="struct" href="struct.AssetId32.html" title="struct common::prelude::AssetId32">AssetId32</a>&lt;<a class="enum" href="enum.PredefinedAssetId.html" title="enum common::prelude::PredefinedAssetId">PredefinedAssetId</a>&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From">From</a>&lt;H256&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;H256&gt; + <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="type" href="type.CurrencyIdOf.html" title="type common::prelude::CurrencyIdOf">CurrencyIdOf</a>&lt;T&gt;&gt; + MaxEncodedLen</h4></section><section id="associatedtype.GetBaseAssetId" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1173">source</a><h4 class="code-header">type <a href="#associatedtype.GetBaseAssetId" class="associatedtype">GetBaseAssetId</a>: Get&lt;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>&gt;</h4></section></div><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.register_from" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1176-1185">source</a><h4 class="code-header">fn <a href="#tymethod.register_from" class="fn">register_from</a>(
+    account_id: &amp;T::AccountId,
+    symbol: AssetSymbol,
+    name: AssetName,
+    precision: BalancePrecision,
+    initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+    is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+    opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>, DispatchError&gt;</h4></section><section id="tymethod.update_balance" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1187-1192">source</a><h4 class="code-header">fn <a href="#tymethod.update_balance" class="fn">update_balance</a>(
+    origin: OriginFor&lt;T&gt;,
+    who: T::AccountId,
+    currency_id: <a class="type" href="type.CurrencyIdOf.html" title="type common::prelude::CurrencyIdOf">CurrencyIdOf</a>&lt;T&gt;,
+    amount: <a class="type" href="type.AmountOf.html" title="type common::prelude::AmountOf">AmountOf</a>&lt;T&gt;
+) -&gt; DispatchResult</h4></section><section id="tymethod.gen_asset_id_from_any" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1194">source</a><h4 class="code-header">fn <a href="#tymethod.gen_asset_id_from_any" class="fn">gen_asset_id_from_any</a>(value: &amp;impl Encode) -&gt; Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a></h4></section><section id="tymethod.register_asset_id" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1197-1207">source</a><h4 class="code-header">fn <a href="#tymethod.register_asset_id" class="fn">register_asset_id</a>(
+    account_id: T::AccountId,
+    asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    symbol: AssetSymbol,
+    name: AssetName,
+    precision: BalancePrecision,
+    initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+    is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+    opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+) -&gt; DispatchResult</h4></section><section id="tymethod.burn_from" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1209-1214">source</a><h4 class="code-header">fn <a href="#tymethod.burn_from" class="fn">burn_from</a>(
+    asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    issuer: &amp;T::AccountId,
+    from: &amp;T::AccountId,
+    amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="tymethod.transfer_from" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1216-1221">source</a><h4 class="code-header">fn <a href="#tymethod.transfer_from" class="fn">transfer_from</a>(
+    asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    from: &amp;T::AccountId,
+    to: &amp;T::AccountId,
+    amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="tymethod.mint_to" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1223-1228">source</a><h4 class="code-header">fn <a href="#tymethod.mint_to" class="fn">mint_to</a>(
+    asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    issuer: &amp;T::AccountId,
+    to: &amp;T::AccountId,
+    amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="tymethod.mint_unchecked" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1230-1234">source</a><h4 class="code-header">fn <a href="#tymethod.mint_unchecked" class="fn">mint_unchecked</a>(
+    asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    to: &amp;T::AccountId,
+    amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="tymethod.burn" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1236-1240">source</a><h4 class="code-header">fn <a href="#tymethod.burn" class="fn">burn</a>(
+    origin: OriginFor&lt;T&gt;,
+    asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResultWithPostInfo</h4></section><section id="tymethod.mint" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1242-1247">source</a><h4 class="code-header">fn <a href="#tymethod.mint" class="fn">mint</a>(
+    origin: OriginFor&lt;T&gt;,
+    asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    to: T::AccountId,
+    amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResultWithPostInfo</h4></section><section id="tymethod.register" class="method"><a class="srclink rightside" href="../../src/common/traits.rs.html#1250-1259">source</a><h4 class="code-header">fn <a href="#tymethod.register" class="fn">register</a>(
+    origin: OriginFor&lt;T&gt;,
+    symbol: AssetSymbol,
+    name: AssetName,
+    initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+    is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    is_indivisible: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+    opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+) -&gt; DispatchResultWithPostInfo</h4></section></div><h2 id="foreign-impls" class="small-section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor">§</a></h2><details class="toggle implementors-toggle"><summary><section id="impl-AssetManager%3CT,+AssetSymbol,+AssetName,+BalancePrecision,+ContentSource,+Description%3E-for-()" class="impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1262-1372">source</a><a href="#impl-AssetManager%3CT,+AssetSymbol,+AssetName,+BalancePrecision,+ContentSource,+Description%3E-for-()" class="anchor">§</a><h3 class="code-header">impl&lt;T: <a class="trait" href="trait.Config.html" title="trait common::prelude::Config">Config</a>, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description&gt; <a class="trait" href="trait.AssetManager.html" title="trait common::prelude::AssetManager">AssetManager</a>&lt;T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description&gt; for <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a></h3></section></summary><div class="impl-items"><section id="associatedtype.AssetId-1" class="associatedtype trait-impl"><a href="#associatedtype.AssetId-1" class="anchor">§</a><h4 class="code-header">type <a href="#associatedtype.AssetId" class="associatedtype">AssetId</a> = <a class="struct" href="struct.AssetId32.html" title="struct common::prelude::AssetId32">AssetId32</a>&lt;<a class="enum" href="enum.PredefinedAssetId.html" title="enum common::prelude::PredefinedAssetId">PredefinedAssetId</a>&gt;</h4></section><section id="associatedtype.GetBaseAssetId-1" class="associatedtype trait-impl"><a href="#associatedtype.GetBaseAssetId-1" class="anchor">§</a><h4 class="code-header">type <a href="#associatedtype.GetBaseAssetId" class="associatedtype">GetBaseAssetId</a> = <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a></h4></section><section id="method.register_from" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1268-1279">source</a><a href="#method.register_from" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.register_from" class="fn">register_from</a>(
+    _account_id: &amp;T::AccountId,
+    _symbol: AssetSymbol,
+    _name: AssetName,
+    _precision: BalancePrecision,
+    _initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+    _is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    _opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+    _opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>, DispatchError&gt;</h4></section><section id="method.update_balance" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1281-1288">source</a><a href="#method.update_balance" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.update_balance" class="fn">update_balance</a>(
+    _origin: OriginFor&lt;T&gt;,
+    _who: T::AccountId,
+    _currency_id: <a class="type" href="type.CurrencyIdOf.html" title="type common::prelude::CurrencyIdOf">CurrencyIdOf</a>&lt;T&gt;,
+    _amount: <a class="type" href="type.AmountOf.html" title="type common::prelude::AmountOf">AmountOf</a>&lt;T&gt;
+) -&gt; DispatchResult</h4></section><section id="method.gen_asset_id_from_any" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1290-1292">source</a><a href="#method.gen_asset_id_from_any" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.gen_asset_id_from_any" class="fn">gen_asset_id_from_any</a>(_value: &amp;impl Encode) -&gt; Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a></h4></section><section id="method.register_asset_id" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1294-1306">source</a><a href="#method.register_asset_id" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.register_asset_id" class="fn">register_asset_id</a>(
+    _account_id: T::AccountId,
+    _asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _symbol: AssetSymbol,
+    _name: AssetName,
+    _precision: BalancePrecision,
+    _initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+    _is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    _opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+    _opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+) -&gt; DispatchResult</h4></section><section id="method.burn_from" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1308-1315">source</a><a href="#method.burn_from" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.burn_from" class="fn">burn_from</a>(
+    _asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _issuer: &amp;&lt;T as Config&gt;::AccountId,
+    _from: &amp;&lt;T as Config&gt;::AccountId,
+    _amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="method.transfer_from" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1317-1324">source</a><a href="#method.transfer_from" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.transfer_from" class="fn">transfer_from</a>(
+    _asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _from: &amp;&lt;T as Config&gt;::AccountId,
+    _to: &amp;&lt;T as Config&gt;::AccountId,
+    _amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="method.mint_to" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1326-1333">source</a><a href="#method.mint_to" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.mint_to" class="fn">mint_to</a>(
+    _asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _issuer: &amp;&lt;T as Config&gt;::AccountId,
+    _to: &amp;&lt;T as Config&gt;::AccountId,
+    _amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="method.mint_unchecked" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1335-1341">source</a><a href="#method.mint_unchecked" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.mint_unchecked" class="fn">mint_unchecked</a>(
+    _asset_id: &amp;Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _to: &amp;T::AccountId,
+    _amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResult</h4></section><section id="method.burn" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1343-1349">source</a><a href="#method.burn" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.burn" class="fn">burn</a>(
+    _origin: OriginFor&lt;T&gt;,
+    _asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResultWithPostInfo</h4></section><section id="method.mint" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1351-1358">source</a><a href="#method.mint" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.mint" class="fn">mint</a>(
+    _origin: OriginFor&lt;T&gt;,
+    _asset_id: Self::<a class="associatedtype" href="trait.AssetManager.html#associatedtype.AssetId" title="type common::prelude::AssetManager::AssetId">AssetId</a>,
+    _to: &lt;T as Config&gt;::AccountId,
+    _amount: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>
+) -&gt; DispatchResultWithPostInfo</h4></section><section id="method.register" class="method trait-impl"><a class="srclink rightside" href="../../src/common/traits.rs.html#1360-1371">source</a><a href="#method.register" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.register" class="fn">register</a>(
+    _origin: OriginFor&lt;T&gt;,
+    _symbol: AssetSymbol,
+    _name: AssetName,
+    _initial_supply: <a class="type" href="type.Balance.html" title="type common::prelude::Balance">Balance</a>,
+    _is_mintable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    _is_indivisible: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    _opt_content_src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;ContentSource&gt;,
+    _opt_desc: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Description&gt;
+) -&gt; DispatchResultWithPostInfo</h4></section></div></details><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../implementors/common/traits/trait.AssetManager.js" data-ignore-extern-crates="std" async></script></section></div></main></body></html>
