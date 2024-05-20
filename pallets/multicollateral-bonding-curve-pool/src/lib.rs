@@ -181,12 +181,12 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 pub mod pallet {
     use super::*;
     use common::Vesting;
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -211,6 +211,16 @@ pub mod pallet {
         type BuyBackTBCDPercent: Get<Fixed>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -854,7 +864,8 @@ impl<T: Config> Pallet<T> {
         collateral_asset: &T::AssetId,
         reserves_account: &T::AccountId,
     ) -> DispatchResult {
-        let collateral_balance = Assets::<T>::free_balance(collateral_asset, reserves_account)?;
+        let collateral_balance =
+            <T as Config>::AssetInfoProvider::free_balance(collateral_asset, reserves_account)?;
         CollateralReserves::<T>::insert(collateral_asset, collateral_balance);
         Ok(())
     }
@@ -931,7 +942,8 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::PriceCalculationFailed.into())
         } else {
             // Everything other than TBCD
-            let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
+            let total_supply: FixedWrapper =
+                <T as Config>::AssetInfoProvider::total_issuance(main_asset_id)?.into();
             let initial_price: FixedWrapper = Self::initial_price().into();
             let price_change_step: FixedWrapper = Self::price_change_step().into();
             let price_change_rate: FixedWrapper = Self::price_change_rate().into();
@@ -1081,8 +1093,11 @@ impl<T: Config> Pallet<T> {
         let reserves_tech_account_id = ReservesAcc::<T>::get();
         let reserves_account_id =
             Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-        let collateral_supply: FixedWrapper =
-            Assets::<T>::free_balance(collateral_asset_id, &reserves_account_id)?.into();
+        let collateral_supply: FixedWrapper = <T as Config>::AssetInfoProvider::free_balance(
+            collateral_asset_id,
+            &reserves_account_id,
+        )?
+        .into();
         // Get reference prices for base and collateral to understand token value.
         let main_price_per_reference_unit: FixedWrapper =
             Self::sell_function(main_asset_id, collateral_asset_id, Fixed::ZERO)?.into();
@@ -1350,8 +1365,10 @@ impl<T: Config> Pallet<T> {
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let (input_amount, output_amount, fee_amount) =
                 Self::decide_sell_amounts(main_asset_id, collateral_asset_id, amount.into(), true)?;
-            let reserves_amount =
-                Assets::<T>::total_balance(collateral_asset_id, &reserves_account_id)?;
+            let reserves_amount = <T as Config>::AssetInfoProvider::total_balance(
+                collateral_asset_id,
+                &reserves_account_id,
+            )?;
             ensure!(
                 reserves_amount >= output_amount,
                 Error::<T>::NotEnoughReserves
@@ -1449,7 +1466,10 @@ impl<T: Config> Pallet<T> {
         collateral_asset_id: &T::AssetId,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
-        let reserve = Assets::<T>::free_balance(&collateral_asset_id, &reserves_account_id)?;
+        let reserve = <T as Config>::AssetInfoProvider::free_balance(
+            &collateral_asset_id,
+            &reserves_account_id,
+        )?;
         let price = Self::reference_price(&collateral_asset_id, price_variant)?;
         (FixedWrapper::from(reserve) * price)
             .try_into_balance()
@@ -1464,7 +1484,7 @@ impl<T: Config> Pallet<T> {
         delta: Fixed,
     ) -> Result<Balance, DispatchError> {
         let base_asset_id = T::GetBaseAssetId::get();
-        let base_total_supply = Assets::<T>::total_issuance(&base_asset_id)?;
+        let base_total_supply = <T as Config>::AssetInfoProvider::total_issuance(&base_asset_id)?;
         let initial_state = FixedWrapper::from(Self::initial_price());
         let current_state =
             Self::buy_function(&base_asset_id, collateral_asset_id, price_variant, delta)?;
@@ -1671,8 +1691,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             let reserves_tech_account_id = ReservesAcc::<T>::get();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-            let collateral_supply: FixedWrapper =
-                Assets::<T>::free_balance(&output_asset_id, &reserves_account_id)?.into();
+            let collateral_supply: FixedWrapper = <T as Config>::AssetInfoProvider::free_balance(
+                &output_asset_id,
+                &reserves_account_id,
+            )?
+            .into();
 
             quotation.limits.max_amount = match amount.variant() {
                 SwapVariant::WithDesiredInput => {

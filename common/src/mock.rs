@@ -326,6 +326,7 @@ macro_rules! mock_technical_config {
             type Trigger = ();
             type Condition = ();
             type SwapAction = ();
+            type AssetInfoProvider = assets::Pallet<$runtime>;
         }
     };
 }

@@ -115,6 +115,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -162,6 +163,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pool_xyk::Config for Runtime {
@@ -184,6 +186,7 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
@@ -216,6 +219,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl vested_rewards::Config for Runtime {
@@ -225,6 +229,7 @@ impl vested_rewards::Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -244,6 +249,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl technical::Config for Runtime {
@@ -253,6 +259,7 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {

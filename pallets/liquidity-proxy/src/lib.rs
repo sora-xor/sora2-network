@@ -263,14 +263,13 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     pub fn check_indivisible_assets(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> Result<(), DispatchError> {
         ensure!(
-            !assets::Pallet::<T>::is_non_divisible(input_asset_id)
-                && !assets::Pallet::<T>::is_non_divisible(output_asset_id),
+            !T::AssetInfoProvider::is_non_divisible(input_asset_id)
+                && !T::AssetInfoProvider::is_non_divisible(output_asset_id),
             Error::<T>::UnableToSwapIndivisibleAssets
         );
         Ok(())
@@ -2010,7 +2009,7 @@ impl<T: Config> Pallet<T> {
         ));
 
         let caller_output_asset_balance =
-            assets::Pallet::<T>::total_balance(&output_asset_id, &sender)?;
+            T::AssetInfoProvider::total_balance(&output_asset_id, &sender)?;
         let remainder_per_receiver: Balance = if caller_output_asset_balance < out_amount {
             let remainder = out_amount.saturating_sub(caller_output_asset_balance);
             remainder / num_of_receivers + remainder % num_of_receivers
@@ -2105,7 +2104,7 @@ impl<T: Config> Pallet<T> {
                     outcome_asset_reuse,
                 } = swap_batch_info;
 
-                let balance = assets::Pallet::<T>::free_balance(&asset_id, &sender)?;
+                let balance = T::AssetInfoProvider::free_balance(&asset_id, &sender)?;
 
                 if balance < outcome_asset_reuse {
                     fail!(Error::<T>::InsufficientBalance);
@@ -2312,8 +2311,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
         buy_back_asset_id: &T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let owner = assets::Pallet::<T>::asset_owner(&mint_asset_id)
-            .ok_or(assets::Error::<T>::AssetIdNotExists)?;
+        let owner = T::AssetInfoProvider::get_asset_owner(&mint_asset_id)?;
         let transit = T::GetTechnicalAccountId::get();
         assets::Pallet::<T>::mint_to(mint_asset_id, &owner, &transit, amount)?;
         let amount = Self::buy_back_and_burn(&transit, mint_asset_id, buy_back_asset_id, amount)?;
@@ -2377,12 +2375,12 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
 pub mod pallet {
     use super::*;
     use common::prelude::OutcomeFee;
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -2409,6 +2407,16 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
