@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
+use crate::prelude::{ManagementMode, PermissionId, QuoteAmount, SwapAmount, SwapOutcome};
 use crate::{
     Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
@@ -1444,8 +1444,6 @@ impl<AccountId> ReferrerAccountProvider<AccountId> for () {
         None
     }
 }
-
-pub type PermissionId = u32;
 
 pub trait AssetRegulator<AccountId, AssetId> {
     /// Assign `permission_id` for a specific `account_id` to a specific `asset_id`
