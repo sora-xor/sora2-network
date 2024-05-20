@@ -43,7 +43,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, LockInfo, StorageVersion, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, DemeterFarming, XykPool};
+    use common::{balance, AssetIdOf, AssetManager, DemeterFarming, XykPool};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
@@ -53,9 +53,7 @@ pub mod pallet {
     use sp_std::vec::Vec;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + timestamp::Config + permissions::Config
-    {
+    pub trait Config: common::Config + frame_system::Config + timestamp::Config {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
@@ -63,22 +61,20 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Reference to pool_xyk pallet
-        type XYKPool: XykPool<Self::AccountId, Self::AssetId>;
+        type XYKPool: XykPool<Self::AccountId, AssetIdOf<Self>>;
 
         /// Reference to demeter_farming_platform pallet
-        type DemeterFarmingPlatform: DemeterFarming<Self::AccountId, Self::AssetId>;
+        type DemeterFarmingPlatform: DemeterFarming<Self::AccountId, AssetIdOf<Self>>;
 
         /// Ceres asset id
-        type CeresAssetId: Get<Self::AssetId>;
+        type CeresAssetId: Get<AssetIdOf<Self>>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -258,8 +254,8 @@ pub mod pallet {
                 )?;
             } else {
                 // Transfer CERES fee amount
-                Assets::<T>::transfer_from(
-                    &T::CeresAssetId::get().into(),
+                T::AssetManager::transfer_from(
+                    &T::CeresAssetId::get(),
                     &user,
                     &FeesOptionTwoAccount::<T>::get(),
                     FeesOptionTwoCeresAmount::<T>::get(),

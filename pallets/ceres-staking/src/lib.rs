@@ -31,8 +31,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
+    use common::{balance, AssetManager};
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -42,12 +42,11 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"cerstake");
 
-    type Assets<T> = assets::Pallet<T>;
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config: frame_system::Config + common::Config + technical::Config {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
@@ -139,7 +138,7 @@ pub mod pallet {
             );
 
             // Transfer CERES to staking
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &T::CeresAssetId::get().into(),
                 &source,
                 &Self::account_id(),
@@ -177,7 +176,7 @@ pub mod pallet {
             let withdrawing_amount = staking_info.deposited + staking_info.rewards;
 
             // Withdraw CERES
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &T::CeresAssetId::get().into(),
                 &Self::account_id(),
                 &source,

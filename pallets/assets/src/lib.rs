@@ -55,15 +55,17 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount, BURN, MINT};
 use common::{
-    Amount, AssetInfoProvider, AssetName, AssetRegulator, AssetSymbol, BalancePrecision,
-    ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter,
-    DEFAULT_BALANCE_PRECISION,
+    Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
+    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
+use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
+use frame_system::pallet_prelude::OriginFor;
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
@@ -214,6 +216,8 @@ pub mod pallet {
             + Ord
             + Default
             + Into<CurrencyIdOf<Self>>
+            + Into<common::AssetIdOf<Self>>
+            + From<common::AssetIdOf<Self>>
             + From<common::AssetId32<common::PredefinedAssetId>>
             + From<H256>
             + Into<H256>
@@ -1015,5 +1019,144 @@ impl<T: Config>
     fn get_asset_owner(asset_id: &T::AssetId) -> Result<T::AccountId, DispatchError> {
         let owner = Self::asset_owner(asset_id).ok_or(Error::<T>::AssetIdNotExists)?;
         Ok(owner)
+    }
+}
+
+impl<T: Config>
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
+    for Pallet<T>
+{
+    type AssetId = T::AssetId;
+    type GetBaseAssetId = T::GetBaseAssetId;
+
+    fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId {
+        Self::gen_asset_id_from_any(value)
+    }
+
+    fn update_balance(
+        origin: OriginFor<T>,
+        who: T::AccountId,
+        currency_id: common::CurrencyIdOf<T>,
+        amount: AmountOf<T>,
+    ) -> DispatchResult {
+        Self::update_balance(origin, who, currency_id.into(), amount)
+    }
+
+    fn register_from(
+        account_id: &T::AccountId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> Result<Self::AssetId, DispatchError> {
+        Self::register_from(
+            account_id,
+            symbol,
+            name,
+            precision,
+            initial_supply,
+            is_mintable,
+            opt_content_src,
+            opt_desc,
+        )
+    }
+
+    fn register_asset_id(
+        account_id: T::AccountId,
+        asset_id: Self::AssetId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> DispatchResult {
+        Self::register_asset_id(
+            account_id,
+            asset_id,
+            symbol,
+            name,
+            precision,
+            initial_supply,
+            is_mintable,
+            opt_content_src,
+            opt_desc,
+        )
+    }
+    fn burn_from(
+        asset_id: &Self::AssetId,
+        issuer: &T::AccountId,
+        from: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::burn_from(asset_id, issuer, from, amount)
+    }
+
+    fn transfer_from(
+        asset_id: &Self::AssetId,
+        from: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::transfer_from(asset_id, from, to, amount)
+    }
+
+    fn mint_to(
+        asset_id: &Self::AssetId,
+        issuer: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::mint_to(asset_id, issuer, to, amount)
+    }
+
+    fn mint_unchecked(
+        asset_id: &Self::AssetId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::mint_unchecked(asset_id, to, amount)
+    }
+
+    fn burn(
+        origin: OriginFor<T>,
+        asset_id: Self::AssetId,
+        amount: Balance,
+    ) -> DispatchResultWithPostInfo {
+        Self::burn(origin, asset_id, amount)
+    }
+    fn mint(
+        origin: OriginFor<T>,
+        asset_id: Self::AssetId,
+        to: T::AccountId,
+        amount: Balance,
+    ) -> DispatchResultWithPostInfo {
+        Self::mint(origin, asset_id, to, amount)
+    }
+
+    fn register(
+        origin: OriginFor<T>,
+        symbol: AssetSymbol,
+        name: AssetName,
+        initial_supply: Balance,
+        is_mintable: bool,
+        is_indivisible: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> DispatchResultWithPostInfo {
+        Self::register(
+            origin,
+            symbol,
+            name,
+            initial_supply,
+            is_mintable,
+            is_indivisible,
+            opt_content_src,
+            opt_desc,
+        )
     }
 }

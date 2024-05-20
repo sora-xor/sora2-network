@@ -39,8 +39,8 @@ use order_book_imported::{
     Pallet, PriceOrders,
 };
 
-use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, Balance, DexIdOf, PriceVariant};
+use common::AssetIdOf;
+use common::{balance, AssetInfoProvider, AssetManager, Balance, DexIdOf, PriceVariant};
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchResult;
 use frame_system::RawOrigin;
@@ -54,25 +54,25 @@ pub mod fill_tools;
 #[cfg(feature = "std")]
 pub mod print_tools;
 
-pub fn free_balance<T: assets::Config + frame_system::Config>(
+pub fn free_balance<T: technical::Config>(
     asset: &AssetIdOf<T>,
     account: &<T as frame_system::Config>::AccountId,
 ) -> Balance {
-    assets::Pallet::<T>::free_balance(asset, account).expect("Asset must exist")
+    T::AssetInfoProvider::free_balance(asset, account).expect("Asset must exist")
 }
 
-pub fn fill_balance<T: assets::Config + frame_system::Config>(
+pub fn fill_balance<T: common::Config>(
     account: <T as frame_system::Config>::AccountId,
     order_book_id: OrderBookId<AssetIdOf<T>, DexIdOf<T>>,
 ) {
-    assert_ok!(assets::Pallet::<T>::update_balance(
+    assert_ok!(T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         account.clone(),
         order_book_id.base,
         INIT_BALANCE.try_into().unwrap()
     ));
 
-    assert_ok!(assets::Pallet::<T>::update_balance(
+    assert_ok!(T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         account,
         order_book_id.quote,
