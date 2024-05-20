@@ -65,7 +65,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&CERES_ASSET_ID.into())
             .unwrap();
     let apollo_owner: T::AccountId =
-        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(APOLLO_ASSET_ID.into())
+        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&APOLLO_ASSET_ID.into())
             .unwrap();
 
     // Register assets
