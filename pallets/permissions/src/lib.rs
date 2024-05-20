@@ -48,7 +48,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::{hash, AssetRegulator};
+use common::{hash, AssetRegulator, PermissionId};
 use frame_support::codec::{Decode, Encode};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
@@ -66,7 +66,6 @@ mod tests;
 pub type OwnerId<T> = <T as frame_system::Config>::AccountId;
 /// The id of the account having a permission
 pub type HolderId<T> = <T as frame_system::Config>::AccountId;
-pub type PermissionId = u32;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
@@ -76,8 +75,8 @@ pub enum Scope {
     Unlimited,
 }
 
-pub const MINT: PermissionId = 2;
-pub const BURN: PermissionId = 3;
+pub const MINT: PermissionId = common::MINT;
+pub const BURN: PermissionId = common::BURN;
 pub const SLASH: PermissionId = 4;
 pub const INIT_DEX: PermissionId = 5;
 pub const MANAGE_DEX: PermissionId = 6;
@@ -372,61 +371,34 @@ pub mod pallet {
 }
 
 impl<T: Config, AssetId: Encode> AssetRegulator<AccountIdOf<T>, AssetId> for Pallet<T> {
-    fn mint(
-        issuer: &AccountIdOf<T>,
-        _to: Option<&AccountIdOf<T>>,
-        asset_id: &AssetId,
-    ) -> Result<(), DispatchError> {
-        Self::check_permission_with_scope(issuer.clone(), MINT, &Scope::Limited(hash(asset_id)))
-            .or_else(|_| {
-                Self::check_permission_with_scope(issuer.clone(), MINT, &Scope::Unlimited)
-            })?;
-        Ok(())
-    }
-
-    fn transfer(
-        _from: &AccountIdOf<T>,
-        _to: &AccountIdOf<T>,
-        _asset_id: &AssetId,
-    ) -> Result<(), DispatchError> {
-        Ok(())
-    }
-
-    fn burn(
-        issuer: &AccountIdOf<T>,
-        from: Option<&AccountIdOf<T>>,
-        asset_id: &AssetId,
-    ) -> Result<(), DispatchError> {
-        let needs_check = match from {
-            // in case `from` is not known -> run check
-            None => true,
-            // Holder can burn its funds.
-            // in case burn is not by holder -> run check
-            Some(from_account_id) => from_account_id != issuer,
-        };
-
-        if needs_check {
-            Self::check_permission_with_scope(
-                issuer.clone(),
-                BURN,
-                &Scope::Limited(hash(asset_id)),
-            )
-            .or_else(|_| {
-                Self::check_permission_with_scope(issuer.clone(), BURN, &Scope::Unlimited)
-            })?;
-        }
-        Ok(())
-    }
-
-    fn assign_permissions_on_register(
+    fn assign_permission(
         owner: &AccountIdOf<T>,
         asset_id: &AssetId,
+        permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
         let scope = Scope::Limited(hash(asset_id));
-        let permission_ids = [MINT, BURN];
-        for permission_id in &permission_ids {
-            Self::assign_permission(owner.clone(), &owner, *permission_id, scope)?;
+        Self::assign_permission(owner.clone(), &owner, *permission_id, scope)?;
+        Ok(())
+    }
+
+    fn check_permission(
+        issuer: &AccountIdOf<T>,
+        affected_account: &AccountIdOf<T>,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        // Holders can burn their own assets.
+        if permission_id == &BURN && affected_account == issuer {
+            return Ok(());
         }
+        Self::check_permission_with_scope(
+            issuer.clone(),
+            *permission_id,
+            &Scope::Limited(hash(asset_id)),
+        )
+        .or_else(|_| {
+            Self::check_permission_with_scope(issuer.clone(), *permission_id, &Scope::Unlimited)
+        })?;
         Ok(())
     }
 }
