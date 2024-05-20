@@ -510,11 +510,7 @@ pub mod pallet {
         /// Too many CDPs per user
         CDPLimitPerUser,
         StablecoinInfoNotFound,
-        /// Risk management team size exceeded
-        TooManyManagers,
         OperationNotPermitted,
-        /// Outstanding debt prevents closing CDP
-        OutstandingDebt,
         /// Uncollected stability fee is too small for accrue
         UncollectedStabilityFeeTooSmall,
         HardCapSupply,
@@ -525,7 +521,6 @@ pub mod pallet {
         LiquidationLimit,
         /// Wrong borrow amounts
         WrongBorrowAmounts,
-        StablecoinExcessiveIssuance,
     }
 
     #[pallet::call]
@@ -1204,6 +1199,68 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Charges borrow taxes.
+        /// Applies borrow tax of 1% on borrow to buy back and burn KEN.
+        ///
+        /// ## Parameters
+        /// - `collateral_asset_id`
+        /// - `stablecoin_asset_id`
+        /// - `borrow_amount_min` - borrow amount with slippage tolerance
+        /// - `borrow_amount_min` - borrow amount with slippage tolerance
+        /// - `borrow_amount_safe_with_tax` - borrow amount limit
+        fn charge_borrow_tax(
+            _collateral_asset_id: &AssetIdOf<T>,
+            stablecoin_asset_id: &AssetIdOf<T>,
+            borrow_amount_min: Balance,
+            borrow_amount_max: Balance,
+            borrow_amount_safe_with_tax: Balance,
+        ) -> Result<(Balance, Balance), DispatchError> {
+            let borrow_tax_percent = Self::borrow_tax();
+
+            let borrow_amount_safe = FixedU128::from_inner(borrow_amount_safe_with_tax)
+                .checked_div(&(FixedU128::one() + FixedU128::from(borrow_tax_percent)))
+                .ok_or(Error::<T>::ArithmeticError)?
+                .into_inner();
+            let borrow_tax_safe = borrow_amount_safe_with_tax
+                .checked_sub(borrow_amount_safe)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
+            let borrow_tax_min = borrow_tax_percent * borrow_amount_min;
+            let borrow_amount_min_with_tax = borrow_amount_min
+                .checked_add(borrow_tax_min)
+                .ok_or(Error::<T>::ArithmeticError)?;
+
+            let borrow_tax_max = borrow_tax_percent * borrow_amount_max;
+            let borrow_amount_max_with_tax = borrow_amount_max
+                .checked_add(borrow_tax_max)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            ensure!(
+                borrow_amount_min_with_tax <= borrow_amount_safe_with_tax,
+                Error::<T>::CDPUnsafe
+            );
+
+            let (borrow_amount_with_tax, borrow_amount, borrow_tax) =
+                if borrow_amount_max_with_tax <= borrow_amount_safe_with_tax {
+                    (
+                        borrow_amount_max_with_tax,
+                        borrow_amount_max,
+                        borrow_tax_max,
+                    )
+                } else {
+                    (
+                        borrow_amount_safe_with_tax,
+                        borrow_amount_safe,
+                        borrow_tax_safe,
+                    )
+                };
+
+            // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
+            // increases debt
+            Self::incentivize_ken_token(stablecoin_asset_id, borrow_tax)?;
+
+            Ok((borrow_amount_with_tax, borrow_amount))
+        }
+
         /// Handles the internal borrowing operation within a Collateralized Debt Position (CDP).
         /// Borrow amount will be as max as possible in the range
         /// `[borrow_amount_min, borrow_amount_max]` in order to confrom the slippage tolerance.
@@ -1228,48 +1285,13 @@ pub mod pallet {
             let borrow_amount_safe_with_tax = max_safe_debt
                 .checked_sub(cdp.debt)
                 .ok_or(Error::<T>::ArithmeticError)?;
-
-            let borrow_amount_safe = FixedU128::from_inner(borrow_amount_safe_with_tax)
-                .checked_div(&(FixedU128::one() + FixedU128::from(Self::borrow_tax())))
-                .ok_or(Error::<T>::ArithmeticError)?
-                .into_inner();
-            let borrow_tax_safe = borrow_amount_safe_with_tax
-                .checked_sub(borrow_amount_safe)
-                .ok_or(Error::<T>::ArithmeticError)?;
-
-            let borrow_tax_min = Self::borrow_tax() * borrow_amount_min;
-            let borrow_amount_min_with_tax = borrow_amount_min
-                .checked_add(borrow_tax_min)
-                .ok_or(Error::<T>::ArithmeticError)?;
-
-            let borrow_tax_max = Self::borrow_tax() * borrow_amount_max;
-            let borrow_amount_max_with_tax = borrow_amount_max
-                .checked_add(borrow_tax_max)
-                .ok_or(Error::<T>::ArithmeticError)?;
-            ensure!(
-                borrow_amount_min_with_tax <= borrow_amount_safe_with_tax,
-                Error::<T>::CDPUnsafe
-            );
-
-            let (borrow_amount, borrow_tax, borrow_amount_with_tax) =
-                if borrow_amount_max_with_tax <= borrow_amount_safe_with_tax {
-                    (
-                        borrow_amount_max,
-                        borrow_tax_max,
-                        borrow_amount_max_with_tax,
-                    )
-                } else {
-                    (
-                        borrow_amount_safe,
-                        borrow_tax_safe,
-                        borrow_amount_safe_with_tax,
-                    )
-                };
-
-            // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
-            // increases debt
-            Self::incentivize_ken_token(&cdp.stablecoin_asset_id, borrow_tax)?;
-
+            let (borrow_amount_with_tax, borrow_amount) = Self::charge_borrow_tax(
+                &cdp.collateral_asset_id,
+                &cdp.stablecoin_asset_id,
+                borrow_amount_min,
+                borrow_amount_max,
+                borrow_amount_safe_with_tax,
+            )?;
             Self::ensure_collateral_cap(
                 cdp.collateral_asset_id,
                 cdp.stablecoin_asset_id,
