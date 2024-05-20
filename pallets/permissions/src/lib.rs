@@ -62,6 +62,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub use common::prelude::{
+    BURN, CHECK_FARM, CLAIM_FROM_FARM, CREATE_FARM, GET_FARMER_INFO, GET_FARM_INFO, INIT_DEX,
+    LOCK_TO_FARM, MANAGE_DEX, MINT, SLASH, UNLOCK_FROM_FARM,
+};
 /// The id of the account owning a permission
 pub type OwnerId<T> = <T as frame_system::Config>::AccountId;
 /// The id of the account having a permission
@@ -74,19 +78,6 @@ pub enum Scope {
     Limited(H512),
     Unlimited,
 }
-
-pub const MINT: PermissionId = common::MINT;
-pub const BURN: PermissionId = common::BURN;
-pub const SLASH: PermissionId = 4;
-pub const INIT_DEX: PermissionId = 5;
-pub const MANAGE_DEX: PermissionId = 6;
-pub const CREATE_FARM: PermissionId = 7;
-pub const CHECK_FARM: PermissionId = 8;
-pub const LOCK_TO_FARM: PermissionId = 9;
-pub const UNLOCK_FROM_FARM: PermissionId = 13;
-pub const CLAIM_FROM_FARM: PermissionId = 10;
-pub const GET_FARM_INFO: PermissionId = 11;
-pub const GET_FARMER_INFO: PermissionId = 12;
 
 /// Permissions module declaration.
 impl<T: Config> Pallet<T> {

@@ -48,6 +48,7 @@ pub mod test_utils;
 pub mod alt;
 mod balance_unit;
 pub mod cache_storage;
+pub mod constants;
 pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
@@ -69,6 +70,7 @@ use sp_runtime::TransactionOutcome;
 pub use traits::Config;
 pub mod prelude {
     pub use super::balance_unit::*;
+    pub use super::constants::*;
     pub use super::fixed_wrapper::*;
     pub use super::outcome_fee::*;
     pub use super::primitives::*;

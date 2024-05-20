@@ -1172,8 +1172,6 @@ impl<AccountId> ReferrerAccountProvider<AccountId> for () {
 }
 
 pub type PermissionId = u32;
-pub const MINT: PermissionId = 2;
-pub const BURN: PermissionId = 3;
 
 pub trait AssetRegulator<AccountId, AssetId> {
     /// Assign `permission_id` for a specific `account_id` to a specific `asset_id`

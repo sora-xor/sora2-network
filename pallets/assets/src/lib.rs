@@ -53,11 +53,11 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::prelude::{Balance, SwapAmount};
+use common::prelude::{Balance, SwapAmount, BURN, MINT};
 use common::{
     Amount, AssetInfoProvider, AssetName, AssetRegulator, AssetSymbol, BalancePrecision,
-    ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, BURN,
-    DEFAULT_BALANCE_PRECISION, MINT,
+    ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter,
+    DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
