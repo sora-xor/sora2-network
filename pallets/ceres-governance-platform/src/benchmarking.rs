@@ -12,7 +12,6 @@ use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresGovernancePlatform;
-// use assets::Pallet as Assets;
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();

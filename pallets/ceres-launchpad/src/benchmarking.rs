@@ -12,6 +12,7 @@ use common::{
     CERES_ASSET_ID, PSWAP, XOR,
 };
 use frame_benchmarking::benchmarks;
+use frame_support::traits::Get;
 use frame_support::PalletId;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -20,8 +21,6 @@ use sp_runtime::traits::{AccountIdConversion, Saturating};
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresLaunchpad;
-
-use frame_support::traits::Get;
 
 // Support Functions
 fn alice<T: frame_system::Config>() -> T::AccountId {

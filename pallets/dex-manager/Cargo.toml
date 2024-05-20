@@ -46,7 +46,6 @@ std = [
     'codec/std',
     "scale-info/std",
     'serde/std',
-    'assets/std',
     'frame-support/std',
     'frame-system/std',
     'pallet-balances/std',
