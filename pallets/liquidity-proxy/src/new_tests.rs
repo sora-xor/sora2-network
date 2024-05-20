@@ -224,8 +224,8 @@ fn check_tbc_pool_small_reserves() {
                 asset,
                 parameters: CollateralCommonParameters {
                     ref_prices: Some(AssetPrices {
-                        buy: balance!(10),
-                        sell: balance!(10),
+                        buy: balance!(1000000000),
+                        sell: balance!(1000000000),
                     }),
                     reserves: Some(balance!(100)),
                 },
@@ -275,12 +275,11 @@ fn check_tbc_pool_small_reserves() {
         )
         .unwrap();
 
-        // todo fix prices
         assert_eq!(
             info.outcome,
             SwapOutcome::new(
-                balance!(20.007930024129078968),
-                OutcomeFee::xor(balance!(0.000737492244004344))
+                balance!(1088.90261246290912415),
+                OutcomeFee::xor(balance!(8.267942959050548276))
             )
         );
     });
