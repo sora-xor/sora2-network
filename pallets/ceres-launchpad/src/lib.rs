@@ -81,7 +81,6 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-
     use common::{
         balance, AssetIdOf, AssetInfoProvider, AssetManager, DEXId, XykPool, PSWAP, XSTUSD,
     };

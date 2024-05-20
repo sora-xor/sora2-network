@@ -64,6 +64,9 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let ceres_owner: T::AccountId =
         <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&CERES_ASSET_ID.into())
             .unwrap();
+    let apollo_owner: T::AccountId =
+        <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(APOLLO_ASSET_ID.into())
+            .unwrap();
 
     // Register assets
     T::AssetManager::register_asset_id(
@@ -71,19 +74,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
         AssetName(b"Polkadot".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
-        Balance::from(0u32),
-        true,
-        None,
-        None,
-    )
-    .unwrap();
-
-    T::AssetManager::register_asset_id(
-        owner.clone(),
-        APOLLO_ASSET_ID.into(),
-        AssetSymbol(b"APOLLO".to_vec()),
-        AssetName(b"Apollo".to_vec()),
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
@@ -118,7 +108,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     T::AssetManager::mint(
-        owner_origin.clone(),
+        RawOrigin::Signed(apollo_owner.clone()).into(),
         APOLLO_ASSET_ID.into(),
         owner.clone(),
         balance!(500),
@@ -126,7 +116,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     T::AssetManager::mint(
-        owner_origin.clone(),
+        RawOrigin::Signed(apollo_owner).into(),
         APOLLO_ASSET_ID.into(),
         pallet_account,
         balance!(100000),
@@ -270,6 +260,8 @@ benchmarks! {
 
         let lending_amount = balance!(100);
 
+        setup_benchmark::<T>()?;
+
         ApolloPlatform::<T>::add_pool(
             RawOrigin::Signed(caller).into(),
             asset_id.into(),
@@ -288,7 +280,7 @@ benchmarks! {
             lending_amount
         ).unwrap()
     } verify {
-        assert_last_event::<T>(Event::Lended(alice, asset_id.into(), lending_amount).into());
+        assert_last_event::<T>(Event::Lent(alice, asset_id.into(), lending_amount).into());
     }
 
     borrow {
@@ -308,7 +300,7 @@ benchmarks! {
         let lending_amount_alice = balance!(300);
         let lending_amount_bob = balance!(200000);
 
-        let collateral_amount = balance!(101.00000000000000001);
+        let collateral_amount = balance!(99.009900990099009999);
         let borrow_amount = balance!(100);
 
         setup_benchmark::<T>()?;
@@ -721,5 +713,39 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(Event::PoolRemoved(caller, asset_id.into()).into());
+    }
+
+    edit_pool_info {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let asset_id = XOR;
+        let initial_parameter_value = balance!(1);
+        let edit_parameter_value = balance!(0.8);
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id.into(),
+            initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
+        ).unwrap();
+    }: {
+         ApolloPlatform::<T>::edit_pool_info(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id.into(),
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
+        ).unwrap()
+    }
+    verify {
+        assert_last_event::<T>(Event::PoolInfoEdited(caller, asset_id.into()).into());
     }
 }
