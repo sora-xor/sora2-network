@@ -214,7 +214,7 @@ impl<T: Config> ExchangePath<T> {
     }
 }
 
-#[derive(Eq, PartialEq, Encode, Decode)]
+#[derive(Debug, Eq, PartialEq, Encode, Decode)]
 pub struct QuoteInfo<AssetId: Ord, LiquiditySource> {
     pub outcome: SwapOutcome<Balance, AssetId>,
     pub amount_without_impact: Option<Balance>,
@@ -1475,9 +1475,8 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let (swap_info, aggregate_swap_outcome) = aggregator
-            .aggregate_swap_outcome(amount.amount())
-            .ok_or(Error::<T>::UnavailableExchangePath)?;
+        let (swap_info, aggregate_swap_outcome) =
+            aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
 
         let mut rewards = Rewards::new();
 
