@@ -4020,7 +4020,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4072,17 +4072,6 @@ mod tests {
                 }
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
-
             assert_eq!(
                 MBCPool::step_quote(
                     &DEXId::Polkaswap.into(),
@@ -4097,14 +4086,10 @@ mod tests {
                 DiscreteQuotation {
                     chunks: VecDeque::from([SwapChunk::new(
                         balance!(100),
-                        balance!(410.104539406891639983),
+                        balance!(414.858183424687130844),
                         Default::default()
                     )]),
-                    limits: SwapLimits::new(
-                        None,
-                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
-                        None
-                    )
+                    limits: Default::default()
                 }
             );
 
@@ -4121,11 +4106,11 @@ mod tests {
                 .0,
                 DiscreteQuotation {
                     chunks: VecDeque::from([SwapChunk::new(
-                        balance!(23.009190725763937774),
+                        balance!(23.004689731209517723),
                         balance!(100),
                         Default::default()
                     )]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6999))), None)
                 }
             );
         });
@@ -4178,7 +4163,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4324,17 +4309,6 @@ mod tests {
                 }
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
-
             assert_eq!(
                 MBCPool::step_quote(
                     &DEXId::Polkaswap.into(),
@@ -4350,60 +4324,56 @@ mod tests {
                     chunks: VecDeque::from([
                         SwapChunk::new(
                             balance!(10),
-                            balance!(43.904162265615428784),
+                            balance!(43.823305668643334664),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(43.221097702920335502),
+                            balance!(43.278010298107334834),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(42.553850855426252604),
+                            balance!(42.742829700646139787),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(41.901937076677897369),
+                            balance!(42.217515252737595070),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(41.264890140760950125),
+                            balance!(41.701825923235404378),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(40.642261408482453968),
+                            balance!(41.195527996834176818),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(40.033619037255543993),
+                            balance!(40.698394809214418168),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(39.438547232089968657),
+                            balance!(40.210206493307049656),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.856645535262398030),
+                            balance!(39.730749736147108117),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.287528152400410951),
+                            balance!(39.259817545814569352),
                             Default::default()
                         ),
                     ]),
-                    limits: SwapLimits::new(
-                        None,
-                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
-                        None
-                    )
+                    limits: Default::default()
                 }
             );
 
@@ -4421,57 +4391,57 @@ mod tests {
                 DiscreteQuotation {
                     chunks: VecDeque::from([
                         SwapChunk::new(
-                            balance!(2.263873863894484038),
+                            balance!(2.270849200934845097),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.271988107134249214),
+                            balance!(2.277355932169615427),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.280146053658968243),
+                            balance!(2.283890669421178168),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.288348017880763091),
+                            balance!(2.290453573643652819),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.296594317044297374),
+                            balance!(2.297044806949102179),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.304885271257453681),
+                            balance!(2.303664532617543395),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.313221203522399264),
+                            balance!(2.310312915107060116),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.321602439767045639),
+                            balance!(2.316990120064016936),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.330029308876907873),
+                            balance!(2.323696314333377333),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.338502142727369357),
+                            balance!(2.330431665969126253),
                             balance!(10),
                             Default::default()
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6999))), None)
                 }
             );
         });
@@ -4524,7 +4494,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4670,17 +4640,6 @@ mod tests {
                 }
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
-
             assert_eq!(
                 MBCPool::step_quote(
                     &DEXId::Polkaswap.into(),
@@ -4696,60 +4655,56 @@ mod tests {
                     chunks: VecDeque::from([
                         SwapChunk::new(
                             balance!(10),
-                            balance!(39.850130809676012394),
+                            balance!(39.770893807080951145),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(39.286983602315626041),
+                            balance!(39.321525775628234446),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.735689920059406079),
+                            balance!(38.879731017472867352),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.195919412097553140),
+                            balance!(38.445340305128119635),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(37.667353156347034178),
+                            balance!(38.018189111658898198),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(37.149683188249749213),
+                            balance!(37.598117454869340434),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(36.642612052081387235),
+                            balance!(37.184969747482925276),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(36.145852373550272004),
+                            balance!(36.778594653053145625),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(35.659126452539466983),
+                            balance!(36.378844947355598238),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(35.182165874914430417),
+                            balance!(35.985577385024467262),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                     ]),
-                    limits: SwapLimits::new(
-                        None,
-                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
-                        None
-                    )
+                    limits: Default::default()
                 }
             );
 
@@ -4767,57 +4722,57 @@ mod tests {
                 DiscreteQuotation {
                     chunks: VecDeque::from([
                         SwapChunk::new(
-                            balance!(2.496002055010456491),
+                            balance!(2.503692614040623039),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.232128191115972453))
+                            OutcomeFee::xor(balance!(0.232843413105777942))
                         ),
                         SwapChunk::new(
-                            balance!(2.504948298935225153),
+                            balance!(2.510866518378848321),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.232960191800975939))
+                            OutcomeFee::xor(balance!(0.233510586209232894))
                         ),
                         SwapChunk::new(
-                            balance!(2.513942727297649662),
+                            balance!(2.518071300354110439),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.233796673638681419))
+                            OutcomeFee::xor(balance!(0.234180630932932271))
                         ),
                         SwapChunk::new(
-                            balance!(2.522985686748360630),
+                            balance!(2.525307137424093516),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.234637668867597539))
+                            OutcomeFee::xor(balance!(0.234853563780440697))
                         ),
                         SwapChunk::new(
-                            balance!(2.532077527060967336),
+                            balance!(2.532574208323155655),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.235483210016669962))
+                            OutcomeFee::xor(balance!(0.235529401374053476))
                         ),
                         SwapChunk::new(
-                            balance!(2.541218601165880574),
+                            balance!(2.539872693073366477),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.236333329908426893))
+                            OutcomeFee::xor(balance!(0.236208160455823082))
                         ),
                         SwapChunk::new(
-                            balance!(2.550409265184563687),
+                            balance!(2.547202772995656137),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.237188061662164423))
+                            OutcomeFee::xor(balance!(0.236889857888596021))
                         ),
                         SwapChunk::new(
-                            balance!(2.559649878464217904),
+                            balance!(2.554564630721077107),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.238047438697172265))
+                            OutcomeFee::xor(balance!(0.237574510657060171))
                         ),
                         SwapChunk::new(
-                            balance!(2.568940803612908350),
+                            balance!(2.561958450202180080),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.238911494736000477))
+                            OutcomeFee::xor(balance!(0.238262135868802747))
                         ),
                         SwapChunk::new(
-                            balance!(2.578282406535137108),
+                            balance!(2.569384416724505241),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.239780263807767751))
+                            OutcomeFee::xor(balance!(0.238952750755378988))
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6999))), None)
                 }
             );
         });
@@ -4926,7 +4881,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4965,17 +4920,6 @@ mod tests {
                 QuoteAmount::with_desired_output(balance!(100)),
                 true,
             );
-
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
 
             compare_quotes(
                 &DEXId::Polkaswap,
