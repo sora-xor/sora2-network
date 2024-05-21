@@ -41,9 +41,8 @@
 
 pub use pallet::*;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::{balance, Balance, DataFeed, Rate, SymbolName};
+use common::{balance, AssetIdOf, AssetManager, Balance, DataFeed, Rate, SymbolName};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
 use sp_arithmetic::{FixedU128, Perbill};
@@ -313,8 +312,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        assets::Config
-        + frame_system::Config
+        frame_system::Config
         + technical::Config
         + timestamp::Config
         + SendTransactionTypes<Call<Self>>
@@ -322,7 +320,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             AssetSymbol,
             AssetName,
@@ -330,12 +328,12 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
-        type PriceTools: PriceToolsProvider<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type Oracle: DataFeed<SymbolName, Rate, u64>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
-        type KenAssetId: Get<Self::AssetId>;
+        type KenAssetId: Get<AssetIdOf<Self>>;
 
         /// Percent of KEN that is reminted and goes to Demeter farming incentivization
         #[pallet::constant]
@@ -380,7 +378,7 @@ pub mod pallet {
     #[pallet::getter(fn stablecoin_infos)]
     #[pallet::unbounded]
     pub type StablecoinInfos<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, StablecoinInfo<T::AssetId>>;
+        StorageMap<_, Identity, AssetIdOf<T>, StablecoinInfo<AssetIdOf<T>>>;
 
     /// Parameters for collaterals, include risk parameters and interest recalculation coefficients.
     /// Map (Collateral asset id, Stablecoin asset id => CollateralInfo)
@@ -936,13 +934,13 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Registers asset id for stablecoin.
         fn register_asset_id(
-            stablecoin_parameters: &StablecoinParameters<T::AssetId>,
-        ) -> Result<T::AssetId, DispatchError> {
+            stablecoin_parameters: &StablecoinParameters<AssetIdOf<T>>,
+        ) -> Result<AssetIdOf<T>, DispatchError> {
             let (vec_symbol, stable_asset_id) = match &stablecoin_parameters.peg_asset {
                 PegAsset::OracleSymbol(symbol) => {
                     let mut vec_symbol = symbol.clone().0;
                     vec_symbol.insert(0, b'K');
-                    let stable_asset_id: T::AssetId =
+                    let stable_asset_id: AssetIdOf<T> =
                         AssetId32::<common::PredefinedAssetId>::from_kensetsu_oracle_peg_symbol(
                             &vec_symbol,
                         )
@@ -954,7 +952,7 @@ pub mod pallet {
                         <T as Config>::AssetInfoProvider::get_asset_info(peg_asset_id);
                     let mut vec_symbol = symbol.0;
                     vec_symbol.insert(0, b'K');
-                    let stable_asset_id: T::AssetId =
+                    let stable_asset_id: AssetIdOf<T> =
                         AssetId32::<common::PredefinedAssetId>::from_kensetsu_sora_peg_symbol(
                             &vec_symbol,
                         )
@@ -967,7 +965,7 @@ pub mod pallet {
                 &T::TreasuryTechAccount::get(),
             )?;
 
-            assets::Pallet::<T>::register_asset_id(
+            T::AssetManager::register_asset_id(
                 technical_account_id,
                 stable_asset_id,
                 AssetSymbol(vec_symbol.clone()),
@@ -986,8 +984,8 @@ pub mod pallet {
         /// Stablecoin can be either symbol supported by Band Oracle or asset id supported by
         /// PriceTools.
         fn peg_stablecoin(
-            stablecoin_asset_id: &T::AssetId,
-            new_stablecoin_parameters: &StablecoinParameters<T::AssetId>,
+            stablecoin_asset_id: &AssetIdOf<T>,
+            new_stablecoin_parameters: &StablecoinParameters<AssetIdOf<T>>,
         ) -> DispatchResult {
             match &new_stablecoin_parameters.peg_asset {
                 PegAsset::OracleSymbol(symbol) => {
@@ -1029,7 +1027,7 @@ pub mod pallet {
         }
 
         /// Registers trading pair
-        fn register_trading_pair(asset_id: &T::AssetId) -> sp_runtime::DispatchResult {
+        fn register_trading_pair(asset_id: &AssetIdOf<T>) -> sp_runtime::DispatchResult {
             if T::TradingPairSourceManager::is_trading_pair_enabled(
                 &DEXId::Polkaswap.into(),
                 &XOR.into(),
@@ -1463,7 +1461,7 @@ pub mod pallet {
                     .checked_add(stability_fee)
                     .ok_or(Error::<T>::ArithmeticError)?;
                 cdp.interest_coefficient = new_coefficient;
-                Ok::<CollateralizedDebtPosition<T::AccountId, T::AssetId>, DispatchError>(
+                Ok::<CollateralizedDebtPosition<T::AccountId, AssetIdOf<T>>, DispatchError>(
                     cdp.clone(),
                 )
             })?;
@@ -1501,7 +1499,7 @@ pub mod pallet {
         }
 
         /// Mint token to protocol technical account
-        fn mint_treasury(asset_id: &T::AssetId, amount: Balance) -> DispatchResult {
+        fn mint_treasury(asset_id: &AssetIdOf<T>, amount: Balance) -> DispatchResult {
             technical::Pallet::<T>::mint(asset_id, &T::TreasuryTechAccount::get(), amount)?;
             Ok(())
         }
@@ -1515,12 +1513,7 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            assets::Pallet::<T>::mint_to(
-                stablecoin_asset_id,
-                &technical_account_id,
-                account,
-                amount,
-            )?;
+            T::AssetManager::mint_to(stablecoin_asset_id, &technical_account_id, account, amount)?;
             Ok(())
         }
 
@@ -1529,7 +1522,7 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            assets::Pallet::<T>::burn_from(
+            T::AssetManager::burn_from(
                 stablecoin_asset_id,
                 &technical_account_id,
                 &technical_account_id,
@@ -1553,7 +1546,7 @@ pub mod pallet {
             let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
-            assets::Pallet::<T>::burn_from(
+            T::AssetManager::burn_from(
                 stablecoin_asset_id,
                 &technical_account_id,
                 account,
@@ -1681,7 +1674,7 @@ pub mod pallet {
                 let leftover = proceeds
                     .checked_sub(cdp.debt)
                     .ok_or(Error::<T>::ArithmeticError)?;
-                assets::Pallet::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &cdp.stablecoin_asset_id,
                     &technical_account_id,
                     &cdp.owner,
@@ -1716,7 +1709,7 @@ pub mod pallet {
                     SwapAmount::with_desired_input(borrow_tax, balance!(0)),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
-                assets::Pallet::<T>::burn_from(
+                T::AssetManager::burn_from(
                     &T::KenAssetId::get(),
                     &technical_account_id,
                     &technical_account_id,
@@ -1947,7 +1940,7 @@ pub mod pallet {
         }
 
         fn increase_collateral_stablecoin_supply(
-            collateral_asset_id: &T::AssetId,
+            collateral_asset_id: &AssetIdOf<T>,
             stablecoin_asset_id: &AssetIdOf<T>,
             supply_change: Balance,
         ) -> DispatchResult {

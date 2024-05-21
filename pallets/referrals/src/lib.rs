@@ -86,7 +86,10 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use common::{Balance, XOR};
+    use common::{
+        AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, Balance,
+        BalancePrecision, ContentSource, Description, XOR,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -95,9 +98,18 @@ pub mod pallet {
     use crate::WeightInfo;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + common::Config {
         type ReservesAcc: Get<Self::AccountId>;
         type WeightInfo: WeightInfo;
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -125,7 +137,7 @@ pub mod pallet {
             }
 
             common::with_transaction(|| {
-                assets::Pallet::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &XOR.into(),
                     &referrer,
                     &T::ReservesAcc::get(),
@@ -160,7 +172,7 @@ pub mod pallet {
                     }
                 })?;
 
-                assets::Pallet::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &XOR.into(),
                     &T::ReservesAcc::get(),
                     &referrer,

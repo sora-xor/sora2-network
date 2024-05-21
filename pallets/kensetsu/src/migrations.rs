@@ -97,7 +97,7 @@ pub mod v1_to_v2 {
         CollateralInfos, Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos,
         StablecoinParameters,
     };
-    use common::{balance, DAI, KUSD};
+    use common::{balance, AssetIdOf, DAI, KUSD};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
@@ -105,9 +105,8 @@ pub mod v1_to_v2 {
 
     mod v1 {
         use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
-        use assets::AssetIdOf;
         use codec::{Decode, Encode, MaxEncodedLen};
-        use common::{AccountIdOf, Balance};
+        use common::{AccountIdOf, AssetIdOf, Balance};
         use frame_support::dispatch::TypeInfo;
         use frame_support::pallet_prelude::ValueQuery;
         use frame_support::Identity;
@@ -199,11 +198,11 @@ pub mod v1_to_v2 {
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
                 StablecoinInfos::<T>::insert(
-                    T::AssetId::from(KUSD),
+                    AssetIdOf::<T>::from(KUSD),
                     StablecoinInfo {
                         bad_debt: kusd_bad_debt,
                         stablecoin_parameters: StablecoinParameters {
-                            peg_asset: PegAsset::SoraAssetId(T::AssetId::from(DAI)),
+                            peg_asset: PegAsset::SoraAssetId(AssetIdOf::<T>::from(DAI)),
                             minimal_stability_fee_accrue: balance!(1),
                         },
                     },
@@ -214,16 +213,16 @@ pub mod v1_to_v2 {
                 {
                     CollateralInfos::<T>::insert(
                         collateral_asset_id,
-                        T::AssetId::from(KUSD),
+                        AssetIdOf::<T>::from(KUSD),
                         old_collateral_info.into_v2(),
                     );
                     weight += <T as frame_system::Config>::DbWeight::get().writes(1);
                 }
 
                 v1::CDPDepository::<T>::translate(
-                    |_, cdp: v1::CollateralizedDebtPosition<T::AccountId, T::AssetId>| {
+                    |_, cdp: v1::CollateralizedDebtPosition<T::AccountId, AssetIdOf<T>>| {
                         weight += <T as frame_system::Config>::DbWeight::get().writes(1);
-                        Some(cdp.into_v2(T::AssetId::from(KUSD)))
+                        Some(cdp.into_v2(AssetIdOf::<T>::from(KUSD)))
                     },
                 );
 

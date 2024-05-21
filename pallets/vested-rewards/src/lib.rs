@@ -41,7 +41,8 @@ use common::prelude::{Balance, FixedWrapper};
 use common::CrowdloanTag;
 use common::FromGenericPair;
 use common::{
-    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, OnPswapBurned, PswapRemintInfo,
+    RewardReason, Vesting, PSWAP,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -72,7 +73,6 @@ pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
 
-type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 /// Denotes PSWAP rewards amounts of particular types available for user.
@@ -229,7 +229,7 @@ impl<T: Config> Pallet<T> {
     pub fn claim_reward_by_reason(
         account_id: &T::AccountId,
         reason: RewardReason,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
@@ -243,7 +243,7 @@ impl<T: Config> Pallet<T> {
             fail!(Error::<T>::RewardsSupplyShortage);
         }
         let amount = amount.min(available_rewards);
-        Assets::<T>::transfer_from(asset_id, &source_account, account_id, amount)?;
+        T::AssetManager::transfer_from(asset_id, &source_account, account_id, amount)?;
         Ok(amount)
     }
 
@@ -278,7 +278,7 @@ impl<T: Config> Pallet<T> {
     pub fn get_claimable_crowdloan_reward(
         tag: &CrowdloanTag,
         user: &T::AccountId,
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
     ) -> Option<Balance> {
         let info = CrowdloanInfos::<T>::get(tag)?;
         let total_rewards = info
@@ -310,7 +310,7 @@ impl<T: Config> Pallet<T> {
     /// Calculate amount of tokens to send to user
     pub fn calculate_claimable_crowdloan_reward(
         now: &T::BlockNumber,
-        info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        info: &CrowdloanInfo<AssetIdOf<T>, T::BlockNumber, T::AccountId>,
         total_rewards: Balance,
         contribution: Balance,
         rewarded: Balance,
@@ -343,8 +343,8 @@ impl<T: Config> Pallet<T> {
     pub fn claim_crowdloan_reward_for_asset(
         user: &T::AccountId,
         now: &T::BlockNumber,
-        info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
-        asset_id: &T::AssetId,
+        info: &CrowdloanInfo<AssetIdOf<T>, T::BlockNumber, T::AccountId>,
+        asset_id: &AssetIdOf<T>,
         total_rewards: Balance,
         contribution: Balance,
         rewarded: Balance,
@@ -361,7 +361,7 @@ impl<T: Config> Pallet<T> {
             return Ok(0);
         }
 
-        assets::Pallet::<T>::transfer_from(asset_id, &info.account, user, claimable_reward)?;
+        T::AssetManager::transfer_from(asset_id, &info.account, user, claimable_reward)?;
 
         Self::deposit_event(Event::<T>::CrowdloanClaimed(
             user.clone(),
@@ -410,7 +410,7 @@ impl<T: Config> Pallet<T> {
         tag: CrowdloanTag,
         start_block: T::BlockNumber,
         length: T::BlockNumber,
-        rewards: Vec<(T::AssetId, Balance)>,
+        rewards: Vec<(AssetIdOf<T>, Balance)>,
         contributions: Vec<(T::AccountId, Balance)>,
     ) -> DispatchResult {
         ensure!(
@@ -462,7 +462,7 @@ impl<T: Config> OnPswapBurned for Pallet<T> {
     }
 }
 
-impl<T: Config> Vesting<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> Vesting<T::AccountId, AssetIdOf<T>> for Pallet<T> {
     fn add_tbc_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
         Pallet::<T>::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
     }
@@ -481,7 +481,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
+    use common::{AssetIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -491,10 +491,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + multicollateral_bonding_curve_pool::Config
+        frame_system::Config + common::Config + multicollateral_bonding_curve_pool::Config
     {
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -509,7 +506,7 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             AssetSymbol,
             AssetName,
@@ -596,7 +593,7 @@ pub mod pallet {
             tag: CrowdloanTag,
             start_block: T::BlockNumber,
             length: T::BlockNumber,
-            rewards: Vec<(T::AssetId, Balance)>,
+            rewards: Vec<(AssetIdOf<T>, Balance)>,
             contributions: Vec<(T::AccountId, Balance)>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -658,7 +655,7 @@ pub mod pallet {
         /// Saving reward for account has failed in a distribution series. [account]
         FailedToSaveCalculatedReward(AccountIdOf<T>),
         /// Claimed crowdloan rewards
-        CrowdloanClaimed(T::AccountId, T::AssetId, Balance),
+        CrowdloanClaimed(T::AccountId, AssetIdOf<T>, Balance),
     }
 
     /// Reserved for future use
@@ -681,7 +678,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         CrowdloanTag,
-        CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        CrowdloanInfo<AssetIdOf<T>, T::BlockNumber, T::AccountId>,
         OptionQuery,
     >;
 
@@ -694,7 +691,7 @@ pub mod pallet {
         T::AccountId,
         Blake2_128Concat,
         CrowdloanTag,
-        CrowdloanUserInfo<T::AssetId>,
+        CrowdloanUserInfo<AssetIdOf<T>>,
         OptionQuery,
     >;
 }

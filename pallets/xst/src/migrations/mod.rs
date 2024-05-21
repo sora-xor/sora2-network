@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::pallet::{Config, Pallet};
-use common::{fixed, Fixed, XSTUSD};
+use common::{fixed, AssetIdOf, Fixed, XSTUSD};
 use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
@@ -48,8 +48,7 @@ type PermissionedTechAccount<T: Config> =
     StorageValue<Pallet<T>, <T as technical::Config>::TechAccountId, ValueQuery>;
 
 #[frame_support::storage_alias]
-type EnabledSynthetics<T: Config> =
-    StorageValue<Pallet<T>, BTreeSet<<T as assets::Config>::AssetId>, ValueQuery>;
+type EnabledSynthetics<T: Config> = StorageValue<Pallet<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 
 pub struct CustomSyntheticsUpgrade<T>(core::marker::PhantomData<T>);
 
@@ -80,13 +79,13 @@ where
         let xstusd_symbol = T::Symbol::from(common::SymbolName::usd());
 
         NewEnabledSynthetics::<T>::insert(
-            T::AssetId::from(XSTUSD),
+            AssetIdOf::<T>::from(XSTUSD),
             SyntheticInfo {
                 reference_symbol: xstusd_symbol.clone(),
                 fee_ratio: fixed!(0.00666),
             },
         );
-        EnabledSymbols::<T>::insert(xstusd_symbol, T::AssetId::from(XSTUSD));
+        EnabledSymbols::<T>::insert(xstusd_symbol, AssetIdOf::<T>::from(XSTUSD));
 
         StorageVersion::new(2).put::<Pallet<T>>();
         T::DbWeight::get().reads_writes(0, 2)
