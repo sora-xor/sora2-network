@@ -1508,6 +1508,125 @@ fn check_exceed_reserves() {
 }
 
 #[test]
+fn check_empty_reserves() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        // don't deposit any liquidity
+
+        // error for quote
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_input(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_output(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        // no error for step_quote
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &gt,
+                    &bp,
+                    QuoteAmount::with_desired_input(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &gt,
+                    &bp,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &bp,
+                    &gt,
+                    QuoteAmount::with_desired_input(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &bp,
+                    &gt,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+    })]);
+}
+
+#[test]
 // Deposit to an empty pool
 fn deposit_less_than_minimum_1() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {

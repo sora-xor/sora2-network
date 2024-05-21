@@ -479,9 +479,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
-            fail!(Error::<T>::PoolIsEmpty);
-        } else if reserve_input <= 0 || reserve_output <= 0 {
-            fail!(Error::<T>::PoolIsInvalid);
+            return Ok((quotation, Weight::zero()));
         }
 
         // Decide which side should be used for fee.
