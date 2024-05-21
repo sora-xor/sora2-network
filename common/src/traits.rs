@@ -28,7 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
+use crate::prelude::{
+    permissions::PermissionId, ManagementMode, QuoteAmount, SwapAmount, SwapOutcome,
+};
 use crate::{
     Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
@@ -1446,27 +1448,20 @@ impl<AccountId> ReferrerAccountProvider<AccountId> for () {
 }
 
 pub trait AssetRegulator<AccountId, AssetId> {
-    /// Assign permission on registering new asset id
-    fn assign_permissions_on_register(
+    /// Assign `permission_id` for a specific `account_id` to a specific `asset_id`
+    fn assign_permission(
         owner: &AccountId,
         asset_id: &AssetId,
+        permission_id: &PermissionId,
     ) -> Result<(), DispatchError>;
 
-    /// Check asset regulation for minting a specific `asset_id` by a specific `account_id`
-    fn mint(
+    /// Check the permission `permission_id` of `issuer` for `asset_id`
+    /// with respect to `affected_account`
+    fn check_permission(
         issuer: &AccountId,
-        to: Option<&AccountId>,
+        affected_account: &AccountId,
         asset_id: &AssetId,
-    ) -> Result<(), DispatchError>;
-
-    /// Check asset regulation for transferring a specific `asset_id` by a specific `account_id`
-    fn transfer(from: &AccountId, to: &AccountId, asset_id: &AssetId) -> Result<(), DispatchError>;
-
-    /// Check asset regulation for minting a specific `asset_id` by a specific `account_id`
-    fn burn(
-        issuer: &AccountId,
-        from: Option<&AccountId>,
-        asset_id: &AssetId,
+        permission_id: &PermissionId,
     ) -> Result<(), DispatchError>;
 }
 
@@ -1475,38 +1470,24 @@ where
     A: AssetRegulator<AccountId, AssetId>,
     B: AssetRegulator<AccountId, AssetId>,
 {
-    fn mint(
-        issuer: &AccountId,
-        to: Option<&AccountId>,
-        asset_id: &AssetId,
-    ) -> Result<(), DispatchError> {
-        A::mint(issuer, to, asset_id)?;
-        B::mint(issuer, to, asset_id)?;
-        Ok(())
-    }
-
-    fn transfer(from: &AccountId, to: &AccountId, asset_id: &AssetId) -> Result<(), DispatchError> {
-        A::transfer(from, to, asset_id)?;
-        B::transfer(from, to, asset_id)?;
-        Ok(())
-    }
-
-    fn burn(
-        issuer: &AccountId,
-        from: Option<&AccountId>,
-        asset_id: &AssetId,
-    ) -> Result<(), DispatchError> {
-        A::burn(issuer, from, asset_id)?;
-        B::burn(issuer, from, asset_id)?;
-        Ok(())
-    }
-
-    fn assign_permissions_on_register(
+    fn assign_permission(
         owner: &AccountId,
         asset_id: &AssetId,
+        permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
-        A::assign_permissions_on_register(owner, asset_id)?;
-        B::assign_permissions_on_register(owner, asset_id)?;
+        A::assign_permission(owner, asset_id, permission_id)?;
+        B::assign_permission(owner, asset_id, permission_id)?;
+        Ok(())
+    }
+
+    fn check_permission(
+        issuer: &AccountId,
+        affected_account: &AccountId,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        A::check_permission(issuer, affected_account, asset_id, permission_id)?;
+        B::check_permission(issuer, affected_account, asset_id, permission_id)?;
         Ok(())
     }
 }
