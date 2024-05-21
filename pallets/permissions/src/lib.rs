@@ -48,7 +48,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::{hash, permissions::PermissionId, AssetRegulator};
+use common::{hash, AssetRegulator};
 use frame_support::codec::{Decode, Encode};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
@@ -62,9 +62,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub use common::prelude::permissions::{
-    BURN, CHECK_FARM, CLAIM_FROM_FARM, CREATE_FARM, GET_FARMER_INFO, GET_FARM_INFO, INIT_DEX,
-    LOCK_TO_FARM, MANAGE_DEX, MINT, SLASH, UNLOCK_FROM_FARM,
+pub use common::permissions::{
+    PermissionId, BURN, CHECK_FARM, CLAIM_FROM_FARM, CREATE_FARM, GET_FARMER_INFO, GET_FARM_INFO,
+    INIT_DEX, LOCK_TO_FARM, MANAGE_DEX, MINT, SLASH, UNLOCK_FROM_FARM,
 };
 /// The id of the account owning a permission
 pub type OwnerId<T> = <T as frame_system::Config>::AccountId;

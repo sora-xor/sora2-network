@@ -53,10 +53,8 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::prelude::{
-    permissions::{BURN, MINT},
-    Balance, SwapAmount,
-};
+use common::permissions::{BURN, MINT};
+use common::prelude::{Balance, SwapAmount};
 use common::{
     Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
     BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
