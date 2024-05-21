@@ -138,7 +138,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             ))
         } else {
             let amount = assets::Pallet::<TestRuntime>::free_balance(
-                &output_asset_id,
+                output_asset_id,
                 &Self::EXCHANGE_TECH_ACCOUNT,
             )
             .expect("must succeed");

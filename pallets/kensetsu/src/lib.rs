@@ -1761,7 +1761,7 @@ pub mod pallet {
                     swap_outcome.amount,
                 )?;
                 let to_remint = remint_percent * swap_outcome.amount;
-                Self::mint_treasury(&incentive_asset_id, to_remint)?;
+                Self::mint_treasury(incentive_asset_id, to_remint)?;
             }
 
             Ok(())
