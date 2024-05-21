@@ -28,20 +28,20 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Error};
 use codec::{Decode, Encode};
 use common::prelude::{OutcomeFee, SwapAmount};
 use frame_support::RuntimeDebug;
-use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
+    crate::{Config, Error},
     common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::{fixed, Balance},
     itertools::Itertools,
     sp_runtime::traits::Zero,
+    sp_runtime::DispatchError,
     sp_std::collections::btree_map::BTreeMap,
     sp_std::collections::vec_deque::VecDeque,
     sp_std::vec,
