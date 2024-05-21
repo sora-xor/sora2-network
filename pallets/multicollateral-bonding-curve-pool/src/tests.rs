@@ -5046,4 +5046,121 @@ mod tests {
             );
         });
     }
+
+    #[test]
+    fn check_empty_reserves() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                DAI,
+                balance!(0),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XOR,
+                balance!(0),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                balance!(200000),
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XSTUSD,
+                0,
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build();
+        ext.execute_with(|| {
+            let val_reserve = balance!(0);
+
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, val_reserve)]).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            // only for XOR -> Asset
+
+            assert_err!(
+                MBCPool::quote(
+                    &DEXId::Polkaswap,
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_input(balance!(1)),
+                    true
+                ),
+                Error::<Runtime>::NotEnoughReserves
+            );
+
+            assert_err!(
+                MBCPool::quote(
+                    &DEXId::Polkaswap,
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true
+                ),
+                Error::<Runtime>::NotEnoughReserves
+            );
+
+            assert_eq!(
+                sum_step_quote(
+                    MBCPool::step_quote(
+                        &DEXId::Polkaswap,
+                        &XOR,
+                        &VAL,
+                        QuoteAmount::with_desired_input(balance!(1)),
+                        10,
+                        true
+                    )
+                    .unwrap()
+                    .0
+                ),
+                (balance!(0), balance!(0), Default::default())
+            );
+
+            assert_eq!(
+                sum_step_quote(
+                    MBCPool::step_quote(
+                        &DEXId::Polkaswap,
+                        &XOR,
+                        &VAL,
+                        QuoteAmount::with_desired_output(balance!(1)),
+                        10,
+                        true
+                    )
+                    .unwrap()
+                    .0
+                ),
+                (balance!(0), balance!(0), Default::default())
+            );
+        });
+    }
 }

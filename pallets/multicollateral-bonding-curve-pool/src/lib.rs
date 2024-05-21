@@ -1645,18 +1645,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             let reserves_tech_account_id = ReservesAcc::<T>::get();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-            let collateral_supply: FixedWrapper = <T as Config>::AssetInfoProvider::free_balance(
+            let collateral_supply = <T as Config>::AssetInfoProvider::free_balance(
                 &output_asset_id,
                 &reserves_account_id,
-            )?
-            .into();
+            )?;
+
+            if collateral_supply.is_zero() {
+                return Ok((quotation, Weight::zero()));
+            }
 
             let (adjusted_amount, max_limit) = match amount {
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    let max_value = collateral_supply
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::PriceCalculationFailed)?
-                        .saturating_sub(balance!(1));
+                    let max_value = collateral_supply.saturating_sub(balance!(1));
 
                     let value = max_value.min(desired_amount_out);
 
