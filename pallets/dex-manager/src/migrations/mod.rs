@@ -30,7 +30,7 @@
 
 use super::pallet::{Config, Pallet};
 use codec::Decode;
-use common::{DEXInfo, XST};
+use common::{AssetIdOf, DEXInfo, XST};
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
@@ -38,7 +38,7 @@ use crate::DEXInfos;
 
 #[derive(Decode)]
 struct DEXInfoV0<T: Config> {
-    base_asset_id: T::AssetId,
+    base_asset_id: AssetIdOf<T>,
     is_public: bool,
 }
 

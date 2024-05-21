@@ -34,8 +34,7 @@ pub mod liquidity_sources {
     use crate::pallet_tools::mcbc::TbcdCollateralInput;
     use crate::pallet_tools::price_tools::AssetPrices;
     use crate::Config;
-    use assets::AssetIdOf;
-    use common::DexIdOf;
+    use common::{AssetIdOf, DexIdOf};
     use frame_support::dispatch::{DispatchError, DispatchResult};
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
@@ -72,7 +71,7 @@ pub mod liquidity_sources {
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
-            OrderBookId<T::AssetId, T::DEXId>,
+            OrderBookId<AssetIdOf<T>, T::DEXId>,
             pallet_tools::order_book::OrderBookAttributes,
             pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
         )>,
@@ -113,7 +112,7 @@ pub mod liquidity_sources {
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
-            OrderBookId<T::AssetId, T::DEXId>,
+            OrderBookId<AssetIdOf<T>, T::DEXId>,
             pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {
@@ -141,9 +140,9 @@ pub mod liquidity_sources {
     /// obtainable. Therefore, actual resulting price of synthetics is returned.
     pub fn initialize_xst<T: Config>(
         base: Option<BaseInput>,
-        synthetics: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+        synthetics: Vec<SyntheticInput<AssetIdOf<T>, <T as Config>::Symbol>>,
         relayer: T::AccountId,
-    ) -> Result<Vec<SyntheticOutput<T::AssetId>>, DispatchError> {
+    ) -> Result<Vec<SyntheticOutput<AssetIdOf<T>>>, DispatchError> {
         if let Some(base_prices) = base {
             pallet_tools::xst::initialize_base_assets::<T>(base_prices)?;
         }
@@ -158,9 +157,9 @@ pub mod liquidity_sources {
     /// - `tbcd_collateral`: TBCD-specific pricing variables.
     pub fn initialize_mcbc<T: Config>(
         base_supply: Option<BaseSupply<T::AccountId>>,
-        other_collaterals: Vec<OtherCollateralInput<T::AssetId>>,
+        other_collaterals: Vec<OtherCollateralInput<AssetIdOf<T>>>,
         tbcd_collateral: Option<TbcdCollateralInput>,
-    ) -> Result<BTreeMap<T::AssetId, AssetPrices>, DispatchError> {
+    ) -> Result<BTreeMap<AssetIdOf<T>, AssetPrices>, DispatchError> {
         if let Some(base_supply) = base_supply {
             pallet_tools::mcbc::initialize_base_supply::<T>(base_supply)?;
         }
