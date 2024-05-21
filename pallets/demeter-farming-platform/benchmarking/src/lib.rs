@@ -6,8 +6,8 @@
 
 use codec::Decode;
 use common::{
-    balance, AssetName, AssetSymbol, Balance, CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION, XOR,
-    XSTUSD,
+    balance, AssetManager, AssetName, AssetSymbol, Balance, CERES_ASSET_ID,
+    DEFAULT_BALANCE_PRECISION, XOR, XSTUSD,
 };
 use demeter_farming_platform::{AccountIdOf, AuthorityAccount, UserInfos};
 use frame_benchmarking::benchmarks;
@@ -16,7 +16,6 @@ use hex_literal::hex;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
-use assets::Pallet as Assets;
 use demeter_farming_platform::Call;
 use demeter_farming_platform::Pallet as DemeterFarmingPlatform;
 use frame_support::traits::Hooks;
@@ -60,7 +59,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     );
 
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
@@ -72,7 +71,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         None,
     );
 
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
@@ -84,7 +83,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         None,
     );
 
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         CERES_ASSET_ID.into(),
         AssetSymbol(b"CERES".to_vec()),
@@ -195,7 +194,7 @@ benchmarks! {
 
         setup_benchmark_assets_only::<T>()?;
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(team_account.clone()).into(),
             reward_asset.into(),
             authority.clone(),
@@ -246,14 +245,14 @@ benchmarks! {
 
         setup_benchmark_assets_only::<T>()?;
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             pallet_account.clone(),
             balance!(20000)
         );
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             caller.clone(),
@@ -323,14 +322,14 @@ benchmarks! {
 
         setup_benchmark_assets_only::<T>()?;
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             caller.clone(),
             balance!(20000)
         );
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             pallet_account.clone(),
@@ -564,14 +563,14 @@ benchmarks! {
 
         setup_benchmark_assets_only::<T>()?;
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             caller.clone(),
             balance!(20000)
         );
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(caller.clone()).into(),
             reward_asset.into(),
             pallet_account.clone(),

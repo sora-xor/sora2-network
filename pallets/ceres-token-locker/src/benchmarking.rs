@@ -5,14 +5,16 @@
 use super::*;
 
 use codec::Decode;
-use common::{balance, AssetId32, PredefinedAssetId, CERES_ASSET_ID};
+use common::{
+    balance, AssetId32, AssetIdOf, AssetInfoProvider, AssetManager, PredefinedAssetId,
+    CERES_ASSET_ID,
+};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresTokenLocker;
-use assets::Pallet as Assets;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -30,19 +32,19 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     where_clause {
-        where T::AssetId: From<AssetId32<PredefinedAssetId>>
+        where AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>
     }
 
     lock_tokens {
         let caller = alice::<T>();
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let timestamp = Timestamp::<T>::get() + 10u32.into();
         let locked_tokens = balance!(2000);
         let token_balance = locked_tokens + balance!(100);
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
@@ -62,14 +64,14 @@ benchmarks! {
 
     withdraw_tokens {
         let caller = alice::<T>();
-        let asset_id = T::AssetId::from(CERES_ASSET_ID);
-        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
+        let asset_id = AssetIdOf::<T>::from(CERES_ASSET_ID);
+        let asset_owner = <T as Config>::AssetInfoProvider::get_asset_owner(&asset_id).unwrap();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let timestamp = Timestamp::<T>::get() + 10u32.into();
         let locked_tokens = balance!(2000);
         let token_balance = locked_tokens + balance!(100);
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),

@@ -34,15 +34,14 @@ use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
 use common::prelude::FixedWrapper;
-use common::AssetInfoProvider;
+use common::{AssetIdOf, AssetInfoProvider};
 
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
-use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
-use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
-
+use crate::aliases::{AccountIdOf, TechAccountIdOf};
 use crate::bounds::*;
 use crate::operations::*;
+use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>

@@ -255,6 +255,8 @@ macro_rules! mock_common_config {
         impl common::Config for $runtime {
             type DEXId = DEXId;
             type LstId = LiquiditySourceType;
+            type MultiCurrency = currencies::Pallet<$runtime>;
+            type AssetManager = assets::Pallet<$runtime>;
         }
     };
 }

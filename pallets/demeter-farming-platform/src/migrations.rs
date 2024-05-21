@@ -55,7 +55,7 @@ pub fn migrate_pool_and_user_data<T: Config>() -> Weight {
                         rewards: old_pool_data.rewards,
                         rewards_to_be_distributed: old_pool_data.rewards_to_be_distributed,
                         is_removed: old_pool_data.is_removed,
-                        base_asset: base_asset.into(),
+                        base_asset: base_asset,
                     }
                 })
                 .collect::<Vec<PoolData<AssetIdOf<T>>>>(),
