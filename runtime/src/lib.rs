@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 84,
+    spec_version: 85,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 84,
+    transaction_version: 85,
     state_version: 0,
 };
 
@@ -1954,8 +1954,10 @@ parameter_types! {
     };
 
     pub const KenAssetId: AssetId = common::KEN;
+    pub const KarmaAssetId: AssetId = common::KARMA;
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 Kensetsu dollar of uncollected stability fee triggers accrue
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
@@ -1977,7 +1979,10 @@ impl kensetsu::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = GetTbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;

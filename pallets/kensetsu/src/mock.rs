@@ -40,7 +40,7 @@ use common::{
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
     PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
-    DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
+    DEFAULT_BALANCE_PRECISION, KARMA, KEN, KUSD, KXOR, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -128,20 +128,21 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
-        if *output_asset_id == KUSD {
-            let amount =
-                assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
-                    .expect("must succeed");
-            Ok(SwapOutcome::new(amount, Default::default()))
-        } else if *output_asset_id == KEN {
-            let amount =
-                assets::Pallet::<TestRuntime>::free_balance(&KEN, &Self::EXCHANGE_TECH_ACCOUNT)
-                    .expect("must succeed");
-            Ok(SwapOutcome::new(amount, Default::default()))
-        } else {
+        if *output_asset_id != KUSD
+            && *output_asset_id != KEN
+            && *output_asset_id != KARMA
+            && *output_asset_id != TBCD
+        {
             Err(DispatchError::Other(
-                "Wrong asset id for MockLiquidityProxy::quote, KUSD and KEN only supported",
+                "Wrong asset id for MockLiquidityProxy::quote, KUSD, KEN, KARMA, TBCD only supported",
             ))
+        } else {
+            let amount = assets::Pallet::<TestRuntime>::free_balance(
+                &output_asset_id,
+                &Self::EXCHANGE_TECH_ACCOUNT,
+            )
+            .expect("must succeed");
+            Ok(SwapOutcome::new(amount, Default::default()))
         }
     }
 
@@ -157,9 +158,13 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _amount: SwapAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
-        if *output_asset_id != KUSD && *output_asset_id != KEN {
+        if *output_asset_id != KUSD
+            && *output_asset_id != KEN
+            && *output_asset_id != KARMA
+            && *output_asset_id != TBCD
+        {
             Err(DispatchError::Other(
-                "Wrong asset id for MockLiquidityProxy::exchange, KUSD and KEN only supported",
+                "Wrong asset id for MockLiquidityProxy::exchange, KUSD, KEN, KARMA, TBCD only supported",
             ))
         } else {
             let swap_amount = assets::Pallet::<TestRuntime>::free_balance(
@@ -302,7 +307,10 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
     pub const KenAssetId: AssetId = KEN;
+    pub const KarmaAssetId: AssetId = KARMA;
+    pub const TbcdAssetId: AssetId = TBCD;
     pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub const GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 }
 
@@ -326,7 +334,10 @@ impl kensetsu::Config for TestRuntime {
     type TradingPairSourceManager = MockTradingPairSourceManager;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = TbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = ConstU64<100>;
@@ -404,6 +415,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
             ),
             (
+                TBCD,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
                 DAI,
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"DAI".to_vec()),
@@ -418,7 +440,18 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 KEN,
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KEN".to_vec()),
-                AssetName(b"Kensetsu token".to_vec()),
+                AssetName(b"KEN token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KARMA,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"KARMA".to_vec()),
+                AssetName(b"KARMA token".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
@@ -427,9 +460,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             ),
             (
                 KUSD,
-                assets_and_permissions_account_id,
+                assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KXOR,
+                assets_and_permissions_account_id,
+                AssetSymbol(b"KXOR".to_vec()),
+                AssetName(b"Kensetsu Stable XOR".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,

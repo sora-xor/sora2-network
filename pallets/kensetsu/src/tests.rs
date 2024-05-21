@@ -33,12 +33,12 @@ use super::*;
 use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     add_balance, alice, alice_account_id, assert_bad_debt, assert_balance, bob, bob_account_id,
-    configure_kensetsu_dollar_for_xor, create_cdp_for_xor, deposit_xor_to_cdp, get_account_cdp_ids,
-    get_total_supply, make_cdps_unsafe, set_bad_debt, set_borrow_tax,
-    set_kensetsu_dollar_stablecoin, set_kensetsu_gold_stablecoin, tech_account_id,
+    configure_kensetsu_dollar_for_xor, configure_kxor_for_xor, create_cdp_for_xor,
+    deposit_xor_to_cdp, get_account_cdp_ids, get_total_supply, make_cdps_unsafe, set_bad_debt,
+    set_borrow_tax, set_kensetsu_dollar_stablecoin, set_kensetsu_gold_stablecoin, tech_account_id,
 };
 
-use common::{balance, AssetId32, Balance, PredefinedAssetId, KEN, KUSD, XOR};
+use common::{balance, AssetId32, Balance, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
@@ -937,8 +937,8 @@ fn borrow_max_with_ken_incentivization() {
         let to_borrow_min = balance!(99);
         let to_borrow_max = balance!(100);
         // user receives
-        let actual_loan = 99009900990099009900;
-        let borrow_tax = 990099009900990100;
+        let actual_loan = 99009900990099009901;
+        let borrow_tax = 990099009900990099;
         // user debt + tax equals the value of collateral
         assert_eq!(actual_loan + borrow_tax, balance!(100));
         let initial_total_kusd_supply = get_total_supply(&KUSD);
@@ -977,6 +977,102 @@ fn borrow_max_with_ken_incentivization() {
         let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let demeter_farming_amount = remint_percent * ken_buyback_amount;
         assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+    });
+}
+
+/// @given: XOR is set as collateral and KXOR is borrow asset.
+/// @when: user borrows KXOR against XOR.
+/// @then: User is charged 3% of borrow tax:
+/// - 1% to buy back and burn KEN
+/// - 1% to buy back and burn KARMA
+/// - 1% to buy back and burn TBCD
+#[test]
+fn borrow_xor_kxor_with_incentivization() {
+    new_test_ext().execute_with(|| {
+        set_borrow_tax(Percent::from_percent(1));
+        configure_kxor_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        let collateral = balance!(1000);
+        add_balance(alice_account_id(), collateral, XOR);
+        assert_ok!(KensetsuPallet::create_cdp(
+            alice(),
+            XOR,
+            collateral,
+            KXOR,
+            balance!(0),
+            balance!(0),
+            CdpType::Type2
+        ));
+        let cdp_id = NextCDPId::<TestRuntime>::get();
+        let to_borrow = balance!(100);
+        let borrow_tax = balance!(3);
+        let initial_total_kxor_supply = get_total_supply(&KXOR);
+        assert_eq!(initial_total_kxor_supply, balance!(0));
+        let ken_buyback_amount = balance!(1);
+        let karma_buyback_amount = balance!(1);
+        let tbcd_buyback_amount = balance!(1);
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(KEN, ken_buyback_amount);
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(KARMA, karma_buyback_amount);
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(TBCD, tbcd_buyback_amount);
+        let initial_total_ken_supply = get_total_supply(&KEN);
+        let initial_total_karma_supply = get_total_supply(&KARMA);
+        let initial_total_tbcd_supply = get_total_supply(&TBCD);
+
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            to_borrow,
+            to_borrow
+        ));
+
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                debt_asset_id: KXOR,
+                amount: to_borrow + borrow_tax,
+            }
+            .into(),
+        );
+
+        let collateral_info = KensetsuPallet::collateral_infos(XOR, KXOR).expect("Must exists");
+        assert_eq!(collateral_info.stablecoin_supply, to_borrow + borrow_tax);
+        assert_eq!(collateral_info.total_collateral, collateral);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, to_borrow + borrow_tax);
+        assert_balance(&alice_account_id(), &KXOR, to_borrow);
+        let total_kxor_supply = get_total_supply(&KXOR);
+        assert_eq!(
+            total_kxor_supply,
+            initial_total_kxor_supply + to_borrow + borrow_tax
+        );
+        // KEN buy back
+        let ken_remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
+        let ken_demeter_farming_amount = ken_remint_percent * ken_buyback_amount;
+        let ken_burned = ken_buyback_amount - ken_demeter_farming_amount;
+        assert_balance(&tech_account_id(), &KEN, ken_demeter_farming_amount);
+        assert_eq!(
+            initial_total_ken_supply - ken_burned,
+            get_total_supply(&KEN)
+        );
+        // KARMA buy back
+        let karma_remint_percent = <TestRuntime as Config>::KarmaIncentiveRemintPercent::get();
+        let karma_demeter_farming_amount = karma_remint_percent * karma_buyback_amount;
+        let karma_burned = karma_buyback_amount - karma_demeter_farming_amount;
+        assert_balance(&tech_account_id(), &KARMA, karma_demeter_farming_amount);
+        assert_eq!(
+            initial_total_karma_supply - karma_burned,
+            get_total_supply(&KARMA)
+        );
+        // TBCD buy back
+        assert_eq!(
+            initial_total_tbcd_supply - tbcd_buyback_amount,
+            get_total_supply(&TBCD)
+        );
     });
 }
 

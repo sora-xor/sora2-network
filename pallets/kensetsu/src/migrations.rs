@@ -97,10 +97,12 @@ pub mod v1_to_v2 {
         CollateralInfos, Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos,
         StablecoinParameters,
     };
-    use common::{balance, AssetIdOf, DAI, KUSD};
+    use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
+    use frame_support::log::error;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
     mod v1 {
@@ -186,12 +188,57 @@ pub mod v1_to_v2 {
 
     pub struct UpgradeToV2<T>(PhantomData<T>);
 
-    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
-        OnRuntimeUpgrade for UpgradeToV2<T>
-    {
-        fn on_runtime_upgrade() -> Weight {
-            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+    impl<T: Config + permissions::Config + technical::Config> UpgradeToV2<T> {
+        fn grant_token_permission() -> Weight {
+            let mut weight = Weight::zero();
 
+            if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            ) {
+                let scope = Scope::Limited(common::hash(&KXOR));
+                for permission in &[MINT, BURN] {
+                    match permissions::Pallet::<T>::assign_permission(
+                        technical_account_id.clone(),
+                        &technical_account_id,
+                        *permission,
+                        scope,
+                    ) {
+                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
+                        Err(err) => {
+                            error!(
+                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                                technical_account_id, err
+                            );
+                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                        }
+                    }
+                }
+
+                for token in &[KARMA, TBCD] {
+                    let scope = Scope::Limited(common::hash(token));
+                    match permissions::Pallet::<T>::assign_permission(
+                        technical_account_id.clone(),
+                        &technical_account_id,
+                        BURN,
+                        scope,
+                    ) {
+                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
+                        Err(err) => {
+                            error!(
+                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                                technical_account_id, err
+                            );
+                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                        }
+                    }
+                }
+            }
+
+            weight
+        }
+
+        fn migrate_storage() -> Weight {
+            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             let version = Pallet::<T>::on_chain_storage_version();
             if version == 1 {
                 let kusd_bad_debt = v1::BadDebt::<T>::take();
@@ -229,6 +276,18 @@ pub mod v1_to_v2 {
                 StorageVersion::new(2).put::<Pallet<T>>();
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
             }
+
+            weight
+        }
+    }
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV2<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+            weight += Self::grant_token_permission();
+            weight += Self::migrate_storage();
 
             weight
         }

@@ -194,7 +194,7 @@ pub mod pallet {
         AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
         ContentSource, DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter,
         LiquiditySourceType, PriceToolsProvider, PriceVariant, TradingPairSourceManager, DAI,
-        DEFAULT_BALANCE_PRECISION, XOR,
+        DEFAULT_BALANCE_PRECISION, KXOR, XOR,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
@@ -206,6 +206,7 @@ pub mod pallet {
     use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
+    use sp_std::vec::Vec;
 
     /// CDP id type
     pub type CdpId = u128;
@@ -334,10 +335,16 @@ pub mod pallet {
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KenAssetId: Get<AssetIdOf<Self>>;
+        type KarmaAssetId: Get<AssetIdOf<Self>>;
+        type TbcdAssetId: Get<AssetIdOf<Self>>;
 
-        /// Percent of KEN that is reminted and goes to Demeter farming incentivization
+        /// Percent of KEN buy back that is reminted and goes to Demeter farming incentivization.
         #[pallet::constant]
         type KenIncentiveRemintPercent: Get<Percent>;
+
+        /// Percent of KARMA buy back that is reminted and goes to Demeter farming incentivization.
+        #[pallet::constant]
+        type KarmaIncentiveRemintPercent: Get<Percent>;
 
         /// Maximum number of CDP that one user can create
         #[pallet::constant]
@@ -1208,28 +1215,58 @@ pub mod pallet {
         /// - `borrow_amount_min` - borrow amount with slippage tolerance
         /// - `borrow_amount_safe_with_tax` - borrow amount limit
         fn charge_borrow_tax(
-            _collateral_asset_id: &AssetIdOf<T>,
+            collateral_asset_id: &AssetIdOf<T>,
             stablecoin_asset_id: &AssetIdOf<T>,
             borrow_amount_min: Balance,
             borrow_amount_max: Balance,
             borrow_amount_safe_with_tax: Balance,
         ) -> Result<(Balance, Balance), DispatchError> {
-            let borrow_tax_percent = Self::borrow_tax();
+            struct BorrowTax<T: Config> {
+                pub incentive_asset_id: AssetIdOf<T>,
+                pub tax_percent: Percent,
+                pub remint_percent: Percent,
+            }
+
+            let mut taxes: Vec<BorrowTax<T>> = Vec::new();
+            taxes.push(BorrowTax {
+                incentive_asset_id: T::KenAssetId::get(),
+                tax_percent: Self::borrow_tax(),
+                remint_percent: T::KenIncentiveRemintPercent::get(),
+            });
+
+            // charge 1% for $KEN buyback
+            let mut total_borrow_tax_percent = Self::borrow_tax();
+
+            // for XOR/KXOR cdps:
+            // - 1% for KARMA buyback
+            // - 1% for TBCD buyback
+            if *collateral_asset_id == Into::<AssetIdOf<T>>::into(XOR)
+                && *stablecoin_asset_id == Into::<AssetIdOf<T>>::into(KXOR)
+            {
+                taxes.push(BorrowTax {
+                    incentive_asset_id: T::KarmaAssetId::get(),
+                    tax_percent: Percent::from_percent(1),
+                    remint_percent: T::KarmaIncentiveRemintPercent::get(),
+                });
+                taxes.push(BorrowTax {
+                    incentive_asset_id: T::TbcdAssetId::get(),
+                    tax_percent: Percent::from_percent(1),
+                    remint_percent: Percent::zero(),
+                });
+                total_borrow_tax_percent = total_borrow_tax_percent + Percent::from_percent(2);
+            }
 
             let borrow_amount_safe = FixedU128::from_inner(borrow_amount_safe_with_tax)
-                .checked_div(&(FixedU128::one() + FixedU128::from(borrow_tax_percent)))
+                .checked_div(&(FixedU128::one() + FixedU128::from(total_borrow_tax_percent)))
                 .ok_or(Error::<T>::ArithmeticError)?
                 .into_inner();
-            let borrow_tax_safe = borrow_amount_safe_with_tax
-                .checked_sub(borrow_amount_safe)
-                .ok_or(Error::<T>::ArithmeticError)?;
 
-            let borrow_tax_min = borrow_tax_percent * borrow_amount_min;
+            let borrow_tax_min = total_borrow_tax_percent * borrow_amount_min;
             let borrow_amount_min_with_tax = borrow_amount_min
                 .checked_add(borrow_tax_min)
                 .ok_or(Error::<T>::ArithmeticError)?;
 
-            let borrow_tax_max = borrow_tax_percent * borrow_amount_max;
+            let borrow_tax_max = total_borrow_tax_percent * borrow_amount_max;
             let borrow_amount_max_with_tax = borrow_amount_max
                 .checked_add(borrow_tax_max)
                 .ok_or(Error::<T>::ArithmeticError)?;
@@ -1238,26 +1275,29 @@ pub mod pallet {
                 Error::<T>::CDPUnsafe
             );
 
-            let (borrow_amount_with_tax, borrow_amount, borrow_tax) =
+            let (borrow_amount_with_tax, expected_borrow_amount) =
                 if borrow_amount_max_with_tax <= borrow_amount_safe_with_tax {
-                    (
-                        borrow_amount_max_with_tax,
-                        borrow_amount_max,
-                        borrow_tax_max,
-                    )
+                    (borrow_amount_max_with_tax, borrow_amount_max)
                 } else {
-                    (
-                        borrow_amount_safe_with_tax,
-                        borrow_amount_safe,
-                        borrow_tax_safe,
-                    )
+                    (borrow_amount_safe_with_tax, borrow_amount_safe)
                 };
 
-            // stablecoin minted is taxed by `borrow_tax` to buy back and burn KEN, the tax
-            // increases debt
-            Self::incentivize_ken_token(stablecoin_asset_id, borrow_tax)?;
+            // borrow amount may differ from expected_borrow_amount due to rounding
+            let mut final_borrow_amount = borrow_amount_with_tax;
+            for tax in taxes {
+                let borrow_tax = tax.tax_percent * expected_borrow_amount;
+                final_borrow_amount = final_borrow_amount
+                    .checked_sub(borrow_tax)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                Self::incentivize_token(
+                    stablecoin_asset_id,
+                    borrow_tax,
+                    &tax.incentive_asset_id,
+                    tax.remint_percent,
+                )?;
+            }
 
-            Ok((borrow_amount_with_tax, borrow_amount))
+            Ok((borrow_amount_with_tax, final_borrow_amount))
         }
 
         /// Handles the internal borrowing operation within a Collateralized Debt Position (CDP).
@@ -1686,14 +1726,19 @@ pub mod pallet {
             Ok((collateral_liquidated, proceeds, penalty))
         }
 
-        /// Buys back KEN token with stablecoin and burns. Then 80% of burned is reminted for
-        /// incentivization with Demeter farming for XOR/KUSD liquidity providers.
+        /// Buys back token with stablecoin and burns. Then `remint_percent` of burned is reminted
+        /// for incentivization with Demeter farming for liquidity providers.
         ///
         /// ## Parameters
-        /// - borrow_tax - borrow tax from borrowing amount in stablecoins.
-        fn incentivize_ken_token(
+        /// - stablecoin_asset_id - asset id of tax;
+        /// - borrow_tax - borrow tax from borrowing amount in stablecoins;
+        /// - incentive_asset_id - token to buy back;
+        /// - remint_percent - remint after burn.
+        fn incentivize_token(
             stablecoin_asset_id: &AssetIdOf<T>,
             borrow_tax: Balance,
+            incentive_asset_id: &AssetIdOf<T>,
+            remint_percent: Percent,
         ) -> DispatchResult {
             if borrow_tax > 0 {
                 Self::mint_treasury(stablecoin_asset_id, borrow_tax)?;
@@ -1705,18 +1750,18 @@ pub mod pallet {
                     &technical_account_id,
                     &technical_account_id,
                     stablecoin_asset_id,
-                    &T::KenAssetId::get(),
+                    incentive_asset_id,
                     SwapAmount::with_desired_input(borrow_tax, balance!(0)),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
                 T::AssetManager::burn_from(
-                    &T::KenAssetId::get(),
+                    incentive_asset_id,
                     &technical_account_id,
                     &technical_account_id,
                     swap_outcome.amount,
                 )?;
-                let to_remint = T::KenIncentiveRemintPercent::get() * swap_outcome.amount;
-                Self::mint_treasury(&T::KenAssetId::get(), to_remint)?;
+                let to_remint = remint_percent * swap_outcome.amount;
+                Self::mint_treasury(&incentive_asset_id, to_remint)?;
             }
 
             Ok(())

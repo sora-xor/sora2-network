@@ -31,7 +31,7 @@
 use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
-use common::{AccountIdOf, AssetInfoProvider, Balance, DAI, KUSD, XOR};
+use common::{AccountIdOf, AssetInfoProvider, Balance, DAI, KUSD, KXOR, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
@@ -120,6 +120,20 @@ pub fn set_kensetsu_gold_stablecoin() {
     .expect("Must add Kensetsu Gold pegged to XAU")
 }
 
+/// Configures KXOR stablecoin pegged to XOR.
+pub fn set_kensetsu_xor_stablecoin() {
+    StablecoinInfos::<TestRuntime>::set::<AssetIdOf<TestRuntime>>(
+        KXOR,
+        Some(StablecoinInfo {
+            bad_debt: 0,
+            stablecoin_parameters: StablecoinParameters {
+                peg_asset: PegAsset::SoraAssetId(XOR),
+                minimal_stability_fee_accrue: balance!(1),
+            },
+        }),
+    );
+}
+
 /// Configures Kensetsu with basic parameters.
 ///
 /// Sets XOR asset id as collateral with default parameters and sets Kensetsu
@@ -136,6 +150,31 @@ pub fn configure_kensetsu_dollar_for_xor(
         RuntimeOrigin::root(),
         XOR,
         KUSD,
+        CollateralRiskParameters {
+            hard_cap,
+            max_liquidation_lot: balance!(1000),
+            liquidation_ratio,
+            stability_fee_rate,
+            minimal_collateral_deposit,
+        }
+    ));
+}
+
+/// Configures Kensetsu with basic parameters.
+///
+/// Sets XOR asset id as collateral with default parameters and sets KXOR as stablecoin asset. As if
+/// it was called `set_stablecoin` and `update_collateral_risk_parameters(XOR, some_info)`.
+pub fn configure_kxor_for_xor(
+    hard_cap: Balance,
+    liquidation_ratio: Perbill,
+    stability_fee_rate: FixedU128,
+    minimal_collateral_deposit: Balance,
+) {
+    set_kensetsu_xor_stablecoin();
+    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        RuntimeOrigin::root(),
+        XOR,
+        KXOR,
         CollateralRiskParameters {
             hard_cap,
             max_liquidation_lot: balance!(1000),
