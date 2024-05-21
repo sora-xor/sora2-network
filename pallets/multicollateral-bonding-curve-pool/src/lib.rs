@@ -1652,28 +1652,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             .into();
 
             let (adjusted_amount, max_limit) = match amount {
-                QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    let main_price_per_reference_unit: FixedWrapper =
-                        Self::sell_function(&input_asset_id, &output_asset_id, Fixed::ZERO)?.into();
-
-                    let collateral_price_per_reference_unit: FixedWrapper =
-                        Self::reference_price(&output_asset_id, PriceVariant::Sell)?.into();
-
-                    let main_supply = collateral_supply * collateral_price_per_reference_unit
-                        / main_price_per_reference_unit;
-
-                    let max_value = main_supply
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::PriceCalculationFailed)?
-                        .saturating_sub(balance!(1));
-
-                    let value = max_value.min(desired_amount_in);
-
-                    (
-                        QuoteAmount::with_desired_input(value),
-                        Some(SideAmount::Input(max_value)),
-                    )
-                }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                     let max_value = collateral_supply
                         .try_into_balance()
@@ -1687,6 +1665,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                         Some(SideAmount::Output(max_value)),
                     )
                 }
+                _ => (amount, None),
             };
 
             quotation.limits.max_amount = max_limit;

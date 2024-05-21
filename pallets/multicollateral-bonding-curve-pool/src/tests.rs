@@ -5068,6 +5068,8 @@ mod tests {
             .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
+            // XOR -> Asset with desired output is only one case when we can exceed reserves
+
             assert_err!(
                 MBCPool::quote(
                     &DEXId::Polkaswap,
@@ -5098,8 +5100,6 @@ mod tests {
                     OutcomeFee::xor(balance!(2324875.285805181258215351))
                 )
             );
-
-            // todo check desired input
         });
     }
 }
