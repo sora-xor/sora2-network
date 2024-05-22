@@ -44,33 +44,35 @@ mod tests;
 pub mod weights;
 
 use common::{
-    AssetInfoProvider, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
-    Description,
+    permissions::{PermissionId, ISSUE_SBT},
+    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    BalancePrecision, ContentSource, Description,
 };
 use frame_support::sp_runtime::DispatchError;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
+type Permissions<T> = permissions::Pallet<T>;
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + common::Config + permissions::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type WeightInfo: WeightInfo;
 
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
-            Self::AccountId,
+            AssetIdOf<Self>,
+            AccountIdOf<Self>,
             AssetSymbol,
             AssetName,
             BalancePrecision,
@@ -104,13 +106,46 @@ pub mod pallet {
                 <Error<T>>::OnlyAssetOwnerCanRegulate
             );
             ensure!(
-                !<AssetRegulated<T>>::get(asset_id),
+                !Self::regulated_asset(asset_id),
                 <Error<T>>::AssetAlreadyRegulated
             );
 
             // act
-            <AssetRegulated<T>>::set(asset_id, true);
+            <RegulatedAsset<T>>::set(asset_id, true);
             Self::deposit_event(Event::AssetRegulated { asset_id });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
+        pub fn issue_sbt(
+            origin: OriginFor<T>,
+            symbol: AssetSymbol,
+            name: AssetName,
+            initial_supply: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            // Check permission `who` can issue SBT
+            Permissions::<T>::check_permission(who.clone(), ISSUE_SBT)?;
+
+            let asset_id = T::AssetManager::register_from(
+                &who,
+                symbol,
+                name,
+                DEFAULT_BALANCE_PRECISION,
+                initial_supply,
+                true,
+                None,
+                None,
+            )?;
+
+            <SoulboundAsset<T>>::set(asset_id, true);
+            Self::deposit_event(Event::SoulboundTokenIssued {
+                asset_id,
+                owner: who,
+            });
 
             Ok(())
         }
@@ -119,54 +154,95 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        AssetRegulated { asset_id: AssetIdOf<T> },
+        AssetRegulated {
+            asset_id: AssetIdOf<T>,
+        },
+        SoulboundTokenIssued {
+            asset_id: AssetIdOf<T>,
+            owner: AccountIdOf<T>,
+        },
     }
 
     #[pallet::error]
     pub enum Error<T> {
+        SoulboundAssetNotOperationable,
         OnlyAssetOwnerCanRegulate,
         AssetAlreadyRegulated,
+        AllInvolvedUsersShouldHoldSBT,
     }
 
     #[pallet::type_value]
-    pub fn DefaultAssetRegulated<T: Config>() -> bool {
+    pub fn DefaultRegulatedAsset<T: Config>() -> bool {
+        false
+    }
+
+    #[pallet::type_value]
+    pub fn DefaultSoulboundAsset<T: Config>() -> bool {
         false
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn asset_regulated)]
-    pub type AssetRegulated<T: Config> =
-        StorageMap<_, Blake2_256, AssetIdOf<T>, bool, ValueQuery, DefaultAssetRegulated<T>>;
+    #[pallet::getter(fn regulated_asset)]
+    pub type RegulatedAsset<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, bool, ValueQuery, DefaultRegulatedAsset<T>>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn soulbound_asset)]
+    pub type SoulboundAsset<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, bool, ValueQuery, DefaultSoulboundAsset<T>>;
+    // value will replaced by metdata of soulbound asset instead of just boolean
 }
 
 impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
-    fn mint(
-        _issuer: &AccountIdOf<T>,
-        _to: Option<&AccountIdOf<T>>,
-        _asset_id: &AssetIdOf<T>,
+    fn check_permission(
+        issuer: &AccountIdOf<T>,
+        affected_account: &AccountIdOf<T>,
+        asset_id: &AssetIdOf<T>,
+        _permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
+        if Self::soulbound_asset(asset_id) {
+            // asset owner of the SBT can do all asset operations
+            if T::AssetInfoProvider::is_asset_owner(asset_id, issuer) {
+                return Ok(());
+            } else {
+                return Err(Error::<T>::SoulboundAssetNotOperationable.into());
+            }
+        }
+        // if asset is not regulated, then no need to check permissions
+        if !Self::regulated_asset(asset_id) {
+            return Ok(());
+        }
+        let (mut issuer_flag, mut affected_account_flag) = (false, false);
+
+        for (sbt_asset_id, _metadata) in SoulboundAsset::<T>::iter() {
+            if !issuer_flag {
+                let tot_balance = T::AssetInfoProvider::total_balance(&sbt_asset_id, issuer)?;
+                if tot_balance > 0 {
+                    issuer_flag = true;
+                }
+            }
+            if !affected_account_flag {
+                let tot_balance =
+                    T::AssetInfoProvider::total_balance(&sbt_asset_id, affected_account)?;
+                if tot_balance > 0 {
+                    affected_account_flag = true;
+                }
+            }
+            if issuer_flag && affected_account_flag {
+                break;
+            }
+        }
+        if !issuer_flag || !affected_account_flag {
+            return Err(Error::<T>::AllInvolvedUsersShouldHoldSBT.into());
+        }
+
         Ok(())
     }
 
-    fn transfer(
-        _from: &AccountIdOf<T>,
-        _to: &AccountIdOf<T>,
-        _asset_id: &AssetIdOf<T>,
-    ) -> Result<(), DispatchError> {
-        Ok(())
-    }
-
-    fn burn(
-        _issuer: &AccountIdOf<T>,
-        _from: Option<&AccountIdOf<T>>,
-        _asset_id: &AssetIdOf<T>,
-    ) -> Result<(), DispatchError> {
-        Ok(())
-    }
-
-    fn assign_permissions_on_register(
+    fn assign_permission(
         _owner: &AccountIdOf<T>,
         _asset_id: &AssetIdOf<T>,
+        _permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
         Ok(())
     }

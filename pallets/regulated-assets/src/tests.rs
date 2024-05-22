@@ -37,7 +37,7 @@ type RegulatedAssets = Pallet<TestRuntime>;
 #[test]
 fn test_default_value_asset_regulated() {
     new_test_ext().execute_with(|| {
-        let default_value = RegulatedAssets::asset_regulated(XOR);
+        let default_value = RegulatedAssets::regulated_asset(XOR);
         assert_eq!(default_value, false);
     })
 }

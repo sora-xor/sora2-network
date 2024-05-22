@@ -64,6 +64,7 @@ use sp_std::marker::PhantomData;
 
 pub trait WeightInfo {
     fn regulate_asset() -> Weight;
+	fn issue_sbt() -> Weight;
 }
 
 /// Weight functions for `regulated_assets`.
@@ -82,6 +83,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
+	
+	fn issue_sbt() -> Weight {
+			todo!()
+		}
 }
 
 
@@ -92,5 +97,9 @@ impl WeightInfo for () {
             .saturating_add(RocksDbWeight::get().reads(2_u64))
             .saturating_add(RocksDbWeight::get().writes(1_u64))
     }
+	
+	fn issue_sbt() -> Weight {
+		todo!()
+	}
 }
 

@@ -39,9 +39,7 @@ use sp_std::prelude::*;
 
 use super::*;
 
-use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
-
-type Assets<T> = assets::Pallet<T>;
+use common::{AssetManager, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
 
 // Support Functions
 fn asset_owner<T: Config>() -> T::AccountId {
@@ -57,11 +55,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     assert_eq!(event, &system_event);
 }
 
-fn add_asset<T: Config>() -> T::AssetId {
+fn add_asset<T: Config>() -> AssetIdOf<T> {
     let owner = asset_owner::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
 
-    let asset_id = Assets::<T>::register_from(
+    let asset_id = T::AssetManager::register_from(
         &owner,
         AssetSymbol(b"TOKEN".to_vec()),
         AssetName(b"TOKEN".to_vec()),
