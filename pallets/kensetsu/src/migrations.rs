@@ -97,7 +97,7 @@ pub mod v1_to_v2 {
         CollateralInfos, Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos,
         StablecoinParameters,
     };
-    use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD};
+    use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::log::error;
@@ -256,6 +256,18 @@ pub mod v1_to_v2 {
                 );
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
+                StablecoinInfos::<T>::insert(
+                    AssetIdOf::<T>::from(KXOR),
+                    StablecoinInfo {
+                        bad_debt: balance!(0),
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::SoraAssetId(AssetIdOf::<T>::from(XOR)),
+                            minimal_stability_fee_accrue: balance!(100000),
+                        },
+                    },
+                );
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
                 for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
                 {
                     CollateralInfos::<T>::insert(
@@ -298,7 +310,7 @@ pub mod v1_to_v2 {
         use crate::migrations::v1_to_v2::{v1, UpgradeToV2};
         use crate::mock::{new_test_ext, TestRuntime};
         use crate::{CollateralInfos, Pallet, PegAsset, StablecoinInfos, StablecoinParameters};
-        use common::{balance, DAI, KUSD, XOR};
+        use common::{balance, DAI, KUSD, KXOR, XOR};
         use core::default::Default;
         use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
         use sp_arithmetic::FixedU128;
@@ -335,7 +347,7 @@ pub mod v1_to_v2 {
 
                 assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 2);
 
-                assert_eq!(1, StablecoinInfos::<TestRuntime>::iter().count());
+                assert_eq!(2, StablecoinInfos::<TestRuntime>::iter().count());
                 let kusd_info = StablecoinInfos::<TestRuntime>::get(KUSD).unwrap();
                 assert_eq!(kusd_bad_debt, kusd_info.bad_debt);
                 assert_eq!(
@@ -344,6 +356,16 @@ pub mod v1_to_v2 {
                         minimal_stability_fee_accrue: balance!(1),
                     },
                     kusd_info.stablecoin_parameters
+                );
+
+                let kxor_info = StablecoinInfos::<TestRuntime>::get(KXOR).unwrap();
+                assert_eq!(balance!(0), kxor_info.bad_debt);
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::SoraAssetId(XOR),
+                        minimal_stability_fee_accrue: balance!(100000),
+                    },
+                    kxor_info.stablecoin_parameters
                 );
 
                 assert_eq!(2, CollateralInfos::<TestRuntime>::iter().count());

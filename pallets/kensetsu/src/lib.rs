@@ -427,6 +427,47 @@ pub mod pallet {
     pub type CdpOwnerIndex<T: Config> =
         StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
 
+    /// Configuration parameters of predefined assets. Populates storage StablecoinInfos with
+    /// predefined assets on initialization. Contains list of:
+    /// - predefined asset id;
+    /// - peg asset id;
+    /// - minimal stability fee accrue.
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub predefined_stablecoin_infos: Vec<(AssetIdOf<T>, AssetIdOf<T>, Balance)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                predefined_stablecoin_infos: Default::default(),
+            }
+        }
+    }
+
+    /// Populates StablecoinInfos with passed parameters. Used for populating with predefined
+    /// stable assets.
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            self.predefined_stablecoin_infos.iter().cloned().for_each(
+                |(predefined_asset_id, peg_asset_id, minimal_stability_fee_accrue)| {
+                    StablecoinInfos::<T>::insert(
+                        predefined_asset_id,
+                        StablecoinInfo {
+                            bad_debt: Balance::zero(),
+                            stablecoin_parameters: StablecoinParameters {
+                                peg_asset: PegAsset::SoraAssetId(peg_asset_id),
+                                minimal_stability_fee_accrue,
+                            },
+                        },
+                    );
+                },
+            )
+        }
+    }
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
