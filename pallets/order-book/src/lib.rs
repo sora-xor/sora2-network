@@ -1431,6 +1431,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
+        let base_amount = deal_info.base_amount();
+        ensure!(
+            order_book.min_lot_size <= base_amount && base_amount <= order_book.max_lot_size,
+            Error::<T>::InvalidOrderAmount
+        );
+
         // order-book doesn't take fee
         let fee = OutcomeFee::new();
 
@@ -1509,7 +1515,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Output(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
+                    if desired_amount_in < *quote_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_in.min(*quote_max_amount.value().balance());
+
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(target))
                 }
                 PriceVariant::Sell => {
                     quotation.limits.min_amount =
@@ -1519,11 +1534,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Input(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Base(
-                        order_book
-                            .step_lot_size
-                            .copy_divisibility(desired_amount_in),
-                    )
+                    if desired_amount_in < *base_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_in.min(*base_max_amount.value().balance());
+
+                    OrderAmount::Base(order_book.step_lot_size.copy_divisibility(target))
                 }
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
@@ -1535,11 +1555,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Output(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Base(
-                        order_book
-                            .step_lot_size
-                            .copy_divisibility(desired_amount_out),
-                    )
+                    if desired_amount_out < *base_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_out.min(*base_max_amount.value().balance());
+
+                    OrderAmount::Base(order_book.step_lot_size.copy_divisibility(target))
                 }
                 PriceVariant::Sell => {
                     quotation.limits.min_amount =
@@ -1549,7 +1574,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Input(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
+                    if desired_amount_out < *quote_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_out.min(*quote_max_amount.value().balance());
+
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(target))
                 }
             },
         };
