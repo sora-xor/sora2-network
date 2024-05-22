@@ -35,9 +35,9 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
-    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
+    fixed, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, BuyBackHandler,
+    DexInfoProvider, EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -60,8 +60,6 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 type DexIdOf<T> = <T as common::Config>::DEXId;
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 
 pub use weights::WeightInfo;
@@ -144,7 +142,7 @@ impl<T: Config> Pallet<T> {
             });
             let incentives_asset_id = T::GetIncentiveAssetId::get();
             let tech_account_id = T::GetTechnicalAccountId::get();
-            let _result = Assets::<T>::transfer_from(
+            let _result = T::AssetManager::transfer_from(
                 &incentives_asset_id,
                 &tech_account_id,
                 &account_id,
@@ -303,7 +301,7 @@ impl<T: Config> Pallet<T> {
                     .saturating_add(undistributed_lp_amount);
             }
 
-            assets::Pallet::<T>::mint_to(
+            T::AssetManager::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
@@ -338,12 +336,12 @@ impl<T: Config> Pallet<T> {
     fn calculate_and_burn_distribution(
         fees_account_id: &T::AccountId,
         tech_account_id: &T::AccountId,
-        incentive_asset_id: &T::AssetId,
+        incentive_asset_id: &AssetIdOf<T>,
         incentive_total: Balance,
     ) -> Result<PswapRemintInfo, DispatchError> {
         let distribution = Self::calculate_pswap_distribution(incentive_total)?;
-        assets::Pallet::<T>::burn_from(
-            &incentive_asset_id,
+        T::AssetManager::burn_from(
+            incentive_asset_id,
             tech_account_id,
             fees_account_id,
             incentive_total,
@@ -465,6 +463,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::AssetIdOf;
     use common::{
         AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description,
         XykPool,
@@ -476,13 +475,13 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config + common::Config + technical::Config + tokens::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type GetIncentiveAssetId: Get<Self::AssetId>;
-        type GetTBCDAssetId: Get<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type GetIncentiveAssetId: Get<AssetIdOf<Self>>;
+        type GetTBCDAssetId: Get<AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
             + From<Balance>
@@ -495,13 +494,13 @@ pub mod pallet {
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
-        type PoolXykPallet: XykPool<Self::AccountId, Self::AssetId>;
-        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type PoolXykPallet: XykPool<Self::AccountId, AssetIdOf<Self>>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
         type GetChameleonPoolBaseAssetId: traits::GetByKey<Self::AssetId, Option<Self::AssetId>>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             AssetSymbol,
             AssetName,

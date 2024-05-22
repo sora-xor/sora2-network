@@ -43,9 +43,9 @@ mod tests;
 mod utils;
 pub mod weights;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::{RewardReason, TradingPair};
+use common::AssetIdOf;
+use common::{GetBaseAssetIdOf, RewardReason, TradingPair};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -97,7 +97,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn get_multiplier(asset_id: &AssetIdOf<T>) -> Result<FixedWrapper, DispatchError> {
-        let base_asset = <T as assets::Config>::GetBaseAssetId::get();
+        let base_asset = GetBaseAssetIdOf::<T>::get();
         if asset_id == &base_asset {
             Ok(balance!(1).into())
         } else {
@@ -312,7 +312,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
+    use common::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::StorageVersion;
@@ -325,10 +325,9 @@ pub mod pallet {
         frame_system::Config
         // pallet::config doesn't let to specify associated type constraints
         + frame_system::Config<AccountId = AccountId32>
-        + assets::Config
         + permissions::Config
         + technical::Config
-        + tokens::Config<Balance = Balance, CurrencyId = <Self as assets::Config>::AssetId>
+        + tokens::Config<Balance = Balance, CurrencyId = AssetIdOf<Self>>
         + pool_xyk::Config
         + vested_rewards::Config
     {
@@ -343,7 +342,7 @@ pub mod pallet {
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -432,12 +431,12 @@ pub mod pallet {
 }
 
 pub mod rpc {
-    use super::{Config, Pallet};
+    use super::{AssetIdOf, Config, Pallet};
     use frame_support::traits::Get as _;
     use sp_std::prelude::*;
 
     impl<T: Config> Pallet<T> {
-        pub fn reward_doubling_assets() -> Vec<T::AssetId> {
+        pub fn reward_doubling_assets() -> Vec<AssetIdOf<T>> {
             T::RewardDoublingAssets::get()
         }
     }

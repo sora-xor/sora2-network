@@ -12,7 +12,6 @@ repository = 'https://github.com/sora-xor/sora2-network'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-assets = { path = "../assets", default-features = false }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }

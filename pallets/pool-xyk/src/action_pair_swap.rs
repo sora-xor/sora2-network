@@ -33,15 +33,14 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
-use common::prelude::{Balance, FixedWrapper};
+use crate::to_fixed_wrapper;
+use common::prelude::{AssetIdOf, Balance, FixedWrapper};
 use common::{balance, AssetInfoProvider, DexInfoProvider};
 use sp_runtime::traits::Zero;
 
-use crate::to_fixed_wrapper;
-
 use crate::bounds::*;
 
-use crate::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, DEXIdOf, TechAccountIdOf};
 use crate::operations::*;
 use crate::{Config, Error, Pallet};
 

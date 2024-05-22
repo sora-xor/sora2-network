@@ -71,6 +71,7 @@ pub mod pallet {
     use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use common::BoundedString;
+    use common::{AssetIdOf, AssetManager};
     use frame_support::log;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::pallet_prelude::ValueQuery;
@@ -89,9 +90,7 @@ pub mod pallet {
     const PALLET_ID: PalletId = PalletId(*b"ceresgov");
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + timestamp::Config {
         /// String limit
         type StringLimit: Get<u32>;
 
@@ -111,10 +110,8 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -274,7 +271,7 @@ pub mod pallet {
             }
 
             // Transfer asset to pallet
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &poll_info.poll_asset,
                 &user,
                 &Self::account_id(),
@@ -387,7 +384,7 @@ pub mod pallet {
             );
 
             // Withdraw asset
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &poll_info.poll_asset,
                 &Self::account_id(),
                 &user,

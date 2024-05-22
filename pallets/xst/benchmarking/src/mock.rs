@@ -196,6 +196,7 @@ impl xst::Config for Runtime {
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl band::Config for Runtime {
@@ -241,6 +242,8 @@ impl currencies::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 parameter_types! {

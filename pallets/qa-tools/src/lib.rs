@@ -55,10 +55,10 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
+
     use common::{
-        AccountIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-        DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -87,7 +87,7 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type AssetInfoProvider: AssetInfoProvider<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             AssetSymbol,
             AssetName,
@@ -95,9 +95,9 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
-        type SyntheticInfoProvider: SyntheticInfoProvider<Self::AssetId>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type SyntheticInfoProvider: SyntheticInfoProvider<AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
@@ -125,12 +125,12 @@ pub mod pallet {
         XstInitialized {
             /// Exact `quote`/`exchange` calls achievable after the initialization.
             /// Should correspond 1-to-1 to the initialization input and be quite close to the given values.
-            quotes_achieved: Vec<SyntheticOutput<T::AssetId>>,
+            quotes_achieved: Vec<SyntheticOutput<AssetIdOf<T>>>,
         },
         /// Multicollateral bonding curve liquidity source has been initialized successfully.
         McbcInitialized {
             /// Exact reference prices achieved for the collateral assets.
-            collateral_ref_prices: Vec<(T::AssetId, pallet_tools::price_tools::AssetPrices)>,
+            collateral_ref_prices: Vec<(AssetIdOf<T>, pallet_tools::price_tools::AssetPrices)>,
         },
     }
 
@@ -189,10 +189,10 @@ pub mod pallet {
     }
 
     impl<AssetId> InputAssetId<AssetId> {
-        pub fn resolve<T>(self) -> T::AssetId
+        pub fn resolve<T>(self) -> AssetIdOf<T>
         where
             T: Config,
-            T::AssetId: From<AssetId>,
+            AssetIdOf<T>: From<AssetId>,
         {
             match self {
                 InputAssetId::McbcReference => {
@@ -225,7 +225,7 @@ pub mod pallet {
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec<(
-                OrderBookId<T::AssetId, T::DEXId>,
+                OrderBookId<AssetIdOf<T>, T::DEXId>,
                 pallet_tools::order_book::OrderBookAttributes,
                 pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
             )>,
@@ -274,7 +274,7 @@ pub mod pallet {
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec<(
-                OrderBookId<T::AssetId, T::DEXId>,
+                OrderBookId<AssetIdOf<T>, T::DEXId>,
                 pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {
@@ -355,7 +355,7 @@ pub mod pallet {
         pub fn xst_initialize(
             origin: OriginFor<T>,
             base_prices: Option<BaseInput>,
-            synthetics_prices: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+            synthetics_prices: Vec<SyntheticInput<AssetIdOf<T>, <T as Config>::Symbol>>,
             relayer: T::AccountId,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -392,7 +392,7 @@ pub mod pallet {
         pub fn mcbc_initialize(
             origin: OriginFor<T>,
             base_supply: Option<pallet_tools::mcbc::BaseSupply<T::AccountId>>,
-            other_collaterals: Vec<pallet_tools::mcbc::OtherCollateralInput<T::AssetId>>,
+            other_collaterals: Vec<pallet_tools::mcbc::OtherCollateralInput<AssetIdOf<T>>>,
             tbcd_collateral: Option<pallet_tools::mcbc::TbcdCollateralInput>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -434,7 +434,7 @@ pub mod pallet {
         pub fn price_tools_set_asset_price(
             origin: OriginFor<T>,
             asset_per_xor: pallet_tools::price_tools::AssetPrices,
-            asset_id: InputAssetId<T::AssetId>,
+            asset_id: InputAssetId<AssetIdOf<T>>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 

@@ -1,5 +1,5 @@
-use crate::{AssetIdOf, Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
-use common::{convert_block_number_to_timestamp, Balance};
+use crate::{Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
+use common::{convert_block_number_to_timestamp, AssetIdOf, Balance};
 use frame_support::log;
 use frame_support::traits::Get;
 use sp_std::vec::Vec;

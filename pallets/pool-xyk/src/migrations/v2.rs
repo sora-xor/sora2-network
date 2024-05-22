@@ -1,11 +1,14 @@
-use common::generate_storage_instance;
+use common::{
+    generate_storage_instance, AssetIdOf, AssetManager, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description,
+};
 use frame_support::dispatch::Weight;
 use frame_support::pallet_prelude::{StorageMap, StorageVersion, ValueQuery};
 use frame_support::traits::Get;
 use frame_support::Identity;
 use sp_std::collections::btree_set::BTreeSet;
 
-use crate::aliases::{AccountIdOf, AssetIdOf};
+use crate::aliases::AccountIdOf;
 use crate::{AccountPools, Config, Pallet};
 
 generate_storage_instance!(PoolXYK, AccountPools);
@@ -23,7 +26,18 @@ pub fn migrate<T: Config>() -> Weight {
         {
             println!("{account:?}, {target_assets:?}");
         }
-        AccountPools::<T>::insert(account, T::GetBaseAssetId::get(), target_assets);
+        AccountPools::<T>::insert(
+            account,
+            <<T as common::Config>::AssetManager as AssetManager<
+                T,
+                AssetSymbol,
+                AssetName,
+                BalancePrecision,
+                ContentSource,
+                Description,
+            >>::GetBaseAssetId::get(),
+            target_assets,
+        );
     }
     StorageVersion::new(2).put::<Pallet<T>>();
     T::BlockWeights::get().max_block
