@@ -1045,4 +1045,9 @@ impl<T: Config>
         }
         r
     }
+
+    fn get_asset_owner(asset_id: &T::AssetId) -> Result<T::AccountId, DispatchError> {
+        let owner = Self::asset_owner(asset_id).ok_or(Error::<T>::AssetIdNotExists)?;
+        Ok(owner)
+    }
 }

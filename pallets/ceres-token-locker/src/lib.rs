@@ -43,7 +43,10 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, AssetInfoProvider};
+    use common::{
+        balance, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+        Description,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -55,7 +58,6 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crstlock");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
@@ -68,6 +70,17 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -199,7 +212,9 @@ pub mod pallet {
             let total = number_of_tokens + fee;
 
             ensure!(
-                total <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughFunds
             );
 

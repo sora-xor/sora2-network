@@ -149,6 +149,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl common::Config for Runtime {
@@ -225,6 +226,7 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -245,6 +247,7 @@ impl pswap_distribution::Config for Runtime {
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -268,6 +271,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -366,6 +370,7 @@ impl Config for Runtime {
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[allow(non_snake_case)]

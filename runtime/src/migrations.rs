@@ -28,13 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "ready-to-test")] // kensetsu
+#[cfg(feature = "ready-to-test")] // tokenomics-upgrade
 use crate::*;
 
 #[cfg(not(feature = "ready-to-test"))]
 pub type Migrations = ();
 
-#[cfg(feature = "ready-to-test")] // kensetsu
+#[cfg(feature = "ready-to-test")] // tokenomics-upgrade
 pub type Migrations = (
     assets::migration::register_asset::RegisterAsset<
         Runtime,
@@ -59,7 +59,7 @@ pub type Migrations = (
     >,
 );
 
-#[cfg(feature = "ready-to-test")] // kensetsu
+#[cfg(feature = "ready-to-test")] // tokenomics-upgrade
 parameter_types! {
     pub const MaxMigrations: u32 = 100;
     pub KXORAssetId: AssetId = common::KXOR;

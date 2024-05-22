@@ -104,7 +104,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let balance_ss = if abstract_checking {
             None
         } else {
-            Some(<assets::Pallet<T>>::free_balance(
+            Some(<T as Config>::AssetInfoProvider::free_balance(
                 &self.source.asset,
                 &source_opt.unwrap(),
             )?)

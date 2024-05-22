@@ -172,7 +172,10 @@ impl<T: Config> Pallet<T> {
             <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
                 &dex_info.base_asset_id,
             );
-        let base_total = Assets::<T>::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
+        let base_total = <T as Config>::AssetInfoProvider::free_balance(
+            &dex_info.base_asset_id,
+            &fees_account_id,
+        )?;
         let chameleon_total = if let Some(asset_id) = base_chameleon_asset_id {
             Assets::<T>::free_balance(&asset_id, &fees_account_id)?
         } else {
@@ -247,7 +250,10 @@ impl<T: Config> Pallet<T> {
             // Get state of incentive availability and corresponding definitions.
             let incentive_asset_id = T::GetIncentiveAssetId::get();
             let pool_tokens_total = T::PoolXykPallet::total_issuance(&pool_account)?;
-            let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
+            let incentive_total = <T as Config>::AssetInfoProvider::free_balance(
+                &incentive_asset_id,
+                &fees_account_id,
+            )?;
             if incentive_total == 0 || pool_tokens_total == 0 {
                 Self::deposit_event(Event::<T>::NothingToDistribute(
                     dex_id.clone(),
@@ -459,13 +465,15 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, DEXInfo, XykPool};
+    use common::{
+        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description,
+        XykPool,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + technical::Config
@@ -491,6 +499,16 @@ pub mod pallet {
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type GetChameleonPoolBaseAssetId: traits::GetByKey<Self::AssetId, Option<Self::AssetId>>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.

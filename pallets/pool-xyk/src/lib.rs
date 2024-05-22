@@ -833,13 +833,15 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
+    use common::{
+        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+        EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -882,6 +884,16 @@ pub mod pallet {
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<Self::AssetId>, bool>;
         type GetChameleonPoolBaseAssetId: GetByKey<Self::AssetId, Option<Self::AssetId>>;
         type GetChameleonPool: GetByKey<TradingPair<Self::AssetId>, bool>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -916,10 +928,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                !assets::Pallet::<T>::is_non_divisible(&input_asset_a)
-                    && !assets::Pallet::<T>::is_non_divisible(&input_asset_b),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_a)
+                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -960,10 +971,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                !assets::Pallet::<T>::is_non_divisible(&output_asset_a)
-                    && !assets::Pallet::<T>::is_non_divisible(&output_asset_b),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_a)
+                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -1002,10 +1012,9 @@ pub mod pallet {
                     ManagementMode::Public,
                 )?;
 
-                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
-                    !assets::Pallet::<T>::is_non_divisible(&asset_a)
-                        && !assets::Pallet::<T>::is_non_divisible(&asset_b),
+                    !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
+                        && !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_b),
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 

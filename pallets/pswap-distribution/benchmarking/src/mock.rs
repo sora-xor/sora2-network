@@ -188,6 +188,7 @@ impl pswap_distribution::Config for Runtime {
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -268,6 +269,7 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -277,6 +279,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -284,6 +287,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pool_xyk::Config for Runtime {
@@ -308,6 +312,7 @@ impl pool_xyk::Config for Runtime {
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

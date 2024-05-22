@@ -97,11 +97,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         } else {
             let source = source_opt.unwrap();
             (
-                Some(<assets::Pallet<T>>::free_balance(
+                Some(<T as Config>::AssetInfoProvider::free_balance(
                     &self.source.0.asset,
                     &source,
                 )?),
-                Some(<assets::Pallet<T>>::free_balance(
+                Some(<T as Config>::AssetInfoProvider::free_balance(
                     &self.source.1.asset,
                     &source,
                 )?),
