@@ -365,19 +365,22 @@ impl<T: Config> Pallet<T> {
 
     pub fn get_actual_reserves(
         pool_acc_id: &T::AccountId,
-        base_asset_id: &T::AssetId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
     ) -> Result<(Balance, Balance), DispatchError> {
         let (tpair, base_chameleon_asset_id, is_chameleon_pool) =
             Self::get_pair_info(base_asset_id, input_asset_id, output_asset_id)?;
-        let reserve_base = <assets::Pallet<T>>::free_balance(&tpair.base_asset_id, &pool_acc_id)?;
+        let reserve_base =
+            <T as Config>::AssetInfoProvider::free_balance(&tpair.base_asset_id, &pool_acc_id)?;
         let reserve_target =
-            <assets::Pallet<T>>::free_balance(&tpair.target_asset_id, &pool_acc_id)?;
+            <T as Config>::AssetInfoProvider::free_balance(&tpair.target_asset_id, &pool_acc_id)?;
         let reserve_base = if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
             if is_chameleon_pool {
-                let reserve_chameleon =
-                    <assets::Pallet<T>>::free_balance(&base_chameleon_asset_id, &pool_acc_id)?;
+                let reserve_chameleon = <T as Config>::AssetInfoProvider::free_balance(
+                    &base_chameleon_asset_id,
+                    &pool_acc_id,
+                )?;
                 reserve_base
                     .checked_add(reserve_chameleon)
                     .ok_or(Error::<T>::PoolTokenSupplyOverflow)?
@@ -884,8 +887,11 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
-        type GetChameleonPoolBaseAssetId: GetByKey<Self::AssetId, Option<Self::AssetId>>;
-        type GetChameleonPool: GetByKey<TradingPair<Self::AssetId>, bool>;
+        type GetChameleonPoolBaseAssetId: orml_traits::GetByKey<
+            AssetIdOf<Self>,
+            Option<AssetIdOf<Self>>,
+        >;
+        type GetChameleonPool: orml_traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,

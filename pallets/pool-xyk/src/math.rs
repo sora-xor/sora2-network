@@ -32,7 +32,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 
 use common::prelude::{Balance, Fixed, FixedWrapper};
-use common::{fixed_wrapper, AssetIdOf, AssetInfoProvider, TradingPair};
+use common::{fixed_wrapper, AssetIdOf, TradingPair};
 
 use crate::{to_balance, to_fixed_wrapper};
 

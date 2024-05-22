@@ -175,7 +175,7 @@ impl<T: Config> Pallet<T> {
             &fees_account_id,
         )?;
         let chameleon_total = if let Some(asset_id) = base_chameleon_asset_id {
-            Assets::<T>::free_balance(&asset_id, &fees_account_id)?
+            <T as Config>::AssetInfoProvider::free_balance(&asset_id, &fees_account_id)?
         } else {
             0
         };
@@ -497,7 +497,7 @@ pub mod pallet {
         type PoolXykPallet: XykPool<Self::AccountId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        type GetChameleonPoolBaseAssetId: traits::GetByKey<Self::AssetId, Option<Self::AssetId>>;
+        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,

@@ -194,10 +194,10 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn get_pair_info(
-        base_asset_id: &T::AssetId,
-        asset_a: &T::AssetId,
-        asset_b: &T::AssetId,
-    ) -> Result<(TradingPair<T::AssetId>, Option<T::AssetId>, bool), DispatchError> {
+        base_asset_id: &AssetIdOf<T>,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+    ) -> Result<(TradingPair<AssetIdOf<T>>, Option<AssetIdOf<T>>, bool), DispatchError> {
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         let base_chameleon_asset_id =
             <T::GetChameleonPoolBaseAssetId as GetByKey<_, _>>::get(&base_asset_id);
@@ -216,7 +216,7 @@ impl<T: Config> Pallet<T> {
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
-        let tpair = common::TradingPair::<T::AssetId> {
+        let tpair = common::TradingPair::<AssetIdOf<T>> {
             base_asset_id: *base_asset_id,
             target_asset_id: *ta,
         };
@@ -229,10 +229,10 @@ impl<T: Config> Pallet<T> {
 
     /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
     pub fn strict_sort_pair(
-        base_asset_id: &T::AssetId,
-        asset_a: &T::AssetId,
-        asset_b: &T::AssetId,
-    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        base_asset_id: &AssetIdOf<T>,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+    ) -> Result<TradingPair<AssetIdOf<T>>, DispatchError> {
         let (tpair, _, _) = Self::get_pair_info(base_asset_id, asset_a, asset_b)?;
         Ok(tpair)
     }

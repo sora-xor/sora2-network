@@ -159,11 +159,11 @@ macro_rules! forward_or_backward {
 
 struct PathBuilder<T: Config> {
     pub paths: Vec<ExchangePath<T>>,
-    pub input_asset_id: T::AssetId,
-    pub output_asset_id: T::AssetId,
-    pub base_asset_id: T::AssetId,
-    pub synthetic_base_asset_id: T::AssetId,
-    pub base_chameleon_asset_id: Option<T::AssetId>,
+    pub input_asset_id: AssetIdOf<T>,
+    pub output_asset_id: AssetIdOf<T>,
+    pub base_asset_id: AssetIdOf<T>,
+    pub synthetic_base_asset_id: AssetIdOf<T>,
+    pub base_chameleon_asset_id: Option<AssetIdOf<T>>,
 }
 
 impl<T: Config> core::fmt::Debug for PathBuilder<T> {
@@ -2554,8 +2554,8 @@ pub mod pallet {
         type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
         type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        type GetChameleonPoolBaseAssetId: traits::GetByKey<Self::AssetId, Option<Self::AssetId>>;
-        type GetChameleonPool: traits::GetByKey<TradingPair<Self::AssetId>, bool>;
+        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
+        type GetChameleonPool: traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
         /// To retrieve asset info
