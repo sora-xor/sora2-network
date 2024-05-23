@@ -1379,6 +1379,16 @@ fn should_not_quote_with_wrong_order_amount() {
             ),
             E::InvalidOrderAmount
         );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
         assert_eq!(
             OrderBookPallet::step_quote(
                 &DEX.into(),
@@ -1402,6 +1412,16 @@ fn should_not_quote_with_wrong_order_amount() {
 
         assert_err!(
             OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1443,6 +1463,16 @@ fn should_not_quote_with_wrong_order_amount() {
             ),
             E::InvalidOrderAmount
         );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
         assert_eq!(
             OrderBookPallet::step_quote(
                 &DEX.into(),
@@ -1470,6 +1500,16 @@ fn should_not_quote_with_wrong_order_amount() {
 
         assert_err!(
             OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
                 &DEX.into(),
                 &XOR,
                 &VAL,
@@ -1515,6 +1555,16 @@ fn should_not_quote_with_wrong_order_amount() {
             ),
             E::InvalidOrderAmount
         );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
         assert_eq!(
             OrderBookPallet::step_quote(
                 &DEX.into(),
@@ -1538,6 +1588,16 @@ fn should_not_quote_with_wrong_order_amount() {
 
         assert_err!(
             OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1579,6 +1639,16 @@ fn should_not_quote_with_wrong_order_amount() {
             ),
             E::InvalidOrderAmount
         );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
         assert_eq!(
             OrderBookPallet::step_quote(
                 &DEX.into(),
@@ -1606,6 +1676,16 @@ fn should_not_quote_with_wrong_order_amount() {
 
         assert_err!(
             OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
                 &DEX.into(),
                 &VAL,
                 &XOR,
@@ -1691,6 +1771,63 @@ fn should_not_quote_with_wrong_order_amount() {
             true
         ));
         assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(quote_sell_max_amount),
+            true
+        ));
+
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_input(quote_buy_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_input(quote_buy_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_output(base_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_output(base_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_input(base_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_input(base_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(quote_sell_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
             &DEX.into(),
             &VAL,
             &XOR,
