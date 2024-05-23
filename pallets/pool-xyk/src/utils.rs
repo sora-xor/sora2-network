@@ -193,6 +193,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    // Returns trading pair, chameleon base asset id (if exists) and chameleon pool flag
     pub fn get_pair_info(
         base_asset_id: &AssetIdOf<T>,
         asset_a: &AssetIdOf<T>,
