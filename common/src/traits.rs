@@ -1447,6 +1447,7 @@ impl<AccountId> ReferrerAccountProvider<AccountId> for () {
     }
 }
 
+/// Trait to manage permissions/regulations for assets operations
 pub trait AssetRegulator<AccountId, AssetId> {
     /// Assign `permission_id` for a specific `account_id` to a specific `asset_id`
     fn assign_permission(
