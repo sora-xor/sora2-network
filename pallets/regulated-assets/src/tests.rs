@@ -30,7 +30,10 @@
 
 use crate::mock::*;
 use crate::*;
+// use crate::{Error, Event, SoulboundTokenMetadata};
 use common::XOR;
+// use frame_support::{assert_err, assert_ok};
+// use sp_runtime::traits::BadOrigin;
 
 type RegulatedAssets = Pallet<TestRuntime>;
 
@@ -38,6 +41,6 @@ type RegulatedAssets = Pallet<TestRuntime>;
 fn test_default_value_asset_regulated() {
     new_test_ext().execute_with(|| {
         let default_value = RegulatedAssets::regulated_asset(XOR);
-        assert_eq!(default_value, false);
+        assert!(!default_value);
     })
 }

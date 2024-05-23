@@ -33,7 +33,7 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2024-05-17, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
-//! HOSTNAME: `Haidars-MacBook-Pro.local`, CPU: `<UNKNOWN>`
+//! HOSTNAME: `MacBook-Pro.local`, CPU: `<UNKNOWN>`
 //! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("local"), DB CACHE: 1024
 
 // Executed Command:
@@ -72,21 +72,44 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: RegulatedAssets AssetRegulated (r:1 w:1)
-	/// Proof Skipped: RegulatedAssets AssetRegulated (max_values: None, max_size: None, mode: Measured)
+	/// Storage: RegulatedAssets RegulatedAsset (r:1 w:1)
+	/// Proof Skipped: RegulatedAssets RegulatedAsset (max_values: None, max_size: None, mode: Measured)
 	fn regulate_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `691`
 		//  Estimated: `6332`
-		// Minimum execution time: 17_000 nanoseconds.
+		// Minimum execution time: 16_000 nanoseconds.
 		Weight::from_parts(17_000_000, 6332)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
-	
+	/// Storage: Permissions Permissions (r:4 w:1)
+	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Assets AssetOwners (r:1 w:1)
+	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Permissions Owners (r:2 w:2)
+	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Tokens TotalIssuance (r:1 w:1)
+	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+	/// Storage: RegulatedAssets SBTsByAsset (r:1 w:1)
+	/// Proof Skipped: RegulatedAssets SBTsByAsset (max_values: None, max_size: None, mode: Measured)
+	/// Storage: RegulatedAssets SoulboundAsset (r:0 w:1)
+	/// Proof Skipped: RegulatedAssets SoulboundAsset (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfos (r:0 w:1)
+	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	fn issue_sbt() -> Weight {
-			todo!()
-		}
+		// Proof Size summary in bytes:
+		//  Measured:  `2776`
+		//  Estimated: `44201`
+		// Minimum execution time: 123_000 nanoseconds.
+		Weight::from_parts(124_000_000, 44201)
+			.saturating_add(T::DbWeight::get().reads(11))
+			.saturating_add(T::DbWeight::get().writes(10))
+	}
 }
 
 
@@ -99,7 +122,9 @@ impl WeightInfo for () {
     }
 	
 	fn issue_sbt() -> Weight {
-		todo!()
+		Weight::from_parts(124_000_000, 44201)
+			.saturating_add(RocksDbWeight::get().reads(11))
+			.saturating_add(RocksDbWeight::get().writes(10))
 	}
 }
 

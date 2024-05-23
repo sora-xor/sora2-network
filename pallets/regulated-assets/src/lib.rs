@@ -50,6 +50,8 @@ use common::{
     BalancePrecision, ContentSource, Description,
 };
 use frame_support::sp_runtime::DispatchError;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -66,7 +68,6 @@ pub struct SoulboundTokenMetadata<AssetId> {
 
 #[frame_support::pallet]
 pub mod pallet {
-    use std::collections::BTreeSet;
 
     use super::*;
     use common::{Balance, DEFAULT_BALANCE_PRECISION};
@@ -157,10 +158,10 @@ pub mod pallet {
                 description,
                 allowed_assets: allowed_assets.clone(),
             };
-            <SoulboundAsset<T>>::insert(&sbt_asset_id, &metadata);
+            <SoulboundAsset<T>>::insert(sbt_asset_id, &metadata);
 
             for allowed_asset in allowed_assets {
-                <SBTsByAsset<T>>::mutate(&allowed_asset, |sbts| {
+                <SBTsByAsset<T>>::mutate(allowed_asset, |sbts| {
                     sbts.insert(sbt_asset_id);
                 });
             }

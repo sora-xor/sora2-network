@@ -59,7 +59,7 @@ fn add_asset<T: Config>() -> AssetIdOf<T> {
     let owner = asset_owner::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
 
-    let asset_id = T::AssetManager::register_from(
+    T::AssetManager::register_from(
         &owner,
         AssetSymbol(b"TOKEN".to_vec()),
         AssetName(b"TOKEN".to_vec()),
@@ -69,9 +69,18 @@ fn add_asset<T: Config>() -> AssetIdOf<T> {
         None,
         None,
     )
-    .expect("Failed to register asset");
+    .expect("Failed to register asset")
+}
 
-    asset_id
+fn assign_issue_sbt_permission<T: Config>(owner: T::AccountId, holder: T::AccountId) {
+    frame_system::Pallet::<T>::inc_providers(&owner);
+    permissions::Pallet::<T>::assign_permission(
+        owner,
+        &holder,
+        common::permissions::ISSUE_SBT,
+        permissions::Scope::Unlimited,
+    )
+    .unwrap();
 }
 
 benchmarks! {
@@ -79,13 +88,46 @@ benchmarks! {
         let owner = asset_owner::<T>();
         let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
         let asset_id = add_asset::<T>();
-        // debug!("asset_id: {:?}\n", asset_id);
     }: {
         Pallet::<T>::regulate_asset(owner_origin, asset_id).unwrap();
     }
     verify{
         assert_last_event::<T>(Event::AssetRegulated{
                 asset_id
+            }.into()
+        );
+    }
+
+    issue_sbt{
+        let owner = asset_owner::<T>();
+        assign_issue_sbt_permission::<T>(owner.clone(), owner.clone());
+        let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
+        let asset_id = add_asset::<T>();
+        let asset_name =  AssetName(b"Soulbound Token".to_vec());
+        let asset_symbol = AssetSymbol(b"SBT".to_vec());
+
+    }: {
+        Pallet::<T>::issue_sbt(
+            owner_origin,
+            asset_symbol,
+            asset_name.clone(),
+            Balance::from(100u32),
+            vec![asset_id],
+            None
+        ).unwrap();
+    }
+    verify{
+        let sbts = Pallet::<T>::sbts_by_asset(asset_id);
+        let sbt_asset_id = sbts.first().ok_or("No SBT asset found").unwrap();
+
+        assert_last_event::<T>(Event::SoulboundTokenIssued {
+             asset_id: *sbt_asset_id,
+             owner: asset_owner::<T>(),
+             metadata: SoulboundTokenMetadata{
+                    name: asset_name,
+                    description: None,
+                    allowed_assets: vec![asset_id]
+                }
             }.into()
         );
     }

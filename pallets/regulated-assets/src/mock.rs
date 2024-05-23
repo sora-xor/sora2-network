@@ -38,7 +38,6 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU16, ConstU64, Everything};
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
 use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
