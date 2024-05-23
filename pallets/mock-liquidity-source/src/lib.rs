@@ -601,7 +601,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config<I: 'static = ()>:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + technical::Config
+        + permissions::Config
     {
         type GetFee: Get<Fixed>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
