@@ -229,7 +229,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
-        if let Some(_metadata) = Self::soulbound_asset(asset_id) {
+        if Self::soulbound_asset(asset_id).is_some() {
             // Check if the issuer is the asset owner
             let is_asset_owner = <T as Config>::AssetInfoProvider::is_asset_owner(asset_id, issuer);
 
@@ -250,7 +250,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         }
 
         // If the account is a technical account, then it can do all operations
-        if let Ok(_) = Technical::<T>::lookup_tech_account_id(&issuer) {
+        if Technical::<T>::lookup_tech_account_id(&issuer).is_ok() {
             return Ok(());
         }
 
