@@ -45,7 +45,7 @@ pub mod weights;
 
 use codec::{Decode, Encode};
 use common::{
-    permissions::{PermissionId, ISSUE_SBT},
+    permissions::{PermissionId, ISSUE_SBT, TRANSFER},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
     BalancePrecision, ContentSource, Description,
 };
@@ -195,6 +195,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         SoulboundAssetNotOperationable,
+        SoulboundAssetNotTransferable,
         OnlyAssetOwnerCanRegulate,
         AssetAlreadyRegulated,
         AllInvolvedUsersShouldHoldSBT,
@@ -226,16 +227,23 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         issuer: &AccountIdOf<T>,
         affected_account: &AccountIdOf<T>,
         asset_id: &AssetIdOf<T>,
-        _permission_id: &PermissionId,
+        permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
-        if let Some(_metdata) = Self::soulbound_asset(asset_id) {
-            // Asset owner of the SBT can do all asset operations
-            if <T as Config>::AssetInfoProvider::is_asset_owner(asset_id, issuer) {
+        if let Some(_metadata) = Self::soulbound_asset(asset_id) {
+            // Check if the issuer is the asset owner
+            let is_asset_owner = <T as Config>::AssetInfoProvider::is_asset_owner(asset_id, issuer);
+
+            if is_asset_owner {
+                // Asset owner of the SBT can do all asset operations except transfer
+                if permission_id == &TRANSFER {
+                    return Err(Error::<T>::SoulboundAssetNotTransferable.into());
+                }
                 return Ok(());
             } else {
                 return Err(Error::<T>::SoulboundAssetNotOperationable.into());
             }
         }
+
         // If asset is not regulated, then no need to check permissions
         if !Self::regulated_asset(asset_id) {
             return Ok(());

@@ -43,3 +43,4 @@ pub const CLAIM_FROM_FARM: PermissionId = 10;
 pub const GET_FARM_INFO: PermissionId = 11;
 pub const GET_FARMER_INFO: PermissionId = 12;
 pub const ISSUE_SBT: PermissionId = 12;
+pub const TRANSFER: PermissionId = 14;
