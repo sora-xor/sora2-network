@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![cfg(feature = "wip")] // DEFI-R
+
 use crate::mock::*;
 use crate::*;
 use common::{Balance, TechAccountId, DEFAULT_BALANCE_PRECISION, XOR};
@@ -94,7 +96,6 @@ fn test_only_permissioned_account_can_issue_sbt() {
                 RuntimeOrigin::signed(non_owner),
                 asset_symbol.clone(),
                 asset_name.clone(),
-                100u128,
                 vec![XOR],
                 None
             ),
@@ -109,7 +110,6 @@ fn test_only_permissioned_account_can_issue_sbt() {
             RuntimeOrigin::signed(owner),
             asset_symbol,
             asset_name,
-            100u128,
             vec![XOR],
             None
         ));
@@ -213,15 +213,13 @@ fn test_sbt_only_operationable_by_its_owner() {
         assign_issue_sbt_permission::<TestRuntime>(owner.clone(), owner.clone());
 
         // Issue SBT
-        let result = RegulatedAssets::issue_sbt(
+        assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
             asset_symbol,
             asset_name,
-            100u128,
             vec![XOR],
             None,
-        );
-        assert_ok!(result);
+        ));
 
         // Extract the issued SBT asset ID
         let event = frame_system::Pallet::<TestRuntime>::events()
@@ -276,7 +274,6 @@ fn test_check_permission_pass_only_if_all_invloved_accounts_have_sbt() {
             RuntimeOrigin::signed(owner.clone()),
             asset_symbol,
             asset_name,
-            100u128,
             vec![asset_id],
             None,
         );
@@ -346,7 +343,6 @@ fn test_sbt_cannot_be_transferred() {
             RuntimeOrigin::signed(owner.clone()),
             asset_symbol,
             asset_name,
-            100u128,
             vec![XOR],
             None
         ));

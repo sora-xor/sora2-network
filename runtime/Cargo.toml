@@ -92,6 +92,7 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
+regulated-assets = { path = "../pallets/regulated-assets", default-features = false, optional = true }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -101,7 +102,6 @@ vested-rewards = { path = "../pallets/vested-rewards", default-features = false 
 vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", default-features = false }
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xst = { path = "../pallets/xst", default-features = false }
-regulated-assets = { path = "../pallets/regulated-assets", default-features = false, optional = true }
 xst-benchmarking = { path = "../pallets/xst/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
@@ -268,6 +268,7 @@ std = [
     "pswap-distribution/std",
     "qa-tools/std",
     "referrals/std",
+    "regulated-assets/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde/std",
@@ -294,7 +295,6 @@ std = [
     "xor-fee/std",
     "xst/std",
     "xst-benchmarking/std",
-    "regulated-assets/std",
 ]
 
 private-net = [
@@ -317,7 +317,7 @@ wip = [
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "regulated-assets",
+    "regulated-assets/wip",
 ]
 
 ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]

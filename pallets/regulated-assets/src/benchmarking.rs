@@ -29,7 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Regulated Assets module benchmarking.
-#[cfg(feature = "runtime-benchmarks")]
+#![cfg(feature = "runtime-benchmarks")]
+#![cfg(feature = "wip")] // DEFI-R
+
 use codec::Decode;
 use frame_benchmarking::benchmarks;
 use frame_system::EventRecord;
@@ -111,7 +113,6 @@ benchmarks! {
             owner_origin,
             asset_symbol,
             asset_name.clone(),
-            Balance::from(100u32),
             vec![asset_id],
             None
         ).unwrap();

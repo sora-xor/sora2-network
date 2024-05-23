@@ -71,7 +71,7 @@ pub struct SoulboundTokenMetadata<AssetId> {
 pub mod pallet {
 
     use super::*;
-    use common::{Balance, DEFAULT_BALANCE_PRECISION};
+    use common::DEFAULT_BALANCE_PRECISION;
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -82,8 +82,7 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type WeightInfo: WeightInfo;
-
+        /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
             AccountIdOf<Self>,
@@ -93,6 +92,9 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+
+        /// Weight information for extrinsics in this pallet
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
@@ -109,10 +111,15 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Regulates an asset.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `asset_id`: The identifier of the asset.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
         pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
-            // validate
             let who = ensure_signed(origin)?;
             <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             ensure!(
@@ -124,20 +131,27 @@ pub mod pallet {
                 <Error<T>>::AssetAlreadyRegulated
             );
 
-            // act
             <RegulatedAsset<T>>::set(asset_id, true);
             Self::deposit_event(Event::AssetRegulated { asset_id });
 
             Ok(())
         }
 
+        /// Issues a new Soulbound Token (SBT).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `symbol`: The symbol of the SBT which should represent string with only uppercase latin chars with max length of 7.
+        /// - `name`: The name of the SBT should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
+        /// - `allowed_assets`: TThe list of assets allowed to be operated with by holding the SBT.
+        /// - `description`: The description of the SBT. (Optional)
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
         pub fn issue_sbt(
             origin: OriginFor<T>,
             symbol: AssetSymbol,
             name: AssetName,
-            initial_supply: Balance,
             allowed_assets: Vec<AssetIdOf<T>>,
             description: Option<Description>,
         ) -> DispatchResult {
@@ -151,7 +165,7 @@ pub mod pallet {
                 symbol,
                 name.clone(),
                 DEFAULT_BALANCE_PRECISION,
-                initial_supply,
+                0,
                 true,
                 None,
                 description.clone(),
@@ -182,9 +196,9 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        AssetRegulated {
-            asset_id: AssetIdOf<T>,
-        },
+        /// Emits When an asset is regulated
+        AssetRegulated { asset_id: AssetIdOf<T> },
+        /// Emits When an SBT is issued
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
             owner: AccountIdOf<T>,
@@ -194,10 +208,15 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        /// SBT is not operationable by any asset operation
         SoulboundAssetNotOperationable,
+        /// SBT is not transferable
         SoulboundAssetNotTransferable,
+        /// Only asset owner can regulate
         OnlyAssetOwnerCanRegulate,
+        /// Asset is already regulated
         AssetAlreadyRegulated,
+        /// All involved users of a regulated asset operation should hold SBT
         AllInvolvedUsersShouldHoldSBT,
     }
 
@@ -206,16 +225,19 @@ pub mod pallet {
         false
     }
 
+    /// Mapping from asset id to whether it is regulated or not
     #[pallet::storage]
     #[pallet::getter(fn regulated_asset)]
     pub type RegulatedAsset<T: Config> =
         StorageMap<_, Identity, AssetIdOf<T>, bool, ValueQuery, DefaultRegulatedAsset<T>>;
 
+    /// Mapping from SBT (asset_id) to its metadata
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
     pub type SoulboundAsset<T: Config> =
         StorageMap<_, Identity, AssetIdOf<T>, SoulboundTokenMetadata<AssetIdOf<T>>, OptionQuery>;
 
+    /// Mapping from `asset_id` to its SBTs which grant permission to transfer, mint, and burn the `asset_id`
     #[pallet::storage]
     #[pallet::getter(fn sbts_by_asset)]
     pub type SBTsByAsset<T: Config> =
