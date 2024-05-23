@@ -24,7 +24,7 @@ use pool_xyk::Pallet as XYKPool;
 mod mock;
 
 pub struct Pallet<T: Config>(ceres_liquidity_locker::Pallet<T>);
-pub trait Config: ceres_liquidity_locker::Config + pool_xyk::Config {}
+pub trait Config: ceres_liquidity_locker::Config + pool_xyk::Config + permissions::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
