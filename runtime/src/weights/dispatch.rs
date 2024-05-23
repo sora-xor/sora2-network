@@ -64,13 +64,13 @@ impl<T: frame_system::Config> dispatch::WeightInfo for WeightInfo<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 12_110 nanoseconds.
-		Weight::from_ref_time(12_351_000)
+		Weight::from_parts(12_351_000, 0)
 	}
 	fn dispatch_decode_failed() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 7_280 nanoseconds.
-		Weight::from_ref_time(7_531_000)
+		Weight::from_parts(7_531_000, 0)
 	}
 }

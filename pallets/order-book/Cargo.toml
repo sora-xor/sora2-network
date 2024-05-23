@@ -69,4 +69,4 @@ private-net = [
 #     "framenode-runtime/private-net",
 ]
 
-# test = []
+test = []

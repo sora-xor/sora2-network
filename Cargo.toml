@@ -1,3 +1,8 @@
+[patch.crates-io]
+sp-io = { path = "../sora-polkadot-sdk/substrate/primitives/io"}
+
+
+
 # [patch.crates-io]
 # frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
@@ -190,6 +195,8 @@ sp-trie = { path = "../sora-polkadot-sdk/substrate/primitives/trie"}
 sp-version = { path = "../sora-polkadot-sdk/substrate/primitives/version"}
 sp-rpc = { path = "../sora-polkadot-sdk/substrate/primitives/rpc"}
 sp-keyring = { path = "../sora-polkadot-sdk/substrate/primitives/keyring"}
+sp-state-machine = { path = "../sora-polkadot-sdk/substrate/primitives/state-machine"}
+sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externalities"}
 # sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/mmr-primitives"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
@@ -287,6 +294,8 @@ sp-trie = { path = "../sora-polkadot-sdk/substrate/primitives/trie"}
 sp-version = { path = "../sora-polkadot-sdk/substrate/primitives/version"}
 sp-rpc = { path = "../sora-polkadot-sdk/substrate/primitives/rpc"}
 sp-keyring = { path = "../sora-polkadot-sdk/substrate/primitives/keyring"}
+sp-state-machine = { path = "../sora-polkadot-sdk/substrate/primitives/state-machine"}
+sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externalities"}
 # sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/mmr-primitives"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
@@ -338,12 +347,12 @@ bridge-types = { path = "../sora2-common/pallets/types" }
 bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
 multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
 evm-fungible-app = { path = "../sora2-common/pallets/evm-fungible-app" }
-# bridge-channel = { path = "../sora2-common/pallets/channel" }
+bridge-channel = { path = "../sora2-common/pallets/channel" }
 # substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
 
 [workspace]
 members = [
-    # "runtime",
+    "runtime",
     "common",
     "pallets/apollo-platform",
     "pallets/assets",
