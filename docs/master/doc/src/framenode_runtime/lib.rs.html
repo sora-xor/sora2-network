@@ -3427,6 +3427,7 @@
 <a href="#3412" id="3412">3412</a>
 <a href="#3413" id="3413">3413</a>
 <a href="#3414" id="3414">3414</a>
+<a href="#3415" id="3415">3415</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4390,6 +4391,7 @@
     <span class="kw">type </span>Currency = currencies::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>GetTotalBalance = GetTotalBalance;
     <span class="kw">type </span>WeightInfo = assets::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>AssetRegulator = permissions::Pallet&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>trading_pair::Config <span class="kw">for </span>Runtime {

@@ -215,7 +215,7 @@
 </span><span class="kw">mod </span>mock;
 
 <span class="kw">pub struct </span>Pallet&lt;T: Config&gt;(ceres_liquidity_locker::Pallet&lt;T&gt;);
-<span class="kw">pub trait </span>Config: ceres_liquidity_locker::Config + pool_xyk::Config {}
+<span class="kw">pub trait </span>Config: ceres_liquidity_locker::Config + pool_xyk::Config + permissions::Config {}
 
 <span class="kw">pub const </span>DEX: DEXId = DEXId::Polkaswap;
 

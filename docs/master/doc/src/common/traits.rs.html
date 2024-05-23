@@ -1459,6 +1459,54 @@
 <a href="#1444" id="1444">1444</a>
 <a href="#1445" id="1445">1445</a>
 <a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1489,7 +1537,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
+</span><span class="kw">use </span><span class="kw">crate</span>::prelude::{
+    permissions::PermissionId, ManagementMode, QuoteAmount, SwapAmount, SwapOutcome,
+};
 <span class="kw">use crate</span>::{
     Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
@@ -2904,6 +2954,52 @@
     <span class="kw">fn </span>get_referrer_account(_who: <span class="kw-2">&amp;</span>AccountId) -&gt; <span class="prelude-ty">Option</span>&lt;AccountId&gt; {
         <span class="prelude-val">None
     </span>}
+}
+
+<span class="doccomment">/// Trait to manage permissions/regulations for assets operations
+</span><span class="kw">pub trait </span>AssetRegulator&lt;AccountId, AssetId&gt; {
+    <span class="doccomment">/// Assign `permission_id` for a specific `account_id` to a specific `asset_id`
+    </span><span class="kw">fn </span>assign_permission(
+        owner: <span class="kw-2">&amp;</span>AccountId,
+        asset_id: <span class="kw-2">&amp;</span>AssetId,
+        permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt;;
+
+    <span class="doccomment">/// Check the permission `permission_id` of `issuer` for `asset_id`
+    /// with respect to `affected_account`
+    </span><span class="kw">fn </span>check_permission(
+        issuer: <span class="kw-2">&amp;</span>AccountId,
+        affected_account: <span class="kw-2">&amp;</span>AccountId,
+        asset_id: <span class="kw-2">&amp;</span>AssetId,
+        permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt;;
+}
+
+<span class="kw">impl</span>&lt;AccountId, AssetId, A, B&gt; AssetRegulator&lt;AccountId, AssetId&gt; <span class="kw">for </span>(A, B)
+<span class="kw">where
+    </span>A: AssetRegulator&lt;AccountId, AssetId&gt;,
+    B: AssetRegulator&lt;AccountId, AssetId&gt;,
+{
+    <span class="kw">fn </span>assign_permission(
+        owner: <span class="kw-2">&amp;</span>AccountId,
+        asset_id: <span class="kw-2">&amp;</span>AssetId,
+        permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        A::assign_permission(owner, asset_id, permission_id)<span class="question-mark">?</span>;
+        B::assign_permission(owner, asset_id, permission_id)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>check_permission(
+        issuer: <span class="kw-2">&amp;</span>AccountId,
+        affected_account: <span class="kw-2">&amp;</span>AccountId,
+        asset_id: <span class="kw-2">&amp;</span>AssetId,
+        permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        A::check_permission(issuer, affected_account, asset_id, permission_id)<span class="question-mark">?</span>;
+        B::check_permission(issuer, affected_account, asset_id, permission_id)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
 }
 </code></pre></div>
 </section></main></body></html>

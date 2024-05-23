@@ -384,6 +384,30 @@
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -434,24 +458,28 @@
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
 
-</span><span class="kw">use </span>frame_support::codec::{Decode, Encode};
+</span><span class="kw">use </span>common::{hash, AssetRegulator};
+<span class="kw">use </span>frame_support::codec::{Decode, Encode};
+<span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::{ensure, RuntimeDebug};
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>sp_core::hash::H512;
 <span class="kw">use </span>sp_std::vec::Vec;
-
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>mock;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
 
+<span class="kw">pub use </span>common::permissions::{
+    PermissionId, BURN, CHECK_FARM, CLAIM_FROM_FARM, CREATE_FARM, GET_FARMER_INFO, GET_FARM_INFO,
+    INIT_DEX, LOCK_TO_FARM, MANAGE_DEX, MINT, SLASH, UNLOCK_FROM_FARM,
+};
 <span class="doccomment">/// The id of the account owning a permission
 </span><span class="kw">pub type </span>OwnerId&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 <span class="doccomment">/// The id of the account having a permission
 </span><span class="kw">pub type </span>HolderId&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
-<span class="kw">pub type </span>PermissionId = u32;
 <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 
 <span class="attr">#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
@@ -460,19 +488,6 @@
     Limited(H512),
     Unlimited,
 }
-
-<span class="kw">pub const </span>MINT: PermissionId = <span class="number">2</span>;
-<span class="kw">pub const </span>BURN: PermissionId = <span class="number">3</span>;
-<span class="kw">pub const </span>SLASH: PermissionId = <span class="number">4</span>;
-<span class="kw">pub const </span>INIT_DEX: PermissionId = <span class="number">5</span>;
-<span class="kw">pub const </span>MANAGE_DEX: PermissionId = <span class="number">6</span>;
-<span class="kw">pub const </span>CREATE_FARM: PermissionId = <span class="number">7</span>;
-<span class="kw">pub const </span>CHECK_FARM: PermissionId = <span class="number">8</span>;
-<span class="kw">pub const </span>LOCK_TO_FARM: PermissionId = <span class="number">9</span>;
-<span class="kw">pub const </span>UNLOCK_FROM_FARM: PermissionId = <span class="number">13</span>;
-<span class="kw">pub const </span>CLAIM_FROM_FARM: PermissionId = <span class="number">10</span>;
-<span class="kw">pub const </span>GET_FARM_INFO: PermissionId = <span class="number">11</span>;
-<span class="kw">pub const </span>GET_FARMER_INFO: PermissionId = <span class="number">12</span>;
 
 <span class="doccomment">/// Permissions module declaration.
 </span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
@@ -753,6 +768,39 @@
                     Permissions::&lt;T&gt;::insert(holder_id, scope, permissions);
                 });
         }
+    }
+}
+
+<span class="kw">impl</span>&lt;T: Config, AssetId: Encode&gt; AssetRegulator&lt;AccountIdOf&lt;T&gt;, AssetId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>assign_permission(
+        owner: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;,
+        asset_id: <span class="kw-2">&amp;</span>AssetId,
+        permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="kw">let </span>scope = Scope::Limited(hash(asset_id));
+        <span class="self">Self</span>::assign_permission(owner.clone(), <span class="kw-2">&amp;</span>owner, <span class="kw-2">*</span>permission_id, scope)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>check_permission(
+        issuer: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;,
+        affected_account: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;,
+        asset_id: <span class="kw-2">&amp;</span>AssetId,
+        permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="comment">// Holders can burn their own assets.
+        </span><span class="kw">if </span>permission_id == <span class="kw-2">&amp;</span>BURN &amp;&amp; affected_account == issuer {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+        <span class="self">Self</span>::check_permission_with_scope(
+            issuer.clone(),
+            <span class="kw-2">*</span>permission_id,
+            <span class="kw-2">&amp;</span>Scope::Limited(hash(asset_id)),
+        )
+        .or_else(|<span class="kw">_</span>| {
+            <span class="self">Self</span>::check_permission_with_scope(issuer.clone(), <span class="kw-2">*</span>permission_id, <span class="kw-2">&amp;</span>Scope::Unlimited)
+        })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

@@ -1971,6 +1971,7 @@
 <a href="#1956" id="1956">1956</a>
 <a href="#1957" id="1957">1957</a>
 <a href="#1958" id="1958">1958</a>
+<a href="#1959" id="1959">1959</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2320,6 +2321,7 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
         + CreateSignedTransaction&lt;Call&lt;<span class="self">Self</span>&gt;&gt;
         + CreateSignedTransaction&lt;bridge_multisig::Call&lt;<span class="self">Self</span>&gt;&gt;
         + assets::Config
+        + permissions::Config
         + bridge_multisig::Config&lt;RuntimeCall = &lt;<span class="self">Self </span><span class="kw">as </span>Config&gt;::RuntimeCall&gt;
         + fmt::Debug
     {

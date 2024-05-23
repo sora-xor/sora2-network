@@ -1176,38 +1176,6 @@
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
-<a href="#1179" id="1179">1179</a>
-<a href="#1180" id="1180">1180</a>
-<a href="#1181" id="1181">1181</a>
-<a href="#1182" id="1182">1182</a>
-<a href="#1183" id="1183">1183</a>
-<a href="#1184" id="1184">1184</a>
-<a href="#1185" id="1185">1185</a>
-<a href="#1186" id="1186">1186</a>
-<a href="#1187" id="1187">1187</a>
-<a href="#1188" id="1188">1188</a>
-<a href="#1189" id="1189">1189</a>
-<a href="#1190" id="1190">1190</a>
-<a href="#1191" id="1191">1191</a>
-<a href="#1192" id="1192">1192</a>
-<a href="#1193" id="1193">1193</a>
-<a href="#1194" id="1194">1194</a>
-<a href="#1195" id="1195">1195</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1263,11 +1231,12 @@
 </span><span class="kw">mod </span>tests;
 
 <span class="kw">use </span>codec::{Decode, Encode};
+<span class="kw">use </span>common::permissions::{BURN, MINT};
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};
 <span class="kw">use </span>common::{
-    hash, Amount, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter,
-    DEFAULT_BALANCE_PRECISION,
+    Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
+    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 <span class="kw">use </span>frame_support::dispatch::DispatchResultWithPostInfo;
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
@@ -1276,7 +1245,6 @@
 <span class="kw">use </span>frame_support::{ensure, Parameter};
 <span class="kw">use </span>frame_system::ensure_signed;
 <span class="kw">use </span>frame_system::pallet_prelude::OriginFor;
-<span class="kw">use </span>permissions::{Scope, BURN, MINT};
 <span class="kw">use </span>sp_core::hash::H512;
 <span class="kw">use </span>sp_core::H256;
 <span class="kw">use </span>sp_runtime::traits::Zero;
@@ -1288,7 +1256,6 @@
 <span class="kw">pub use </span>weights::WeightInfo;
 
 <span class="kw">pub type </span>AssetIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>Config&gt;::AssetId;
-<span class="kw">pub type </span>Permissions&lt;T&gt; = permissions::Pallet&lt;T&gt;;
 
 <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
 <span class="kw">type </span>CurrencyIdOf&lt;T&gt; =
@@ -1389,7 +1356,7 @@
 #[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::{ContentSource, Description};
+    <span class="kw">use </span>common::{AssetRegulator, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_system::{ensure_root, pallet_prelude::<span class="kw-2">*</span>};
 
@@ -1398,9 +1365,7 @@
     &gt;&gt;::Amount;
 
     <span class="attr">#[pallet::config]
-    </span><span class="kw">pub trait </span>Config:
-        frame_system::Config + permissions::Config + tokens::Config + common::Config
-    {
+    </span><span class="kw">pub trait </span>Config: frame_system::Config + tokens::Config + common::Config {
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
 
         <span class="kw">type </span>ExtraAccountId: Clone
@@ -1470,6 +1435,9 @@
 
         <span class="doccomment">/// Get the balance from other components
         </span><span class="kw">type </span>GetTotalBalance: GetTotalBalance&lt;<span class="self">Self</span>&gt;;
+
+        <span class="doccomment">/// Regulator of asset operations
+        </span><span class="kw">type </span>AssetRegulator: AssetRegulator&lt;<span class="self">Self</span>::AccountId, <span class="self">Self</span>::AssetId&gt;;
 
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
@@ -1915,16 +1883,9 @@
                 opt_desc,
             ),
         );
-
-        <span class="kw">let </span>scope = Scope::Limited(hash(<span class="kw-2">&amp;</span>asset_id));
         <span class="kw">let </span>permission_ids = [MINT, BURN];
         <span class="kw">for </span>permission_id <span class="kw">in </span><span class="kw-2">&amp;</span>permission_ids {
-            Permissions::&lt;T&gt;::assign_permission(
-                account_id.clone(),
-                <span class="kw-2">&amp;</span>account_id,
-                <span class="kw-2">*</span>permission_id,
-                scope,
-            )<span class="question-mark">?</span>;
+            T::AssetRegulator::assign_permission(<span class="kw-2">&amp;</span>account_id, <span class="kw-2">&amp;</span>asset_id, permission_id)<span class="question-mark">?</span>;
         }
 
         <span class="kw">if </span>!initial_supply.is_zero() {
@@ -1972,26 +1933,6 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>check_permission_maybe_with_parameters(
-        issuer: <span class="kw-2">&amp;</span>T::AccountId,
-        permission_id: u32,
-        asset_id: <span class="kw-2">&amp;</span>T::AssetId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        Permissions::&lt;T&gt;::check_permission_with_scope(
-            issuer.clone(),
-            permission_id,
-            <span class="kw-2">&amp;</span>Scope::Limited(hash(asset_id)),
-        )
-        .or_else(|<span class="kw">_</span>| {
-            Permissions::&lt;T&gt;::check_permission_with_scope(
-                issuer.clone(),
-                permission_id,
-                <span class="kw-2">&amp;</span>Scope::Unlimited,
-            )
-        })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="kw">pub fn </span>transfer_from(
         asset_id: <span class="kw-2">&amp;</span>T::AssetId,
         from: <span class="kw-2">&amp;</span>T::AccountId,
@@ -2015,8 +1956,7 @@
         <span class="comment">// No need to check if asset exist.
         // `ensure_asset_is_mintable` will get Default::default() aka `is_mintable == false` and return an error.
         </span><span class="self">Self</span>::ensure_asset_is_mintable(asset_id)<span class="question-mark">?</span>;
-        <span class="self">Self</span>::check_permission_maybe_with_parameters(issuer, MINT, asset_id)<span class="question-mark">?</span>;
-
+        T::AssetRegulator::check_permission(issuer, to, asset_id, <span class="kw-2">&amp;</span>MINT)<span class="question-mark">?</span>;
         <span class="self">Self</span>::mint_unchecked(asset_id, to, amount)
     }
 
@@ -2034,11 +1974,7 @@
         from: <span class="kw-2">&amp;</span>T::AccountId,
         amount: Balance,
     ) -&gt; DispatchResult {
-        <span class="comment">// Holder can burn its funds.
-        </span><span class="kw">if </span>issuer != from {
-            <span class="self">Self</span>::check_permission_maybe_with_parameters(issuer, BURN, asset_id)<span class="question-mark">?</span>;
-        }
-
+        T::AssetRegulator::check_permission(issuer, from, asset_id, <span class="kw-2">&amp;</span>BURN)<span class="question-mark">?</span>;
         <span class="self">Self</span>::burn_unchecked(asset_id, from, amount)
     }
 
@@ -2082,8 +2018,8 @@
         who: <span class="kw-2">&amp;</span>T::AccountId,
         by_amount: Amount,
     ) -&gt; DispatchResult {
-        <span class="self">Self</span>::check_permission_maybe_with_parameters(who, MINT, asset_id)<span class="question-mark">?</span>;
-        <span class="self">Self</span>::check_permission_maybe_with_parameters(who, BURN, asset_id)<span class="question-mark">?</span>;
+        T::AssetRegulator::check_permission(who, who, asset_id, <span class="kw-2">&amp;</span>BURN)<span class="question-mark">?</span>;
+        T::AssetRegulator::check_permission(who, who, asset_id, <span class="kw-2">&amp;</span>MINT)<span class="question-mark">?</span>;
         <span class="kw">if </span>by_amount.is_positive() {
             <span class="self">Self</span>::ensure_asset_is_mintable(asset_id)<span class="question-mark">?</span>;
         }

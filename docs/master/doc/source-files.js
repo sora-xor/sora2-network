@@ -13,7 +13,7 @@ var sourcesIndex = JSON.parse('{\
 "ceres_liquidity_locker_benchmarking":["",[],["lib.rs"]],\
 "ceres_staking":["",[],["lib.rs","weights.rs"]],\
 "ceres_token_locker":["",[],["lib.rs","migrations.rs","weights.rs"]],\
-"common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["alt.rs","balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","outcome_fee.rs","primitives.rs","serialization.rs","storage.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
+"common":["",[["cache_storage",[],["cache_double_map.rs","cache_map.rs","item.rs","mod.rs"]]],["alt.rs","balance_unit.rs","eth.rs","fixed_wrapper.rs","lib.rs","macros.rs","migrations.rs","outcome_fee.rs","permissions.rs","primitives.rs","serialization.rs","storage.rs","swap_amount.rs","traits.rs","utils.rs","weights.rs"]],\
 "demeter_farming_platform":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "demeter_farming_platform_benchmarking":["",[],["lib.rs"]],\
 "dex_api":["",[],["lib.rs","weights.rs"]],\
