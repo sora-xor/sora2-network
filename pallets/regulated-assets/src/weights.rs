@@ -83,6 +83,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
+	
 	/// Storage: Permissions Permissions (r:4 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
@@ -91,10 +92,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Owners (r:2 w:2)
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Tokens Accounts (r:1 w:1)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:1 w:1)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
 	/// Storage: RegulatedAssets SBTsByAsset (r:1 w:1)
 	/// Proof Skipped: RegulatedAssets SBTsByAsset (max_values: None, max_size: None, mode: Measured)
 	/// Storage: RegulatedAssets SoulboundAsset (r:0 w:1)
@@ -103,12 +100,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	fn issue_sbt() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2776`
-		//  Estimated: `44201`
-		// Minimum execution time: 123_000 nanoseconds.
-		Weight::from_parts(124_000_000, 44201)
-			.saturating_add(T::DbWeight::get().reads(11))
-			.saturating_add(T::DbWeight::get().writes(10))
+		//  Measured:  `2294`
+		//  Estimated: `36167`
+		// Minimum execution time: 97_000 nanoseconds.
+		Weight::from_parts(108_000_000, 36167)
+			.saturating_add(T::DbWeight::get().reads(9))
+			.saturating_add(T::DbWeight::get().writes(8))
 	}
 }
 
