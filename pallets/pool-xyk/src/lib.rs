@@ -804,6 +804,7 @@ pub mod pallet {
         EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
     };
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
@@ -847,8 +848,6 @@ pub mod pallet {
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         type OnPoolReservesChanged: OnPoolReservesChanged<AssetIdOf<Self>>;
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
@@ -860,6 +859,11 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        /// Percent of reserve which is not involved in swap
+        #[pallet::constant]
+        type IrreducibleReserve: Get<Percent>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.

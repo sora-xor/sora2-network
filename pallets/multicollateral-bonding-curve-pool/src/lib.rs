@@ -181,6 +181,7 @@ pub mod pallet {
     use common::Vesting;
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
@@ -206,6 +207,9 @@ pub mod pallet {
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         type BuyBackTBCDPercent: Get<Fixed>;
+        /// Percent of reserve which is not involved in swap
+        #[pallet::constant]
+        type IrreducibleReserve: Get<Percent>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         /// To retrieve asset info
