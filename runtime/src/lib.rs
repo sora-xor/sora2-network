@@ -961,6 +961,7 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
+    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl trading_pair::Config for Runtime {
