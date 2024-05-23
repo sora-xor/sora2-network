@@ -48,24 +48,28 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use common::{hash, AssetRegulator};
 use frame_support::codec::{Decode, Encode};
+use frame_support::sp_runtime::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
-
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
 
+pub use common::permissions::{
+    PermissionId, BURN, CHECK_FARM, CLAIM_FROM_FARM, CREATE_FARM, GET_FARMER_INFO, GET_FARM_INFO,
+    INIT_DEX, LOCK_TO_FARM, MANAGE_DEX, MINT, SLASH, UNLOCK_FROM_FARM,
+};
 /// The id of the account owning a permission
 pub type OwnerId<T> = <T as frame_system::Config>::AccountId;
 /// The id of the account having a permission
 pub type HolderId<T> = <T as frame_system::Config>::AccountId;
-pub type PermissionId = u32;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
@@ -74,19 +78,6 @@ pub enum Scope {
     Limited(H512),
     Unlimited,
 }
-
-pub const MINT: PermissionId = 2;
-pub const BURN: PermissionId = 3;
-pub const SLASH: PermissionId = 4;
-pub const INIT_DEX: PermissionId = 5;
-pub const MANAGE_DEX: PermissionId = 6;
-pub const CREATE_FARM: PermissionId = 7;
-pub const CHECK_FARM: PermissionId = 8;
-pub const LOCK_TO_FARM: PermissionId = 9;
-pub const UNLOCK_FROM_FARM: PermissionId = 13;
-pub const CLAIM_FROM_FARM: PermissionId = 10;
-pub const GET_FARM_INFO: PermissionId = 11;
-pub const GET_FARMER_INFO: PermissionId = 12;
 
 /// Permissions module declaration.
 impl<T: Config> Pallet<T> {
@@ -367,5 +358,38 @@ pub mod pallet {
                     Permissions::<T>::insert(holder_id, scope, permissions);
                 });
         }
+    }
+}
+
+impl<T: Config, AssetId: Encode> AssetRegulator<AccountIdOf<T>, AssetId> for Pallet<T> {
+    fn assign_permission(
+        owner: &AccountIdOf<T>,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        let scope = Scope::Limited(hash(asset_id));
+        Self::assign_permission(owner.clone(), &owner, *permission_id, scope)?;
+        Ok(())
+    }
+
+    fn check_permission(
+        issuer: &AccountIdOf<T>,
+        affected_account: &AccountIdOf<T>,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        // Holders can burn their own assets.
+        if permission_id == &BURN && affected_account == issuer {
+            return Ok(());
+        }
+        Self::check_permission_with_scope(
+            issuer.clone(),
+            *permission_id,
+            &Scope::Limited(hash(asset_id)),
+        )
+        .or_else(|_| {
+            Self::check_permission_with_scope(issuer.clone(), *permission_id, &Scope::Unlimited)
+        })?;
+        Ok(())
     }
 }
