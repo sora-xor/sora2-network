@@ -49,7 +49,7 @@ pub fn add_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
     frame_system::Pallet::<T>::inc_providers(owner);
 
     T::AssetManager::register_from(
-        &owner,
+        owner,
         AssetSymbol(b"TOKEN".to_vec()),
         AssetName(b"TOKEN".to_vec()),
         DEFAULT_BALANCE_PRECISION,
@@ -91,7 +91,7 @@ fn test_only_permissioned_account_can_issue_sbt() {
         // Non-owner cannot issue SBT
         assert_err!(
             RegulatedAssets::issue_sbt(
-                RuntimeOrigin::signed(non_owner.clone()),
+                RuntimeOrigin::signed(non_owner),
                 asset_symbol.clone(),
                 asset_name.clone(),
                 100u128,
@@ -106,7 +106,7 @@ fn test_only_permissioned_account_can_issue_sbt() {
 
         // Owner can issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
-            RuntimeOrigin::signed(owner.clone()),
+            RuntimeOrigin::signed(owner),
             asset_symbol,
             asset_name,
             100u128,
@@ -125,13 +125,13 @@ fn test_only_asset_owner_can_regulate_asset() {
 
         // Non-owner cannot regulate asset
         assert_err!(
-            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(non_owner.clone()), asset_id),
+            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(non_owner), asset_id),
             Error::<TestRuntime>::OnlyAssetOwnerCanRegulate
         );
 
         // Owner can regulate asset
         assert_ok!(RegulatedAssets::regulate_asset(
-            RuntimeOrigin::signed(owner.clone()),
+            RuntimeOrigin::signed(owner),
             asset_id
         ));
     })
@@ -151,7 +151,7 @@ fn test_cannot_regulate_already_regulated_asset() {
 
         // Try to regulate the already regulated asset
         assert_err!(
-            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(owner.clone()), asset_id),
+            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(owner), asset_id),
             Error::<TestRuntime>::AssetAlreadyRegulated
         );
     })
@@ -169,7 +169,7 @@ fn test_tech_account_can_pass_check_permission() {
 
         // Regulate the asset
         assert_ok!(RegulatedAssets::regulate_asset(
-            RuntimeOrigin::signed(owner.clone()),
+            RuntimeOrigin::signed(owner),
             asset_id
         ));
 
@@ -215,8 +215,8 @@ fn test_sbt_only_operationable_by_its_owner() {
         // Issue SBT
         let result = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            asset_symbol.clone(),
-            asset_name.clone(),
+            asset_symbol,
+            asset_name,
             100u128,
             vec![XOR],
             None,
@@ -245,12 +245,7 @@ fn test_sbt_only_operationable_by_its_owner() {
 
         // SBT operations by non-owner should fail
         assert_err!(
-            Assets::transfer(
-                RuntimeOrigin::signed(non_owner.clone()),
-                sbt_asset_id.clone(),
-                owner.clone(),
-                1
-            ),
+            Assets::transfer(RuntimeOrigin::signed(non_owner), sbt_asset_id, owner, 1),
             Error::<TestRuntime>::SoulboundAssetNotOperationable
         );
     })
@@ -279,8 +274,8 @@ fn test_check_permission_pass_only_if_all_invloved_accounts_have_sbt() {
         // Issue SBT
         let result = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            asset_symbol.clone(),
-            asset_name.clone(),
+            asset_symbol,
+            asset_name,
             100u128,
             vec![asset_id],
             None,
@@ -369,12 +364,7 @@ fn test_sbt_cannot_be_transferred() {
         };
 
         assert_err!(
-            Assets::transfer(
-                RuntimeOrigin::signed(owner.clone()),
-                sbt_asset_id,
-                non_owner.clone(),
-                1
-            ),
+            Assets::transfer(RuntimeOrigin::signed(owner), sbt_asset_id, non_owner, 1),
             Error::<TestRuntime>::SoulboundAssetNotTransferable
         );
     })
