@@ -33,7 +33,7 @@ use crate as kensetsu;
 use common::mock::ExistentialDeposits;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    balance, mock_assets_config_kensetsu, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
@@ -226,7 +226,12 @@ parameter_types! {
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
 }
 
-mock_assets_config!(TestRuntime);
+// parameter_types! {
+//     pub const GetBaseAssetId: AssetId = XOR;
+//     pub const GetBuyBackAssetId: AssetId = XST;
+// }
+
+mock_assets_config_kensetsu!(TestRuntime);
 mock_pallet_balances_config!(TestRuntime);
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);

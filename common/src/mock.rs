@@ -190,9 +190,9 @@ pub fn charlie() -> AccountId32 {
     AccountId32::from([3; 32])
 }
 
-/// Mock of pallet `assets::Config`.
+/// Mock of pallet `assets::Config` for kensetsu.
 #[macro_export]
-macro_rules! mock_assets_config {
+macro_rules! mock_assets_config_kensetsu {
     ($runtime:ty) => {
         parameter_types! {
             pub const GetBaseAssetId: AssetId = XOR;
@@ -218,6 +218,39 @@ macro_rules! mock_assets_config {
             type GetBuyBackDexId = GetBuyBackDexId;
             type BuyBackLiquidityProxy = ();
             type Currency = currencies::Pallet<TestRuntime>;
+            type GetTotalBalance = ();
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet 'assets:Config'.
+#[macro_export]
+macro_rules! mock_assets_config {
+    ($runtime:ty) => {
+        parameter_types! {
+            pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+            pub const GetBuyBackPercentage: u8 = 10;
+            pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
+            pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+        }
+        impl assets::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type ExtraAccountId = [u8; 32];
+            type ExtraAssetRecordArg = common::AssetIdExtraAssetRecordArg<
+                common::DEXId,
+                common::LiquiditySourceType,
+                [u8; 32],
+            >;
+            type AssetId = AssetId;
+            type GetBaseAssetId = GetBaseAssetId;
+            type GetBuyBackAssetId = GetBuyBackAssetId;
+            type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+            type GetBuyBackPercentage = GetBuyBackPercentage;
+            type GetBuyBackAccountId = GetBuyBackAccountId;
+            type GetBuyBackDexId = GetBuyBackDexId;
+            type BuyBackLiquidityProxy = ();
+            type Currency = currencies::Pallet<$runtime>;
             type GetTotalBalance = ();
             type WeightInfo = ();
         }
