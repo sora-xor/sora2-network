@@ -43,6 +43,7 @@ mod tests;
 
 pub mod weights;
 
+use codec::{Decode, Encode};
 use common::{
     permissions::{PermissionId, ISSUE_SBT},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
@@ -56,11 +57,20 @@ type Permissions<T> = permissions::Pallet<T>;
 
 pub use pallet::*;
 
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo, Clone, PartialEq)]
+pub struct SoulboundTokenMetadata<AssetId> {
+    name: AssetName,
+    description: Option<Description>,
+    allowed_assets: Vec<AssetId>,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
+    use std::collections::BTreeSet;
+
     use super::*;
     use common::{Balance, DEFAULT_BALANCE_PRECISION};
-    use frame_support::pallet_prelude::*;
+    use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
@@ -124,27 +134,41 @@ pub mod pallet {
             symbol: AssetSymbol,
             name: AssetName,
             initial_supply: Balance,
+            allowed_assets: Vec<AssetIdOf<T>>,
+            description: Option<Description>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             // Check permission `who` can issue SBT
             Permissions::<T>::check_permission(who.clone(), ISSUE_SBT)?;
 
-            let asset_id = T::AssetManager::register_from(
+            let sbt_asset_id = T::AssetManager::register_from(
                 &who,
                 symbol,
-                name,
+                name.clone(),
                 DEFAULT_BALANCE_PRECISION,
                 initial_supply,
                 true,
                 None,
-                None,
+                description.clone(),
             )?;
+            let metadata = SoulboundTokenMetadata {
+                name,
+                description,
+                allowed_assets: allowed_assets.clone(),
+            };
+            <SoulboundAsset<T>>::insert(&sbt_asset_id, &metadata);
 
-            <SoulboundAsset<T>>::set(asset_id, true);
+            for allowed_asset in allowed_assets {
+                <SBTsByAsset<T>>::mutate(&allowed_asset, |sbts| {
+                    sbts.insert(sbt_asset_id);
+                });
+            }
+
             Self::deposit_event(Event::SoulboundTokenIssued {
-                asset_id,
+                asset_id: sbt_asset_id,
                 owner: who,
+                metadata,
             });
 
             Ok(())
@@ -160,6 +184,7 @@ pub mod pallet {
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
             owner: AccountIdOf<T>,
+            metadata: SoulboundTokenMetadata<AssetIdOf<T>>,
         },
     }
 
@@ -176,11 +201,6 @@ pub mod pallet {
         false
     }
 
-    #[pallet::type_value]
-    pub fn DefaultSoulboundAsset<T: Config>() -> bool {
-        false
-    }
-
     #[pallet::storage]
     #[pallet::getter(fn regulated_asset)]
     pub type RegulatedAsset<T: Config> =
@@ -189,8 +209,12 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
     pub type SoulboundAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, bool, ValueQuery, DefaultSoulboundAsset<T>>;
-    // value will replaced by metdata of soulbound asset instead of just boolean
+        StorageMap<_, Identity, AssetIdOf<T>, SoulboundTokenMetadata<AssetIdOf<T>>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn sbts_by_asset)]
+    pub type SBTsByAsset<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 }
 
 impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
@@ -200,7 +224,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         _permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
-        if Self::soulbound_asset(asset_id) {
+        if let Some(_metdata) = Self::soulbound_asset(asset_id) {
             // asset owner of the SBT can do all asset operations
             if T::AssetInfoProvider::is_asset_owner(asset_id, issuer) {
                 return Ok(());
@@ -212,27 +236,19 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         if !Self::regulated_asset(asset_id) {
             return Ok(());
         }
-        let (mut issuer_flag, mut affected_account_flag) = (false, false);
 
-        for (sbt_asset_id, _metadata) in SoulboundAsset::<T>::iter() {
-            if !issuer_flag {
-                let tot_balance = T::AssetInfoProvider::total_balance(&sbt_asset_id, issuer)?;
-                if tot_balance > 0 {
-                    issuer_flag = true;
-                }
-            }
-            if !affected_account_flag {
-                let tot_balance =
-                    T::AssetInfoProvider::total_balance(&sbt_asset_id, affected_account)?;
-                if tot_balance > 0 {
-                    affected_account_flag = true;
-                }
-            }
-            if issuer_flag && affected_account_flag {
-                break;
-            }
-        }
-        if !issuer_flag || !affected_account_flag {
+        let sbts = Self::sbts_by_asset(asset_id);
+
+        let issuer_has_sbt = sbts.iter().any(|sbt| {
+            T::AssetInfoProvider::total_balance(sbt, issuer).map_or(false, |balance| balance > 0)
+        });
+
+        let affected_account_has_sbt = sbts.iter().any(|sbt| {
+            T::AssetInfoProvider::total_balance(sbt, affected_account)
+                .map_or(false, |balance| balance > 0)
+        });
+
+        if !issuer_has_sbt || !affected_account_has_sbt {
             return Err(Error::<T>::AllInvolvedUsersShouldHoldSBT.into());
         }
 
