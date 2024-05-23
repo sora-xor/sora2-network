@@ -250,7 +250,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         }
 
         // If the account is a technical account, then it can do all operations
-        if Technical::<T>::lookup_tech_account_id(&issuer).is_ok() {
+        if Technical::<T>::lookup_tech_account_id(issuer).is_ok() {
             return Ok(());
         }
 
