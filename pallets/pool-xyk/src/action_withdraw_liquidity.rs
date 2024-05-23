@@ -123,7 +123,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
         let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
 
-        let tpair = Pallet::<T>::strict_sort_pair(
+        let tpair = Pallet::<T>::get_trading_pair(
             base_asset_id,
             &self.destination.0.asset,
             &self.destination.1.asset,
@@ -255,7 +255,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(
+            let pair = Pallet::<T>::get_trading_pair(
                 base_asset_id,
                 &self.destination.0.asset,
                 &self.destination.1.asset,

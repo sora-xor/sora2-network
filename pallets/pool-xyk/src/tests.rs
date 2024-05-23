@@ -2846,20 +2846,20 @@ fn strict_sort_pair() {
         let asset_target = GreenPromise.into();
         let asset_target_2 = BluePromise.into();
 
-        let pair = PoolXYK::strict_sort_pair(&asset_base, &asset_base, &asset_target).unwrap();
+        let pair = PoolXYK::get_trading_pair(&asset_base, &asset_base, &asset_target).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
 
-        let pair = PoolXYK::strict_sort_pair(&asset_base, &asset_target, &asset_base).unwrap();
+        let pair = PoolXYK::get_trading_pair(&asset_base, &asset_target, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
 
         assert_noop!(
-            PoolXYK::strict_sort_pair(&asset_base, &asset_base, &asset_base),
+            PoolXYK::get_trading_pair(&asset_base, &asset_base, &asset_base),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
         assert_noop!(
-            PoolXYK::strict_sort_pair(&asset_base, &asset_target, &asset_target_2),
+            PoolXYK::get_trading_pair(&asset_base, &asset_target, &asset_target_2),
             crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
         );
     });

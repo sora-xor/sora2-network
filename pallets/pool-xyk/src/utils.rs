@@ -47,7 +47,7 @@ impl<T: Config> Pallet<T> {
         asset_a: &AssetIdOf<T>,
         asset_b: &AssetIdOf<T>,
     ) -> Result<bool, DispatchError> {
-        let tpair = Self::strict_sort_pair(base_asset_id, asset_a, asset_b)?;
+        let tpair = Self::get_trading_pair(base_asset_id, asset_a, asset_b)?;
         if &tpair.target_asset_id == asset_a {
             Ok(true)
         } else if &tpair.target_asset_id == asset_b {
@@ -96,7 +96,7 @@ impl<T: Config> Pallet<T> {
         let dexinfo = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let tpair = Self::strict_sort_pair(&base_asset_id, &asset_a, &asset_b)?;
+        let tpair = Self::get_trading_pair(&base_asset_id, &asset_a, &asset_b)?;
         let tpair: common::TradingPair<TechAssetIdOf<T>> = tpair.map(|a| a.into());
         Ok((
             tpair,
@@ -227,8 +227,8 @@ impl<T: Config> Pallet<T> {
         Ok((tpair, base_chameleon_asset_id, is_allowed_chameleon_pool))
     }
 
-    /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
-    pub fn strict_sort_pair(
+    /// Get trading pair from assets
+    pub fn get_trading_pair(
         base_asset_id: &AssetIdOf<T>,
         asset_a: &AssetIdOf<T>,
         asset_b: &AssetIdOf<T>,

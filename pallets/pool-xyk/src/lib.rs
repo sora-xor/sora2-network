@@ -145,7 +145,7 @@ impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
             .is_zero()
             && !pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(&asset_a.clone(), &asset_a, &asset_b)?;
+            let pair = Pallet::<T>::get_trading_pair(&asset_a.clone(), &asset_a, &asset_b)?;
             AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
@@ -202,7 +202,7 @@ impl<T: Config> Pallet<T> {
         asset_b: &AssetIdOf<T>,
         balance_pair: (&Balance, &Balance),
     ) {
-        let tpair = Pallet::<T>::strict_sort_pair(base_asset_id, asset_a, asset_b);
+        let tpair = Pallet::<T>::get_trading_pair(base_asset_id, asset_a, asset_b);
         if let Ok(tpair) = tpair {
             if asset_a == &tpair.target_asset_id {
                 Reserves::<T>::insert(
@@ -408,7 +408,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     ) -> bool {
         if let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) {
             if let Ok(tpair) =
-                Self::strict_sort_pair(&dex_info.base_asset_id, input_asset_id, output_asset_id)
+                Self::get_trading_pair(&dex_info.base_asset_id, input_asset_id, output_asset_id)
             {
                 Properties::<T>::contains_key(&tpair.base_asset_id, &tpair.target_asset_id)
             } else {

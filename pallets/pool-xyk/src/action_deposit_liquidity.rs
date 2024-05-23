@@ -308,7 +308,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(
+            let pair = Pallet::<T>::get_trading_pair(
                 base_asset_id,
                 &self.source.0.asset,
                 &self.source.1.asset,
