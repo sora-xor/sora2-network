@@ -190,14 +190,14 @@ pub fn charlie() -> AccountId32 {
     AccountId32::from([3; 32])
 }
 
-/// Mock of pallet 'assets:Config'.
+/// Mock of pallet `assets:Config`.
 #[macro_export]
 macro_rules! mock_assets_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-            pub const GetBuyBackPercentage: u8 = 10;
             pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
+            pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
+            pub const GetBuyBackPercentage: u8 = 0;
             pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
         }
         impl assets::Config for $runtime {
