@@ -56,6 +56,7 @@ use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type Permissions<T> = permissions::Pallet<T>;
+type Technical<T> = technical::Pallet<T>;
 
 pub use pallet::*;
 
@@ -76,7 +77,9 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + permissions::Config {
+    pub trait Config:
+        frame_system::Config + common::Config + permissions::Config + technical::Config
+    {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type WeightInfo: WeightInfo;
@@ -111,9 +114,9 @@ pub mod pallet {
         pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
             // validate
             let who = ensure_signed(origin)?;
-            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             ensure!(
-                T::AssetInfoProvider::is_asset_owner(&asset_id, &who),
+                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
                 <Error<T>>::OnlyAssetOwnerCanRegulate
             );
             ensure!(
@@ -226,26 +229,32 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         _permission_id: &PermissionId,
     ) -> Result<(), DispatchError> {
         if let Some(_metdata) = Self::soulbound_asset(asset_id) {
-            // asset owner of the SBT can do all asset operations
-            if T::AssetInfoProvider::is_asset_owner(asset_id, issuer) {
+            // Asset owner of the SBT can do all asset operations
+            if <T as Config>::AssetInfoProvider::is_asset_owner(asset_id, issuer) {
                 return Ok(());
             } else {
                 return Err(Error::<T>::SoulboundAssetNotOperationable.into());
             }
         }
-        // if asset is not regulated, then no need to check permissions
+        // If asset is not regulated, then no need to check permissions
         if !Self::regulated_asset(asset_id) {
+            return Ok(());
+        }
+
+        // If the account is a technical account, then it can do all operations
+        if let Ok(_) = Technical::<T>::lookup_tech_account_id(&issuer) {
             return Ok(());
         }
 
         let sbts = Self::sbts_by_asset(asset_id);
 
         let issuer_has_sbt = sbts.iter().any(|sbt| {
-            T::AssetInfoProvider::total_balance(sbt, issuer).map_or(false, |balance| balance > 0)
+            <T as Config>::AssetInfoProvider::total_balance(sbt, issuer)
+                .map_or(false, |balance| balance > 0)
         });
 
         let affected_account_has_sbt = sbts.iter().any(|sbt| {
-            T::AssetInfoProvider::total_balance(sbt, affected_account)
+            <T as Config>::AssetInfoProvider::total_balance(sbt, affected_account)
                 .map_or(false, |balance| balance > 0)
         });
 

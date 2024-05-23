@@ -32,8 +32,8 @@ use crate::{self as regulated_assets};
 use common::mock::ExistentialDeposits;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
-    DEXId, LiquiditySourceType, PredefinedAssetId, XOR, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType, PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU16, ConstU64, Everything};
@@ -52,6 +52,8 @@ type Balance = u128;
 type Signature = MultiSignature;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
@@ -60,6 +62,7 @@ mock_pallet_balances_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
 mock_assets_config!(TestRuntime);
+mock_technical_config!(TestRuntime);
 
 impl regulated_assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
@@ -80,6 +83,7 @@ construct_runtime! {
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         RegulatedAssets: regulated_assets::{Pallet, Storage, Event<T>, Call},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
     }
 }
 
