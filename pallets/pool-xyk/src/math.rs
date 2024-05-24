@@ -231,7 +231,7 @@ impl<T: Config> Pallet<T> {
         };
 
         // reduce by `IrreducibleReserve` percent, because (reserve - output) must be > 0
-        max_output -= T::IrreducibleReserve::get() * max_output;
+        max_output = max_output.saturating_sub(T::IrreducibleReserve::get() * max_output);
         Ok(max_output)
     }
 
