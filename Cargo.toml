@@ -388,7 +388,7 @@ members = [
     "pallets/oracle-proxy",
     "pallets/order-book",
     "pallets/bridge-proxy",
-    # "pallets/bridge-proxy/rpc",
+    "pallets/bridge-proxy/rpc",
     "pallets/bridge-proxy/runtime-api",
     "pallets/kensetsu",
     "pallets/band",

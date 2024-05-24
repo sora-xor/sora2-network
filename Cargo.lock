@@ -1164,6 +1164,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bridge-proxy-rpc"
+version = "0.1.0"
+dependencies = [
+ "bridge-proxy-runtime-api",
+ "bridge-types",
+ "common 0.1.0",
+ "jsonrpsee",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "bridge-proxy-runtime-api"
 version = "0.1.0"
 dependencies = [
@@ -12320,6 +12339,14 @@ name = "try-runtime-cli"
 version = "0.10.0-dev"
 
 [[patch.unused]]
+name = "beefy-light-client-rpc"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "leaf-provider-rpc"
+version = "0.1.0"
+
+[[patch.unused]]
 name = "pallet-transaction-payment-rpc"
 version = "4.0.0-dev"
 
@@ -12350,11 +12377,3 @@ version = "4.0.0-dev"
 [[patch.unused]]
 name = "try-runtime-cli"
 version = "0.10.0-dev"
-
-[[patch.unused]]
-name = "beefy-light-client-rpc"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "leaf-provider-rpc"
-version = "0.1.0"
