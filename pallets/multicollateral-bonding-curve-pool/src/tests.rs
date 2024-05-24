@@ -47,7 +47,6 @@ mod tests {
     use frame_support::assert_err;
     use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
-    use frame_support::traits::OnInitialize;
     use sp_arithmetic::traits::Zero;
     use sp_runtime::DispatchError;
     use sp_std::collections::vec_deque::VecDeque;
@@ -61,6 +60,12 @@ mod tests {
     ) {
         assert_approx_eq_abs!(left.amount, right.amount, tolerance);
         assert_approx_eq_abs!(left.fee.get_xor(), right.fee.get_xor(), tolerance);
+    }
+
+    fn ensure_empty_pending_free_reserves() {
+        crate::PendingFreeReserves::<Runtime>::iter().for_each(|(_id, v)| {
+            assert!(v.is_empty());
+        });
     }
 
     fn ensure_distribution_accounts_balances(
@@ -712,6 +717,7 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
             ensure_distribution_accounts_balances(
                 distribution_accounts,
                 vec![
@@ -823,6 +829,7 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
             ensure_distribution_accounts_balances(
                 distribution_accounts,
                 vec![
@@ -2569,7 +2576,7 @@ mod tests {
             // check pending list and reserves before trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             ensure_distribution_accounts_balances(
@@ -2594,11 +2601,12 @@ mod tests {
                     OutcomeFee::xor(balance!(0.003009027081243731))
                 )
             );
+            run_to_block(1);
 
             // check pending list and free reserves account
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             ensure_distribution_accounts_balances(
@@ -2681,7 +2689,7 @@ mod tests {
             // check pending list and reserves before trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             // perform buy on tbc
@@ -2702,23 +2710,28 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
 
             // check pending list and free reserves account
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
 
             // attempt for distribution, still not enough reserves
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 + 1);
             let free_reserves_balance_2 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
@@ -2738,20 +2751,22 @@ mod tests {
             );
 
             // attempt for distribution before retry period
-            MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY - 1).into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2);
             let free_reserves_balance_3 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
             assert_eq!(free_reserves_balance_3, free_reserves_balance);
 
             // successful attempt for distribution
-            MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY * 2).into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             // actual accounts check after distribution
@@ -2835,7 +2850,7 @@ mod tests {
             // check pending list and reserves before trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             // perform buy on tbc multiple times
@@ -2894,22 +2909,9 @@ mod tests {
             // check pending list and reserves after trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            let expected_balances = [
-                balance!(40.120436328358829805),
-                balance!(40.120586367106336349),
-                balance!(40.120736405853842892),
-            ];
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![
-                    (USDT, expected_balances[0]),
-                    (USDT, expected_balances[1]),
-                    (USDT, expected_balances[2])
-                ]
-            );
-            assert_eq!(
-                free_reserves_balance,
-                expected_balances.iter().fold(balance!(0), |a, b| a + b)
+                MBCPool::pending_free_reserves(1),
+                vec![(USDT, free_reserves_balance),].into_iter().collect()
             );
 
             // exchange becomes available
@@ -2920,10 +2922,10 @@ mod tests {
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
         })
     }
@@ -3003,13 +3005,14 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
 
             // check that failed distribution was postponed
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 + 1),
+                vec![(USDT, free_reserves_balance)].into_iter().collect()
             );
             assert_eq!(
                 free_reserves_balance,
@@ -3017,12 +3020,12 @@ mod tests {
             );
 
             // attempt for distribution
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 + 1);
             let free_reserves_balance_2 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance_2)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1),
+                vec![(USDT, free_reserves_balance_2)].into_iter().collect()
             );
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
@@ -3044,13 +3047,18 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 2);
 
             // second distribution was successful, pending list didn't change
             let free_reserves_balance_3 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance_3)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 3 + 1),
+                vec![(USDT, free_reserves_balance_3)].into_iter().collect()
+            );
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 3 + 2),
+                Default::default()
             );
             assert_eq!(free_reserves_balance_3, free_reserves_balance_2);
         })
@@ -3141,6 +3149,7 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
 
             // another exchange with reasonable amount, still current market can't handle it
             assert_swap_outcome(
@@ -3162,7 +3171,7 @@ mod tests {
             );
 
             // attempt for distribution
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 + 2);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let expected_balances = [
@@ -3170,8 +3179,12 @@ mod tests {
                 balance!(1504400.263624851428814147),
             ];
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, expected_balances[0]), (USDT, expected_balances[1])]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1),
+                vec![(USDT, expected_balances[0])].into_iter().collect()
+            );
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 2),
+                vec![(USDT, expected_balances[1])].into_iter().collect()
             );
             assert_eq!(
                 free_reserves_balance,
@@ -3186,12 +3199,12 @@ mod tests {
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 * 3);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, expected_balances[0])]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 3 + 1),
+                vec![(USDT, expected_balances[0])].into_iter().collect()
             );
             assert_eq!(free_reserves_balance, expected_balances[0]);
         })
@@ -3285,11 +3298,20 @@ mod tests {
             // check pending list and free reserves account
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
-            );
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
+            assert_eq!(
+                MBCPool::pending_free_reserves(1),
+                vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
+            );
+            run_to_block(1);
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 + 1),
+                vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
+            );
 
             // exchange becomes possible, but not for val, so second part of distribution fails
             MockDEXApi::add_reserves(vec![
@@ -3300,12 +3322,14 @@ mod tests {
             .unwrap();
 
             // check pending list
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 + 1);
             let free_reserves_balance_2 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
 
             // val buy back and burn failed so exchanged xor is reverted
@@ -3339,11 +3363,17 @@ mod tests {
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let second_pending_balance = balance!(55.124461117760692833);
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![
-                    (USDT, free_reserves_balance),
-                    (USDT, second_pending_balance)
-                ]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 + 2),
+                vec![(USDT, second_pending_balance)].into_iter().collect()
+            );
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 + 2);
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 1),
+                vec![(USDT, free_reserves_balance),].into_iter().collect()
+            );
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 2 + 2),
+                vec![(USDT, second_pending_balance)].into_iter().collect()
             );
             assert_eq!(
                 free_reserves_balance_3,
@@ -3354,12 +3384,12 @@ mod tests {
             MockDEXApi::add_reserves(vec![(VAL, balance!(0.4)), (TBCD, balance!(1000))]).unwrap();
 
             // val is not enough for one of distributions, it's still present
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 * 3);
             let free_reserves_balance_4 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, second_pending_balance)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY as u64 * 3 + 2),
+                vec![(USDT, second_pending_balance)].into_iter().collect()
             );
             assert_eq!(free_reserves_balance_4, second_pending_balance);
 
@@ -3377,10 +3407,10 @@ mod tests {
             MockDEXApi::add_reserves(vec![(VAL, balance!(1))]).unwrap();
 
             // second pending distribution is performed
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY as u64 * 4);
             let free_reserves_balance_5 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance_5, balance!(0));
 
             // check distribution accounts

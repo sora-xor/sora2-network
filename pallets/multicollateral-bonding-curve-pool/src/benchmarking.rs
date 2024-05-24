@@ -75,8 +75,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     frame_system::Pallet::<T>::inc_providers(&owner);
     #[cfg(test)]
     crate::mock::MockDEXApi::init_without_reserves().unwrap();
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     Permissions::<T>::assign_permission(
@@ -93,59 +91,69 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
-    T::AssetManager::mint_to(
-        &DAI.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-    T::AssetManager::mint_to(
-        &VAL.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())
-        .unwrap();
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
-        .unwrap();
-
-    XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
-        DEX.into(),
-        XOR.into(),
-        DAI.into(),
-        balance!(1000),
-        balance!(2000),
-        balance!(1000),
-        balance!(2000),
-    )
-    .unwrap();
-    XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
-        DEX.into(),
-        XOR.into(),
-        VAL.into(),
-        balance!(1000),
-        balance!(2000),
-        balance!(1000),
-        balance!(2000),
-    )
-    .unwrap();
-
+    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(3000)).unwrap();
+    register_tbc_for_asset::<T>(DAI.into());
+    register_tbc_for_asset::<T>(VAL.into());
     Ok(())
 }
 
+fn gen_asset_id<T: Config>(n: u32) -> AssetIdOf<T> {
+    let asset_id = sp_core::H256::from_low_u64_le(n as u64).into();
+    let owner = alice::<T>();
+    T::AssetManager::register_asset_id(
+        owner,
+        asset_id,
+        common::AssetSymbol(b"TEST".to_vec()),
+        common::AssetName(b"TEST".to_vec()),
+        common::DEFAULT_BALANCE_PRECISION,
+        0,
+        true,
+        None,
+        None,
+    )
+    .unwrap();
+    <T as Config>::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), asset_id)
+        .unwrap();
+    asset_id
+}
+
+fn register_tbc_for_asset<T: Config>(asset_id: AssetIdOf<T>) {
+    let owner = alice::<T>();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
+
+    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(1000)).unwrap();
+    T::AssetManager::mint_to(
+        &asset_id,
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), asset_id).unwrap();
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        asset_id,
+        balance!(1000),
+        balance!(2000),
+        balance!(1000),
+        balance!(2000),
+    )
+    .unwrap();
+}
+
 fn add_pending<T: Config>(n: u32) {
-    let mut pending = Vec::new();
-    for _i in 0..n {
-        pending.push((DAI.into(), balance!(1)))
+    let mut pending = sp_std::collections::btree_map::BTreeMap::<AssetIdOf<T>, Balance>::new();
+    for i in 0..n {
+        let asset_id = gen_asset_id::<T>(i);
+        register_tbc_for_asset::<T>(asset_id);
+        pending.insert(DAI.into(), balance!(1));
     }
-    PendingFreeReserves::<T>::set(pending);
+    PendingFreeReserves::<T>::insert(BlockNumberFor::<T>::from(0u32), pending);
 }
 
 benchmarks! {
@@ -259,7 +267,7 @@ benchmarks! {
         setup_benchmark::<T>().unwrap();
         add_pending::<T>(n);
     }: {
-        Pallet::<T>::on_initialize(crate::RETRY_DISTRIBUTION_FREQUENCY.into());
+        Pallet::<T>::on_initialize(0u32.into());
     }
     verify {}
 
