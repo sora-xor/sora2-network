@@ -2537,7 +2537,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // Trustless bridges
         Mmr: pallet_mmr::{Pallet, Storage} = 90,
         // In production needed for session keys
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
+        Beefy: pallet_beefy = 91,
         #[cfg(feature = "wip")] // Trustless bridges
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
 

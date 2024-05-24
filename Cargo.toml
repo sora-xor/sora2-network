@@ -178,7 +178,7 @@ sp-consensus-aura = { path = "../sora-polkadot-sdk/substrate/primitives/consensu
 sp-consensus-babe = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/babe"}
 sp-core = { path = "../sora-polkadot-sdk/substrate/primitives/core"}
 # sp-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/primitives/finality-grandpa"}
-# sp-inherents = { path = "../sora-polkadot-sdk/substrate/primitives/inherents"}
+sp-inherents = { path = "../sora-polkadot-sdk/substrate/primitives/inherents"}
 sp-io = { path = "../sora-polkadot-sdk/substrate/primitives/io"}
 sp-keystore = { path = "../sora-polkadot-sdk/substrate/primitives/keystore"}
 sp-offchain = { path = "../sora-polkadot-sdk/substrate/primitives/offchain"}
@@ -203,7 +203,10 @@ substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/fram
 # mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # pallet-mmr = { path = "../sora-polkadot-sdk/substrate/frame/mmr" }
 substrate-prometheus-endpoint = { path = "../sora-polkadot-sdk/substrate/utils/prometheus" }
-# sp-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+sp-consensus-beefy = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/beefy" }
+pallet-beefy = { path = "../sora-polkadot-sdk/substrate/frame/beefy" }
+# sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+
 # pallet-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # pallet-beefy-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # beefy-gadget = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
@@ -277,7 +280,7 @@ sp-consensus-aura = { path = "../sora-polkadot-sdk/substrate/primitives/consensu
 sp-consensus-babe = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/babe"}
 sp-core = { path = "../sora-polkadot-sdk/substrate/primitives/core"}
 # sp-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/primitives/finality-grandpa"}
-# sp-inherents = { path = "../sora-polkadot-sdk/substrate/primitives/inherents"}
+sp-inherents = { path = "../sora-polkadot-sdk/substrate/primitives/inherents"}
 sp-io = { path = "../sora-polkadot-sdk/substrate/primitives/io"}
 sp-keystore = { path = "../sora-polkadot-sdk/substrate/primitives/keystore"}
 sp-offchain = { path = "../sora-polkadot-sdk/substrate/primitives/offchain"}
@@ -302,8 +305,8 @@ substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/fram
 # mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # pallet-mmr = { path = "../sora-polkadot-sdk/substrate/frame/mmr" }
 substrate-prometheus-endpoint = { path = "../sora-polkadot-sdk/substrate/utils/prometheus" }
-# sp-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-# pallet-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+sp-consensus-beefy = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/beefy" }
+pallet-beefy = { path = "../sora-polkadot-sdk/substrate/frame/beefy" }
 # pallet-beefy-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # beefy-gadget = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # beefy-gadget-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }

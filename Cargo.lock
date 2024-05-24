@@ -853,7 +853,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -1107,7 +1107,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -1198,7 +1198,7 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3326,7 +3326,7 @@ dependencies = [
  "sp-core-hashing-proc-macro",
  "sp-debug-derive 8.0.0",
  "sp-genesis-builder",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-io",
  "sp-metadata-ir",
  "sp-runtime",
@@ -3584,9 +3584,9 @@ dependencies = [
  "sp-block-builder",
  "sp-consensus-aura",
  "sp-consensus-babe",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-core",
- "sp-inherents 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-inherents",
  "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "sp-npos-elections",
  "sp-offchain",
@@ -4786,7 +4786,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-core",
  "sp-io",
  "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
@@ -6382,7 +6382,6 @@ dependencies = [
 [[package]]
 name = "pallet-beefy"
 version = "4.0.0-dev"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6392,7 +6391,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-runtime",
  "sp-session",
  "sp-staking",
@@ -6416,7 +6415,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-consensus-beefy 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus-beefy",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -6743,7 +6742,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-io",
  "sp-runtime",
  "sp-std",
@@ -8307,7 +8306,7 @@ dependencies = [
  "sp-block-builder",
  "sp-blockchain",
  "sp-core",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
 ]
 
@@ -9504,7 +9503,7 @@ name = "sp-block-builder"
 version = "4.0.0-dev"
 dependencies = [
  "sp-api",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
  "sp-std",
 ]
@@ -9534,7 +9533,7 @@ dependencies = [
  "futures",
  "log",
  "sp-core",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
  "sp-state-machine",
  "thiserror",
@@ -9549,7 +9548,7 @@ dependencies = [
  "futures",
  "log",
  "sp-core",
- "sp-inherents 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-inherents",
  "sp-runtime",
  "sp-state-machine",
  "thiserror",
@@ -9565,7 +9564,7 @@ dependencies = [
  "sp-api",
  "sp-application-crypto",
  "sp-consensus-slots",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
@@ -9583,7 +9582,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-consensus-slots",
  "sp-core",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
@@ -9592,7 +9591,6 @@ dependencies = [
 [[package]]
 name = "sp-consensus-beefy"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
 dependencies = [
  "lazy_static",
  "parity-scale-codec",
@@ -9602,26 +9600,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-core",
  "sp-io",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
- "sp-runtime",
- "sp-std",
- "strum 0.24.1",
-]
-
-[[package]]
-name = "sp-consensus-beefy"
-version = "4.0.0-dev"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
-dependencies = [
- "lazy_static",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives 4.0.0-dev",
  "sp-runtime",
  "sp-std",
  "strum 0.24.1",
@@ -9811,20 +9790,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-inherents"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#c8d2251cafadc108ba2f1f8a3208dc547ff38901"
-dependencies = [
- "async-trait",
- "impl-trait-for-tuples",
- "parity-scale-codec",
- "scale-info",
- "sp-runtime",
- "sp-std",
- "thiserror",
-]
-
-[[package]]
 name = "sp-io"
 version = "23.0.0"
 dependencies = [
@@ -9884,6 +9849,23 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-std",
+]
+
+[[package]]
+name = "sp-mmr-primitives"
+version = "4.0.0-dev"
+dependencies = [
+ "ckb-merkle-mountain-range",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-core",
+ "sp-debug-derive 8.0.0",
+ "sp-runtime",
+ "sp-std",
+ "thiserror",
 ]
 
 [[package]]
@@ -10103,7 +10085,7 @@ version = "4.0.0-dev"
 dependencies = [
  "async-trait",
  "parity-scale-codec",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
  "sp-std",
  "thiserror",
@@ -10148,7 +10130,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-core",
- "sp-inherents 4.0.0-dev",
+ "sp-inherents",
  "sp-runtime",
  "sp-std",
  "sp-trie",

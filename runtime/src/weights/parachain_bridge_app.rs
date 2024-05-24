@@ -88,7 +88,7 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::proof_size(2475.into()).saturating_mul(a.into()).into())
+			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()).into())
 	}
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
@@ -123,7 +123,7 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
 			.saturating_add(T::DbWeight::get().writes(9))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::proof_size(2475.into()).saturating_mul(a.into()).into())
+			.saturating_add(Weight::from_parts(0,2475).saturating_mul(a.into()).into())
 	}
 	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:0 w:1)
 	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
