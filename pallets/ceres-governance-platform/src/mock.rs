@@ -2,14 +2,16 @@ use crate::{self as ceres_governance_platform};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL,
+    balance, fixed, mock_assets_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
+use hex_literal::hex;
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
@@ -44,14 +46,17 @@ construct_runtime! {
     }
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub const ALICE: AccountId = AccountId::new(hex!(
+    "0000000000000000000000000000000000000000000000000000000000000001"
+));
+pub const BOB: AccountId = AccountId::new(hex!(
+    "0000000000000000000000000000000000000000000000000000000000000002"
+));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -59,11 +64,11 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP;
+    pub GetIncentiveAssetId: AssetId = PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetParliamentAccountId: AccountId = 100;
-    pub GetPswapDistributionAccountId: AccountId = 101;
+    pub GetParliamentAccountId: AccountId = AccountId32::from([100; 32]);
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -110,29 +115,9 @@ impl crate::Config for Runtime {
 parameter_types! {
     pub const GetBaseAssetId: AssetId = CERES_ASSET_ID;
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = AccountId;
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
 
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
@@ -314,7 +299,7 @@ impl ExtBuilder {
             balances: self
                 .endowed_accounts
                 .iter()
-                .map(|(acc, _, balance)| (*acc, *balance))
+                .map(|(acc, _, balance)| (acc.clone(), *balance))
                 .collect(),
         }
         .assimilate_storage(&mut t)
