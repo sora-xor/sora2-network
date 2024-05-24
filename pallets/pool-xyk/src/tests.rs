@@ -613,7 +613,7 @@ fn check_step_quote_with_zero_samples_count() {
                     balance!(200),
                     Default::default()
                 )]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(199999))), None)
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
             }
         );
     })]);
@@ -765,7 +765,7 @@ fn check_step_quote_without_fee() {
                         Default::default()
                     ),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(199999))), None)
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
             }
         );
 
@@ -901,7 +901,7 @@ fn check_step_quote_without_fee() {
                         Default::default()
                     ),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(99999))), None)
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(99000))), None)
             }
         );
     })]);
@@ -1053,7 +1053,7 @@ fn check_step_quote_with_fee() {
                         OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030147523975218649))
                     ),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(199999))), None)
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
             }
         );
 
@@ -1189,7 +1189,7 @@ fn check_step_quote_with_fee() {
                         OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
                     ),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(99699))), None)
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(98703))), None)
             }
         );
     })]);
@@ -1454,9 +1454,9 @@ fn check_exceed_reserves() {
                 .0,
             ),
             (
-                20060080240722166519558676028, // too big for balance!()
-                balance!(199999),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(60180240.722166499558676028))
+                balance!(9929789.368104312938821464),
+                balance!(198000),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(29789.368104312938816464))
             )
         );
 
@@ -1499,9 +1499,9 @@ fn check_exceed_reserves() {
                 .0,
             ),
             (
-                balance!(19939800000.00000000384842),
-                balance!(99699),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(299.996990972918756268))
+                balance!(19800000.00000000000002),
+                balance!(98703),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(297))
             )
         );
     })]);

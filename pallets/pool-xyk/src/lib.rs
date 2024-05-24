@@ -496,7 +496,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                 let max_output = Pallet::<T>::calc_max_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
-                    &reserve_output,
+                    reserve_output,
                     deduce_fee,
                 )?;
                 quotation.limits.max_amount = Some(SideAmount::Output(max_output));

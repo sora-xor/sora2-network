@@ -28,15 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::dispatch::DispatchError;
-use frame_support::ensure;
-
 use common::prelude::{Balance, Fixed, FixedWrapper};
 use common::{fixed_wrapper, AssetIdOf, AssetInfoProvider, TradingPair};
+use frame_support::dispatch::DispatchError;
+use frame_support::ensure;
+use frame_support::traits::Get;
 use sp_runtime::traits::Zero;
 
 use crate::{to_balance, to_fixed_wrapper};
-
 use crate::{Config, Error, Pallet};
 
 impl<T: Config> Pallet<T> {
@@ -218,7 +217,7 @@ impl<T: Config> Pallet<T> {
     pub fn calc_max_output(
         fee_fraction: Fixed,
         get_fee_from_destination: bool,
-        reserve_output: &Balance,
+        reserve_output: Balance,
         deduce_fee: bool,
     ) -> Result<Balance, DispatchError> {
         if reserve_output.is_zero() {
@@ -226,14 +225,14 @@ impl<T: Config> Pallet<T> {
         }
 
         let mut max_output = if get_fee_from_destination && deduce_fee {
-            FixedWrapper::from(*reserve_output) * (fixed_wrapper!(1) - fee_fraction)
+            to_balance!(FixedWrapper::from(reserve_output) * (fixed_wrapper!(1) - fee_fraction))
         } else {
-            FixedWrapper::from(*reserve_output)
+            reserve_output
         };
 
-        // reduce by 1, because (reserve - output) must be > 0
-        max_output -= fixed_wrapper!(1);
-        Ok(to_balance!(max_output))
+        // reduce by `IrreducibleReserve` percent, because (reserve - output) must be > 0
+        max_output -= T::IrreducibleReserve::get() * max_output;
+        Ok(max_output)
     }
 
     pub fn get_base_asset_part_from_pool_account(
