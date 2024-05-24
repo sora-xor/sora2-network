@@ -8,7 +8,7 @@ pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
     balance, fixed, hash, mock_assets_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
-    DEMETER_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
+    DEMETER_ASSET_ID, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -60,7 +60,6 @@ construct_runtime! {
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const BUY_BACK_ACCOUNT: AccountId = AccountId32::new([23u8; 32]);
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {
@@ -69,7 +68,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::new([100u8; 32]);

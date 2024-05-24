@@ -38,14 +38,13 @@ use common::{
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
     LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsProvider,
-    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD, PSWAP, VAL, XOR, XST,
+    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
-use hex_literal::hex;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
