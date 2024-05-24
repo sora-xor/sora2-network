@@ -81,6 +81,10 @@ impl Randomness<Option<Hash>, BlockNumber> for MockRandomness {
 pub struct MockPriceTools;
 
 impl PriceToolsProvider<AssetId> for MockPriceTools {
+    fn is_asset_registered(_asset_id: &AssetId) -> bool {
+        true
+    }
+
     /// Returns `asset_id` price is $1
     fn get_average_price(
         _input_asset_id: &AssetId,

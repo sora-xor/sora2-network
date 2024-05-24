@@ -567,6 +567,8 @@ pub mod pallet {
         LiquidationLimit,
         /// Wrong borrow amounts
         WrongBorrowAmounts,
+        /// Collateral must be registered in PriceTools.
+        CollateralNotRegisteredInPriceTools,
     }
 
     #[pallet::call]
@@ -770,7 +772,8 @@ pub mod pallet {
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `collateral_asset_id`: The identifier of the collateral asset.
+        /// - `collateral_asset_id`: The identifier of the collateral asset. Collateral must be
+        /// registered in price tools.
         /// - `new_risk_parameters`: The new risk parameters to be set for the collateral asset.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::update_collateral_risk_parameters())]
@@ -781,6 +784,10 @@ pub mod pallet {
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            ensure!(
+                T::PriceTools::is_asset_registered(&collateral_asset_id),
+                Error::<T>::CollateralNotRegisteredInPriceTools
+            );
             Self::upsert_collateral_info(
                 &collateral_asset_id,
                 &stablecoin_asset_id,

@@ -673,6 +673,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
 }
 
 impl PriceToolsProvider<AssetId> for MockDEXApi {
+    fn is_asset_registered(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,

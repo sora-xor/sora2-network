@@ -879,6 +879,9 @@ pub trait OnPoolCreated {
 }
 
 pub trait PriceToolsProvider<AssetId> {
+    /// Checks if asset is registered in PriceTools.
+    fn is_asset_registered(asset_id: &AssetId) -> bool;
+
     /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
     /// `price_variant` specifies the correction for price, either for buy or sell.
     fn get_average_price(
@@ -892,6 +895,10 @@ pub trait PriceToolsProvider<AssetId> {
 }
 
 impl<AssetId> PriceToolsProvider<AssetId> for () {
+    fn is_asset_registered(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
     fn get_average_price(
         _: &AssetId,
         _: &AssetId,
