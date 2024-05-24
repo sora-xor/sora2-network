@@ -2534,6 +2534,7 @@
 <a href="#2519" id="2519">2519</a>
 <a href="#2520" id="2520">2520</a>
 <a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4682,7 +4683,8 @@
         )
     }));
     GenesisConfig {
-        evm_fungible_app: Default::default(),
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+        </span>evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
