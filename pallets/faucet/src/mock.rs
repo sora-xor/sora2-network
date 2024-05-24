@@ -32,14 +32,13 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    self, balance, mock_assets_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use hex_literal::hex;
 use permissions::{Scope, BURN, MINT};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -159,31 +158,9 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
 
 impl common::Config for Runtime {
     type DEXId = DEXId;
