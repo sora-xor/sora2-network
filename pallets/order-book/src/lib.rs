@@ -1431,6 +1431,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
 
+        let base_amount = deal_info.base_amount();
+        ensure!(
+            order_book.min_lot_size <= base_amount && base_amount <= order_book.max_lot_size,
+            Error::<T>::InvalidOrderAmount
+        );
+
         // order-book doesn't take fee
         let fee = OutcomeFee::new();
 
@@ -1509,7 +1515,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Output(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_in))
+                    if desired_amount_in < *quote_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_in.min(*quote_max_amount.value().balance());
+
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(target))
                 }
                 PriceVariant::Sell => {
                     quotation.limits.min_amount =
@@ -1519,11 +1534,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Input(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Base(
-                        order_book
-                            .step_lot_size
-                            .copy_divisibility(desired_amount_in),
-                    )
+                    if desired_amount_in < *base_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_in.min(*base_max_amount.value().balance());
+
+                    OrderAmount::Base(order_book.step_lot_size.copy_divisibility(target))
                 }
             },
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
@@ -1535,11 +1555,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Output(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Base(
-                        order_book
-                            .step_lot_size
-                            .copy_divisibility(desired_amount_out),
-                    )
+                    if desired_amount_out < *base_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_out.min(*base_max_amount.value().balance());
+
+                    OrderAmount::Base(order_book.step_lot_size.copy_divisibility(target))
                 }
                 PriceVariant::Sell => {
                     quotation.limits.min_amount =
@@ -1549,7 +1574,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     quotation.limits.amount_precision =
                         Some(SideAmount::Input(*order_book.step_lot_size.balance()));
 
-                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(desired_amount_out))
+                    if desired_amount_out < *quote_min_amount.value().balance() {
+                        return Ok((
+                            quotation,
+                            Self::step_quote_weight(recommended_samples_count),
+                        ));
+                    }
+
+                    let target = desired_amount_out.min(*quote_max_amount.value().balance());
+
+                    OrderAmount::Quote(order_book.tick_size.copy_divisibility(target))
                 }
             },
         };
@@ -1706,59 +1740,76 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
         };
 
-        let target_amount = match amount {
+        let (target_amount, base_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => match direction {
                 // User wants to swap a known amount of the `quote` asset for the `base` asset.
                 // Necessary to return `base` amount.
                 // Divide the `quote` amount by the price and align the `base` amount.
-                PriceVariant::Buy => order_book.align_amount(
-                    order_book
-                        .tick_size
-                        .copy_divisibility(desired_amount_in)
-                        .checked_div(&price)
-                        .ok_or(Error::<T>::AmountCalculationFailed)?,
-                ),
+                PriceVariant::Buy => {
+                    let base_amount = order_book.align_amount(
+                        order_book
+                            .tick_size
+                            .copy_divisibility(desired_amount_in)
+                            .checked_div(&price)
+                            .ok_or(Error::<T>::AmountCalculationFailed)?,
+                    );
+                    (base_amount, base_amount)
+                }
 
                 // User wants to swap a known amount of the `base` asset for the `quote` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
-                PriceVariant::Sell => order_book
-                    .align_amount(
+                PriceVariant::Sell => {
+                    let base_amount = order_book.align_amount(
                         order_book
                             .step_lot_size
                             .copy_divisibility(desired_amount_in),
-                    )
-                    .checked_mul(&price)
-                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+                    );
+                    let quote_amount = base_amount
+                        .checked_mul(&price)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
+                    (quote_amount, base_amount)
+                }
             },
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => match direction {
                 // User wants to swap the `quote` asset for a known amount of the `base` asset.
                 // Necessary to return `quote` amount.
                 // Align the `base` amount and then multiply by the price.
-                PriceVariant::Buy => order_book
-                    .align_amount(
+                PriceVariant::Buy => {
+                    let base_amount = order_book.align_amount(
                         order_book
                             .step_lot_size
                             .copy_divisibility(desired_amount_out),
-                    )
-                    .checked_mul(&price)
-                    .ok_or(Error::<T>::AmountCalculationFailed)?,
+                    );
+                    let quote_amount = base_amount
+                        .checked_mul(&price)
+                        .ok_or(Error::<T>::AmountCalculationFailed)?;
+                    (quote_amount, base_amount)
+                }
 
                 // User wants to swap the `base` asset for a known amount of the `quote` asset.
                 // Necessary to return `base` amount.
-                PriceVariant::Sell => order_book.align_amount(
-                    order_book
-                        .tick_size
-                        .copy_divisibility(desired_amount_out)
-                        .checked_div(&price)
-                        .ok_or(Error::<T>::AmountCalculationFailed)?,
-                ),
+                PriceVariant::Sell => {
+                    let base_amount = order_book.align_amount(
+                        order_book
+                            .tick_size
+                            .copy_divisibility(desired_amount_out)
+                            .checked_div(&price)
+                            .ok_or(Error::<T>::AmountCalculationFailed)?,
+                    );
+                    (base_amount, base_amount)
+                }
             },
         };
 
         ensure!(
             target_amount > OrderVolume::zero(),
+            Error::<T>::InvalidOrderAmount
+        );
+
+        ensure!(
+            order_book.min_lot_size <= base_amount && base_amount <= order_book.max_lot_size,
             Error::<T>::InvalidOrderAmount
         );
 
