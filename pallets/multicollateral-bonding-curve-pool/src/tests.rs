@@ -4110,7 +4110,7 @@ mod tests {
                         balance!(100),
                         Default::default()
                     )]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6999))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6930))), None)
                 }
             );
         });
@@ -4441,7 +4441,7 @@ mod tests {
                             Default::default()
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6999))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6930))), None)
                 }
             );
         });
@@ -4772,7 +4772,7 @@ mod tests {
                             OutcomeFee::xor(balance!(0.238952750755378988))
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6999))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6930))), None)
                 }
             );
         });
@@ -5039,9 +5039,9 @@ mod tests {
                     .0
                 ),
                 (
-                    balance!(24998658.987152486647476893),
-                    val_reserve - balance!(1),
-                    OutcomeFee::xor(balance!(2324875.285805181258215351))
+                    balance!(247511.475120321649975018),
+                    val_reserve - val_reserve * 1 / 100,
+                    OutcomeFee::xor(balance!(23018.567186189913447676))
                 )
             );
         });

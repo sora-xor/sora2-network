@@ -188,11 +188,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + common::Config
-        + technical::Config
-        + pool_xyk::Config
-        + permissions::Config
+        frame_system::Config + common::Config + technical::Config + permissions::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
@@ -1660,7 +1656,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
             let (adjusted_amount, max_limit) = match amount {
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    let max_value = collateral_supply.saturating_sub(balance!(1));
+                    // reduce by `IrreducibleReserve` percent, because (reserve - output) must be > 0
+                    let max_value = collateral_supply
+                        .saturating_sub(T::IrreducibleReserve::get() * collateral_supply);
 
                     let value = max_value.min(desired_amount_out);
 

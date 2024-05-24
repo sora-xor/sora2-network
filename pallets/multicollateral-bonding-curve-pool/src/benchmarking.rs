@@ -70,7 +70,10 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     assert_eq!(event, &system_event);
 }
 
-fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
+fn setup_benchmark<T: Config>() -> Result<(), &'static str>
+where
+    T: pool_xyk::Config,
+{
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
     #[cfg(test)]
