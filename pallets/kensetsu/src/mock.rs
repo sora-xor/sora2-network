@@ -94,9 +94,9 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
         Ok(balance!(1))
     }
 
-    /// Method not used
+    /// Mocks asset id registration in PriceToolsProvider.
     fn register_asset(_asset_id: &AssetId) -> DispatchResult {
-        unimplemented!()
+        Ok(())
     }
 }
 

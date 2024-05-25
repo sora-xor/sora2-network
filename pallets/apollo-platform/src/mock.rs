@@ -1,4 +1,3 @@
-use sp_runtime::DispatchError;
 use {
     crate as apollo_platform,
     common::{
