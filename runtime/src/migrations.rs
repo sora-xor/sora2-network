@@ -29,19 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
-use common::{PriceToolsProvider, SB};
-use core::marker::PhantomData;
-
-/// Registers SB token in PriceTools, so Kensetsu can use it as collateral.
-pub struct PriceToolsRegisterSB<T>(PhantomData<T>);
-
-impl<T: frame_system::Config> PriceToolsRegisterSB<T> {
-    fn migrate_storage() -> Weight {
-        price_tools::Pallet::<T>::register_asset(&SB.into()).unwrap();
-
-        <T as frame_system::Config>::DbWeight::get().writes(1)
-    }
-}
 
 pub type Migrations = (
     assets::migration::register_asset::RegisterAsset<
@@ -65,7 +52,6 @@ pub type Migrations = (
         KARMAAssetSymbol,
         PredefinedAssetOwnerAccountId,
     >,
-    PriceToolsRegisterSB<Runtime>,
     kensetsu::migrations::v1_to_v2::UpgradeToV2<Runtime>,
 );
 
