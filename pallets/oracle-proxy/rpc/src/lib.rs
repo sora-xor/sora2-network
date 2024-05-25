@@ -94,11 +94,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Option<RateInfo>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.quote(&at, symbol)
+        );
+        api.quote(at, symbol)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -107,11 +107,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(Symbol, ResolveTime)>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_symbols(&at)
+        );
+        api.list_enabled_symbols(at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }
