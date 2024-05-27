@@ -324,7 +324,7 @@ macro_rules! mock_frame_system_config {
             type SystemWeightInfo = ();
             type SS58Prefix = ConstU16<42>;
             type OnSetCode = ();
-            type MaxConsumers = frame_support::traits::ConstU32<16>;
+            type MaxConsumers = frame_support::traits::ConstU32<65536>;
         }
     };
 }

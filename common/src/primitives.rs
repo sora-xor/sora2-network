@@ -362,10 +362,25 @@ impl<AssetId> AssetId32<AssetId> {
             return Self::from_asset_id(PredefinedAssetId::XSTUSD);
         }
 
+        Self::from_reference_symbol(3, reference_symbol)
+    }
+
+    /// Construct asset id for Kensetsu debt asset using its `peg_symbol` on Sora network
+    pub fn from_kensetsu_sora_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+        Self::from_reference_symbol(4, reference_symbol)
+    }
+
+    /// Construct asset id for Kensetsu debt asset using its `peg_symbol` from Oracle
+    pub fn from_kensetsu_oracle_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+        Self::from_reference_symbol(5, reference_symbol)
+    }
+
+    /// Constructs Asset id from symbol with provided zero byte.
+    fn from_reference_symbol<Symbol: Encode>(zero_byte: u8, reference_symbol: &Symbol) -> Self {
         let mut bytes = [0u8; 32];
         let symbol_bytes = reference_symbol.encode();
         let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
-        bytes[0] = 3;
+        bytes[0] = zero_byte;
         bytes[2..18].copy_from_slice(&symbol_hash);
 
         Self::from_bytes(bytes)
@@ -655,6 +670,11 @@ pub struct SymbolName(pub Vec<u8>);
 impl SymbolName {
     pub fn usd() -> Self {
         Self::from_str("USD").expect("`USD` is a valid symbol name")
+    }
+
+    /// Troy ounce of gold
+    pub fn xau() -> Self {
+        Self::from_str("XAU").expect("`XAU` is a valid symbol name")
     }
 }
 

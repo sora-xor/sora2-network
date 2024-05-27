@@ -1984,9 +1984,10 @@ parameter_types! {
     };
 
     pub const KenAssetId: AssetId = common::KEN;
-    pub const KusdAssetId: AssetId = common::KUSD;
+    pub const KarmaAssetId: AssetId = common::KARMA;
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 Kensetsu dollar of uncollected stability fee triggers accrue
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
@@ -2002,12 +2003,16 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type Oracle = OracleProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = GetTbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
@@ -2479,7 +2484,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

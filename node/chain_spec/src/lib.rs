@@ -56,7 +56,7 @@ use framenode_runtime::{
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
     DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
     GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
     StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
@@ -1663,6 +1663,12 @@ fn testnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         },
         iroha_migration: iroha_migration_config,
+        kensetsu: KensetsuConfig {
+            predefined_stablecoin_infos: vec![
+                (KUSD, DAI, balance!(1)),
+                (KXOR, XOR, balance!(100000))
+            ],
+        },
         rewards: rewards_config,
         council: CouncilConfig {
             members: council_accounts,
@@ -2502,6 +2508,12 @@ fn mainnet_genesis(
         iroha_migration: IrohaMigrationConfig {
             iroha_accounts: Vec::new(),
             account_id: Some(iroha_migration_account_id),
+        },
+        kensetsu: KensetsuConfig {
+            predefined_stablecoin_infos: vec![
+                (KUSD, DAI, balance!(1)),
+                (KXOR, XOR, balance!(100000)),
+            ],
         },
         rewards: rewards_config,
         council: CouncilConfig {

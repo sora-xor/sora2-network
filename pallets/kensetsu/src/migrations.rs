@@ -40,13 +40,15 @@ pub mod init {
 
     pub struct RegisterTreasuryTechAccount<T>(PhantomData<T>);
 
-    /// Registers Kensetsu Treasury technical account
+    /// Registers Kensetsu Treasury technical account and grant premission to [KEN, KUSD]
     impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
         for RegisterTreasuryTechAccount<T>
     {
         fn on_runtime_upgrade() -> Weight {
             let tech_account = <T>::TreasuryTechAccount::get();
-            match technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account) {
+            let mut weight = match technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+                &tech_account,
+            ) {
                 Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
                 Err(err) => {
                     error!(
@@ -55,17 +57,8 @@ pub mod init {
                     );
                     <T as frame_system::Config>::DbWeight::get().reads(1)
                 }
-            }
-        }
-    }
+            };
 
-    pub struct GrantPermissionsTreasuryTechAccount<T>(PhantomData<T>);
-
-    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade
-        for GrantPermissionsTreasuryTechAccount<T>
-    {
-        fn on_runtime_upgrade() -> Weight {
-            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             ) {
@@ -98,30 +91,309 @@ pub mod init {
     }
 }
 
-/// Removes hard_cap. This migration for stage only, will not change storage version.
-pub mod remove_hard_cap {
-    use crate::Config;
+/// Kensetsu version 2 adds configurable debt asset id.
+pub mod v1_to_v2 {
+    use crate::{
+        CollateralInfos, Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos,
+        StablecoinParameters,
+    };
+    use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
-    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::log::error;
+    use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
-    mod old {
-        use crate::{Config, Pallet};
-        use common::Balance;
+    mod v1 {
+        use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
+        use codec::{Decode, Encode, MaxEncodedLen};
+        use common::{AccountIdOf, AssetIdOf, Balance};
+        use frame_support::dispatch::TypeInfo;
         use frame_support::pallet_prelude::ValueQuery;
+        use frame_support::Identity;
+        use sp_arithmetic::FixedU128;
 
-        /// value to remove
+        #[derive(
+            Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord,
+        )]
+        pub struct CollateralInfo<Moment> {
+            pub risk_parameters: CollateralRiskParameters,
+            pub total_collateral: Balance,
+            // field was renamed to stablecoin_supply
+            pub kusd_supply: Balance,
+            pub last_fee_update_time: Moment,
+            pub interest_coefficient: FixedU128,
+        }
+
+        impl<Moment> CollateralInfo<Moment> {
+            pub fn into_v2(self) -> crate::CollateralInfo<Moment> {
+                crate::CollateralInfo {
+                    risk_parameters: self.risk_parameters,
+                    total_collateral: self.total_collateral,
+                    stablecoin_supply: self.kusd_supply,
+                    last_fee_update_time: self.last_fee_update_time,
+                    interest_coefficient: self.interest_coefficient,
+                }
+            }
+        }
+
+        #[derive(
+            Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord,
+        )]
+        pub struct CollateralizedDebtPosition<AccountId, AssetId> {
+            pub owner: AccountId,
+            pub collateral_asset_id: AssetId,
+            pub collateral_amount: Balance,
+            // stablecoin_asset_id was added
+            pub debt: Balance,
+            pub interest_coefficient: FixedU128,
+        }
+
+        impl<AccountId, AssetId> CollateralizedDebtPosition<AccountId, AssetId> {
+            pub fn into_v2(
+                self,
+                kusd_asset_id: AssetId,
+            ) -> crate::CollateralizedDebtPosition<AccountId, AssetId> {
+                crate::CollateralizedDebtPosition {
+                    owner: self.owner,
+                    collateral_asset_id: self.collateral_asset_id,
+                    collateral_amount: self.collateral_amount,
+                    stablecoin_asset_id: kusd_asset_id,
+                    debt: self.debt,
+                    interest_coefficient: self.interest_coefficient,
+                }
+            }
+        }
+
         #[frame_support::storage_alias]
-        pub type KusdHardCap<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
+        pub type BadDebt<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
+
+        #[frame_support::storage_alias]
+        pub type CollateralInfos<T: Config> = StorageMap<
+            Pallet<T>,
+            Identity,
+            AssetIdOf<T>,
+            CollateralInfo<<T as pallet_timestamp::Config>::Moment>,
+        >;
+
+        #[frame_support::storage_alias]
+        pub type CDPDepository<T: Config> = StorageMap<
+            Pallet<T>,
+            Identity,
+            CdpId,
+            crate::CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
+        >;
     }
 
-    pub struct RemoveHardCap<T>(PhantomData<T>);
+    pub struct UpgradeToV2<T>(PhantomData<T>);
 
-    impl<T: Config + permissions::Config + technical::Config> OnRuntimeUpgrade for RemoveHardCap<T> {
+    impl<T: Config + permissions::Config + technical::Config> UpgradeToV2<T> {
+        fn grant_token_permission() -> Weight {
+            let mut weight = Weight::zero();
+
+            if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::TreasuryTechAccount::get(),
+            ) {
+                let scope = Scope::Limited(common::hash(&KXOR));
+                for permission in &[MINT, BURN] {
+                    match permissions::Pallet::<T>::assign_permission(
+                        technical_account_id.clone(),
+                        &technical_account_id,
+                        *permission,
+                        scope,
+                    ) {
+                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
+                        Err(err) => {
+                            error!(
+                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                                technical_account_id, err
+                            );
+                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                        }
+                    }
+                }
+
+                for token in &[KARMA, TBCD] {
+                    let scope = Scope::Limited(common::hash(token));
+                    match permissions::Pallet::<T>::assign_permission(
+                        technical_account_id.clone(),
+                        &technical_account_id,
+                        BURN,
+                        scope,
+                    ) {
+                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
+                        Err(err) => {
+                            error!(
+                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                                technical_account_id, err
+                            );
+                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                        }
+                    }
+                }
+            }
+
+            weight
+        }
+
+        fn migrate_storage() -> Weight {
+            let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
+            let version = Pallet::<T>::on_chain_storage_version();
+            if version == 1 {
+                let kusd_bad_debt = v1::BadDebt::<T>::take();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                StablecoinInfos::<T>::insert(
+                    AssetIdOf::<T>::from(KUSD),
+                    StablecoinInfo {
+                        bad_debt: kusd_bad_debt,
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::SoraAssetId(AssetIdOf::<T>::from(DAI)),
+                            minimal_stability_fee_accrue: balance!(1),
+                        },
+                    },
+                );
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                StablecoinInfos::<T>::insert(
+                    AssetIdOf::<T>::from(KXOR),
+                    StablecoinInfo {
+                        bad_debt: balance!(0),
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::SoraAssetId(AssetIdOf::<T>::from(XOR)),
+                            minimal_stability_fee_accrue: balance!(100000),
+                        },
+                    },
+                );
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
+                {
+                    CollateralInfos::<T>::insert(
+                        collateral_asset_id,
+                        AssetIdOf::<T>::from(KUSD),
+                        old_collateral_info.into_v2(),
+                    );
+                    weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                }
+
+                v1::CDPDepository::<T>::translate(
+                    |_, cdp: v1::CollateralizedDebtPosition<T::AccountId, AssetIdOf<T>>| {
+                        weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                        Some(cdp.into_v2(AssetIdOf::<T>::from(KUSD)))
+                    },
+                );
+
+                StorageVersion::new(2).put::<Pallet<T>>();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            }
+
+            weight
+        }
+    }
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV2<T>
+    {
         fn on_runtime_upgrade() -> Weight {
-            old::KusdHardCap::<T>::kill();
-            <T as frame_system::Config>::DbWeight::get().writes(1)
+            let mut weight = Weight::zero();
+            weight += Self::grant_token_permission();
+            weight += Self::migrate_storage();
+
+            weight
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::migrations::v1_to_v2::{v1, UpgradeToV2};
+        use crate::mock::{new_test_ext, TestRuntime};
+        use crate::{CollateralInfos, Pallet, PegAsset, StablecoinInfos, StablecoinParameters};
+        use common::{balance, DAI, KUSD, KXOR, XOR};
+        use core::default::Default;
+        use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+        use sp_arithmetic::FixedU128;
+
+        #[test]
+        fn test() {
+            new_test_ext().execute_with(|| {
+                StorageVersion::new(1).put::<Pallet<TestRuntime>>();
+                let kusd_bad_debt = balance!(2989);
+                v1::BadDebt::<TestRuntime>::set(kusd_bad_debt);
+
+                let total_collateral = balance!(500100);
+                let kusd_supply = balance!(100500);
+                let last_fee_update_time = 12345;
+                let interest_coefficient = FixedU128::from_inner(54321);
+                let old_dai_collateral_info = v1::CollateralInfo {
+                    risk_parameters: Default::default(),
+                    total_collateral,
+                    kusd_supply,
+                    last_fee_update_time,
+                    interest_coefficient,
+                };
+                v1::CollateralInfos::<TestRuntime>::set(DAI, Some(old_dai_collateral_info));
+                let old_xor_collateral_info = v1::CollateralInfo {
+                    risk_parameters: Default::default(),
+                    total_collateral,
+                    kusd_supply,
+                    last_fee_update_time,
+                    interest_coefficient,
+                };
+                v1::CollateralInfos::<TestRuntime>::set(XOR, Some(old_xor_collateral_info));
+
+                UpgradeToV2::<TestRuntime>::on_runtime_upgrade();
+
+                assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 2);
+
+                assert_eq!(2, StablecoinInfos::<TestRuntime>::iter().count());
+                let kusd_info = StablecoinInfos::<TestRuntime>::get(KUSD).unwrap();
+                assert_eq!(kusd_bad_debt, kusd_info.bad_debt);
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::SoraAssetId(DAI),
+                        minimal_stability_fee_accrue: balance!(1),
+                    },
+                    kusd_info.stablecoin_parameters
+                );
+
+                let kxor_info = StablecoinInfos::<TestRuntime>::get(KXOR).unwrap();
+                assert_eq!(balance!(0), kxor_info.bad_debt);
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::SoraAssetId(XOR),
+                        minimal_stability_fee_accrue: balance!(100000),
+                    },
+                    kxor_info.stablecoin_parameters
+                );
+
+                assert_eq!(2, CollateralInfos::<TestRuntime>::iter().count());
+                let dai_kusd_collateral_info =
+                    CollateralInfos::<TestRuntime>::get(DAI, KUSD).unwrap();
+                assert_eq!(total_collateral, dai_kusd_collateral_info.total_collateral);
+                assert_eq!(kusd_supply, dai_kusd_collateral_info.stablecoin_supply);
+                assert_eq!(
+                    last_fee_update_time,
+                    dai_kusd_collateral_info.last_fee_update_time
+                );
+                assert_eq!(
+                    interest_coefficient,
+                    dai_kusd_collateral_info.interest_coefficient
+                );
+                let xor_kusd_collateral_info =
+                    CollateralInfos::<TestRuntime>::get(XOR, KUSD).unwrap();
+                assert_eq!(total_collateral, xor_kusd_collateral_info.total_collateral);
+                assert_eq!(kusd_supply, xor_kusd_collateral_info.stablecoin_supply);
+                assert_eq!(
+                    last_fee_update_time,
+                    xor_kusd_collateral_info.last_fee_update_time
+                );
+                assert_eq!(
+                    interest_coefficient,
+                    xor_kusd_collateral_info.interest_coefficient
+                );
+            });
         }
     }
 }

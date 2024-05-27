@@ -57,6 +57,7 @@ pub type Migrations = (
         KARMAAssetSymbol,
         PredefinedAssetOwnerAccountId,
     >,
+    kensetsu::migrations::v1_to_v2::UpgradeToV2<Runtime>,
 );
 
 #[cfg(feature = "ready-to-test")] // tokenomics-upgrade
