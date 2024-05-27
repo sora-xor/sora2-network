@@ -2889,8 +2889,26 @@ fn test_get_pair_info() {
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_chameleon).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_chameleon);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, false);
+
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_base).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_chameleon);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, false);
+
         assert_noop!(
             PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_base),
+            crate::Error::<Runtime>::AssetsMustNotBeSame
+        );
+        assert_noop!(
+            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_chameleon),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
         assert_noop!(
