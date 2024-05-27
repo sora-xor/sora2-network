@@ -215,7 +215,7 @@ impl<T: Config> ExchangePath<T> {
     }
 }
 
-#[derive(Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Debug, Eq, PartialEq, Encode, Decode)]
 pub struct QuoteInfo<AssetId: Ord, LiquiditySource> {
     pub outcome: SwapOutcome<Balance, AssetId>,
     pub amount_without_impact: Option<Balance>,
