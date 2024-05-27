@@ -230,9 +230,7 @@ macro_rules! mock_assets_config {
 macro_rules! mock_pallet_balances_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const MaxLocks: u32 = 50;
-            pub const ExistentialDeposit: u128 = 1;
-            pub const MaxReserves: u32 = 50;
+            pub const ExistentialDeposit: u128 = 0;
         }
         impl pallet_balances::Config for $runtime {
             type Balance = Balance;
@@ -241,8 +239,8 @@ macro_rules! mock_pallet_balances_config {
             type ExistentialDeposit = ExistentialDeposit;
             type AccountStore = System;
             type WeightInfo = ();
-            type MaxLocks = MaxLocks;
-            type MaxReserves = MaxReserves;
+            type MaxLocks = ();
+            type MaxReserves = ();
             type ReserveIdentifier = ();
         }
     };

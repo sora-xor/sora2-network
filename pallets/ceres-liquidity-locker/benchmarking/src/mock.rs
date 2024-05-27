@@ -3,7 +3,9 @@
 use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
-use common::{fixed, hash, Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST};
+use common::{
+    fixed, hash, mock_pallet_balances_config, Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
+};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::{Everything, GenesisBuild};
@@ -38,7 +40,6 @@ parameter_types! {
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -156,17 +157,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 

@@ -31,8 +31,9 @@
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL, XOR,
+    balance, fixed, mock_pallet_balances_config, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD,
+    VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -109,7 +110,6 @@ parameter_types! {
     };
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 3;
-    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -252,17 +252,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl technical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
