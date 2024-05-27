@@ -204,6 +204,7 @@ impl pool_xyk::Config for Runtime {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
