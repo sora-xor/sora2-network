@@ -113,6 +113,7 @@ parameter_types! {
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
+// Not mocked, because tests fails
 impl crate::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = AccountId;
