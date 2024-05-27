@@ -3429,6 +3429,10 @@
 <a href="#3414" id="3414">3414</a>
 <a href="#3415" id="3415">3415</a>
 <a href="#3416" id="3416">3416</a>
+<a href="#3417" id="3417">3417</a>
+<a href="#3418" id="3418">3418</a>
+<a href="#3419" id="3419">3419</a>
+<a href="#3420" id="3420">3420</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4421,6 +4425,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub </span>GetFee: Fixed = <span class="macro">fixed!</span>(<span class="number">0.003</span>);
+    <span class="kw">pub </span>GetXykIrreducibleReservePercent: Percent = Percent::from_percent(<span class="number">1</span>);
 }
 
 <span class="macro">parameter_type_with_key! </span>{
@@ -4450,10 +4455,11 @@
     <span class="kw">type </span>GetFee = GetFee;
     <span class="kw">type </span>OnPoolCreated = (PswapDistribution, Farming);
     <span class="kw">type </span>OnPoolReservesChanged = PriceTools;
-    <span class="kw">type </span>WeightInfo = pool_xyk::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>XSTMarketInfo = XSTPool;
     <span class="kw">type </span>GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>IrreducibleReserve = GetXykIrreducibleReservePercent;
+    <span class="kw">type </span>WeightInfo = pool_xyk::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -5128,6 +5134,7 @@
         account_id
     };
     <span class="kw">pub </span>GetTBCBuyBackTBCDPercent: Fixed = <span class="macro">fixed!</span>(<span class="number">0.025</span>);
+    <span class="kw">pub </span>GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(<span class="number">1</span>);
 }
 
 <span class="kw">impl </span>multicollateral_bonding_curve_pool::Config <span class="kw">for </span>Runtime {
@@ -5139,10 +5146,11 @@
     <span class="kw">type </span>PriceToolsPallet = PriceTools;
     <span class="kw">type </span>VestedRewardsPallet = VestedRewards;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
-    <span class="kw">type </span>WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    <span class="kw">type </span>WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="macro">parameter_types! </span>{

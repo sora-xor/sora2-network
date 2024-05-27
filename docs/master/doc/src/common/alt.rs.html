@@ -1322,22 +1322,22 @@
     </span><span class="kw">pub fn </span>align_chunk_min&lt;AssetId: Ord + Clone&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         chunk: SwapChunk&lt;AssetId, Balance&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;(SwapChunk&lt;AssetId, Balance&gt;, SwapChunk&lt;AssetId, Balance&gt;)&gt; {
+    ) -&gt; (SwapChunk&lt;AssetId, Balance&gt;, SwapChunk&lt;AssetId, Balance&gt;) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(min) = <span class="self">self</span>.min_amount {
             <span class="kw">match </span>min {
                 SideAmount::Input(min_amount) =&gt; {
                     <span class="kw">if </span>chunk.input &lt; min_amount {
-                        <span class="kw">return </span><span class="prelude-val">Some</span>((Zero::zero(), chunk));
+                        <span class="kw">return </span>(Zero::zero(), chunk);
                     }
                 }
                 SideAmount::Output(min_amount) =&gt; {
                     <span class="kw">if </span>chunk.output &lt; min_amount {
-                        <span class="kw">return </span><span class="prelude-val">Some</span>((Zero::zero(), chunk));
+                        <span class="kw">return </span>(Zero::zero(), chunk);
                     }
                 }
             }
         }
-        <span class="prelude-val">Some</span>((chunk, Zero::zero()))
+        (chunk, Zero::zero())
     }
 
     <span class="doccomment">/// Aligns the `chunk` regarding to the `max_amount` limit.
@@ -1434,7 +1434,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         chunk: SwapChunk&lt;AssetId, Balance&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(SwapChunk&lt;AssetId, Balance&gt;, SwapChunk&lt;AssetId, Balance&gt;)&gt; {
-        <span class="kw">let </span>(chunk, remainder) = <span class="self">self</span>.align_chunk_min(chunk)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(chunk, remainder) = <span class="self">self</span>.align_chunk_min(chunk);
         <span class="kw">if </span>!remainder.is_zero() {
             <span class="kw">return </span><span class="prelude-val">Some</span>((chunk, remainder));
         }
@@ -1489,65 +1489,65 @@
         <span class="kw">let </span>chunk5 = SwapChunk::new(<span class="macro">balance!</span>(<span class="number">1</span>), <span class="macro">balance!</span>(<span class="number">1</span>), mock_fee);
 
         <span class="macro">assert_eq!</span>(
-            input_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk1.clone()),
             (Zero::zero(), chunk1.clone())
         );
         <span class="macro">assert_eq!</span>(
-            input_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk2.clone()),
             (chunk2.clone(), Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            input_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk3.clone()),
             (Zero::zero(), chunk3.clone())
         );
         <span class="macro">assert_eq!</span>(
-            input_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4.clone(), Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            input_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5.clone(), Zero::zero())
         );
 
         <span class="macro">assert_eq!</span>(
-            output_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk1.clone()),
             (Zero::zero(), chunk1.clone())
         );
         <span class="macro">assert_eq!</span>(
-            output_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk2.clone()),
             (Zero::zero(), chunk2.clone())
         );
         <span class="macro">assert_eq!</span>(
-            output_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk3.clone()),
             (chunk3.clone(), Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            output_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4.clone(), Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            output_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5.clone(), Zero::zero())
         );
 
         <span class="macro">assert_eq!</span>(
-            empty_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk1.clone()),
             (chunk1, Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            empty_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk2.clone()),
             (chunk2, Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            empty_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk3.clone()),
             (chunk3, Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            empty_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4, Zero::zero())
         );
         <span class="macro">assert_eq!</span>(
-            empty_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5, Zero::zero())
         );
     }

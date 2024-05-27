@@ -247,6 +247,28 @@
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -277,14 +299,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span>frame_support::dispatch::DispatchError;
-<span class="kw">use </span>frame_support::ensure;
-
-<span class="kw">use </span>common::prelude::{Balance, Fixed, FixedWrapper};
+</span><span class="kw">use </span>common::prelude::{Balance, Fixed, FixedWrapper};
 <span class="kw">use </span>common::{fixed_wrapper, AssetIdOf, AssetInfoProvider, TradingPair};
+<span class="kw">use </span>frame_support::dispatch::DispatchError;
+<span class="kw">use </span>frame_support::ensure;
+<span class="kw">use </span>frame_support::traits::Get;
+<span class="kw">use </span>sp_runtime::traits::Zero;
 
 <span class="kw">use crate</span>::{to_balance, to_fixed_wrapper};
-
 <span class="kw">use crate</span>::{Config, Error, Pallet};
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
@@ -460,6 +482,28 @@
                 <span class="macro">to_balance!</span>(x_in - x_in_without_fee),
             ))
         }
+    }
+
+    <span class="doccomment">/// Calculates max amount of output asset for swap with desired output.
+    </span><span class="kw">pub fn </span>calc_max_output(
+        fee_fraction: Fixed,
+        get_fee_from_destination: bool,
+        reserve_output: Balance,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+        <span class="kw">if </span>reserve_output.is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(Balance::zero());
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>max_output = <span class="kw">if </span>get_fee_from_destination &amp;&amp; deduce_fee {
+            <span class="macro">to_balance!</span>(FixedWrapper::from(reserve_output) * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction))
+        } <span class="kw">else </span>{
+            reserve_output
+        };
+
+        <span class="comment">// reduce by `IrreducibleReserve` percent, because (reserve - output) must be &gt; 0
+        </span>max_output = max_output.saturating_sub(T::IrreducibleReserve::get() * max_output);
+        <span class="prelude-val">Ok</span>(max_output)
     }
 
     <span class="kw">pub fn </span>get_base_asset_part_from_pool_account(

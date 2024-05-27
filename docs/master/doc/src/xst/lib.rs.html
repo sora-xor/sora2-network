@@ -1321,6 +1321,11 @@
 <a href="#1306" id="1306">1306</a>
 <a href="#1307" id="1307">1307</a>
 <a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2429,6 +2434,19 @@
 
         <span class="kw">let </span>synthetic_base_asset_id = <span class="kw-2">&amp;</span>T::GetSyntheticBaseAssetId::get();
 
+        <span class="comment">// Get max amount for the limit
+        </span><span class="kw">let </span>limit = T::GetSyntheticBaseBuySellLimit::get();
+
+        <span class="kw">if </span>limit.is_zero() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((quotation, Weight::zero()));
+        }
+
+        quotation.limits.max_amount = <span class="kw">if </span>input_asset_id == synthetic_base_asset_id {
+            <span class="prelude-val">Some</span>(SideAmount::Input(limit))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>(SideAmount::Output(limit))
+        };
+
         <span class="comment">// Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
         // It is necessary to use as much liquidity from the source as we can.
         </span><span class="kw">let </span>(input_amount, output_amount, fee_amount) = <span class="kw">if </span>input_asset_id == synthetic_base_asset_id
@@ -2442,14 +2460,6 @@
         </span><span class="kw">let </span>fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
         <span class="kw">let </span><span class="kw-2">mut </span>monolith = SwapChunk::new(input_amount, output_amount, fee);
-
-        <span class="comment">// Get max amount for the limit
-        </span><span class="kw">let </span>limit = T::GetSyntheticBaseBuySellLimit::get();
-        quotation.limits.max_amount = <span class="kw">if </span>input_asset_id == synthetic_base_asset_id {
-            <span class="prelude-val">Some</span>(SideAmount::Input(limit))
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Some</span>(SideAmount::Output(limit))
-        };
 
         <span class="comment">// If amount exceeds the limit, it is necessary to round the amount to the limit.
         </span><span class="kw">if </span>input_asset_id == synthetic_base_asset_id {

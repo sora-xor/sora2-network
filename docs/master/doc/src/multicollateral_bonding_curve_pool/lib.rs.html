@@ -1981,6 +1981,7 @@
 <a href="#1966" id="1966">1966</a>
 <a href="#1967" id="1967">1967</a>
 <a href="#1968" id="1968">1968</a>
+<a href="#1969" id="1969">1969</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2032,7 +2033,7 @@
 <span class="kw">use </span>common::fixnum::ops::Zero <span class="kw">as _</span>;
 <span class="kw">use </span>common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, GetBaseAssetIdOf,
-    OutcomeFee, PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
+    OutcomeFee, PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
 };
 <span class="kw">use </span>common::{
     balance, fixed, fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetManager, BuyBackHandler,
@@ -2165,17 +2166,14 @@
     <span class="kw">use </span>common::Vesting;
     <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span>frame_support::sp_runtime::Percent;
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::ensure_root;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
-        frame_system::Config
-        + common::Config
-        + technical::Config
-        + pool_xyk::Config
-        + permissions::Config
+        frame_system::Config + common::Config + technical::Config + permissions::Config
     {
         <span class="kw">const </span>RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor&lt;<span class="self">Self</span>&gt;;
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
@@ -2191,6 +2189,9 @@
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>BuyBackTBCDPercent: Get&lt;Fixed&gt;;
+        <span class="doccomment">/// Percent of reserve which is not involved in swap
+        </span><span class="attr">#[pallet::constant]
+        </span><span class="kw">type </span>IrreducibleReserve: Get&lt;Percent&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="doccomment">/// To retrieve asset info
@@ -3636,6 +3637,42 @@
 
         <span class="kw">let </span>base_asset_id = <span class="kw-2">&amp;</span>GetBaseAssetIdOf::&lt;T&gt;::get();
 
+        <span class="comment">// reduce amount if it exceeds reserves
+        </span><span class="kw">let </span>amount = <span class="kw">if </span>input_asset_id == base_asset_id {
+            <span class="kw">let </span>reserves_tech_account_id = ReservesAcc::&lt;T&gt;::get();
+            <span class="kw">let </span>reserves_account_id =
+                Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
+            <span class="kw">let </span>collateral_supply = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                <span class="kw-2">&amp;</span>output_asset_id,
+                <span class="kw-2">&amp;</span>reserves_account_id,
+            )<span class="question-mark">?</span>;
+
+            <span class="kw">if </span>collateral_supply.is_zero() {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>((quotation, Weight::zero()));
+            }
+
+            <span class="kw">let </span>(adjusted_amount, max_limit) = <span class="kw">match </span>amount {
+                QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
+                    <span class="comment">// reduce by `IrreducibleReserve` percent, because (reserve - output) must be &gt; 0
+                    </span><span class="kw">let </span>max_value = collateral_supply
+                        .saturating_sub(T::IrreducibleReserve::get() * collateral_supply);
+
+                    <span class="kw">let </span>value = max_value.min(desired_amount_out);
+
+                    (
+                        QuoteAmount::with_desired_output(value),
+                        <span class="prelude-val">Some</span>(SideAmount::Output(max_value)),
+                    )
+                }
+                <span class="kw">_ </span>=&gt; (amount, <span class="prelude-val">None</span>),
+            };
+
+            quotation.limits.max_amount = max_limit;
+            adjusted_amount
+        } <span class="kw">else </span>{
+            amount
+        };
+
         <span class="kw">let </span>step = amount
             .amount()
             .checked_div(samples_count <span class="kw">as </span>Balance)
@@ -3678,41 +3715,6 @@
             quotation
                 .chunks
                 .push_back(SwapChunk::new(input_chunk, output_chunk, fee_chunk));
-        }
-
-        <span class="kw">if </span>input_asset_id == base_asset_id {
-            <span class="kw">let </span>reserves_tech_account_id = ReservesAcc::&lt;T&gt;::get();
-            <span class="kw">let </span>reserves_account_id =
-                Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>reserves_tech_account_id)<span class="question-mark">?</span>;
-            <span class="kw">let </span>collateral_supply: FixedWrapper = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
-                <span class="kw-2">&amp;</span>output_asset_id,
-                <span class="kw-2">&amp;</span>reserves_account_id,
-            )<span class="question-mark">?
-            </span>.into();
-
-            quotation.limits.max_amount = <span class="kw">match </span>amount.variant() {
-                SwapVariant::WithDesiredInput =&gt; {
-                    <span class="kw">let </span>main_price_per_reference_unit: FixedWrapper =
-                        <span class="self">Self</span>::sell_function(<span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, Fixed::ZERO)<span class="question-mark">?</span>.into();
-
-                    <span class="kw">let </span>collateral_price_per_reference_unit: FixedWrapper =
-                        <span class="self">Self</span>::reference_price(<span class="kw-2">&amp;</span>output_asset_id, PriceVariant::Sell)<span class="question-mark">?</span>.into();
-
-                    <span class="kw">let </span>main_supply = collateral_supply * collateral_price_per_reference_unit
-                        / main_price_per_reference_unit;
-
-                    <span class="prelude-val">Some</span>(SideAmount::Input(
-                        main_supply
-                            .try_into_balance()
-                            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
-                    ))
-                }
-                SwapVariant::WithDesiredOutput =&gt; <span class="prelude-val">Some</span>(SideAmount::Output(
-                    collateral_supply
-                        .try_into_balance()
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
-                )),
-            };
         }
 
         <span class="prelude-val">Ok</span>((quotation, <span class="self">Self</span>::step_quote_weight(samples_count)))
