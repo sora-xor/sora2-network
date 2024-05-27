@@ -6,6 +6,7 @@ use frame_support::log::{error, info};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::One;
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -40,14 +41,14 @@ where
         if !pending_free_reserves.is_empty() {
             info!("Migrate pending free reserves: {:?}", pending_free_reserves);
             crate::PendingFreeReserves::<T>::insert(
-                frame_system::Pallet::<T>::block_number() + One::one(),
+                frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::one(),
                 pending_free_reserves,
             );
         } else {
             info!("No pending free reserves to migrate");
         }
         StorageVersion::new(4).put::<Pallet<T>>();
-        <T as frame_system::Config>::BlockWeights::get().max_block
+        <T as frame_system::Config>::DbWeight::get().reads_writes(2, 2)
     }
 
     #[cfg(feature = "try-runtime")]

@@ -82,8 +82,6 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 pub const TECH_ACCOUNT_FREE_RESERVES: &[u8] = b"free_reserves";
 
-pub const RETRY_DISTRIBUTION_FREQUENCY: u32 = 1000;
-
 pub use pallet::*;
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
@@ -196,6 +194,7 @@ pub mod pallet {
         + pool_xyk::Config
         + permissions::Config
     {
+        const RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -774,7 +773,7 @@ impl<T: Config> Pallet<T> {
             count += 1;
         }
         if !failed_to_distribute.is_empty() {
-            let block_number = now.saturating_add(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let block_number = now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY);
             PendingFreeReserves::<T>::mutate(block_number, |map| {
                 for (collateral_asset_id, amount) in failed_to_distribute {
                     let current_amount = map.entry(collateral_asset_id).or_default();

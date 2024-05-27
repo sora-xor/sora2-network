@@ -123,13 +123,7 @@ fn register_tbc_for_asset<T: Config>(asset_id: AssetIdOf<T>) {
         RawOrigin::Signed(owner.clone()).into();
 
     T::AssetManager::mint_to(&XOR.into(), &owner, &owner, balance!(1000)).unwrap();
-    T::AssetManager::mint_to(
-        &asset_id,
-        &owner,
-        &owner,
-        balance!(50000000),
-    )
-    .unwrap();
+    T::AssetManager::mint_to(&asset_id, &owner, &owner, balance!(50000000)).unwrap();
 
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), asset_id).unwrap();
 
