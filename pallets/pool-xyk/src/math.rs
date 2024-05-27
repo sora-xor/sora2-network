@@ -32,7 +32,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 
 use common::prelude::{Balance, Fixed, FixedWrapper};
-use common::{fixed_wrapper, AssetIdOf, AssetInfoProvider, TradingPair};
+use common::{fixed_wrapper, AssetIdOf, TradingPair};
 
 use crate::{to_balance, to_fixed_wrapper};
 
@@ -218,11 +218,11 @@ impl<T: Config> Pallet<T> {
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let b_in_pool =
-            <T as Config>::AssetInfoProvider::free_balance(&trading_pair.base_asset_id, pool_acc)?;
-        let t_in_pool = <T as Config>::AssetInfoProvider::free_balance(
-            &trading_pair.target_asset_id,
+        let (b_in_pool, t_in_pool) = Self::get_actual_reserves(
             pool_acc,
+            &trading_pair.base_asset_id,
+            &trading_pair.base_asset_id,
+            &trading_pair.target_asset_id,
         )?;
         let fxw_liq_in_pool =
             to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));

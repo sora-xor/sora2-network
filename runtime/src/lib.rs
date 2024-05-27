@@ -1002,6 +1002,30 @@ parameter_type_with_key! {
     };
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
+            if base_asset_id == &common::XOR {
+                Some(common::KXOR)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
+            tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
+        } else {
+            false
+        }
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -1022,6 +1046,8 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -1082,6 +1108,8 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -1622,6 +1650,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
