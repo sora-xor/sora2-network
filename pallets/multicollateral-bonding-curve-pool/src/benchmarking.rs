@@ -91,14 +91,14 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(3000)).unwrap();
+    T::AssetManager::mint_to(&XOR.into(), &owner, &owner, balance!(3000)).unwrap();
     register_tbc_for_asset::<T>(DAI.into());
     register_tbc_for_asset::<T>(VAL.into());
     Ok(())
 }
 
 fn gen_asset_id<T: Config>(n: u32) -> AssetIdOf<T> {
-    let asset_id = sp_core::H256::from_low_u64_le(n as u64).into();
+    let asset_id = T::AssetManager::gen_asset_id_from_any(&("mbc_bench", n));
     let owner = alice::<T>();
     T::AssetManager::register_asset_id(
         owner,
@@ -122,11 +122,11 @@ fn register_tbc_for_asset<T: Config>(asset_id: AssetIdOf<T>) {
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
         RawOrigin::Signed(owner.clone()).into();
 
-    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(1000)).unwrap();
+    T::AssetManager::mint_to(&XOR.into(), &owner, &owner, balance!(1000)).unwrap();
     T::AssetManager::mint_to(
         &asset_id,
-        &owner.clone(),
-        &owner.clone(),
+        &owner,
+        &owner,
         balance!(50000000),
     )
     .unwrap();
@@ -134,7 +134,7 @@ fn register_tbc_for_asset<T: Config>(asset_id: AssetIdOf<T>) {
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), asset_id).unwrap();
 
     XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
+        owner_origin,
         DEX.into(),
         XOR.into(),
         asset_id,

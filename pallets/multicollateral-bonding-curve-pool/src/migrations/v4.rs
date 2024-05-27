@@ -64,7 +64,7 @@ where
     fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
         ensure!(
             !old_storage::PendingFreeReserves::<T>::exists(),
-            "Old storage value stil presented"
+            "Old storage value still present"
         );
         let pending_free_reserves = Vec::<(AssetIdOf<T>, Balance)>::decode(&mut &state[..])
             .map_err(|_| "Failed to decode state")?;
@@ -82,7 +82,7 @@ where
                 .next()
                 .ok_or("Empty pending free reserves")?;
             ensure!(
-                block_number == frame_system::Pallet::<T>::block_number() + One::one(),
+                block_number == frame_system::Pallet::<T>::block_number() + T::BlockNumber::one(),
                 "Pending free reserves have wrong block number"
             );
 
