@@ -99,6 +99,7 @@ pub fn get_pool_reserves_account_id() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -198,6 +199,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 }
 
 impl Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = RETRY_DISTRIBUTION_FREQUENCY;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
@@ -946,6 +948,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
