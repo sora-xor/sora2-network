@@ -502,6 +502,7 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
