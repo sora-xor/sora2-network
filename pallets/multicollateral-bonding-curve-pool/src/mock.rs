@@ -43,7 +43,6 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, Blake2_128Concat};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -943,6 +942,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
@@ -1034,14 +1034,5 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
-    }
-}
-
-pub fn run_to_block(n: u64) {
-    while System::block_number() < n {
-        System::on_finalize(System::block_number());
-        System::set_block_number(System::block_number() + 1);
-        System::on_initialize(System::block_number());
-        Mcbcp::on_initialize(System::block_number());
     }
 }

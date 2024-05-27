@@ -47,11 +47,23 @@ mod tests {
     use frame_support::assert_err;
     use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
+    use frame_support::traits::{
+        GetStorageVersion, OnFinalize, OnInitialize, OnRuntimeUpgrade, StorageVersion,
+    };
     use sp_arithmetic::traits::Zero;
     use sp_runtime::DispatchError;
     use sp_std::collections::vec_deque::VecDeque;
 
     type MBCPool = Pallet<Runtime>;
+
+    pub fn run_to_block(n: u64) {
+        while System::block_number() < n {
+            System::on_finalize(System::block_number());
+            System::set_block_number(System::block_number() + 1);
+            System::on_initialize(System::block_number());
+            Mcbcp::on_initialize(System::block_number());
+        }
+    }
 
     fn assert_swap_outcome(
         left: SwapOutcome<Balance, AssetId>,
@@ -5029,6 +5041,36 @@ mod tests {
                 QuoteAmount::with_desired_output(balance!(100)),
                 true,
             );
+        });
+    }
+
+    #[test]
+    fn should_migrate_from_v3_to_v4_empty() {
+        ExtBuilder::default().build().execute_with(|| {
+            StorageVersion::new(3).put::<Pallet<Runtime>>();
+            crate::migrations::v4::MigrateToV4::<Runtime>::on_runtime_upgrade();
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 4);
+        });
+    }
+
+    #[test]
+    fn should_migrate_from_v3_to_v4() {
+        ExtBuilder::default().build().execute_with(|| {
+            StorageVersion::new(3).put::<Pallet<Runtime>>();
+            crate::migrations::v4::old_storage::PendingFreeReserves::<Runtime>::put(vec![(
+                DAI,
+                balance!(100),
+            )]);
+            crate::migrations::v4::MigrateToV4::<Runtime>::on_runtime_upgrade();
+            assert!(!crate::migrations::v4::old_storage::PendingFreeReserves::<
+                Runtime,
+            >::exists());
+            assert_eq!(crate::PendingFreeReserves::<Runtime>::iter().count(), 1);
+            assert_eq!(
+                crate::PendingFreeReserves::<Runtime>::get(1),
+                vec![(DAI, balance!(100))].into_iter().collect()
+            );
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 4);
         });
     }
 }
