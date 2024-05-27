@@ -193,6 +193,7 @@ impl assets::Config for Test {
     type Currency = currencies::Pallet<Test>;
     type WeightInfo = ();
     type GetTotalBalance = ();
+    type AssetRegulator = permissions::Pallet<Test>;
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;

@@ -242,6 +242,7 @@ macro_rules! mock_assets_config {
             type Currency = currencies::Pallet<TestRuntime>;
             type GetTotalBalance = ();
             type WeightInfo = ();
+            type AssetRegulator = permissions::Pallet<TestRuntime>;
         }
     };
 }
