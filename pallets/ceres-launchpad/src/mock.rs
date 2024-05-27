@@ -10,7 +10,7 @@ pub use common::TechPurpose::*;
 use common::{
     balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
 };
-use common::{mock_technical_config_poly_swap, AssetSymbol};
+use common::{mock_technical_config, AssetSymbol};
 use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -273,7 +273,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

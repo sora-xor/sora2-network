@@ -317,25 +317,10 @@ macro_rules! mock_permissions_config {
     };
 }
 
+// TODO: Cant implement for all, must add pool_xyk crate and set SwapAction
 /// Mock of pallet `technical::Config`.
 #[macro_export]
 macro_rules! mock_technical_config {
-    ($runtime:ty) => {
-        impl technical::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type TechAssetId = TechAssetId;
-            type TechAccountId = TechAccountId;
-            type Trigger = ();
-            type Condition = ();
-            type SwapAction = ();
-            type AssetInfoProvider = assets::Pallet<$runtime>;
-        }
-    };
-}
-
-/// Mock of pallet `technical::Config` with PolySwap.
-#[macro_export]
-macro_rules! mock_technical_config_poly_swap {
     ($runtime:ty) => {
         impl technical::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;

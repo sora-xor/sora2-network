@@ -4,7 +4,7 @@ use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_technical_config_poly_swap, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
+    balance, fixed, hash, mock_technical_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
     DEMETER_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -254,7 +254,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

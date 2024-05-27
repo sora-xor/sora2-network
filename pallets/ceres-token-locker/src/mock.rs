@@ -2,8 +2,8 @@ use crate::{self as ceres_token_locker};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_technical_config_poly_swap, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL,
+    balance, fixed, mock_technical_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -213,7 +213,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

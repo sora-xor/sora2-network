@@ -35,10 +35,10 @@ use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsProvider,
-    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
+    mock_permissions_config, mock_tokens_config, Amount, AssetId32, AssetInfoProvider, AssetName,
+    AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
+    DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -232,9 +232,18 @@ mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
-mock_technical_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
+
+impl technical::Config for TestRuntime {
+    type RuntimeEvent = RuntimeEvent;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<TestRuntime>;
+}
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;

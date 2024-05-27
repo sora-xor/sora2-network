@@ -2,9 +2,7 @@ use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
-use common::{
-    balance, fixed, hash, mock_technical_config_poly_swap, DEXInfo, PSWAP, TBCD, VAL, XOR, XST,
-};
+use common::{balance, fixed, hash, mock_technical_config, DEXInfo, PSWAP, TBCD, VAL, XOR, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -196,7 +194,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

@@ -32,9 +32,9 @@ use crate::{self as xstpool, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, PriceToolsProvider};
 use common::{
-    self, balance, fixed, hash, mock_technical_config_poly_swap, Amount, AssetId32, AssetIdOf,
-    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, PriceVariant, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, hash, mock_technical_config, Amount, AssetId32, AssetIdOf, AssetName,
+    AssetSymbol, DEXInfo, Fixed, FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION,
+    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -294,7 +294,7 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;

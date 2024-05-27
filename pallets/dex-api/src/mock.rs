@@ -33,9 +33,9 @@ use common::alt::DiscreteQuotation;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_technical_config_poly_swap, Amount,
-    AssetId32, DEXInfo, Fixed, LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP,
-    TBCD, VAL, XOR, XST,
+    balance, fixed, fixed_from_basis_points, hash, mock_technical_config, Amount, AssetId32,
+    DEXInfo, Fixed, LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL,
+    XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
@@ -389,7 +389,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 

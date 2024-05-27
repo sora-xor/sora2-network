@@ -3,7 +3,7 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        mock_technical_config_poly_swap,
+        mock_technical_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -351,7 +351,7 @@ impl pallet_timestamp::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-mock_technical_config_poly_swap!(Runtime);
+mock_technical_config!(Runtime);
 
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
