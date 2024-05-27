@@ -1136,7 +1136,7 @@ fn test_repay_debt_only_signed_origin() {
 #[test]
 fn test_repay_debt_only_cdp_owner() {
     new_test_ext().execute_with(|| {
-        set_xor_as_collateral_type(
+        configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
             FixedU128::from_float(0.0),

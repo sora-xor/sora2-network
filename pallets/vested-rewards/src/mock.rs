@@ -315,6 +315,7 @@ impl pool_xyk::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = MockLiquidityProxy;
     type EnsureTradingPairExists = ();

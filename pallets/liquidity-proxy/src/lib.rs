@@ -100,6 +100,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 /// Possible exchange paths for two assets.
+#[derive(Clone)]
 pub struct ExchangePath<T: Config>(pub(crate) Vec<AssetIdOf<T>>);
 
 impl<T: Config> core::fmt::Debug for ExchangePath<T> {
@@ -372,13 +373,14 @@ impl<T: Config> ExchangePath<T> {
     }
 }
 
-#[derive(Eq, PartialEq, Encode, Decode)]
+#[derive(Debug, Eq, PartialEq, Encode, Decode)]
 pub struct QuoteInfo<AssetId: Ord, LiquiditySource> {
     pub outcome: SwapOutcome<Balance, AssetId>,
     pub amount_without_impact: Option<Balance>,
     pub rewards: Rewards<AssetId>,
     pub liquidity_sources: Vec<LiquiditySource>,
     pub path: Vec<AssetId>,
+    pub route: ExchangeRoute<AssetId>,
 }
 
 fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
@@ -555,7 +557,7 @@ impl<T: Config> Pallet<T> {
             true,
             true,
         )
-        .map(|(info, swaps, weight)| (info.path, swaps, weight))?;
+        .map(|(info, weight)| (info.path, info.route, weight))?;
 
         Self::exchange_sequence_with_desired_amount(dex_info, sender, receiver, &route, filter)
             .and_then(|(mut swap, sources, weight)| {
@@ -745,14 +747,7 @@ impl<T: Config> Pallet<T> {
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>,
-            ExchangeRoute<AssetIdOf<T>>,
-            Weight,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<(QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
@@ -787,16 +782,8 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>,
-            ExchangeRoute<AssetIdOf<T>>,
-            Weight,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<(QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         let mut weight = Weight::zero();
-        let mut swaps = ExchangeRoute::<AssetIdOf<T>>::new();
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match swap_variant {
                 SwapVariant::WithDesiredInput => Self::quote_pairs_with_flexible_amount(
@@ -825,13 +812,13 @@ impl<T: Config> Pallet<T> {
                 ),
             };
             quote.map(|x| {
-                swaps = x.4;
                 weight = weight.saturating_add(x.5);
                 QuoteInfo {
                     outcome: x.0,
                     amount_without_impact: x.1,
                     rewards: x.2,
                     liquidity_sources: x.3,
+                    route: x.4,
                     path: atomic_path,
                 }
             })
@@ -858,7 +845,7 @@ impl<T: Config> Pallet<T> {
                 }
                 _ => acc,
             })
-            .map(|quote| (quote, swaps, weight))
+            .map(|quote| (quote, weight))
     }
 
     /// Quote given pairs of assets using `amount_ctr` to construct [`QuoteAmount`] for each pair.
@@ -2394,7 +2381,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, AssetIdOf<T>> for Pa
             true,
             deduce_fee,
         )
-        .map(|(quote_info, _, _)| quote_info.outcome)
+        .map(|(quote_info, _)| quote_info.outcome)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.

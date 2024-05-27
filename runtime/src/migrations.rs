@@ -58,6 +58,7 @@ pub type Migrations = (
         PredefinedAssetOwnerAccountId,
     >,
     kensetsu::migrations::v1_to_v2::UpgradeToV2<Runtime>,
+    multicollateral_bonding_curve_pool::migrations::v4::MigrateToV4<Runtime>,
 );
 
 #[cfg(feature = "ready-to-test")] // tokenomics-upgrade
