@@ -228,6 +228,7 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
+    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl common::Config for Runtime {

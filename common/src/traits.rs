@@ -28,7 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
+use crate::prelude::{
+    permissions::PermissionId, ManagementMode, QuoteAmount, SwapAmount, SwapOutcome,
+};
 use crate::{
     Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
@@ -1449,5 +1451,51 @@ pub trait ReferrerAccountProvider<AccountId> {
 impl<AccountId> ReferrerAccountProvider<AccountId> for () {
     fn get_referrer_account(_who: &AccountId) -> Option<AccountId> {
         None
+    }
+}
+
+/// Trait to manage permissions/regulations for assets operations
+pub trait AssetRegulator<AccountId, AssetId> {
+    /// Assign `permission_id` for a specific `account_id` to a specific `asset_id`
+    fn assign_permission(
+        owner: &AccountId,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError>;
+
+    /// Check the permission `permission_id` of `issuer` for `asset_id`
+    /// with respect to `affected_account`
+    fn check_permission(
+        issuer: &AccountId,
+        affected_account: &AccountId,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<AccountId, AssetId, A, B> AssetRegulator<AccountId, AssetId> for (A, B)
+where
+    A: AssetRegulator<AccountId, AssetId>,
+    B: AssetRegulator<AccountId, AssetId>,
+{
+    fn assign_permission(
+        owner: &AccountId,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        A::assign_permission(owner, asset_id, permission_id)?;
+        B::assign_permission(owner, asset_id, permission_id)?;
+        Ok(())
+    }
+
+    fn check_permission(
+        issuer: &AccountId,
+        affected_account: &AccountId,
+        asset_id: &AssetId,
+        permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        A::check_permission(issuer, affected_account, asset_id, permission_id)?;
+        B::check_permission(issuer, affected_account, asset_id, permission_id)?;
+        Ok(())
     }
 }
