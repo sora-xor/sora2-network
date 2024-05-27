@@ -418,6 +418,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
@@ -571,6 +572,22 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(0),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XSTUSD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XST,
+                    balance!(0),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"XST".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
                 (
@@ -973,6 +990,12 @@ impl ExtBuilder {
             )],
             ..Default::default()
         }
+    }
+
+    pub fn with_xyk_pool_xstusd(mut self) -> Self {
+        self.xyk_reserves
+            .push((DEX_D_ID, XSTUSD, (balance!(1000), balance!(1000))));
+        self
     }
 
     pub fn with_xyk_pool(mut self) -> Self {
