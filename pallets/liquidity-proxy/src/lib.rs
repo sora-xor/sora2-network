@@ -100,7 +100,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 /// Possible exchange paths for two assets.
-pub struct ExchangePath<T: Config>(Vec<AssetIdOf<T>>);
+pub struct ExchangePath<T: Config>(pub(crate) Vec<AssetIdOf<T>>);
 
 impl<T: Config> core::fmt::Debug for ExchangePath<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -295,6 +295,10 @@ impl<T: Config> ExchangePath<T> {
     ) -> Option<Vec<Self>> {
         use AssetType::*;
 
+        if input_asset_id == output_asset_id {
+            return None;
+        }
+
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
@@ -329,7 +333,9 @@ impl<T: Config> ExchangePath<T> {
             (Synthetic, Basic) | (Synthetic, ChameleonBase) => {
                 path_builder.via_base().via_synthetic_base_and_base()
             }
-            forward_or_backward!(ChameleonPoolAsset, ChameleonBase) => path_builder.direct(),
+            forward_or_backward!(ChameleonPoolAsset, ChameleonBase) => {
+                path_builder.direct().via_base()
+            }
             forward_or_backward!(Base, ChameleonPoolAsset) => {
                 path_builder.direct().via_base_chameleon()
             }
@@ -340,12 +346,14 @@ impl<T: Config> ExchangePath<T> {
                 path_builder.via_base().via_base_chameleon_and_base()
             }
             (Synthetic, ChameleonPoolAsset) => path_builder
-                .via_synthetic_base_and_base()
                 .via_base()
+                .via_synthetic_base_and_base()
+                .via_base_and_base_chameleon()
                 .via_synthetic_base_and_base_and_base_chameleon(),
             (ChameleonPoolAsset, Synthetic) => path_builder
-                .via_base_and_synthetic_base()
                 .via_base()
+                .via_base_and_synthetic_base()
+                .via_base_chameleon_and_base()
                 .via_base_chameleon_and_base_and_synthetic_base(),
             (ChameleonPoolAsset, ChameleonPoolAsset) => path_builder
                 .via_base()

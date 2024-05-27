@@ -2840,27 +2840,70 @@ fn mint() {
 }
 
 #[test]
-fn strict_sort_pair() {
+fn test_get_pair_info() {
     ExtBuilder::default().build().execute_with(|| {
         let asset_base = GetBaseAssetId::get();
         let asset_target = GreenPromise.into();
-        let asset_target_2 = BluePromise.into();
+        let asset_target_2 = BlackPepper.into();
+        let asset_chameleon = Potato.into();
 
-        let pair = PoolXYK::get_trading_pair(&asset_base, &asset_base, &asset_target).unwrap();
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_target).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, false);
 
-        let pair = PoolXYK::get_trading_pair(&asset_base, &asset_target, &asset_base).unwrap();
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, false);
+
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_target_2).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_target_2);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, true);
+
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_target_2, &asset_base).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_target_2);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, true);
+
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_target_2).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_target_2);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, true);
+
+        let (pair, asset_chameleon_opt, flag) =
+            PoolXYK::get_pair_info(&asset_base, &asset_target_2, &asset_chameleon).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_target_2);
+        assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
+        assert_eq!(flag, true);
 
         assert_noop!(
-            PoolXYK::get_trading_pair(&asset_base, &asset_base, &asset_base),
+            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_base),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
         assert_noop!(
-            PoolXYK::get_trading_pair(&asset_base, &asset_target, &asset_target_2),
+            PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_target_2),
             crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
+        );
+        assert_noop!(
+            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_target),
+            crate::Error::<Runtime>::RestrictedChameleonPool
+        );
+        assert_noop!(
+            PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_chameleon),
+            crate::Error::<Runtime>::RestrictedChameleonPool
         );
     });
 }

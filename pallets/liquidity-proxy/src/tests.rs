@@ -37,9 +37,9 @@ use common::prelude::{
 };
 use common::{
     assert_approx_eq_abs, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler,
-    FilterMode, Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
+    DEXInfo, FilterMode, Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, ReferencePriceProvider, RewardReason,
-    TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    TradingPairSourceManager, DAI, DOT, ETH, KSM, KXOR, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::traits::Get;
@@ -3640,5 +3640,104 @@ fn test_xorless_transfer_fails_on_transfer() {
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
+    });
+}
+
+fn test_path_build(
+    dex_info: &DEXInfo<AssetId>,
+    input_asset_id: AssetId,
+    output_asset_id: AssetId,
+    expected_paths: Vec<Vec<AssetId>>,
+) {
+    let paths =
+        crate::ExchangePath::<Runtime>::new_trivial(dex_info, input_asset_id, output_asset_id);
+    let Some(paths) = paths else {
+        assert!(expected_paths.is_empty());
+        return;
+    };
+    let paths = paths.into_iter().map(|x| x.0).collect::<Vec<_>>();
+    let expected_paths = expected_paths
+        .into_iter()
+        .map(|mut x| {
+            x.insert(0, input_asset_id);
+            x.push(output_asset_id);
+            x
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        paths, expected_paths,
+        "{} -> {}",
+        input_asset_id, output_asset_id
+    );
+}
+
+#[test]
+fn test_all_possible_asset_paths() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let dex_info = DEXInfo {
+            base_asset_id: common::XOR,
+            synthetic_base_asset_id: common::XST,
+            is_public: true,
+        };
+        let cases = vec![
+            (XOR, XOR, vec![]),
+            (XOR, DAI, vec![vec![]]),
+            (XOR, XST, vec![vec![]]),
+            (XOR, XSTUSD, vec![vec![], vec![XST]]),
+            (XOR, KXOR, vec![vec![]]),
+            (XOR, ETH, vec![vec![], vec![KXOR]]),
+            (DAI, XOR, vec![vec![]]),
+            (DAI, DAI, vec![]),
+            (DAI, XST, vec![vec![XOR]]),
+            (DAI, XSTUSD, vec![vec![XOR], vec![XOR, XST]]),
+            (DAI, KXOR, vec![vec![XOR]]),
+            (DAI, ETH, vec![vec![XOR], vec![XOR, KXOR]]),
+            (XST, XOR, vec![vec![]]),
+            (XST, DAI, vec![vec![XOR]]),
+            (XST, XST, vec![]),
+            (XST, XSTUSD, vec![vec![], vec![XOR]]),
+            (XST, KXOR, vec![vec![XOR]]),
+            (XST, ETH, vec![vec![XOR], vec![XOR, KXOR]]),
+            (XSTUSD, XOR, vec![vec![], vec![XST]]),
+            (XSTUSD, DAI, vec![vec![XOR], vec![XST, XOR]]),
+            (XSTUSD, XST, vec![vec![], vec![XOR]]),
+            (XSTUSD, XSTUSD, vec![]),
+            (XSTUSD, KXOR, vec![vec![XOR], vec![XST, XOR]]),
+            (
+                XSTUSD,
+                ETH,
+                vec![
+                    vec![XOR],
+                    vec![XST, XOR],
+                    vec![XOR, KXOR],
+                    vec![XST, XOR, KXOR],
+                ],
+            ),
+            (KXOR, XOR, vec![vec![]]),
+            (KXOR, DAI, vec![vec![XOR]]),
+            (KXOR, XST, vec![vec![XOR]]),
+            (KXOR, XSTUSD, vec![vec![XOR], vec![XOR, XST]]),
+            (KXOR, KXOR, vec![]),
+            (KXOR, ETH, vec![vec![], vec![XOR]]),
+            (ETH, XOR, vec![vec![], vec![KXOR]]),
+            (ETH, DAI, vec![vec![XOR], vec![KXOR, XOR]]),
+            (ETH, XST, vec![vec![XOR], vec![KXOR, XOR]]),
+            (
+                ETH,
+                XSTUSD,
+                vec![
+                    vec![XOR],
+                    vec![XOR, XST],
+                    vec![KXOR, XOR],
+                    vec![KXOR, XOR, XST],
+                ],
+            ),
+            (ETH, KXOR, vec![vec![], vec![XOR]]),
+            (ETH, ETH, vec![]),
+        ];
+        for (input, output, expected_paths) in cases {
+            test_path_build(&dex_info, input, output, expected_paths);
+        }
     });
 }
