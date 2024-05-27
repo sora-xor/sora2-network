@@ -32,8 +32,9 @@ use crate::{self as pswap_distribution, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL,
+    balance, fixed, mock_technical_config_poly_swap, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD,
+    VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -271,15 +272,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config_poly_swap!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 

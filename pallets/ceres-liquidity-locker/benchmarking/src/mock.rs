@@ -3,7 +3,9 @@
 use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
-use common::{fixed, hash, Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST};
+use common::{
+    fixed, hash, mock_technical_config_poly_swap, Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
+};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::{Everything, GenesisBuild};
@@ -196,15 +198,7 @@ impl dex_api::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config_poly_swap!(Runtime);
 
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

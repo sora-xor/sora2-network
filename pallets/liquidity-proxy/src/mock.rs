@@ -32,10 +32,10 @@ use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
-    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD,
-    USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash,
+    mock_technical_config_poly_swap, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, RewardReason, DAI,
+    DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -311,15 +311,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config_poly_swap!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

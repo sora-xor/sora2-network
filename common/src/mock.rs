@@ -333,6 +333,22 @@ macro_rules! mock_technical_config {
     };
 }
 
+/// Mock of pallet `technical::Config` with PolySwap.
+#[macro_export]
+macro_rules! mock_technical_config_poly_swap {
+    ($runtime:ty) => {
+        impl technical::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type TechAssetId = TechAssetId;
+            type TechAccountId = TechAccountId;
+            type Trigger = ();
+            type Condition = ();
+            type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+        }
+    };
+}
+
 /// Mock of pallet `tokens::Config`.
 #[macro_export]
 macro_rules! mock_tokens_config {
