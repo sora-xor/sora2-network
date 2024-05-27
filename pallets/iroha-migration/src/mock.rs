@@ -33,41 +33,42 @@ use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XST,
+    balance, mock_assets_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{self, Perbill};
 
 type DEXId = common::DEXId;
-type AccountId = u64;
+type AccountId = AccountId32;
+type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CHARLIE: AccountId = 3;
-pub const MINTING_ACCOUNT: AccountId = 4;
-pub const REFERRALS_RESERVES_ACC: AccountId = 22;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub const ALICE: AccountId = AccountId::new([1; 32]);
+pub const BOB: AccountId = AccountId::new([2; 32]);
+pub const CHARLIE: AccountId = AccountId::new([3; 32]);
+pub const MINTING_ACCOUNT: AccountId = AccountId::new([4; 32]);
+pub const REFERRALS_RESERVES_ACC: AccountId = AccountId::new([22; 32]);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
+    pub const GetBaseAssetId: AssetId = AssetId32::from_asset_id(XOR);
     pub const ExistentialDeposit: u128 = 0;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
@@ -132,30 +133,10 @@ impl technical::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
-    pub GetBuyBackSupplyAssets: Vec<common::AssetId32<PredefinedAssetId>> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = u64;
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
-    type AssetId = common::AssetId32<PredefinedAssetId>;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
 
 impl common::Config for Runtime {
     type DEXId = DEXId;
@@ -275,7 +256,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     tokens::GenesisConfig::<Runtime> {
         balances: vec![
             (ALICE, VAL, 0u128.into()),
-            (eth_bridge_account_id, VAL, balance!(1000)),
+            (eth_bridge_account_id.clone(), VAL, balance!(1000)),
         ],
     }
     .assimilate_storage(&mut t)
