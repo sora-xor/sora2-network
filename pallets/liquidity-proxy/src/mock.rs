@@ -418,6 +418,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
