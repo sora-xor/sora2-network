@@ -3,11 +3,11 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+use common::XST;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
     Description, CERES_ASSET_ID,
 };
-use common::{mock_technical_config, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -139,7 +139,15 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-mock_technical_config!(Runtime);
+impl technical::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+}
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

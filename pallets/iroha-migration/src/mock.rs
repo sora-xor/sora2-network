@@ -33,7 +33,7 @@ use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
@@ -121,7 +121,15 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-mock_technical_config!(Runtime);
+impl technical::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+}
 
 parameter_types! {
     pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;

@@ -42,7 +42,7 @@ use sp_runtime::{MultiSignature, Perbill, Percent};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
-    self, balance, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
     DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
@@ -143,7 +143,15 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-mock_technical_config!(Runtime);
+impl technical::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;

@@ -40,8 +40,8 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId,
-    FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR, XST,
+    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
+    PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -199,7 +199,15 @@ impl assets::Config for Test {
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
-mock_technical_config!(Test);
+impl technical::Config for Test {
+    type RuntimeEvent = RuntimeEvent;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type AssetInfoProvider = assets::Pallet<Test>;
+}
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
