@@ -28,10 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::weights::WeightInfo;
-use crate::{mock::*, ExchangePath};
-use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
+use crate::{test_utils, BatchReceiverInfo, Error, ExchangePath, QuoteInfo, SwapBatchInfo};
 use common::prelude::{
     AssetName, AssetSymbol, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
 };
@@ -3630,7 +3630,7 @@ fn test_select_best_path() {
     ext.execute_with(|| {
         let dex_info = DexManager::dex_id(DEX_D_ID).unwrap();
         let asset_paths = ExchangePath::<Runtime>::new_trivial(&dex_info, XSTUSD, XST).unwrap();
-        let reversed_paths = asset_paths.iter().cloned().rev().collect::<Vec<_>>();
+        let reversed_paths = asset_paths.iter().cloned().rev().collect();
         let result = LiquidityProxy::select_best_path(
             &dex_info,
             asset_paths,
