@@ -1614,6 +1614,7 @@
 <a href="#1599" id="1599">1599</a>
 <a href="#1600" id="1600">1600</a>
 <a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2213,8 +2214,9 @@
         </span><span class="attr">#[pallet::call_index(<span class="number">4</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::repay_debt())]
         </span><span class="kw">pub fn </span>repay_debt(origin: OriginFor&lt;T&gt;, cdp_id: CdpId, amount: Balance) -&gt; DispatchResult {
-            <span class="comment">// any account can repay debt
-            </span><span class="kw">let _ </span>= ensure_signed(origin)<span class="question-mark">?</span>;
+            <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
+            <span class="kw">let </span>cdp = <span class="self">Self</span>::get_cdp_updated(cdp_id)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(who == cdp.owner, Error::&lt;T&gt;::OperationNotPermitted);
             <span class="self">Self</span>::repay_debt_internal(cdp_id, amount)
         }
 

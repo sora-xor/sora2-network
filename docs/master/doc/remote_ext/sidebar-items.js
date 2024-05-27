@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_ext","get_path_weight","main"],"opaque":[""],"struct":["Cli"]};
+window.SIDEBAR_ITEMS = {"fn":["create_ext","main"],"opaque":[""],"struct":["Cli"]};

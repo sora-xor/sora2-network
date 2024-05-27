@@ -101,41 +101,46 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
 </pre><pre class="rust"><code><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
 
 </span><span class="kw">use </span>clap::Parser;
-<span class="kw">use </span>common::{DEXId, FilterMode};
-<span class="kw">use </span>frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
+<span class="kw">use </span>codec::Decode;
+<span class="kw">use </span>frame_remote_externalities::{
+    Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
+};
 <span class="kw">use </span>jsonrpsee::ws_client::{WsClient, WsClientBuilder};
+<span class="kw">use </span>sp_core::H256;
 <span class="kw">use </span>sp_runtime::{traits::Block <span class="kw">as </span>BlockT, DeserializeOwned};
 
 <span class="kw">use </span>anyhow::Result <span class="kw">as </span>AnyResult;
-<span class="kw">use </span>framenode_runtime::assets::AssetIdOf;
-<span class="kw">use </span>framenode_runtime::order_book::WeightInfo;
-<span class="kw">use </span>framenode_runtime::{Runtime, Weight};
+<span class="kw">use </span>sp_runtime::traits::Dispatchable;
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">async fn </span>create_ext&lt;B&gt;(client: Arc&lt;WsClient&gt;) -&gt; AnyResult&lt;RemoteExternalities&lt;B&gt;&gt;
+<span class="kw">async fn </span>create_ext&lt;B&gt;(
+    client: Arc&lt;WsClient&gt;,
+    at: <span class="prelude-ty">Option</span>&lt;H256&gt;,
+    snapshot_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
+) -&gt; AnyResult&lt;RemoteExternalities&lt;B&gt;&gt;
 <span class="kw">where
-    </span>B: DeserializeOwned + BlockT,
+    </span>B: DeserializeOwned + BlockT&lt;Hash = H256&gt;,
     &lt;B <span class="kw">as </span>BlockT&gt;::Header: DeserializeOwned,
 {
+    <span class="kw">let </span>snapshot_path = snapshot_path.unwrap_or_else(|| <span class="kw">match </span>at {
+        <span class="prelude-val">Some</span>(at) =&gt; <span class="macro">format!</span>(<span class="string">&quot;state_snapshot_{}&quot;</span>, at).into(),
+        <span class="prelude-val">None </span>=&gt; <span class="string">&quot;state_snapshot&quot;</span>.to_string().into(),
+    });
+    <span class="kw">let </span>state_snapshot = SnapshotConfig::new(<span class="kw-2">&amp;</span>snapshot_path);
     <span class="kw">let </span>res = Builder::&lt;B&gt;::new()
         .mode(Mode::OfflineOrElseOnline(
             OfflineConfig {
-                state_snapshot: <span class="string">&quot;state_snapshot&quot;</span>.to_string().into(),
+                state_snapshot: state_snapshot.clone(),
             },
             OnlineConfig {
                 transport: client.into(),
-                state_snapshot: <span class="prelude-val">Some</span>(<span class="string">&quot;state_snapshot&quot;</span>.to_string().into()),
+                state_snapshot: <span class="prelude-val">Some</span>(state_snapshot),
+                at,
                 ..Default::default()
             },
         ))
@@ -148,7 +153,17 @@
 <span class="attr">#[derive(Debug, Clone, Parser)]
 </span><span class="kw">struct </span>Cli {
     <span class="doccomment">/// Sora node endpoint.
+    </span><span class="attr">#[clap(long)]
     </span>uri: String,
+    <span class="doccomment">/// Sora block hash.
+    </span><span class="attr">#[clap(long)]
+    </span>at: <span class="prelude-ty">Option</span>&lt;H256&gt;,
+    <span class="doccomment">/// Sora snapshot path.
+    </span><span class="attr">#[clap(long)]
+    </span>snapshot_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
+    <span class="doccomment">/// Encoded extrinsic
+    </span><span class="attr">#[clap(long)]
+    </span>xt: String,
 }
 
 <span class="attr">#[tokio::main]
@@ -160,44 +175,15 @@
         .build(cli.uri)
         .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>client = Arc::new(client);
-    <span class="kw">let </span><span class="kw-2">mut </span>ext = create_ext::&lt;framenode_runtime::Block&gt;(client.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>ext =
+        create_ext::&lt;framenode_runtime::Block&gt;(client.clone(), cli.at, cli.snapshot_path).<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>_res: AnyResult&lt;()&gt; = ext.execute_with(|| {
-        <span class="kw">fn </span>get_path_weight(input: AssetIdOf&lt;Runtime&gt;, output: AssetIdOf&lt;Runtime&gt;) -&gt; Weight {
-            liquidity_proxy::Pallet::&lt;Runtime&gt;::swap_weight(
-                <span class="kw-2">&amp;</span>DEXId::Polkaswap.into(),
-                <span class="kw-2">&amp;</span>input,
-                <span class="kw-2">&amp;</span>output,
-                <span class="kw-2">&amp;</span>Vec::new(),
-                <span class="kw-2">&amp;</span>FilterMode::Disabled,
-            )
-        }
-        <span class="comment">// Base -&gt; Basic
-        </span><span class="kw">let </span>path_2_weight = get_path_weight(common::XOR, common::PSWAP);
-
-        <span class="comment">// Basic -&gt; Basic
-        </span><span class="kw">let </span>path_3_weight = get_path_weight(common::VAL, common::PSWAP);
-
-        <span class="comment">// Synthetic -&gt; Basic
-        </span><span class="kw">let </span>path_4_weight = get_path_weight(common::XSTUSD, common::PSWAP);
-
-        <span class="macro">dbg!</span>(path_2_weight);
-        <span class="macro">dbg!</span>(path_3_weight);
-        <span class="macro">dbg!</span>(path_4_weight);
-
-        <span class="kw">let </span>execute_order_weight =
-            &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::execute_market_order();
-        <span class="macro">dbg!</span>(execute_order_weight);
-
-        <span class="macro">println!</span>(<span class="string">&quot;\nexchange weights:&quot;</span>);
-        <span class="kw">let </span>max_orders = &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::HARD_MIN_MAX_RATIO
-            .try_into()
-            .unwrap();
-        <span class="kw">for </span>n <span class="kw">in </span>[<span class="number">1</span>, max_orders / <span class="number">2</span>, max_orders] {
-            <span class="kw">let </span>exchange =
-                &lt;Runtime <span class="kw">as </span>framenode_runtime::order_book::Config&gt;::WeightInfo::exchange(n);
-            <span class="macro">println!</span>(<span class="string">&quot;{n} order(-s):&quot;</span>);
-            <span class="macro">dbg!</span>(exchange);
-            <span class="macro">println!</span>();
+        <span class="kw">let </span>xt_encoded = hex::decode(<span class="kw-2">&amp;</span>cli.xt).unwrap();
+        <span class="kw">let </span>xt = framenode_runtime::UncheckedExtrinsic::decode(<span class="kw-2">&amp;mut &amp;</span>xt_encoded[..]).unwrap();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((account, _signature, _extra)) = xt.signature {
+            xt.function
+                .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
+                .unwrap();
         }
         <span class="prelude-val">Ok</span>(())
     });

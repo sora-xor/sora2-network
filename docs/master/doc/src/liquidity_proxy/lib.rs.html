@@ -2792,19 +2792,6 @@
 <a href="#2777" id="2777">2777</a>
 <a href="#2778" id="2778">2778</a>
 <a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2907,6 +2894,7 @@
 <span class="kw">const </span>REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 <span class="doccomment">/// Possible exchange paths for two assets.
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ExchangePath&lt;T: Config&gt;(Vec&lt;AssetIdOf&lt;T&gt;&gt;);
 
 <span class="attr">#[derive(Debug, Eq, PartialEq)]
@@ -3021,13 +3009,14 @@
     }
 }
 
-<span class="attr">#[derive(Eq, PartialEq, Encode, Decode)]
+<span class="attr">#[derive(Debug, Eq, PartialEq, Encode, Decode)]
 </span><span class="kw">pub struct </span>QuoteInfo&lt;AssetId: Ord, LiquiditySource&gt; {
     <span class="kw">pub </span>outcome: SwapOutcome&lt;Balance, AssetId&gt;,
     <span class="kw">pub </span>amount_without_impact: <span class="prelude-ty">Option</span>&lt;Balance&gt;,
     <span class="kw">pub </span>rewards: Rewards&lt;AssetId&gt;,
     <span class="kw">pub </span>liquidity_sources: Vec&lt;LiquiditySource&gt;,
     <span class="kw">pub </span>path: Vec&lt;AssetId&gt;,
+    <span class="kw">pub </span>route: ExchangeRoute&lt;AssetId&gt;,
 }
 
 <span class="kw">fn </span>merge_two_vectors_unique&lt;T: PartialEq&gt;(vec_1: <span class="kw-2">&amp;mut </span>Vec&lt;T&gt;, vec_2: Vec&lt;T&gt;) {
@@ -3204,7 +3193,7 @@
             <span class="bool-val">true</span>,
             <span class="bool-val">true</span>,
         )
-        .map(|(info, swaps, weight)| (info.path, swaps, weight))<span class="question-mark">?</span>;
+        .map(|(info, weight)| (info.path, info.route, weight))<span class="question-mark">?</span>;
 
         <span class="self">Self</span>::exchange_sequence_with_desired_amount(dex_info, sender, receiver, <span class="kw-2">&amp;</span>route, filter)
             .and_then(|(<span class="kw-2">mut </span>swap, sources, weight)| {
@@ -3394,14 +3383,7 @@
         filter: LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        (
-            QuoteInfo&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;&gt;,
-            ExchangeRoute&lt;AssetIdOf&lt;T&gt;&gt;,
-            Weight,
-        ),
-        DispatchError,
-    &gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(QuoteInfo&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="macro">ensure!</span>(
             input_asset_id != output_asset_id,
             Error::&lt;T&gt;::UnavailableExchangePath
@@ -3436,16 +3418,8 @@
         filter: <span class="kw-2">&amp;</span>LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt;,
         skip_info: bool,
         deduce_fee: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        (
-            QuoteInfo&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;&gt;,
-            ExchangeRoute&lt;AssetIdOf&lt;T&gt;&gt;,
-            Weight,
-        ),
-        DispatchError,
-    &gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(QuoteInfo&lt;AssetIdOf&lt;T&gt;, LiquiditySourceIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
-        <span class="kw">let </span><span class="kw-2">mut </span>swaps = ExchangeRoute::&lt;AssetIdOf&lt;T&gt;&gt;::new();
         <span class="kw">let </span><span class="kw-2">mut </span>path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             <span class="kw">let </span>quote = <span class="kw">match </span>swap_variant {
                 SwapVariant::WithDesiredInput =&gt; <span class="self">Self</span>::quote_pairs_with_flexible_amount(
@@ -3474,13 +3448,13 @@
                 ),
             };
             quote.map(|x| {
-                swaps = x.<span class="number">4</span>;
                 weight = weight.saturating_add(x.<span class="number">5</span>);
                 QuoteInfo {
                     outcome: x.<span class="number">0</span>,
                     amount_without_impact: x.<span class="number">1</span>,
                     rewards: x.<span class="number">2</span>,
                     liquidity_sources: x.<span class="number">3</span>,
+                    route: x.<span class="number">4</span>,
                     path: atomic_path,
                 }
             })
@@ -3507,7 +3481,7 @@
                 }
                 <span class="kw">_ </span>=&gt; acc,
             })
-            .map(|quote| (quote, swaps, weight))
+            .map(|quote| (quote, weight))
     }
 
     <span class="doccomment">/// Quote given pairs of assets using `amount_ctr` to construct [`QuoteAmount`] for each pair.
@@ -5043,7 +5017,7 @@
             <span class="bool-val">true</span>,
             deduce_fee,
         )
-        .map(|(quote_info, <span class="kw">_</span>, <span class="kw">_</span>)| quote_info.outcome)
+        .map(|(quote_info, <span class="kw">_</span>)| quote_info.outcome)
     }
 
     <span class="doccomment">/// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.

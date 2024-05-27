@@ -44,7 +44,7 @@ var sourcesIndex = JSON.parse('{\
 "liquidity_proxy_rpc":["",[],["lib.rs"]],\
 "liquidity_proxy_runtime_api":["",[],["lib.rs"]],\
 "mock_liquidity_source":["",[],["lib.rs"]],\
-"multicollateral_bonding_curve_pool":["",[["migrations",[],["mod.rs","v1.rs","v2.rs","v3.rs"]]],["lib.rs","weights.rs"]],\
+"multicollateral_bonding_curve_pool":["",[["migrations",[],["mod.rs","v1.rs","v2.rs","v3.rs","v4.rs"]]],["lib.rs","weights.rs"]],\
 "oracle_proxy":["",[],["lib.rs","weights.rs"]],\
 "oracle_proxy_rpc":["",[],["lib.rs"]],\
 "oracle_proxy_runtime_api":["",[],["lib.rs"]],\

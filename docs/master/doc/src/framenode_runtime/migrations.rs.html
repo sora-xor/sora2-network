@@ -49,6 +49,7 @@
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -84,6 +85,7 @@
 <span class="kw">pub type </span>Migrations = (
     kensetsu::migrations::init::RegisterTreasuryTechAccount&lt;Runtime&gt;,
     kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount&lt;Runtime&gt;,
+    multicollateral_bonding_curve_pool::migrations::v4::MigrateToV4&lt;Runtime&gt;,
 );
 </code></pre></div>
 </section></main></body></html>

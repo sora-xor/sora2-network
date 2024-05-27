@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["RETRY_DISTRIBUTION_FREQUENCY","TECH_ACCOUNT_FREE_RESERVES","TECH_ACCOUNT_PREFIX","TECH_ACCOUNT_RESERVES","TECH_ACCOUNT_REWARDS"],"enum":["DistributionAccount"],"mod":["migrations","pallet","weights"],"struct":["DistributionAccountData","DistributionAccounts"]};
+window.SIDEBAR_ITEMS = {"constant":["TECH_ACCOUNT_FREE_RESERVES","TECH_ACCOUNT_PREFIX","TECH_ACCOUNT_RESERVES","TECH_ACCOUNT_REWARDS"],"enum":["DistributionAccount"],"mod":["migrations","pallet","weights"],"struct":["DistributionAccountData","DistributionAccounts"]};

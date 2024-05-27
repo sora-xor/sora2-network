@@ -1968,6 +1968,19 @@
 <a href="#1953" id="1953">1953</a>
 <a href="#1954" id="1954">1954</a>
 <a href="#1955" id="1955">1955</a>
+<a href="#1956" id="1956">1956</a>
+<a href="#1957" id="1957">1957</a>
+<a href="#1958" id="1958">1958</a>
+<a href="#1959" id="1959">1959</a>
+<a href="#1960" id="1960">1960</a>
+<a href="#1961" id="1961">1961</a>
+<a href="#1962" id="1962">1962</a>
+<a href="#1963" id="1963">1963</a>
+<a href="#1964" id="1964">1964</a>
+<a href="#1965" id="1965">1965</a>
+<a href="#1966" id="1966">1966</a>
+<a href="#1967" id="1967">1967</a>
+<a href="#1968" id="1968">1968</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2030,9 +2043,10 @@
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{ensure, fail};
+<span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
 <span class="kw">use </span>permissions::{Scope, BURN, MINT};
 <span class="kw">use </span>sp_arithmetic::traits::Zero;
-<span class="kw">use </span>sp_runtime::{DispatchError, DispatchResult};
+<span class="kw">use </span>sp_runtime::{traits::One, DispatchError, DispatchResult, Saturating};
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
 <span class="kw">use </span>sp_std::vec::Vec;
 <span class="kw">pub use </span>weights::WeightInfo;
@@ -2050,8 +2064,6 @@
 <span class="kw">pub const </span>TECH_ACCOUNT_RESERVES: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;reserves&quot;</span>;
 <span class="kw">pub const </span>TECH_ACCOUNT_REWARDS: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;rewards&quot;</span>;
 <span class="kw">pub const </span>TECH_ACCOUNT_FREE_RESERVES: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;free_reserves&quot;</span>;
-
-<span class="kw">pub const </span>RETRY_DISTRIBUTION_FREQUENCY: u32 = <span class="number">1000</span>;
 
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
@@ -2147,6 +2159,8 @@
 
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
+    <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
+
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::Vesting;
     <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
@@ -2163,6 +2177,7 @@
         + pool_xyk::Config
         + permissions::Config
     {
+        <span class="kw">const </span>RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor&lt;<span class="self">Self</span>&gt;;
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>EnsureDEXManager: EnsureDEXManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, DispatchError&gt;;
@@ -2191,7 +2206,7 @@
     }
 
     <span class="doccomment">/// The current storage version.
-    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">3</span>);
+    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">4</span>);
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -2202,12 +2217,9 @@
     <span class="attr">#[pallet::hooks]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Hooks&lt;BlockNumberFor&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
         <span class="kw">fn </span>on_initialize(block_number: T::BlockNumber) -&gt; Weight {
-            <span class="kw">if </span>(block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
-                <span class="kw">let </span>elems = Pallet::&lt;T&gt;::free_reserves_distribution_routine().unwrap_or_default();
-                &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::on_initialize(elems)
-            } <span class="kw">else </span>{
-                &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::on_initialize(<span class="number">0</span>)
-            }
+            <span class="kw">let </span>elems =
+                Pallet::&lt;T&gt;::free_reserves_distribution_routine(block_number).unwrap_or_default();
+            &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::on_initialize(elems)
         }
     }
 
@@ -2335,6 +2347,8 @@
         </span>PriceBiasChanged(Balance),
         <span class="doccomment">/// Price change config was changed. [New Price Change Rate, New Price Change Step]
         </span>PriceChangeConfigChanged(Balance, Balance),
+        <span class="doccomment">/// Free reserves distribution routine failed. [Error]
+        </span>FailedToDistributeFreeReserves(DispatchError),
     }
 
     <span class="attr">#[pallet::error]
@@ -2382,8 +2396,13 @@
 
     <span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>pending_free_reserves)]
-    </span><span class="kw">pub type </span>PendingFreeReserves&lt;T: Config&gt; =
-        StorageValue&lt;<span class="kw">_</span>, Vec&lt;(AssetIdOf&lt;T&gt;, Balance)&gt;, ValueQuery&gt;;
+    </span><span class="kw">pub type </span>PendingFreeReserves&lt;T: Config&gt; = StorageMap&lt;
+        <span class="kw">_</span>,
+        Blake2_128Concat,
+        BlockNumberFor&lt;T&gt;,
+        BTreeMap&lt;AssetIdOf&lt;T&gt;, Balance&gt;,
+        ValueQuery,
+    &gt;;
 
     <span class="attr">#[pallet::type_value]
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>DefaultForInitialPrice() -&gt; Fixed {
@@ -2633,19 +2652,11 @@
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
 
-            <span class="kw">if </span>!Pallet::&lt;T&gt;::attempt_free_reserves_distribution(
+            Pallet::&lt;T&gt;::add_free_reserves_to_pending_list(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.reserves_account_id,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.collateral_asset_id,
+                <span class="self">self</span>.collateral_asset_id.clone(),
                 free_amount,
-            )
-            .is_ok()
-            {
-                Pallet::&lt;T&gt;::add_free_reserves_to_pending_list(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.reserves_account_id,
-                    <span class="self">self</span>.collateral_asset_id.clone(),
-                    free_amount,
-                )<span class="question-mark">?</span>;
-            }
+            )<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(())
         })
     }
@@ -2728,21 +2739,32 @@
 
 <span class="attr">#[allow(non_snake_case)]
 </span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-    <span class="kw">fn </span>free_reserves_distribution_routine() -&gt; <span class="prelude-ty">Result</span>&lt;u32, DispatchError&gt; {
+    <span class="kw">fn </span>free_reserves_distribution_routine(now: BlockNumberFor&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;u32, DispatchError&gt; {
         <span class="kw">let </span>free_reserves_acc =
             FreeReservesAccountId::&lt;T&gt;::get().ok_or(Error::&lt;T&gt;::FreeReservesAccountNotSet)<span class="question-mark">?</span>;
-        PendingFreeReserves::&lt;T&gt;::mutate(|vec| {
-            <span class="kw">let </span>len = vec.len();
-            vec.retain(|(collateral_asset_id, free_amount)| {
-                !Pallet::&lt;T&gt;::attempt_free_reserves_distribution(
-                    <span class="kw-2">&amp;</span>free_reserves_acc,
-                    <span class="kw-2">&amp;</span>collateral_asset_id,
-                    <span class="kw-2">*</span>free_amount,
-                )
-                .is_ok()
+        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>failed_to_distribute = <span class="macro">sp_std::vec!</span>[];
+        <span class="kw">for </span>(collateral_asset_id, amount) <span class="kw">in </span>PendingFreeReserves::&lt;T&gt;::take(now) {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = Pallet::&lt;T&gt;::attempt_free_reserves_distribution(
+                <span class="kw-2">&amp;</span>free_reserves_acc,
+                <span class="kw-2">&amp;</span>collateral_asset_id,
+                amount,
+            ) {
+                failed_to_distribute.push((collateral_asset_id, amount));
+                <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::FailedToDistributeFreeReserves(e));
+            }
+            count += <span class="number">1</span>;
+        }
+        <span class="kw">if </span>!failed_to_distribute.is_empty() {
+            <span class="kw">let </span>block_number = now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY);
+            PendingFreeReserves::&lt;T&gt;::mutate(block_number, |map| {
+                <span class="kw">for </span>(collateral_asset_id, amount) <span class="kw">in </span>failed_to_distribute {
+                    <span class="kw">let </span>current_amount = map.entry(collateral_asset_id).or_default();
+                    <span class="kw-2">*</span>current_amount = current_amount.saturating_add(amount);
+                }
             });
-            <span class="prelude-val">Ok</span>(len.try_into().unwrap_or(u32::max_value()))
-        })
+        }
+        <span class="prelude-val">Ok</span>(count)
     }
 
     <span class="kw">fn </span>add_free_reserves_to_pending_list(
@@ -2753,7 +2775,11 @@
         <span class="kw">let </span>free_reserves_acc =
             FreeReservesAccountId::&lt;T&gt;::get().ok_or(Error::&lt;T&gt;::FreeReservesAccountNotSet)<span class="question-mark">?</span>;
         T::AssetManager::transfer_from(<span class="kw-2">&amp;</span>collateral_asset_id, holder, <span class="kw-2">&amp;</span>free_reserves_acc, amount)<span class="question-mark">?</span>;
-        PendingFreeReserves::&lt;T&gt;::mutate(|vec| vec.push((collateral_asset_id, amount)));
+        <span class="kw">let </span>block_number = frame_system::Pallet::&lt;T&gt;::block_number().saturating_add(One::one());
+        PendingFreeReserves::&lt;T&gt;::mutate(block_number, |map| {
+            <span class="kw">let </span>current_amount = map.entry(collateral_asset_id).or_default();
+            <span class="kw-2">*</span>current_amount = current_amount.saturating_add(amount);
+        });
         <span class="prelude-val">Ok</span>(())
     }
 
