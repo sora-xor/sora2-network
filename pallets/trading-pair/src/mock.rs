@@ -32,8 +32,8 @@ use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
+    hash, mock_assets_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -41,6 +41,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
@@ -66,13 +67,12 @@ construct_runtime! {
     }
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 
-pub const ALICE: AccountId = 1;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
-pub const DEX_ID: DEXId = 0;
+pub const ALICE: AccountId = AccountId32::new([1; 32]);
+pub const DEX_ID: DEXId = DEXId::Polkaswap;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
@@ -142,8 +142,6 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-type DEXId = u32;
-
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
@@ -153,29 +151,9 @@ impl common::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = 0;
 }
 
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = AccountId;
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
 
 parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
@@ -326,7 +304,7 @@ impl Default for ExtBuilder {
                     },
                 ),
                 (
-                    1,
+                    DEXId::PolkaswapXSTUSD,
                     DEXInfo {
                         base_asset_id: XSTUSD,
                         synthetic_base_asset_id: XST,

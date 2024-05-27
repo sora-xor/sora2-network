@@ -34,9 +34,9 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
-    VAL, XOR,
+    self, balance, mock_assets_config, Amount, AssetId32, AssetName, AssetSymbol,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -86,7 +86,8 @@ parameter_types! {
     pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
-    pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;
+    pub const DEXIdValue: DEXId = DEXId::Polkaswap;
+    pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
     pub GetParliamentAccountId: AccountId = account_from_str("sora-parliament");
 }
@@ -176,29 +177,9 @@ impl currencies::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub GetBuyBackAccountId: AccountId = account_from_str("buy-back");
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = XorId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

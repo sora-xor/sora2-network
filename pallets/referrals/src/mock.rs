@@ -32,29 +32,32 @@ use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP,
-    VAL, XOR, XST,
+    mock_assets_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{self, Perbill};
 
 type DEXId = common::DEXId;
-type AccountId = u64;
+type AccountId = AccountId32;
+type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const MINTING_ACCOUNT: AccountId = 4;
-pub const REFERRALS_RESERVES_ACC: AccountId = 22;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub const ALICE: AccountId32 = AccountId32::new([1; 32]);
+
+pub const BOB: AccountId32 = AccountId32::new([2; 32]);
+
+pub const MINTING_ACCOUNT: AccountId = AccountId32::new([4; 32]);
+pub const REFERRALS_RESERVES_ACC: AccountId = AccountId32::new([22; 32]);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -114,29 +117,9 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
-    pub GetBuyBackSupplyAssets: Vec<common::AssetId32<PredefinedAssetId>> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = u64;
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
-    type AssetId = common::AssetId32<PredefinedAssetId>;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
 
 impl common::Config for Runtime {
     type DEXId = DEXId;

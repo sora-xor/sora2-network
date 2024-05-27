@@ -33,6 +33,7 @@ use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -53,11 +54,11 @@ construct_runtime! {
     }
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const JOHN: AccountId = 3;
+pub const ALICE: AccountId = AccountId32::new([1; 32]);
+pub const BOB: AccountId = AccountId32::new([2; 32]);
+pub const JOHN: AccountId = AccountId32::new([3; 32]);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
