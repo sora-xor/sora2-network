@@ -182,7 +182,7 @@ fn check_xyk_pool_small_reserves() {
             None
         ));
 
-        let (info, _, _) = LiquidityProxyPallet::inner_quote(
+        let (info, _) = LiquidityProxyPallet::inner_quote(
             DEX.into(),
             &XOR,
             &asset,
@@ -265,7 +265,7 @@ fn check_tbc_pool_small_reserves() {
             None
         ));
 
-        let (info, _, _) = LiquidityProxyPallet::inner_quote(
+        let (info, _) = LiquidityProxyPallet::inner_quote(
             DEX.into(),
             &XOR,
             &asset,
