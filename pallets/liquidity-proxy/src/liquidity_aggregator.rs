@@ -35,11 +35,13 @@ use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
+    crate::{Config, Error},
     common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::{fixed, Balance},
     itertools::Itertools,
     sp_runtime::traits::Zero,
+    sp_runtime::DispatchError,
     sp_std::collections::btree_map::BTreeMap,
     sp_std::collections::vec_deque::VecDeque,
     sp_std::vec,
@@ -109,15 +111,18 @@ where
 
     /// Aggregates the liquidity from the provided liquidity sources.
     /// Liquidity sources provide discretized liquidity curve by chunks and then Liquidity Aggregator selects the best chunks from different sources to gain the best swap amount.
-    pub fn aggregate_swap_outcome(
+    pub fn aggregate_swap_outcome<T: Config>(
         mut self,
         amount: Balance,
-    ) -> Option<(
-        SwapInfo<LiquiditySourceType, Balance>,
-        AggregatedSwapOutcome<AssetId, LiquiditySourceType, Balance>,
-    )> {
+    ) -> Result<
+        (
+            SwapInfo<LiquiditySourceType, Balance>,
+            AggregatedSwapOutcome<AssetId, LiquiditySourceType, Balance>,
+        ),
+        DispatchError,
+    > {
         if self.liquidity_quotations.is_empty() {
-            return None;
+            return Err(Error::<T>::InsufficientLiquidity.into());
         }
 
         let mut remaining_amount = amount;
@@ -127,7 +132,9 @@ where
         while remaining_amount > Balance::zero() {
             let candidates = self.find_best_price_candidates(&locked_sources);
 
-            let mut source = candidates.first()?;
+            let mut source = candidates
+                .first()
+                .ok_or(Error::<T>::InsufficientLiquidity)?;
 
             // if there are several candidates with the same best price,
             // then we need to select the source that already been selected
@@ -138,14 +145,21 @@ where
                 }
             }
 
-            let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
-            let mut chunk = discrete_quotation.chunks.pop_front()?;
+            let discrete_quotation = self
+                .liquidity_quotations
+                .get_mut(source)
+                .ok_or(Error::<T>::InsufficientLiquidity)?;
+            let mut chunk = discrete_quotation
+                .chunks
+                .pop_front()
+                .ok_or(Error::<T>::InsufficientLiquidity)?;
             let mut payback = SwapChunk::zero();
 
             let total = Self::sum_chunks(selected.entry(source.clone()).or_default());
             let (aligned, remainder) = discrete_quotation
                 .limits
-                .align_extra_chunk_max(total.clone(), chunk.clone())?;
+                .align_extra_chunk_max(total.clone(), chunk.clone())
+                .ok_or(Error::<T>::CalculationError)?;
             if !remainder.is_zero() {
                 // max amount (already selected + new chunk) exceeded
                 chunk = aligned;
@@ -157,7 +171,8 @@ where
             if chunk > remaining_side_amount {
                 let rescaled = chunk
                     .clone()
-                    .rescale_by_side_amount(remaining_side_amount)?;
+                    .rescale_by_side_amount(remaining_side_amount)
+                    .ok_or(Error::<T>::CalculationError)?;
                 payback = payback.saturating_add(chunk.clone().saturating_sub(rescaled.clone()));
                 chunk = rescaled;
             }
@@ -179,18 +194,27 @@ where
                     chunks.push_back(chunk.clone())
                 })
                 .or_insert(vec![chunk.clone()].into());
-            remaining_amount = remaining_amount.checked_sub(remaining_delta)?;
+            remaining_amount = remaining_amount
+                .checked_sub(remaining_delta)
+                .ok_or(Error::<T>::CalculationError)?;
 
             if remaining_amount.is_zero() {
                 let mut to_delete = Vec::new();
                 for (source, chunks) in &mut selected {
                     let total = Self::sum_chunks(chunks);
-                    let discrete_quotation = self.liquidity_quotations.get_mut(source)?;
+                    let discrete_quotation = self
+                        .liquidity_quotations
+                        .get_mut(source)
+                        .ok_or(Error::<T>::InsufficientLiquidity)?;
 
-                    let (aligned, remainder) = discrete_quotation.limits.align_chunk(total)?;
+                    let (aligned, remainder) = discrete_quotation
+                        .limits
+                        .align_chunk(total)
+                        .ok_or(Error::<T>::CalculationError)?;
                     if !remainder.is_zero() {
                         remaining_amount = remaining_amount
-                            .checked_add(*remainder.get_associated_field(self.variant).amount())?;
+                            .checked_add(*remainder.get_associated_field(self.variant).amount())
+                            .ok_or(Error::<T>::CalculationError)?;
                         locked_sources.push(source.clone());
 
                         if aligned.is_zero() {
@@ -210,14 +234,19 @@ where
                                     break;
                                 };
                                 if chunk <= remainder {
-                                    let value = remainder.amount().checked_sub(
-                                        *chunk.get_associated_field(self.variant).amount(),
-                                    )?;
+                                    let value = remainder
+                                        .amount()
+                                        .checked_sub(
+                                            *chunk.get_associated_field(self.variant).amount(),
+                                        )
+                                        .ok_or(Error::<T>::CalculationError)?;
                                     remainder.set_amount(value);
                                     discrete_quotation.chunks.push_front(chunk);
                                 } else {
-                                    let remainder_chunk =
-                                        chunk.clone().rescale_by_side_amount(remainder)?;
+                                    let remainder_chunk = chunk
+                                        .clone()
+                                        .rescale_by_side_amount(remainder)
+                                        .ok_or(Error::<T>::CalculationError)?;
                                     let chunk = chunk.saturating_sub(remainder_chunk.clone());
                                     chunks.push_back(chunk);
                                     discrete_quotation.chunks.push_front(remainder_chunk);
@@ -249,11 +278,13 @@ where
                 source.clone(),
                 SwapAmount::with_variant(self.variant, desired_part, result_part),
             ));
-            result_amount = result_amount.checked_add(result_part)?;
+            result_amount = result_amount
+                .checked_add(result_part)
+                .ok_or(Error::<T>::CalculationError)?;
             fee = fee.merge(total.fee);
         }
 
-        Some((
+        Ok((
             swap_info,
             AggregatedSwapOutcome {
                 distribution,
@@ -309,9 +340,12 @@ where
 #[cfg(test)]
 mod tests {
     use crate::liquidity_aggregator::*;
+    use crate::mock::Runtime;
+    use crate::Error;
     use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
     use common::prelude::{OutcomeFee, SwapAmount, SwapVariant};
     use common::{balance, LiquiditySourceType, XOR, XST};
+    use frame_support::assert_err;
     use sp_std::collections::vec_deque::VecDeque;
 
     type AssetId = common::AssetId32<common::PredefinedAssetId>;
@@ -884,6 +918,25 @@ mod tests {
     }
 
     #[test]
+    fn check_empty_chunks() {
+        let aggregator =
+            LiquidityAggregator::<AssetId, LiquiditySourceType>::new(SwapVariant::WithDesiredInput);
+        assert_err!(
+            aggregator.aggregate_swap_outcome::<Runtime>(balance!(1)),
+            Error::<Runtime>::InsufficientLiquidity
+        );
+    }
+
+    #[test]
+    fn check_not_enough_liquidity() {
+        let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
+        assert_err!(
+            aggregator.aggregate_swap_outcome::<Runtime>(balance!(10000)),
+            Error::<Runtime>::InsufficientLiquidity
+        );
+    }
+
+    #[test]
     fn check_find_best_price_candidates_with_desired_input_and_equal_chunks() {
         let mut aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
 
@@ -1066,7 +1119,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_input_and_equal_chunks() {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(10))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1085,7 +1140,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(20))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1104,7 +1161,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(30))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
@@ -1132,7 +1191,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(40)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(40))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
@@ -1160,7 +1221,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(50))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
@@ -1196,7 +1259,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(60))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
@@ -1232,7 +1297,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_output_and_equal_chunks() {
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(100))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
                 AggregatedSwapOutcome::new(
@@ -1248,7 +1315,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(200))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1267,7 +1336,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(300))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
@@ -1295,7 +1366,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(400)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(400))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
@@ -1323,7 +1396,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(500)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(500))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
@@ -1351,7 +1426,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(600)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(600))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
@@ -1387,7 +1464,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(700)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(700))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
@@ -1602,7 +1681,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_input_and_different_chunks() {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(10))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1621,7 +1702,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(20))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1640,7 +1723,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(30))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
@@ -1668,7 +1753,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(40)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(40))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(18), balance!(172))),
@@ -1696,7 +1783,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(50))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
@@ -1732,7 +1821,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(60))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
@@ -1771,7 +1862,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_output_and_different_chunks() {
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(100))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
                 AggregatedSwapOutcome::new(
@@ -1787,7 +1880,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(150)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(150))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1806,7 +1901,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(250)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(250))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(6), balance!(60))),
@@ -1834,7 +1931,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(340)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(340))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (
@@ -1865,7 +1964,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(405)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(405))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (
@@ -1901,7 +2002,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(505)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(505))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (
@@ -1943,7 +2046,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_input_and_max_amount_limits() {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(10))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1962,7 +2067,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(20))
+                .unwrap(),
             (
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
@@ -1981,7 +2088,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(30))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
@@ -2009,7 +2118,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(50)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(50))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
@@ -2045,7 +2156,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(60)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(60))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(23), balance!(214))),
@@ -2087,7 +2200,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_output_and_max_amount_limits() {
         let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(100))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
                 AggregatedSwapOutcome::new(
@@ -2103,7 +2218,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(200))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(1), balance!(10))),
@@ -2131,7 +2248,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(300))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (
@@ -2162,7 +2281,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(500)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(500))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
@@ -2195,7 +2316,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(600)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(600))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
@@ -2231,7 +2354,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_max_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(700)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(700))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (
@@ -2273,7 +2398,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_input_and_min_amount_limits() {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(10)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(10))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
                 AggregatedSwapOutcome::new(
@@ -2289,7 +2416,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(20)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(20))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(20), balance!(190)))]),
                 AggregatedSwapOutcome::new(
@@ -2306,7 +2435,9 @@ mod tests {
         // order-book appears only when it exceeds the min amount
         let aggregator = get_liquidity_aggregator_with_desired_input_and_min_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(30)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(30))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
@@ -2337,7 +2468,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_output_and_min_amount_limits() {
         let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(100)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(100))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
                 AggregatedSwapOutcome::new(
@@ -2353,7 +2486,9 @@ mod tests {
 
         let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(200)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(200))
+                .unwrap(),
             (
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(21), balance!(200)))]),
                 AggregatedSwapOutcome::new(
@@ -2370,7 +2505,9 @@ mod tests {
         // order-book appears only when it exceeds the min amount
         let aggregator = get_liquidity_aggregator_with_desired_output_and_min_amount_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(300)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(300))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
@@ -2401,7 +2538,9 @@ mod tests {
     fn check_aggregate_swap_outcome_with_desired_input_and_precision_limits() {
         let aggregator = get_liquidity_aggregator_with_desired_input_and_precision_limits();
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(10.65)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(10.65))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (
@@ -2437,7 +2576,7 @@ mod tests {
             get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output();
         assert_eq!(
             aggregator
-                .aggregate_swap_outcome(balance!(101.585))
+                .aggregate_swap_outcome::<Runtime>(balance!(101.585))
                 .unwrap(),
             (
                 SwapInfo::from([
@@ -2471,7 +2610,7 @@ mod tests {
             get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input();
         assert_eq!(
             aggregator
-                .aggregate_swap_outcome(balance!(101.585))
+                .aggregate_swap_outcome::<Runtime>(balance!(101.585))
                 .unwrap(),
             (
                 SwapInfo::from([
@@ -2524,7 +2663,9 @@ mod tests {
         );
 
         assert_eq!(
-            aggregator.aggregate_swap_outcome(balance!(1.5)).unwrap(),
+            aggregator
+                .aggregate_swap_outcome::<Runtime>(balance!(1.5))
+                .unwrap(),
             (
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(0.5), balance!(4))),

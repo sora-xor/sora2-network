@@ -114,6 +114,7 @@ parameter_types! {
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl assets::Config for Runtime {
@@ -173,10 +174,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
