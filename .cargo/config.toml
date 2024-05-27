@@ -7,6 +7,3 @@ opt-level = 's'
 
 [profile.test]
 debug = false
-
-[env]
-PARACHAIN_METADATA_BRANCH = "kusama-2.2.0"
