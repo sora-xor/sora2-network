@@ -60,9 +60,10 @@ use common::{
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::traits::Zero;
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::{traits::One, DispatchError, DispatchResult, Saturating};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
@@ -80,8 +81,6 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"multicollateral-bonding-curve-pool";
 pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 pub const TECH_ACCOUNT_FREE_RESERVES: &[u8] = b"free_reserves";
-
-pub const RETRY_DISTRIBUTION_FREQUENCY: u32 = 1000;
 
 pub use pallet::*;
 
@@ -177,6 +176,8 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 
 #[frame_support::pallet]
 pub mod pallet {
+    use sp_std::collections::btree_map::BTreeMap;
+
     use super::*;
     use common::Vesting;
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
@@ -190,6 +191,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + technical::Config + permissions::Config
     {
+        const RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -221,7 +223,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -232,12 +234,9 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
-            if (block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
-                let elems = Pallet::<T>::free_reserves_distribution_routine().unwrap_or_default();
-                <T as Config>::WeightInfo::on_initialize(elems)
-            } else {
-                <T as Config>::WeightInfo::on_initialize(0)
-            }
+            let elems =
+                Pallet::<T>::free_reserves_distribution_routine(block_number).unwrap_or_default();
+            <T as Config>::WeightInfo::on_initialize(elems)
         }
     }
 
@@ -365,6 +364,8 @@ pub mod pallet {
         PriceBiasChanged(Balance),
         /// Price change config was changed. [New Price Change Rate, New Price Change Step]
         PriceChangeConfigChanged(Balance, Balance),
+        /// Free reserves distribution routine failed. [Error]
+        FailedToDistributeFreeReserves(DispatchError),
     }
 
     #[pallet::error]
@@ -412,8 +413,13 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn pending_free_reserves)]
-    pub type PendingFreeReserves<T: Config> =
-        StorageValue<_, Vec<(AssetIdOf<T>, Balance)>, ValueQuery>;
+    pub type PendingFreeReserves<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        BlockNumberFor<T>,
+        BTreeMap<AssetIdOf<T>, Balance>,
+        ValueQuery,
+    >;
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPrice() -> Fixed {
@@ -663,19 +669,11 @@ impl<T: Config> BuyMainAsset<T> {
                 return Ok(());
             }
 
-            if !Pallet::<T>::attempt_free_reserves_distribution(
+            Pallet::<T>::add_free_reserves_to_pending_list(
                 &self.reserves_account_id,
-                &self.collateral_asset_id,
+                self.collateral_asset_id.clone(),
                 free_amount,
-            )
-            .is_ok()
-            {
-                Pallet::<T>::add_free_reserves_to_pending_list(
-                    &self.reserves_account_id,
-                    self.collateral_asset_id.clone(),
-                    free_amount,
-                )?;
-            }
+            )?;
             Ok(())
         })
     }
@@ -758,21 +756,32 @@ impl<T: Config> BuyMainAsset<T> {
 
 #[allow(non_snake_case)]
 impl<T: Config> Pallet<T> {
-    fn free_reserves_distribution_routine() -> Result<u32, DispatchError> {
+    fn free_reserves_distribution_routine(now: BlockNumberFor<T>) -> Result<u32, DispatchError> {
         let free_reserves_acc =
             FreeReservesAccountId::<T>::get().ok_or(Error::<T>::FreeReservesAccountNotSet)?;
-        PendingFreeReserves::<T>::mutate(|vec| {
-            let len = vec.len();
-            vec.retain(|(collateral_asset_id, free_amount)| {
-                !Pallet::<T>::attempt_free_reserves_distribution(
-                    &free_reserves_acc,
-                    &collateral_asset_id,
-                    *free_amount,
-                )
-                .is_ok()
+        let mut count = 0;
+        let mut failed_to_distribute = sp_std::vec![];
+        for (collateral_asset_id, amount) in PendingFreeReserves::<T>::take(now) {
+            if let Err(e) = Pallet::<T>::attempt_free_reserves_distribution(
+                &free_reserves_acc,
+                &collateral_asset_id,
+                amount,
+            ) {
+                failed_to_distribute.push((collateral_asset_id, amount));
+                Self::deposit_event(Event::<T>::FailedToDistributeFreeReserves(e));
+            }
+            count += 1;
+        }
+        if !failed_to_distribute.is_empty() {
+            let block_number = now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY);
+            PendingFreeReserves::<T>::mutate(block_number, |map| {
+                for (collateral_asset_id, amount) in failed_to_distribute {
+                    let current_amount = map.entry(collateral_asset_id).or_default();
+                    *current_amount = current_amount.saturating_add(amount);
+                }
             });
-            Ok(len.try_into().unwrap_or(u32::max_value()))
-        })
+        }
+        Ok(count)
     }
 
     fn add_free_reserves_to_pending_list(
@@ -783,7 +792,11 @@ impl<T: Config> Pallet<T> {
         let free_reserves_acc =
             FreeReservesAccountId::<T>::get().ok_or(Error::<T>::FreeReservesAccountNotSet)?;
         T::AssetManager::transfer_from(&collateral_asset_id, holder, &free_reserves_acc, amount)?;
-        PendingFreeReserves::<T>::mutate(|vec| vec.push((collateral_asset_id, amount)));
+        let block_number = frame_system::Pallet::<T>::block_number().saturating_add(One::one());
+        PendingFreeReserves::<T>::mutate(block_number, |map| {
+            let current_amount = map.entry(collateral_asset_id).or_default();
+            *current_amount = current_amount.saturating_add(amount);
+        });
         Ok(())
     }
 

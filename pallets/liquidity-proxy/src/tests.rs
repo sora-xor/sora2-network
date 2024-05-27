@@ -31,7 +31,7 @@
 use crate::mock::*;
 use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
 use crate::weights::WeightInfo;
-use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
+use crate::{test_utils, BatchReceiverInfo, Error, ExchangePath, QuoteInfo, SwapBatchInfo};
 use common::prelude::{
     AssetName, AssetSymbol, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
 };
@@ -1508,28 +1508,6 @@ fn test_is_path_available_should_pass_5() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        assets::Pallet::<Runtime>::register_asset_id(
-            alice(),
-            XST.into(),
-            AssetSymbol(b"XST".to_vec()),
-            AssetName(b"SORA Synthetics".to_vec()),
-            0,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ).expect("failed to register XST asset");
-        assets::Pallet::<Runtime>::register_asset_id(
-            alice(),
-            XSTUSD.into(),
-            AssetSymbol(b"XSTUSD".to_vec()),
-            AssetName(b"SORA Synthetic USD".to_vec()),
-            0,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        ).expect("failed to register XSTUSD asset");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, XST).expect("failed to register pair");
@@ -3645,5 +3623,39 @@ fn test_xorless_transfer_fails_on_transfer() {
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
+    });
+}
+
+#[test]
+fn test_select_best_path() {
+    let mut ext = ExtBuilder::default()
+        .with_xyk_pool()
+        .with_xyk_pool_xstusd()
+        .build();
+    ext.execute_with(|| {
+        let dex_info = DexManager::dex_id(DEX_D_ID).unwrap();
+        let asset_paths = ExchangePath::<Runtime>::new_trivial(&dex_info, XSTUSD, XST).unwrap();
+        let reversed_paths = asset_paths.iter().cloned().rev().collect();
+        let result = LiquidityProxy::select_best_path(
+            &dex_info,
+            asset_paths,
+            common::prelude::SwapVariant::WithDesiredInput,
+            balance!(1),
+            &mcbc_excluding_filter(DEX_D_ID),
+            false,
+            true,
+        )
+        .unwrap();
+        let reversed_result = LiquidityProxy::select_best_path(
+            &dex_info,
+            reversed_paths,
+            common::prelude::SwapVariant::WithDesiredInput,
+            balance!(1),
+            &mcbc_excluding_filter(DEX_D_ID),
+            false,
+            true,
+        )
+        .unwrap();
+        assert_eq!(result, reversed_result);
     });
 }

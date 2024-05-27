@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 84,
+    spec_version: 85,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 84,
+    transaction_version: 85,
     state_version: 0,
 };
 
@@ -1703,6 +1703,7 @@ parameter_types! {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
@@ -2929,7 +2930,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(quote_info, _, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(quote_info, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(0),
                 fee: quote_info.outcome.fee,
