@@ -10,13 +10,8 @@ repository = 'https://github.com/sora-xor/sora2-network'
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3" }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
-serde = { version = "1.0.101", features = ["derive"] }
 sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
-common = { path = "../../../common" }
 rewards-runtime-api = { path = "../runtime-api" }

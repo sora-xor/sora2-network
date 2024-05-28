@@ -1106,6 +1106,19 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
 
+        // Get max amount for the limit
+        let limit = T::GetSyntheticBaseBuySellLimit::get();
+
+        if limit.is_zero() {
+            return Ok((quotation, Weight::zero()));
+        }
+
+        quotation.limits.max_amount = if input_asset_id == synthetic_base_asset_id {
+            Some(SideAmount::Input(limit))
+        } else {
+            Some(SideAmount::Output(limit))
+        };
+
         // Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
         // It is necessary to use as much liquidity from the source as we can.
         let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
@@ -1119,14 +1132,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
         let mut monolith = SwapChunk::new(input_amount, output_amount, fee);
-
-        // Get max amount for the limit
-        let limit = T::GetSyntheticBaseBuySellLimit::get();
-        quotation.limits.max_amount = if input_asset_id == synthetic_base_asset_id {
-            Some(SideAmount::Input(limit))
-        } else {
-            Some(SideAmount::Output(limit))
-        };
 
         // If amount exceeds the limit, it is necessary to round the amount to the limit.
         if input_asset_id == synthetic_base_asset_id {

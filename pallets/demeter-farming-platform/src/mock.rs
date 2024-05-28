@@ -4,8 +4,8 @@ use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, PSWAP, TBCD,
-    VAL, XOR, XST, XSTUSD,
+    balance, fixed, hash, mock_pallet_balances_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
+    DEMETER_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -126,6 +126,8 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl assets::Config for Runtime {
@@ -185,10 +187,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
@@ -221,8 +224,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {
@@ -286,24 +290,7 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,

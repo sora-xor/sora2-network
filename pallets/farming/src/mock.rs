@@ -32,8 +32,8 @@ use crate::{self as farming, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
-    PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    balance, fixed, hash, mock_pallet_balances_config, AssetName, AssetSymbol, DEXInfo, Fixed,
+    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
@@ -110,7 +110,6 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
-    pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -124,6 +123,8 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
     pub const MinimumPeriod: u64 = 5;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -201,17 +202,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -300,10 +291,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
@@ -336,8 +328,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {
