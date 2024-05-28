@@ -84,6 +84,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = 104;
     pub GetCrowdloanRewardsAccountId: AccountId = 105;
     pub const MinimumPeriod: u64 = 5;
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl frame_system::Config for Runtime {
@@ -129,6 +130,7 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl assets::Config for Runtime {
@@ -196,10 +198,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -213,8 +216,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {

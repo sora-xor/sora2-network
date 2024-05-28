@@ -130,6 +130,8 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub const MinimumPeriod: u64 = 5;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -396,10 +398,11 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
@@ -428,8 +431,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = ();
     type BuyBackHandler = LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {
@@ -572,6 +576,22 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(0),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XSTUSD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XST,
+                    balance!(0),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"XST".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
                 (
@@ -974,6 +994,12 @@ impl ExtBuilder {
             )],
             ..Default::default()
         }
+    }
+
+    pub fn with_xyk_pool_xstusd(mut self) -> Self {
+        self.xyk_reserves
+            .push((DEX_D_ID, XSTUSD, (balance!(1000), balance!(1000))));
+        self
     }
 
     pub fn with_xyk_pool(mut self) -> Self {

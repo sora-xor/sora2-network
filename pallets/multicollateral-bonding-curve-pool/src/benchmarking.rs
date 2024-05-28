@@ -70,7 +70,10 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     assert_eq!(event, &system_event);
 }
 
-fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
+fn setup_benchmark<T>() -> Result<(), &'static str>
+where
+    T: Config + pool_xyk::Config,
+{
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
     #[cfg(test)]
@@ -117,7 +120,10 @@ fn gen_asset_id<T: Config>(n: u32) -> AssetIdOf<T> {
     asset_id
 }
 
-fn register_tbc_for_asset<T: Config>(asset_id: AssetIdOf<T>) {
+fn register_tbc_for_asset<T>(asset_id: AssetIdOf<T>)
+where
+    T: Config + pool_xyk::Config,
+{
     let owner = alice::<T>();
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
         RawOrigin::Signed(owner.clone()).into();
@@ -140,7 +146,10 @@ fn register_tbc_for_asset<T: Config>(asset_id: AssetIdOf<T>) {
     .unwrap();
 }
 
-fn add_pending<T: Config>(n: u32) {
+fn add_pending<T>(n: u32)
+where
+    T: Config + pool_xyk::Config,
+{
     let mut pending = sp_std::collections::btree_map::BTreeMap::<AssetIdOf<T>, Balance>::new();
     for i in 0..n {
         let asset_id = gen_asset_id::<T>(i);

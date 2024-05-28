@@ -10,14 +10,17 @@ repository = "https://github.com/sora-xor/sora2-network"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0" }
 clap = { version = "=4.3.17", features = ["derive"] }
 jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
 tokio = { version = "1.18.2", features = ["macros", "rt-multi-thread", "sync"] }
 anyhow = "1.0.51"
 env_logger = "0.10.0"
+hex = "0.4.3"
 
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
