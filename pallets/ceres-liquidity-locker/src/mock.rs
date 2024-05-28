@@ -2,7 +2,9 @@ use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, DEXInfo, PSWAP, TBCD, VAL, XOR, XST};
+use common::{
+    balance, fixed, hash, mock_pallet_balances_config, DEXInfo, PSWAP, TBCD, VAL, XOR, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -46,7 +48,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
     pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
-    pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = 3u128;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -134,17 +135,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl orml_tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
