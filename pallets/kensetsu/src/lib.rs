@@ -785,7 +785,9 @@ pub mod pallet {
             new_risk_parameters: CollateralRiskParameters,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            if !T::PriceTools::is_asset_registered(&collateral_asset_id) {
+            if !T::PriceTools::is_asset_registered(&collateral_asset_id)
+                && collateral_asset_id != XOR.into()
+            {
                 T::PriceTools::register_asset(&collateral_asset_id)?;
             }
             Self::upsert_collateral_info(
