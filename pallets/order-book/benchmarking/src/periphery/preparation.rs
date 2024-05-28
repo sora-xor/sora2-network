@@ -454,13 +454,16 @@ pub fn quote<T: Config>(
         base: VAL.into(),
         quote: XOR.into(),
     };
+
+    let max_lot_size = balance!(1000);
+
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Root.into(),
         order_book_id,
         balance!(0.00001),
         balance!(0.00001),
         balance!(1),
-        balance!(1000),
+        max_lot_size,
     )
     .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
@@ -475,19 +478,6 @@ pub fn quote<T: Config>(
         false,
     );
 
-    let (total_bids_amount, _) = order_book
-        .sum_market(
-            data_layer
-                .get_aggregated_bids(&order_book.order_book_id)
-                .iter()
-                .rev(),
-            None,
-            false,
-        )
-        .unwrap();
-    assert!(total_bids_amount.is_base());
-    let total_bids_base_amount = total_bids_amount.value();
-
     debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
@@ -496,7 +486,7 @@ pub fn quote<T: Config>(
     let dex_id = order_book_id.dex_id;
     let input_asset_id = order_book_id.base;
     let output_asset_id = order_book_id.quote;
-    let amount = QuoteAmount::with_desired_input(*total_bids_base_amount.balance());
+    let amount = QuoteAmount::with_desired_input(max_lot_size);
     let deduce_fee = true;
     (dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
 }

@@ -24,14 +24,10 @@ frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "po
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../../common", default-features = false }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../../demeter-farming-platform", default-features = false }
 permissions = { path = "../../permissions", default-features = false }
-serde = { version = "1.0.101", optional = true, features = [
-    "derive",
-], default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../../multicollateral-bonding-curve-pool", default-features = false }
 dex-manager = { path = "../../dex-manager", default-features = false }
@@ -45,7 +41,6 @@ hex-literal = "0.4.1"
 assets = { path = "../../assets" }
 common = { path = "../../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
-serde = { version = "1.0.101", features = ["derive"] }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
@@ -61,9 +56,8 @@ dex-manager = { path = "../../dex-manager" }
 [features]
 default = ["std"]
 std = [
-    'serde',
     'codec/std',
-    "scale-info/std",
+    'scale-info/std',
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',

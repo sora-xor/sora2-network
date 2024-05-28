@@ -28,14 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::dispatch::DispatchError;
-use frame_support::ensure;
-
 use common::prelude::{Balance, Fixed, FixedWrapper};
 use common::{fixed_wrapper, AssetIdOf, TradingPair};
+use frame_support::dispatch::DispatchError;
+use frame_support::ensure;
+use frame_support::traits::Get;
+use sp_runtime::traits::Zero;
 
 use crate::{to_balance, to_fixed_wrapper};
-
 use crate::{Config, Error, Pallet};
 
 impl<T: Config> Pallet<T> {
@@ -211,6 +211,28 @@ impl<T: Config> Pallet<T> {
                 to_balance!(x_in - x_in_without_fee),
             ))
         }
+    }
+
+    /// Calculates max amount of output asset for swap with desired output.
+    pub fn calc_max_output(
+        fee_fraction: Fixed,
+        get_fee_from_destination: bool,
+        reserve_output: Balance,
+        deduce_fee: bool,
+    ) -> Result<Balance, DispatchError> {
+        if reserve_output.is_zero() {
+            return Ok(Balance::zero());
+        }
+
+        let mut max_output = if get_fee_from_destination && deduce_fee {
+            to_balance!(FixedWrapper::from(reserve_output) * (fixed_wrapper!(1) - fee_fraction))
+        } else {
+            reserve_output
+        };
+
+        // reduce by `IrreducibleReserve` percent, because (reserve - output) must be > 0
+        max_output = max_output.saturating_sub(T::IrreducibleReserve::get() * max_output);
+        Ok(max_output)
     }
 
     pub fn get_base_asset_part_from_pool_account(

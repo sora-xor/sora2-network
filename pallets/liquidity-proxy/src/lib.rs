@@ -1620,9 +1620,8 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let (swap_info, aggregate_swap_outcome) = aggregator
-            .aggregate_swap_outcome(amount.amount())
-            .ok_or(Error::<T>::UnavailableExchangePath)?;
+        let (swap_info, aggregate_swap_outcome) =
+            aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
 
         let mut rewards = Rewards::new();
 

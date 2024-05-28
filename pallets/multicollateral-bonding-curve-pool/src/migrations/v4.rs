@@ -9,8 +9,6 @@ use frame_support::traits::OnRuntimeUpgrade;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::One;
 use sp_std::collections::btree_map::BTreeMap;
-
-#[cfg(feature = "try-runtime")]
 use sp_std::prelude::Vec;
 
 pub mod old_storage {

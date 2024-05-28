@@ -110,10 +110,8 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
     "tuples-96",
 ] }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-system-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-try-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-pallet-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-democracy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -143,7 +141,6 @@ pallet-bags-list = { git = "https://github.com/sora-xor/substrate.git", branch =
 
 sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-inherents = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -237,7 +234,6 @@ std = [
     "oracle-proxy-runtime-api/std",
     "order-book/std",
     "order-book-benchmarking/std",
-    "pallet-aura/std",
     "pallet-authorship/std",
     "pallet-babe/std",
     "pallet-balances/std",
@@ -272,7 +268,6 @@ std = [
     "serde/std",
     "sp-api/std",
     "sp-block-builder/std",
-    "sp-consensus-aura/std",
     "sp-consensus-babe/std",
     "sp-core/std",
     "sp-inherents/std",
@@ -346,7 +341,6 @@ runtime-benchmarks = [
     "faucet/runtime-benchmarks",
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
-    "frame-system-benchmarking",
     "frame-system/runtime-benchmarks",
     "hermes-governance-platform/runtime-benchmarks",
     "iroha-migration/runtime-benchmarks",
@@ -354,30 +348,24 @@ runtime-benchmarks = [
     "kensetsu-benchmarking/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
     "liquidity-proxy-benchmarking/runtime-benchmarks",
-    "multicollateral-bonding-curve-pool/runtime-benchmarks",
-    "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "oracle-proxy/runtime-benchmarks",
     "order-book-benchmarking",
     "order-book-benchmarking/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
     "pool-xyk-benchmarking/runtime-benchmarks",
-    "price-tools/runtime-benchmarks",
-    "pswap-distribution-benchmarking/runtime-benchmarks",
-    "pswap-distribution/runtime-benchmarks",
-    "pswap-distribution/runtime-benchmarks",
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "pswap-distribution-benchmarking/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "price-tools/runtime-benchmarks",
     "vested-rewards/runtime-benchmarks",
     "xor-fee/runtime-benchmarks",
     "xst-benchmarking",
     "xst-benchmarking/runtime-benchmarks",
-    "dispatch/runtime-benchmarks",
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
@@ -426,7 +414,6 @@ try-runtime = [
     "multicollateral-bonding-curve-pool/try-runtime",
     "oracle-proxy/try-runtime",
     "order-book/try-runtime",
-    "pallet-aura/try-runtime",
     "pallet-authorship/try-runtime",
     "pallet-babe/try-runtime",
     "pallet-balances/try-runtime",

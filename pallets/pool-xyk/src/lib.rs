@@ -40,9 +40,10 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
+    SwapVariant,
 };
 use common::{
     fixed_wrapper, AssetIdOf, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
@@ -527,9 +528,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
-            fail!(Error::<T>::PoolIsEmpty);
-        } else if reserve_input <= 0 || reserve_output <= 0 {
-            fail!(Error::<T>::PoolIsInvalid);
+            return Ok((quotation, Weight::zero()));
         }
 
         // Decide which side should be used for fee.
@@ -539,15 +538,30 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             output_asset_id,
         )?;
 
+        let variant = amount.variant();
+        let amount = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => desired_amount_in,
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let max_output = Pallet::<T>::calc_max_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    reserve_output,
+                    deduce_fee,
+                )?;
+                quotation.limits.max_amount = Some(SideAmount::Output(max_output));
+
+                max_output.min(desired_amount_out)
+            }
+        };
+
         let common_step = amount
-            .amount()
             .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
         // volume & step
         let mut volumes = Vec::new();
 
-        let mut remaining = amount.amount();
+        let mut remaining = amount;
         for i in 1..=samples_count - 1 {
             let volume = common_step
                 .checked_mul(i as Balance)
@@ -555,13 +569,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             volumes.push((volume, common_step));
             remaining = remaining.saturating_sub(common_step);
         }
-        volumes.push((amount.amount(), remaining));
+        volumes.push((amount, remaining));
 
         let mut sub_sum = Balance::zero();
         let mut sub_fee = Balance::zero();
 
-        match amount {
-            QuoteAmount::WithDesiredInput { .. } => {
+        match variant {
+            SwapVariant::WithDesiredInput => {
                 for (volume, step) in volumes {
                     let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
                         T::GetFee::get(),
@@ -586,7 +600,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                         .push_back(SwapChunk::new(step, output, fee_chunk));
                 }
             }
-            QuoteAmount::WithDesiredOutput { .. } => {
+            SwapVariant::WithDesiredOutput => {
                 for (volume, step) in volumes {
                     let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
                         T::GetFee::get(),
@@ -841,6 +855,7 @@ pub mod pallet {
         EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
     };
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
@@ -884,8 +899,6 @@ pub mod pallet {
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         type OnPoolReservesChanged: OnPoolReservesChanged<AssetIdOf<Self>>;
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         type GetChameleonPoolBaseAssetId: orml_traits::GetByKey<
             AssetIdOf<Self>,
@@ -902,6 +915,11 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        /// Percent of reserve which is not involved in swap
+        #[pallet::constant]
+        type IrreducibleReserve: Get<Percent>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.

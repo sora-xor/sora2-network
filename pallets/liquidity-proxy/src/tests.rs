@@ -106,6 +106,11 @@ fn test_quote_should_fail_with_aggregation_error() {
             false,
             true,
         );
+
+        #[cfg(feature = "wip")] // ALT
+        assert_noop!(result, Error::<Runtime>::InsufficientLiquidity);
+
+        #[cfg(not(feature = "wip"))] // ALT
         assert_noop!(result, Error::<Runtime>::UnavailableExchangePath);
     });
 }
