@@ -9,7 +9,8 @@ use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_pallet_balances_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
 use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
@@ -309,24 +310,7 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {
