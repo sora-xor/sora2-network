@@ -264,7 +264,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl dex_manager::Config for Runtime {}
 

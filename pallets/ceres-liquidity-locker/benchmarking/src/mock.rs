@@ -196,7 +196,7 @@ impl dex_api::Config for Runtime {
     type WeightInfo = ();
 }
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

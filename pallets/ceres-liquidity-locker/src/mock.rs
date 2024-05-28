@@ -194,7 +194,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

@@ -325,7 +325,7 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;

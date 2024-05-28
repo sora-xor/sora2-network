@@ -311,7 +311,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

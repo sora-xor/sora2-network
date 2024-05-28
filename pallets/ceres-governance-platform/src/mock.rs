@@ -215,7 +215,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

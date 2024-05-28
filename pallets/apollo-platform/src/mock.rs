@@ -351,7 +351,7 @@ impl pallet_timestamp::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-mock_technical_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl common::Config for Runtime {
     type DEXId = common::DEXId;
