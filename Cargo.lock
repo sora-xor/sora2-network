@@ -8465,7 +8465,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "framenode-chain-spec",
  "hex-literal",
  "orml-currencies",
  "orml-tokens",
