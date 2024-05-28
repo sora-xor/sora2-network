@@ -27,9 +27,6 @@ common = { path = "../../common", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-serde = { version = "1.0.101", optional = true, features = [
-    "derive",
-], default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 vested-rewards = { path = "../vested-rewards", default-features = false }
@@ -65,7 +62,6 @@ std = [
     "technical/std",
     "frame-support/std",
     "frame-system/std",
-    'serde/std',
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
