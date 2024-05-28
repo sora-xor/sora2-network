@@ -34,7 +34,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 hex-literal = { version = "0.4.1"}
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
-framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "test"] }
 common = { path = "../../common", features = ['test']}
 assets = { path = "../assets" }
 permissions = { path = "../permissions" }
@@ -63,4 +62,4 @@ try-runtime = [
     "frame-support/try-runtime",
 ]
 
-wip = ["framenode-chain-spec/wip", "framenode-runtime/wip"]
+wip = ["framenode-chain-spec/wip"]

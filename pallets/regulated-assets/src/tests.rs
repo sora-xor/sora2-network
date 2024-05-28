@@ -35,7 +35,7 @@ use crate::*;
 use common::{Balance, TechAccountId, DEFAULT_BALANCE_PRECISION, XOR};
 use frame_support::{assert_err, assert_ok};
 use permissions::MINT;
-use sp_runtime::AccountId32;
+use sp_core::crypto::AccountId32;
 
 type RegulatedAssets = Pallet<TestRuntime>;
 
