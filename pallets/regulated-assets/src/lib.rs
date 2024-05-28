@@ -245,6 +245,14 @@ pub mod pallet {
 }
 
 impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
+    fn assign_permission(
+        _owner: &AccountIdOf<T>,
+        _asset_id: &AssetIdOf<T>,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
     fn check_permission(
         issuer: &AccountIdOf<T>,
         affected_account: &AccountIdOf<T>,
@@ -292,14 +300,6 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
             return Err(Error::<T>::AllInvolvedUsersShouldHoldSBT.into());
         }
 
-        Ok(())
-    }
-
-    fn assign_permission(
-        _owner: &AccountIdOf<T>,
-        _asset_id: &AssetIdOf<T>,
-        _permission_id: &PermissionId,
-    ) -> Result<(), DispatchError> {
         Ok(())
     }
 }
