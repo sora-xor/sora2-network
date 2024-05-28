@@ -28,7 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Regulated Assets pallet provides an ability to configure an access to regulated assets.
+//! The Regulated Assets pallet allows for the configuration and management of access to regulated assets.
+//! It provides functionalities to issue Soulbound Tokens (SBTs) and regulate assets, ensuring only
+//! authorized users can operate with these assets.
+//! The pallet checks permissions based on asset ownership and SBT holdings, preventing unauthorized operations and transfers.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -111,7 +114,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Regulates an asset.
+        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
         ///
         /// ## Parameters
         ///
