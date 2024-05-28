@@ -52,7 +52,7 @@ use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
+use sp_runtime::{AccountId32, DispatchError, Perbill, Percent, Permill};
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
 
@@ -131,6 +131,7 @@ parameter_types! {
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 construct_runtime! {
@@ -196,12 +197,10 @@ impl Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
     type PrimaryMarketTBC = MockMCBCPool;
     type PrimaryMarketXST = MockXSTPool;
     type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
-
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
@@ -210,6 +209,8 @@ impl Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = ();
 }
 
 impl tokens::Config for Runtime {

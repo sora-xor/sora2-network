@@ -2362,6 +2362,7 @@ pub mod pallet {
     use common::prelude::OutcomeFee;
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Permill;
     use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
@@ -2390,8 +2391,6 @@ pub mod pallet {
         type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
         type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        /// Weight information for the extrinsics in this Pallet.
-        type WeightInfo: WeightInfo;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
@@ -2402,6 +2401,11 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        /// Percent of internal slippage tolerance
+        #[pallet::constant]
+        type InternalSlippageTolerance: Get<Permill>;
+        /// Weight information for the extrinsics in this Pallet.
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
