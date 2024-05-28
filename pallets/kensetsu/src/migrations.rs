@@ -240,7 +240,7 @@ pub mod v1_to_v2 {
         fn migrate_storage() -> Weight {
             let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             let version = Pallet::<T>::on_chain_storage_version();
-            if version == 1 {
+            if version <= 1 {
                 let kusd_bad_debt = v1::BadDebt::<T>::take();
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
