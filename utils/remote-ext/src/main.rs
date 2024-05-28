@@ -1,11 +1,12 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use codec::Decode;
 use frame_remote_externalities::{
     Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
 };
+use framenode_runtime::AccountId;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use sp_core::H256;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
@@ -58,9 +59,33 @@ struct Cli {
     /// Sora snapshot path.
     #[clap(long)]
     snapshot_path: Option<PathBuf>,
-    /// Encoded extrinsic
+    /// Command type
+    #[clap(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, Clone, Args)]
+#[group(multiple = false, required = true)]
+pub struct AccountArg {
     #[clap(long)]
-    xt: String,
+    account: Option<AccountId>,
+    #[clap(long)]
+    root: bool,
+    #[clap(long)]
+    unsigned: bool,
+}
+
+#[derive(Subcommand, Clone, Debug)]
+pub enum Command {
+    Call {
+        #[clap(long)]
+        call: String,
+        #[clap(flatten)]
+        account: AccountArg,
+    },
+    Xt {
+        xt: String,
+    },
 }
 
 #[tokio::main]
@@ -75,12 +100,29 @@ async fn main() -> AnyResult<()> {
     let mut ext =
         create_ext::<framenode_runtime::Block>(client.clone(), cli.at, cli.snapshot_path).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
-        let xt_encoded = hex::decode(&cli.xt).unwrap();
-        let xt = framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
-        if let Some((account, _signature, _extra)) = xt.signature {
-            xt.function
-                .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
-                .unwrap();
+        match cli.command {
+            Command::Call { call, account } => {
+                let origin = if account.unsigned {
+                    framenode_runtime::RuntimeOrigin::none()
+                } else if account.root {
+                    framenode_runtime::RuntimeOrigin::root()
+                } else {
+                    framenode_runtime::RuntimeOrigin::signed(account.account.unwrap())
+                };
+                let call_encoded = hex::decode(call.strip_prefix("0x").unwrap_or(&call)).unwrap();
+                let call = framenode_runtime::RuntimeCall::decode(&mut &call_encoded[..]).unwrap();
+                call.dispatch(origin).unwrap();
+            }
+            Command::Xt { xt } => {
+                let xt_encoded = hex::decode(xt.strip_prefix("0x").unwrap_or(&xt)).unwrap();
+                let xt =
+                    framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
+                if let Some((account, _signature, _extra)) = xt.signature {
+                    xt.function
+                        .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
+                        .unwrap();
+                }
+            }
         }
         Ok(())
     });
