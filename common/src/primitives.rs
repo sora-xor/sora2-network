@@ -185,9 +185,10 @@ mod _allowed_deprecated {
         TBCD = 10,
         KEN = 11,
         KUSD = 12,
-        KXOR = 13,
-        SB = 14,
-        KARMA = 15,
+        KGOLD = 13,
+        KXOR = 14,
+        SB = 15,
+        KARMA = 16,
     }
 }
 
@@ -202,6 +203,7 @@ pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const TBCD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 pub const KEN: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KEN);
 pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
+pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
 pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::SB);
 pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);

@@ -38,6 +38,13 @@ pub type Migrations = ();
 pub type Migrations = (
     assets::migration::register_asset::RegisterAsset<
         Runtime,
+        KGOLDAssetId,
+        KGOLDAssetName,
+        KGOLDAssetSymbol,
+        PredefinedAssetOwnerAccountId,
+    >,
+    assets::migration::register_asset::RegisterAsset<
+        Runtime,
         KXORAssetId,
         KXORAssetName,
         KXORAssetSymbol,
@@ -64,6 +71,9 @@ pub type Migrations = (
 #[cfg(feature = "ready-to-test")] // tokenomics-upgrade
 parameter_types! {
     pub const MaxMigrations: u32 = 100;
+    pub KGOLDAssetId: AssetId = common::KGOLD;
+    pub KGOLDAssetSymbol: AssetSymbol = AssetSymbol(b"KGOLD".to_vec());
+    pub KGOLDAssetName: AssetName = AssetName(b"Kensetsu ounce of gold".to_vec());
     pub KXORAssetId: AssetId = common::KXOR;
     pub KXORAssetSymbol: AssetSymbol = AssetSymbol(b"KXOR".to_vec());
     pub KXORAssetName: AssetName = AssetName(b"Kensetsu XOR".to_vec());

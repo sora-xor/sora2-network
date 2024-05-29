@@ -40,7 +40,7 @@ use common::{
     AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
     PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
-    DEFAULT_BALANCE_PRECISION, KARMA, KEN, KUSD, KXOR, TBCD, XOR, XST,
+    DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
@@ -467,6 +467,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KGOLD,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"KGOLD".to_vec()),
+                AssetName(b"Kensetsu ounce of gold".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
