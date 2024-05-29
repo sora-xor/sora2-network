@@ -32,8 +32,8 @@ use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, Everything, GenesisBuild};
@@ -160,19 +160,7 @@ impl currencies::Config for Runtime {
 // Required by currencies::Config
 mock_pallet_balances_config!(Runtime);
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl referrals::Config for Runtime {
     type ReservesAcc = ReferralsReservesAcc;

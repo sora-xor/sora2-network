@@ -44,8 +44,8 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId,
-    LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXId, LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -349,19 +349,7 @@ where
 
 mock_pallet_balances_config!(Runtime);
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = Tokens;

@@ -4,8 +4,8 @@ use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_pallet_balances_config, mock_technical_config, Amount, DEXInfo, Fixed, PSWAP,
-    TBCD, VAL, XST,
+    fixed, hash, mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount,
+    DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -101,19 +101,7 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = Tokens;

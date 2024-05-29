@@ -32,8 +32,9 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32,
-    AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    self, balance, mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount,
+    AssetId32, AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL,
+    XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -200,19 +201,7 @@ impl currencies::Config for Runtime {
 // Required by currencies::Config
 mock_pallet_balances_config!(Runtime);
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 pub struct ExtBuilder {}
 

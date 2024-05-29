@@ -34,8 +34,8 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    self, balance, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName,
+    AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
     ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
 
@@ -194,19 +194,7 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 pub struct CustomFees;
 

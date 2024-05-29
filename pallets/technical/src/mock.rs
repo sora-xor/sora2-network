@@ -31,7 +31,7 @@
 use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{mock_pallet_balances_config, PSWAP, VAL, XST};
+use common::{mock_pallet_balances_config, mock_tokens_config, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -130,19 +130,7 @@ impl common::Config for Runtime {
 
 mock_pallet_balances_config!(Runtime);
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = tokens::Pallet<Runtime>;

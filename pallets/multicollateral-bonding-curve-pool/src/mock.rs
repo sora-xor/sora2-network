@@ -36,9 +36,9 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, mock_pallet_balances_config, mock_technical_config,
-    Amount, AssetId32, AssetName, AssetSymbol, BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, BuyBackHandler, DEXInfo, Fixed,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose,
+    Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -268,19 +268,7 @@ impl Vesting<AccountId, AssetId> for MockVestedRewards {
     }
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = Tokens;

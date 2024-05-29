@@ -34,8 +34,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, DEXInfo, Fixed, LiquiditySource, LiquiditySourceType,
-    RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXInfo, Fixed, LiquiditySource,
+    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
@@ -288,19 +288,7 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

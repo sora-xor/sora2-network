@@ -32,9 +32,9 @@ use crate::{self as farming, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, AssetName,
-    AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, VAL, XOR, XST,
-    XSTUSD,
+    balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
+    AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, VAL, XOR,
+    XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
@@ -205,19 +205,7 @@ impl common::Config for Runtime {
 
 mock_pallet_balances_config!(Runtime);
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = tokens::Pallet<Runtime>;

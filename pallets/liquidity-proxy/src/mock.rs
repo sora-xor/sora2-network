@@ -33,10 +33,10 @@ use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash,
-    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
-    DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType,
-    RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST,
-    XSTUSD,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
+    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD,
+    USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -213,19 +213,7 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = Tokens;

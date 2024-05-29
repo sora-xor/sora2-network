@@ -32,8 +32,8 @@ use crate::{self as dex_manager, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, fixed_from_basis_points, mock_pallet_balances_config, AssetId32, DEXInfo, Fixed, DOT,
-    PSWAP, VAL, XOR, XST,
+    self, fixed_from_basis_points, mock_pallet_balances_config, mock_tokens_config, AssetId32,
+    DEXInfo, Fixed, DOT, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -117,19 +117,7 @@ impl frame_system::Config for Runtime {
 
 impl Config for Runtime {}
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

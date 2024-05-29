@@ -40,9 +40,9 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName,
-    AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR,
-    XST,
+    balance, mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount,
+    AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI,
+    ETH, PSWAP, VAL, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -134,19 +134,7 @@ impl permissions::Config for Test {
 
 mock_pallet_balances_config!(Test);
 
-impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Test);
 
 impl currencies::Config for Test {
     type MultiCurrency = Tokens;

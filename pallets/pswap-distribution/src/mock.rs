@@ -32,8 +32,8 @@ use crate::{self as pswap_distribution, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, FromGenericPair,
+    balance, fixed, mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, FromGenericPair,
     DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
@@ -198,19 +198,7 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
+mock_tokens_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
