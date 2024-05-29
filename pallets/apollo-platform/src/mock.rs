@@ -3,7 +3,7 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        mock_pallet_balances_config, mock_technical_config,
+        mock_currencies_config, mock_pallet_balances_config, mock_technical_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -88,6 +88,9 @@ construct_runtime! {
 
 pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
     RuntimeCall: From<LocalCall>,
@@ -137,8 +140,6 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-mock_pallet_balances_config!(Runtime);
-
 parameter_types! {
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = APOLLO_ASSET_ID;
@@ -186,13 +187,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 impl tokens::Config for Runtime {

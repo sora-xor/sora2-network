@@ -35,10 +35,10 @@ use common::prelude::{
     SwapAmount, SwapOutcome,
 };
 use common::{
-    self, balance, fixed, fixed_wrapper, hash, mock_pallet_balances_config, mock_technical_config,
-    Amount, AssetId32, AssetName, AssetSymbol, BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, fixed_wrapper, hash, mock_currencies_config, mock_pallet_balances_config,
+    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, BuyBackHandler, DEXInfo,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
+    TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -154,6 +154,10 @@ construct_runtime! {
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
 }
+
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
@@ -282,13 +286,6 @@ impl tokens::Config for Runtime {
     type DustRemovalWhitelist = Everything;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
@@ -328,10 +325,6 @@ impl assets::Config for Runtime {
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-mock_pallet_balances_config!(Runtime);
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);

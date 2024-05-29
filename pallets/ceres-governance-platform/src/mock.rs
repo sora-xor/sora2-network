@@ -2,9 +2,9 @@ use crate::{self as ceres_governance_platform};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName,
-    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD,
-    VAL,
+    balance, fixed, mock_currencies_config, mock_pallet_balances_config, mock_technical_config,
+    AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    CERES_ASSET_ID, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -53,6 +53,10 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
+
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -218,8 +222,6 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -234,21 +236,12 @@ impl tokens::Config for Runtime {
     type DustRemovalWhitelist = Everything;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const StringLimit: u32 = 64;
     pub const OptionsLimit: u32 = 6;
     pub const TitleLimit: u32 = 128;
     pub const DescriptionLimit: u32 = 4096;
 }
-
-mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {

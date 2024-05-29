@@ -33,8 +33,8 @@
 use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_pallet_balances_config, mock_technical_config, Amount, DEXInfo, Fixed, PSWAP,
-    TBCD, VAL, XST,
+    fixed, hash, mock_currencies_config, mock_pallet_balances_config, mock_technical_config,
+    Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -104,6 +104,10 @@ construct_runtime! {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -145,13 +149,6 @@ impl tokens::Config for Runtime {
     type DustRemovalWhitelist = Everything;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
@@ -188,8 +185,6 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-mock_pallet_balances_config!(Runtime);
-
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
@@ -217,8 +212,6 @@ impl dex_api::Config for Runtime {
     type OrderBook = ();
     type WeightInfo = ();
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

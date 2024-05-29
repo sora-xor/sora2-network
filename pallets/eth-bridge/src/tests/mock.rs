@@ -44,8 +44,8 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId,
-    LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_currencies_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXId, LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -274,6 +274,9 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -347,8 +350,6 @@ where
     type OverarchingCall = RuntimeCall;
 }
 
-mock_pallet_balances_config!(Runtime);
-
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -361,13 +362,6 @@ impl tokens::Config for Runtime {
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {

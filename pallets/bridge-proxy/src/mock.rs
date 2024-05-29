@@ -40,9 +40,9 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName,
-    AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR,
-    XST,
+    balance, mock_currencies_config, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI,
+    ETH, PSWAP, VAL, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -61,6 +61,7 @@ use crate as proxy;
 pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 pub type Block = frame_system::mocking::MockBlock<Test>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type BlockNumber = u64;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -89,6 +90,10 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 
 pub const BASE_EVM_NETWORK_ID: EVMChainId = EVMChainId::zero();
 pub const BUY_BACK_ACCOUNT: AccountId = AccountId32::new([23u8; 32]);
+
+mock_pallet_balances_config!(Test);
+mock_technical_config!(Test);
+mock_currencies_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -132,8 +137,6 @@ impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;
 }
 
-mock_pallet_balances_config!(Test);
-
 impl tokens::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -146,13 +149,6 @@ impl tokens::Config for Test {
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Test {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
-    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -185,8 +181,6 @@ impl assets::Config for Test {
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-
-mock_technical_config!(Test);
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;

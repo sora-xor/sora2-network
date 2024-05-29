@@ -1,17 +1,15 @@
 use crate::{self as ceres_launchpad};
-pub use common::mock::*;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
-use common::BalancePrecision;
 use common::ContentSource;
 use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
+    balance, fixed, hash, mock_currencies_config, mock_pallet_balances_config,
+    mock_technical_config, AssetSymbol, BalancePrecision, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
     PSWAP, TBCD, VAL, XOR, XST,
 };
-use common::{mock_technical_config, AssetSymbol};
 use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -68,6 +66,10 @@ pub const DAN: AccountId = 4;
 pub const EMILY: AccountId = 5;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
+
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -279,8 +281,6 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -294,15 +294,6 @@ impl tokens::Config for Runtime {
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {

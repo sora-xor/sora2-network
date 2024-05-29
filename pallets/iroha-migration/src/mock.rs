@@ -33,8 +33,9 @@ use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName,
-    AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XST,
+    balance, mock_currencies_config, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -93,6 +94,12 @@ construct_runtime!(
     }
 );
 
+mock_technical_config!(Runtime);
+// Required by assets::Config
+mock_currencies_config!(Runtime);
+// Required by currencies::Config
+mock_pallet_balances_config!(Runtime);
+
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -119,8 +126,6 @@ impl frame_system::Config for Runtime {
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
-
-mock_technical_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
@@ -159,17 +164,6 @@ impl common::Config for Runtime {
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-// Required by assets::Config
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

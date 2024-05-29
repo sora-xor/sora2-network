@@ -32,8 +32,8 @@ use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_currencies_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, Everything, GenesisBuild};
@@ -83,6 +83,11 @@ construct_runtime!(
         Referrals: referrals::{Pallet, Call, Storage, Config<T>},
     }
 );
+
+// Required by assets::Config
+mock_currencies_config!(Runtime);
+// Required by currencies::Config
+mock_pallet_balances_config!(Runtime);
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
@@ -148,17 +153,6 @@ impl common::Config for Runtime {
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-// Required by assets::Config
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

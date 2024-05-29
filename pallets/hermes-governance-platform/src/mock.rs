@@ -4,9 +4,9 @@ use codec::{Decode, Encode};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName,
-    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD,
-    VAL,
+    balance, fixed, mock_currencies_config, mock_pallet_balances_config, mock_technical_config,
+    AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    HERMES_ASSET_ID, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -68,6 +68,10 @@ pub struct OldHermesVotingInfo {
     /// Hermes withdrawn
     pub hermes_withdrawn: bool,
 }
+
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -249,8 +253,6 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -264,15 +266,6 @@ impl tokens::Config for Runtime {
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-mock_pallet_balances_config!(Runtime);
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(
