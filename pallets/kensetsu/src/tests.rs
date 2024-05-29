@@ -236,7 +236,11 @@ fn test_create_cdp_sunny_day() {
         );
         // CDP is present for the user
         assert_eq!(get_account_cdp_ids(&alice_account_id()), vec!(cdp_id));
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt);
         assert_eq!(get_total_supply(&KUSD), debt);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Shall create CDP");
@@ -316,8 +320,11 @@ fn test_create_cdp_gold_sunny_day() {
         );
         // CDP is present for the user
         assert_eq!(get_account_cdp_ids(&alice_account_id()), vec!(cdp_id));
-        let collateral_info =
-            KensetsuPallet::collateral_infos(XOR, stable_asset_id).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: stable_asset_id,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt);
         assert_eq!(get_total_supply(&stable_asset_id), debt);
         assert_eq!(collateral_info.total_collateral, collateral);
@@ -454,13 +461,21 @@ fn test_close_cdp_sunny_day() {
             .into(),
         );
         assert_balance(&alice_account_id(), &XOR, balance!(10));
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(collateral_info.total_collateral, balance!(0));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
         // the number of KUSD issued is 0, debt was burnt
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(get_total_supply(&KUSD), balance!(0));
     });
@@ -594,7 +609,11 @@ fn test_deposit_collateral_zero() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.total_collateral, amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
@@ -627,7 +646,11 @@ fn test_deposit_collateral_sunny_day() {
             .into(),
         );
         assert_balance(&alice_account_id(), &XOR, balance!(0));
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("Must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must exists");
         assert_eq!(collateral_info.total_collateral, amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
@@ -812,7 +835,11 @@ fn test_borrow_sunny_day() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("Must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must exists");
         assert_eq!(collateral_info.stablecoin_supply, to_borrow);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -852,7 +879,11 @@ fn test_borrow_max_amount() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("Must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must exists");
         assert_eq!(collateral_info.stablecoin_supply, expected_debt);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -902,7 +933,11 @@ fn borrow_with_ken_incentivization() {
             .into(),
         );
 
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("Must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must exists");
         assert_eq!(collateral_info.stablecoin_supply, to_borrow + borrow_tax);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -963,7 +998,11 @@ fn borrow_max_with_ken_incentivization() {
             .into(),
         );
 
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, actual_loan + borrow_tax);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1047,7 +1086,11 @@ fn borrow_xor_kxor_with_incentivization() {
             .into(),
         );
 
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KXOR).expect("Must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KXOR,
+        })
+        .expect("Must exists");
         assert_eq!(collateral_info.stablecoin_supply, to_borrow + borrow_tax);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1112,7 +1155,11 @@ fn test_borrow_cdp_accrue() {
         // interest is 10*10%*1 = 1,
         // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         let interest = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1202,7 +1249,11 @@ fn test_repay_debt_amount_less_debt() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt - to_repay);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1240,7 +1291,11 @@ fn test_repay_debt_amount_eq_debt() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1286,7 +1341,11 @@ fn test_repay_debt_amount_gt_debt() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, kusd_surplus);
         assert_eq!(collateral_info.total_collateral, 2 * collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1325,7 +1384,11 @@ fn test_repay_debt_zero_amount() {
             }
             .into(),
         );
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1358,7 +1421,11 @@ fn test_repay_debt_accrue() {
         // interest is 10*10%*1 = 1,
         // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         let interest = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1448,7 +1515,11 @@ fn test_liquidate_accrue() {
         // interest is 1000*10%*1 = 100,
         // where 1000 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         let interest = balance!(100);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -1507,7 +1578,11 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
             .into(),
         );
         assert_balance(&tech_account_id(), &KUSD, penalty);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(
             collateral_info.total_collateral,
@@ -1576,7 +1651,11 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
             .into(),
         );
         assert_balance(&tech_account_id(), &KUSD, penalty);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(
             collateral_info.total_collateral,
@@ -1644,7 +1723,11 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
             .into(),
         );
         assert_balance(&tech_account_id(), &KUSD, penalty);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(50));
         assert_eq!(
             collateral_info.total_collateral,
@@ -1725,7 +1808,11 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         // bad debt = debt - liquidation = 110 - 90 = 20 - covered with protocol profit
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(collateral_info.total_collateral, balance!(0));
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
@@ -1778,7 +1865,11 @@ fn test_liquidate_kusd_bad_debt() {
         // 110 KUSD debt + 100 KUSD liquidity provider
         let initial_kusd_supply = get_total_supply(&KUSD);
         // 110 KUSD minted by the protocol
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(110));
 
         // 100 XOR sold for 100 KUSD
@@ -1813,7 +1904,11 @@ fn test_liquidate_kusd_bad_debt() {
         // protocol bad debt = CDP bad debt - tech account balance = 20 - 10 = 10 KUSD
         assert_balance(&tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(10));
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         // 10 KUSD minted by the protocol (accounted in bad debt)
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(collateral_info.total_collateral, balance!(0));
@@ -1963,7 +2058,11 @@ fn test_accrue_profit() {
         // interest is 10*10%*1 = 1,
         // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         let interest = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
@@ -2029,7 +2128,11 @@ fn test_accrue_interest_less_bad_debt() {
         // and 1 KUSD covers the part of bad debt
         let interest = balance!(1);
         let new_bad_debt = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         // fee is burned as bad debt, no KUSD minted
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
@@ -2069,7 +2172,11 @@ fn test_accrue_interest_eq_bad_debt() {
         // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
         // and 1 KUSD covers bad debt
         let interest = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         // supply doesn't change, fee is burned as bad debt
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
@@ -2110,7 +2217,11 @@ fn test_accrue_interest_gt_bad_debt() {
         // and 1 KUSD covers bad debt, 1 KUSD is a protocol profit
         let interest = balance!(2);
         let profit = balance!(1);
-        let collateral_info = KensetsuPallet::collateral_infos(XOR, KUSD).expect("must exists");
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
         // 1 KUSD goes to profit and 1 is burned as bad debt
         assert_eq!(collateral_info.stablecoin_supply, debt + interest);
         assert_eq!(collateral_info.total_collateral, collateral);
@@ -2222,7 +2333,11 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             KUSD,
             old_parameters
         ));
-        let old_info = CollateralInfos::<TestRuntime>::get(asset_id, KUSD).expect("Must succeed");
+        let old_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: asset_id,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
         assert_eq!(old_info.risk_parameters, old_parameters);
         assert_eq!(old_info.last_fee_update_time, 1);
         assert_eq!(old_info.interest_coefficient, FixedU128::one());
@@ -2249,7 +2364,11 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             }
             .into(),
         );
-        let new_info = CollateralInfos::<TestRuntime>::get(asset_id, KUSD).expect("Must succeed");
+        let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: asset_id,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
         assert_eq!(new_info.risk_parameters, new_parameters);
         // interest coefficient is not changed
         assert_eq!(new_info.last_fee_update_time, 2);

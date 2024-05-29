@@ -99,9 +99,7 @@ pub struct StablecoinInfo<AssetId> {
     pub stablecoin_parameters: StablecoinParameters<AssetId>,
 }
 
-#[derive(
-    Debug, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Copy, scale_info::TypeInfo,
-)]
+#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq, Eq)]
 pub enum CdpType {
     /// Pays stability fee in underlying collateral, cannot be liquidated.
     Type1,
@@ -109,6 +107,13 @@ pub enum CdpType {
     Type2,
 }
 
+/// Identifier for collateral/stablecoin info.
+/// Consits of collateral and stablecoin asset ids.
+#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+pub struct StablecoinCollateralIdentifier<AssetId> {
+    pub collateral_asset_id: AssetId,
+    pub stablecoin_asset_id: AssetId,
+}
 /// Risk management parameters for the specific collateral type.
 #[derive(
     Debug,
@@ -143,7 +148,7 @@ pub struct CollateralRiskParameters {
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
-#[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
@@ -162,7 +167,7 @@ pub struct CollateralInfo<Moment> {
 }
 
 /// CDP - Collateralized Debt Position. It is a single collateral/debt record.
-#[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq)]
 pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     /// CDP owner
     pub owner: AccountId,
@@ -184,7 +189,7 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     pub interest_coefficient: FixedU128,
 }
 
-#[derive(Clone, Debug, Default, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Encode, Decode, TypeInfo, PartialEq)]
 pub struct BorrowTaxes {
     pub ken_borrow_tax: Percent,
     pub karma_borrow_tax: Percent,
@@ -397,12 +402,10 @@ pub mod pallet {
     /// Map (Collateral asset id, Stablecoin asset id => CollateralInfo)
     #[pallet::storage]
     #[pallet::getter(fn collateral_infos)]
-    pub type CollateralInfos<T: Config> = StorageDoubleMap<
+    pub type CollateralInfos<T: Config> = StorageMap<
         _,
         Identity,
-        AssetIdOf<T>,
-        Identity,
-        AssetIdOf<T>,
+        StablecoinCollateralIdentifier<AssetIdOf<T>>,
         CollateralInfo<T::Moment>,
     >;
 
@@ -620,8 +623,11 @@ pub mod pallet {
             );
 
             // checks minimal collateral deposit requirement
-            let collateral_info = Self::collateral_infos(collateral_asset_id, stablecoin_asset_id)
-                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let collateral_info = Self::collateral_infos(StablecoinCollateralIdentifier {
+                collateral_asset_id,
+                stablecoin_asset_id,
+            })
+            .ok_or(Error::<T>::CollateralInfoNotFound)?;
             ensure!(
                 collateral_amount >= collateral_info.risk_parameters.minimal_collateral_deposit,
                 Error::<T>::CollateralBelowMinimal
@@ -1156,11 +1162,13 @@ pub mod pallet {
             collateral: Balance,
             stablecoin_asset_id: AssetIdOf<T>,
         ) -> Result<Balance, DispatchError> {
-            let liquidation_ratio =
-                Self::collateral_infos(collateral_asset_id, stablecoin_asset_id)
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?
-                    .risk_parameters
-                    .liquidation_ratio;
+            let liquidation_ratio = Self::collateral_infos(StablecoinCollateralIdentifier {
+                collateral_asset_id,
+                stablecoin_asset_id,
+            })
+            .ok_or(Error::<T>::CollateralInfoNotFound)?
+            .risk_parameters
+            .liquidation_ratio;
 
             // collateral price in pegged asset
             let peg_asset = Self::stablecoin_infos(stablecoin_asset_id)
@@ -1230,8 +1238,11 @@ pub mod pallet {
             stablecoin_asset_id: AssetIdOf<T>,
             new_emission: Balance,
         ) -> DispatchResult {
-            let collateral_info = Self::collateral_infos(collateral_asset_id, stablecoin_asset_id)
-                .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let collateral_info = Self::collateral_infos(StablecoinCollateralIdentifier {
+                collateral_asset_id,
+                stablecoin_asset_id,
+            })
+            .ok_or(Error::<T>::CollateralInfoNotFound)?;
             let hard_cap = collateral_info.risk_parameters.hard_cap;
             ensure!(
                 collateral_info
@@ -1498,9 +1509,13 @@ pub mod pallet {
             collateral_asset_id: &AssetIdOf<T>,
             stablecoin_asset_id: &AssetIdOf<T>,
         ) -> Result<CollateralInfo<T::Moment>, DispatchError> {
-            let mut collateral_info =
-                CollateralInfos::<T>::get(collateral_asset_id, stablecoin_asset_id)
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?;
+            let mut collateral_info = CollateralInfos::<T>::get::<
+                StablecoinCollateralIdentifier<AssetIdOf<T>>,
+            >(StablecoinCollateralIdentifier {
+                collateral_asset_id: *collateral_asset_id,
+                stablecoin_asset_id: *stablecoin_asset_id,
+            })
+            .ok_or(Error::<T>::CollateralInfoNotFound)?;
             let now = Timestamp::<T>::get();
             ensure!(
                 now >= collateral_info.last_fee_update_time,
@@ -1679,10 +1694,12 @@ pub mod pallet {
             cdp_id: CdpId,
             cdp: &CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>,
         ) -> Result<(Balance, Balance, Balance), DispatchError> {
-            let risk_parameters =
-                Self::collateral_infos(cdp.collateral_asset_id, cdp.stablecoin_asset_id)
-                    .ok_or(Error::<T>::CollateralInfoNotFound)?
-                    .risk_parameters;
+            let risk_parameters = Self::collateral_infos(StablecoinCollateralIdentifier {
+                collateral_asset_id: cdp.collateral_asset_id,
+                stablecoin_asset_id: cdp.stablecoin_asset_id,
+            })
+            .ok_or(Error::<T>::CollateralInfoNotFound)?
+            .risk_parameters;
             let collateral_to_liquidate = cdp
                 .collateral_amount
                 .min(risk_parameters.max_liquidation_lot);
@@ -1906,8 +1923,10 @@ pub mod pallet {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
                 let old_collateral = cdp.collateral_amount;
                 CollateralInfos::<T>::try_mutate(
-                    cdp.collateral_asset_id,
-                    cdp.stablecoin_asset_id,
+                    crate::StablecoinCollateralIdentifier {
+                        collateral_asset_id: cdp.collateral_asset_id,
+                        stablecoin_asset_id: cdp.stablecoin_asset_id,
+                    },
                     |collateral_info| {
                         let collateral_info = collateral_info
                             .as_mut()
@@ -1951,8 +1970,10 @@ pub mod pallet {
                     .checked_sub(debt_change)
                     .ok_or(Error::<T>::ArithmeticError)?;
                 CollateralInfos::<T>::try_mutate(
-                    cdp.collateral_asset_id,
-                    cdp.stablecoin_asset_id,
+                    crate::StablecoinCollateralIdentifier {
+                        collateral_asset_id: cdp.collateral_asset_id,
+                        stablecoin_asset_id: cdp.stablecoin_asset_id,
+                    },
                     |collateral_info| {
                         let collateral_info = collateral_info
                             .as_mut()
@@ -1978,8 +1999,10 @@ pub mod pallet {
                 transfer_out,
             )?;
             CollateralInfos::<T>::try_mutate(
-                cdp.collateral_asset_id,
-                cdp.stablecoin_asset_id,
+                StablecoinCollateralIdentifier {
+                    collateral_asset_id: cdp.collateral_asset_id,
+                    stablecoin_asset_id: cdp.stablecoin_asset_id,
+                },
                 |collateral_info| {
                     let collateral_info = collateral_info
                         .as_mut()
@@ -2032,8 +2055,10 @@ pub mod pallet {
             );
 
             CollateralInfos::<T>::try_mutate(
-                collateral_asset_id,
-                stablecoin_asset_id,
+                StablecoinCollateralIdentifier {
+                    collateral_asset_id: *collateral_asset_id,
+                    stablecoin_asset_id: *stablecoin_asset_id,
+                },
                 |option_collateral_info| {
                     match option_collateral_info {
                         Some(collateral_info) => {
@@ -2065,8 +2090,10 @@ pub mod pallet {
             supply_change: Balance,
         ) -> DispatchResult {
             CollateralInfos::<T>::try_mutate(
-                collateral_asset_id,
-                stablecoin_asset_id,
+                StablecoinCollateralIdentifier {
+                    collateral_asset_id: *collateral_asset_id,
+                    stablecoin_asset_id: *stablecoin_asset_id,
+                },
                 |collateral_info| {
                     let collateral_info = collateral_info
                         .as_mut()

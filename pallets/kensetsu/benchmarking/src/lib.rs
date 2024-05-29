@@ -41,7 +41,8 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use kensetsu::{
     BorrowTax, BorrowTaxes, CdpId, CdpType, CollateralInfos, CollateralRiskParameters, Event,
-    KarmaBorrowTax, PegAsset, StablecoinInfos, StablecoinParameters, TbcdBorrowTax,
+    KarmaBorrowTax, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
+    StablecoinParameters, TbcdBorrowTax,
 };
 use price_tools::AVG_BLOCK_SPAN;
 use sp_arithmetic::{Perbill, Percent};
@@ -84,9 +85,11 @@ pub fn set_kensetsu_dollar_stablecoin<T: Config>() {
 fn set_xor_as_collateral_type<T: Config>() {
     set_kensetsu_dollar_stablecoin::<T>();
 
-    CollateralInfos::<T>::set::<AssetIdOf<T>, AssetIdOf<T>>(
-        XOR.into(),
-        KUSD.into(),
+    CollateralInfos::<T>::set(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        },
         Some(kensetsu::CollateralInfo {
             risk_parameters: CollateralRiskParameters {
                 hard_cap: Balance::MAX,
@@ -137,9 +140,11 @@ fn deposit_xor_collateral<T: Config>(cdp_id: CdpId, amount: Balance) {
 
 /// Sets liquidation ratio too low, making CDPs unsafe
 fn make_cdps_unsafe<T: Config>() {
-    CollateralInfos::<T>::mutate::<AssetIdOf<T>, AssetIdOf<T>, _, _>(
-        XOR.into(),
-        KUSD.into(),
+    CollateralInfos::<T>::mutate(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        },
         |info| {
             if let Some(info) = info.as_mut() {
                 info.risk_parameters = CollateralRiskParameters {

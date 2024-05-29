@@ -94,8 +94,8 @@ pub mod init {
 /// Kensetsu version 2 adds configurable debt asset id.
 pub mod v1_to_v2 {
     use crate::{
-        CollateralInfos, Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos,
-        StablecoinParameters,
+        CollateralInfos, Config, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfo,
+        StablecoinInfos, StablecoinParameters,
     };
     use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
@@ -271,8 +271,10 @@ pub mod v1_to_v2 {
                 for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
                 {
                     CollateralInfos::<T>::insert(
-                        collateral_asset_id,
-                        AssetIdOf::<T>::from(KUSD),
+                        StablecoinCollateralIdentifier {
+                            collateral_asset_id,
+                            stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
+                        },
                         old_collateral_info.into_v2(),
                     );
                     weight += <T as frame_system::Config>::DbWeight::get().writes(1);
@@ -309,7 +311,10 @@ pub mod v1_to_v2 {
     mod tests {
         use crate::migrations::v1_to_v2::{v1, UpgradeToV2};
         use crate::mock::{new_test_ext, TestRuntime};
-        use crate::{CollateralInfos, Pallet, PegAsset, StablecoinInfos, StablecoinParameters};
+        use crate::{
+            CollateralInfos, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
+            StablecoinParameters,
+        };
         use common::{balance, DAI, KUSD, KXOR, XOR};
         use core::default::Default;
         use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
@@ -370,7 +375,11 @@ pub mod v1_to_v2 {
 
                 assert_eq!(2, CollateralInfos::<TestRuntime>::iter().count());
                 let dai_kusd_collateral_info =
-                    CollateralInfos::<TestRuntime>::get(DAI, KUSD).unwrap();
+                    CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                        collateral_asset_id: DAI,
+                        stablecoin_asset_id: KUSD,
+                    })
+                    .unwrap();
                 assert_eq!(total_collateral, dai_kusd_collateral_info.total_collateral);
                 assert_eq!(kusd_supply, dai_kusd_collateral_info.stablecoin_supply);
                 assert_eq!(
@@ -382,7 +391,11 @@ pub mod v1_to_v2 {
                     dai_kusd_collateral_info.interest_coefficient
                 );
                 let xor_kusd_collateral_info =
-                    CollateralInfos::<TestRuntime>::get(XOR, KUSD).unwrap();
+                    CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                        collateral_asset_id: XOR,
+                        stablecoin_asset_id: KUSD,
+                    })
+                    .unwrap();
                 assert_eq!(total_collateral, xor_kusd_collateral_info.total_collateral);
                 assert_eq!(kusd_supply, xor_kusd_collateral_info.stablecoin_supply);
                 assert_eq!(

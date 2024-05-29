@@ -187,17 +187,23 @@ pub fn configure_kxor_for_xor(
 
 /// Makes CDPs unsafe by changing liquidation ratio.
 pub fn make_cdps_unsafe() {
-    CollateralInfos::<TestRuntime>::mutate(XOR, KUSD, |info| {
-        if let Some(info) = info.as_mut() {
-            info.risk_parameters = CollateralRiskParameters {
-                hard_cap: Balance::MAX,
-                max_liquidation_lot: balance!(1000),
-                liquidation_ratio: Perbill::from_percent(1),
-                stability_fee_rate: FixedU128::zero(),
-                minimal_collateral_deposit: balance!(0),
+    CollateralInfos::<TestRuntime>::mutate(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        },
+        |info| {
+            if let Some(info) = info.as_mut() {
+                info.risk_parameters = CollateralRiskParameters {
+                    hard_cap: Balance::MAX,
+                    max_liquidation_lot: balance!(1000),
+                    liquidation_ratio: Perbill::from_percent(1),
+                    stability_fee_rate: FixedU128::zero(),
+                    minimal_collateral_deposit: balance!(0),
+                }
             }
-        }
-    });
+        },
+    );
 }
 
 /// Creates CDP with XOR as collateral asset id
