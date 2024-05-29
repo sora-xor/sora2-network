@@ -265,7 +265,7 @@ macro_rules! mock_currencies_config {
     ($runtime:ty) => {
         impl currencies::Config for $runtime {
             type MultiCurrency = Tokens;
-            type NativeCurrency = BasicCurrencyAdapter<$runtime, Balances, Amount, u64>;
+            type NativeCurrency = BasicCurrencyAdapter<$runtime, Balances, Amount, BlockNumber>;
             type GetNativeCurrencyId = <$runtime as assets::Config>::GetBaseAssetId;
             type WeightInfo = ();
         }
