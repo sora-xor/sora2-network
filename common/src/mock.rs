@@ -350,7 +350,7 @@ macro_rules! mock_tokens_config {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
             type Amount = Amount;
-            type CurrencyId = <TestRuntime as assets::Config>::AssetId;
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();
