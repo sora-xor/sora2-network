@@ -30,6 +30,7 @@
 
 use codec::{Decode, Encode};
 use common::prelude::{OutcomeFee, SwapAmount};
+use frame_support::traits::Get;
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
 
@@ -46,6 +47,43 @@ use {
     sp_std::collections::vec_deque::VecDeque,
     sp_std::vec,
 };
+
+/// Result of aggregation
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AggregationResult<AssetId: Ord, LiquiditySourceType, AmountType> {
+    pub swap_info: SwapInfo<LiquiditySourceType, AmountType>,
+    /// A distribution of amounts each liquidity sources gets to swap in the entire trade
+    pub distribution: Vec<(LiquiditySourceType, SwapAmount<AmountType>)>,
+    /// The best possible desired amount
+    pub desired_amount: AmountType,
+    /// The best possible result amount
+    pub result_amount: AmountType,
+    pub swap_variant: SwapVariant,
+    /// Total fee amount, nominated in XOR
+    pub fee: OutcomeFee<AssetId, AmountType>,
+}
+
+impl<AssetId: Ord, LiquiditySourceType, AmountType>
+    AggregationResult<AssetId, LiquiditySourceType, AmountType>
+{
+    pub fn new(
+        swap_info: SwapInfo<LiquiditySourceType, AmountType>,
+        distribution: Vec<(LiquiditySourceType, SwapAmount<AmountType>)>,
+        desired_amount: AmountType,
+        result_amount: AmountType,
+        swap_variant: SwapVariant,
+        fee: OutcomeFee<AssetId, AmountType>,
+    ) -> Self {
+        Self {
+            swap_info,
+            distribution,
+            desired_amount,
+            result_amount,
+            swap_variant,
+            fee,
+        }
+    }
+}
 
 /// Info with input & output amounts for liquidity source
 #[cfg(feature = "wip")] // ALT
@@ -77,6 +115,19 @@ impl<AssetId: Ord, LiquiditySourceIdType, AmountType>
             distribution,
             amount,
             fee,
+        }
+    }
+}
+
+impl<AssetId: Ord, LiquiditySourceType, AmountType>
+    From<AggregationResult<AssetId, LiquiditySourceType, AmountType>>
+    for AggregatedSwapOutcome<AssetId, LiquiditySourceType, AmountType>
+{
+    fn from(value: AggregationResult<AssetId, LiquiditySourceType, AmountType>) -> Self {
+        AggregatedSwapOutcome {
+            distribution: value.distribution,
+            amount: value.result_amount,
+            fee: value.fee,
         }
     }
 }
@@ -114,13 +165,7 @@ where
     pub fn aggregate_swap_outcome<T: Config>(
         mut self,
         amount: Balance,
-    ) -> Result<
-        (
-            SwapInfo<LiquiditySourceType, Balance>,
-            AggregatedSwapOutcome<AssetId, LiquiditySourceType, Balance>,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<AggregationResult<AssetId, LiquiditySourceType, Balance>, DispatchError> {
         if self.liquidity_quotations.is_empty() {
             return Err(Error::<T>::InsufficientLiquidity.into());
         }
@@ -260,38 +305,7 @@ where
             }
         }
 
-        let mut distribution = Vec::new();
-        let mut swap_info: SwapInfo<LiquiditySourceType, Balance> = SwapInfo::new();
-        let mut result_amount = Balance::zero();
-        let mut fee = OutcomeFee::default();
-
-        for (source, chunks) in &selected {
-            let total = Self::sum_chunks(chunks);
-
-            swap_info.insert(source.clone(), (total.input, total.output));
-
-            let (desired_part, result_part) = match self.variant {
-                SwapVariant::WithDesiredInput => (total.input, total.output),
-                SwapVariant::WithDesiredOutput => (total.output, total.input),
-            };
-            distribution.push((
-                source.clone(),
-                SwapAmount::with_variant(self.variant, desired_part, result_part),
-            ));
-            result_amount = result_amount
-                .checked_add(result_part)
-                .ok_or(Error::<T>::CalculationError)?;
-            fee = fee.merge(total.fee);
-        }
-
-        Ok((
-            swap_info,
-            AggregatedSwapOutcome {
-                distribution,
-                amount: result_amount,
-                fee,
-            },
-        ))
+        self.calculate_result::<T>(&selected)
     }
 
     /// Find liquidity sources where the top chunk has the best price.
@@ -327,6 +341,48 @@ where
         candidates
     }
 
+    fn calculate_result<T: Config>(
+        &self,
+        selected: &BTreeMap<LiquiditySourceType, VecDeque<SwapChunk<AssetId, Balance>>>,
+    ) -> Result<AggregationResult<AssetId, LiquiditySourceType, Balance>, DispatchError> {
+        let mut distribution = Vec::new();
+        let mut swap_info: SwapInfo<LiquiditySourceType, Balance> = SwapInfo::new();
+        let mut desired_amount = Balance::zero();
+        let mut result_amount = Balance::zero();
+        let mut fee = OutcomeFee::default();
+
+        for (source, chunks) in selected {
+            let total = Self::sum_chunks(chunks);
+
+            swap_info.insert(source.clone(), (total.input, total.output));
+
+            let (desired_part, result_part) = match self.variant {
+                SwapVariant::WithDesiredInput => (total.input, total.output),
+                SwapVariant::WithDesiredOutput => (total.output, total.input),
+            };
+            distribution.push((
+                source.clone(),
+                SwapAmount::with_variant(self.variant, desired_part, result_part),
+            ));
+            desired_amount = desired_amount
+                .checked_add(desired_part)
+                .ok_or(Error::<T>::CalculationError)?;
+            result_amount = result_amount
+                .checked_add(result_part)
+                .ok_or(Error::<T>::CalculationError)?;
+            fee = fee.merge(total.fee);
+        }
+
+        Ok(AggregationResult {
+            swap_info,
+            distribution,
+            desired_amount,
+            result_amount,
+            swap_variant: self.variant,
+            fee,
+        })
+    }
+
     fn sum_chunks(chunks: &VecDeque<SwapChunk<AssetId, Balance>>) -> SwapChunk<AssetId, Balance> {
         chunks
             .iter()
@@ -339,7 +395,7 @@ where
 #[cfg(feature = "wip")] // ALT
 #[cfg(test)]
 mod tests {
-    use crate::liquidity_aggregator::*;
+    use super::*;
     use crate::mock::Runtime;
     use crate::Error;
     use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
@@ -1122,19 +1178,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(10))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(10), balance!(120))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(10), balance!(120))
-                    )],
-                    balance!(120),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(10), balance!(120))
+                )],
+                balance!(10),
+                balance!(120),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
 
@@ -1143,19 +1199,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(20))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(220))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(20), balance!(220))
-                    )],
-                    balance!(220),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(20), balance!(220))
+                )],
+                balance!(20),
+                balance!(220),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
 
@@ -1164,7 +1220,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(30))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
                     (
@@ -1172,20 +1228,20 @@ mod tests {
                         (balance!(20), balance!(220))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(10), balance!(100))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(20), balance!(220))
-                        )
-                    ],
-                    balance!(320),
-                    OutcomeFee::xor(balance!(1))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(10), balance!(100))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(20), balance!(220))
+                    )
+                ],
+                balance!(30),
+                balance!(320),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(1))
             )
         );
 
@@ -1194,7 +1250,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(40))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
                     (
@@ -1202,20 +1258,20 @@ mod tests {
                         (balance!(20), balance!(220))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(20), balance!(190))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(20), balance!(220))
-                        )
-                    ],
-                    balance!(410),
-                    OutcomeFee::xor(balance!(1.9))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(20), balance!(220))
+                    )
+                ],
+                balance!(40),
+                balance!(410),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(1.9))
             )
         );
 
@@ -1224,7 +1280,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(50))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
                     (LiquiditySourceType::XSTPool, (balance!(10), balance!(85))),
@@ -1233,27 +1289,27 @@ mod tests {
                         (balance!(20), balance!(220))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(20), balance!(190))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(10), balance!(85))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(20), balance!(220))
-                        )
-                    ],
-                    balance!(495),
-                    OutcomeFee(BTreeMap::from([
-                        (XOR, balance!(1.9)),
-                        (XST, balance!(0.85))
-                    ]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(10), balance!(85))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(20), balance!(220))
+                    )
+                ],
+                balance!(50),
+                balance!(495),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([
+                    (XOR, balance!(1.9)),
+                    (XST, balance!(0.85))
+                ]))
             )
         );
 
@@ -1262,7 +1318,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(60))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
                     (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
@@ -1271,24 +1327,24 @@ mod tests {
                         (balance!(20), balance!(220))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(20), balance!(190))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(20), balance!(170))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(20), balance!(220))
-                        )
-                    ],
-                    balance!(580),
-                    OutcomeFee(BTreeMap::from([(XOR, balance!(1.9)), (XST, balance!(1.7))]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(170))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(20), balance!(220))
+                    )
+                ],
+                balance!(60),
+                balance!(580),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(1.9)), (XST, balance!(1.7))]))
             )
         );
     }
@@ -1300,16 +1356,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(100))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(100), balance!(8))
-                    )],
-                    balance!(8),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_output(balance!(100), balance!(8))
+                )],
+                balance!(100),
+                balance!(8),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -1318,19 +1374,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(200))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(18), balance!(200))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(200), balance!(18))
-                    )],
-                    balance!(18),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_output(balance!(200), balance!(18))
+                )],
+                balance!(200),
+                balance!(18),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -1339,7 +1395,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(300))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
                     (
@@ -1347,20 +1403,20 @@ mod tests {
                         (balance!(18), balance!(200))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(100), balance!(10))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(200), balance!(18))
-                        )
-                    ],
-                    balance!(28),
-                    OutcomeFee::xor(balance!(1))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(100), balance!(10))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(200), balance!(18))
+                    )
+                ],
+                balance!(300),
+                balance!(28),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(1))
             )
         );
 
@@ -1369,7 +1425,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(400))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
                     (
@@ -1377,20 +1433,20 @@ mod tests {
                         (balance!(18), balance!(200))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(200), balance!(21))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(200), balance!(18))
-                        )
-                    ],
-                    balance!(39),
-                    OutcomeFee::xor(balance!(2))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(200), balance!(21))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(200), balance!(18))
+                    )
+                ],
+                balance!(400),
+                balance!(39),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(2))
             )
         );
 
@@ -1399,7 +1455,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(500))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (
@@ -1407,20 +1463,20 @@ mod tests {
                         (balance!(18), balance!(200))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(300), balance!(33))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(200), balance!(18))
-                        )
-                    ],
-                    balance!(51),
-                    OutcomeFee::xor(balance!(3))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(300), balance!(33))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(200), balance!(18))
+                    )
+                ],
+                balance!(500),
+                balance!(51),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(3))
             )
         );
 
@@ -1429,7 +1485,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(600))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (
@@ -1441,24 +1497,24 @@ mod tests {
                         (balance!(18), balance!(200))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(300), balance!(33))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(100), balance!(12.5))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(200), balance!(18))
-                        )
-                    ],
-                    balance!(63.5),
-                    OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(1))]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(300), balance!(33))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(100), balance!(12.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(200), balance!(18))
+                    )
+                ],
+                balance!(600),
+                balance!(63.5),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(1))]))
             )
         );
 
@@ -1467,7 +1523,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(700))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
@@ -1476,24 +1532,24 @@ mod tests {
                         (balance!(18), balance!(200))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(300), balance!(33))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(200), balance!(25))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(200), balance!(18))
-                        )
-                    ],
-                    balance!(76),
-                    OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(2))]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(300), balance!(33))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(200), balance!(25))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(200), balance!(18))
+                    )
+                ],
+                balance!(700),
+                balance!(76),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(2))]))
             )
         );
     }
@@ -1684,19 +1740,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(10))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(10), balance!(120))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(10), balance!(120))
-                    )],
-                    balance!(120),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(10), balance!(120))
+                )],
+                balance!(10),
+                balance!(120),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
 
@@ -1705,19 +1761,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(20))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(224))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(20), balance!(224))
-                    )],
-                    balance!(224),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(20), balance!(224))
+                )],
+                balance!(20),
+                balance!(224),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
 
@@ -1726,7 +1782,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(30))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
                     (
@@ -1734,20 +1790,20 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(8), balance!(80))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(324),
-                    OutcomeFee::xor(balance!(0.8))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(8), balance!(80))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(30),
+                balance!(324),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(0.8))
             )
         );
 
@@ -1756,7 +1812,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(40))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(18), balance!(172))),
                     (
@@ -1764,20 +1820,20 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(18), balance!(172))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(416),
-                    OutcomeFee::xor(balance!(1.719999999999999999))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(18), balance!(172))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(40),
+                balance!(416),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(1.719999999999999999))
             )
         );
 
@@ -1786,7 +1842,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(50))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
                     (LiquiditySourceType::XSTPool, (balance!(6), balance!(51))),
@@ -1795,27 +1851,27 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(22), balance!(208))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(6), balance!(51))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(503),
-                    OutcomeFee(BTreeMap::from([
-                        (XOR, balance!(2.08)),
-                        (XST, balance!(0.51))
-                    ]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(22), balance!(208))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(6), balance!(51))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(50),
+                balance!(503),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([
+                    (XOR, balance!(2.08)),
+                    (XST, balance!(0.51))
+                ]))
             )
         );
 
@@ -1824,7 +1880,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(60))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
                     (LiquiditySourceType::XSTPool, (balance!(16), balance!(136))),
@@ -1833,27 +1889,27 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(22), balance!(208))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(16), balance!(136))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(588),
-                    OutcomeFee(BTreeMap::from([
-                        (XOR, balance!(2.08)),
-                        (XST, balance!(1.359999999999999999))
-                    ]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(22), balance!(208))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(16), balance!(136))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(60),
+                balance!(588),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([
+                    (XOR, balance!(2.08)),
+                    (XST, balance!(1.359999999999999999))
+                ]))
             )
         );
     }
@@ -1865,16 +1921,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(100))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(100), balance!(8))
-                    )],
-                    balance!(8),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_output(balance!(100), balance!(8))
+                )],
+                balance!(100),
+                balance!(8),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -1883,19 +1939,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(150))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(13), balance!(150))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(150), balance!(13))
-                    )],
-                    balance!(13),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_output(balance!(150), balance!(13))
+                )],
+                balance!(150),
+                balance!(13),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -1904,7 +1960,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(250))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(6), balance!(60))),
                     (
@@ -1912,20 +1968,20 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(60), balance!(6))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(23),
-                    Default::default()
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(60), balance!(6))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(250),
+                balance!(23),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -1934,7 +1990,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(340))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -1945,20 +2001,20 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(150), balance!(15.5))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(32.5),
-                    Default::default()
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(150), balance!(15.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(340),
+                balance!(32.5),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -1967,7 +2023,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(405))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -1979,24 +2035,24 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(175), balance!(18.5))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(40), balance!(5))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(40.5),
-                    Default::default()
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(175), balance!(18.5))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(40), balance!(5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(405),
+                balance!(40.5),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -2005,7 +2061,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(505))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -2020,24 +2076,24 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(175), balance!(18.5))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(140), balance!(17.5))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(53),
-                    Default::default()
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(175), balance!(18.5))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(140), balance!(17.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(505),
+                balance!(53),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
     }
@@ -2049,19 +2105,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(10))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(10), balance!(120))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(10), balance!(120))
-                    )],
-                    balance!(120),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(10), balance!(120))
+                )],
+                balance!(10),
+                balance!(120),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
 
@@ -2070,19 +2126,19 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(20))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(224))
                 )]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(20), balance!(224))
-                    )],
-                    balance!(224),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(20), balance!(224))
+                )],
+                balance!(20),
+                balance!(224),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
 
@@ -2091,7 +2147,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(30))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
                     (
@@ -2099,20 +2155,20 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(8), balance!(80))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(324),
-                    OutcomeFee::xor(balance!(0.8))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(8), balance!(80))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(30),
+                balance!(324),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(0.8))
             )
         );
 
@@ -2121,7 +2177,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(50))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
                     (LiquiditySourceType::XSTPool, (balance!(8), balance!(68))),
@@ -2130,27 +2186,27 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(20), balance!(190))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(8), balance!(68))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(502),
-                    OutcomeFee(BTreeMap::from([
-                        (XOR, balance!(1.9)),
-                        (XST, balance!(0.68))
-                    ]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(8), balance!(68))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(50),
+                balance!(502),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([
+                    (XOR, balance!(1.9)),
+                    (XST, balance!(0.68))
+                ]))
             )
         );
 
@@ -2159,7 +2215,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(60))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(23), balance!(214))),
                     (
@@ -2171,27 +2227,27 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(23), balance!(214))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(15), balance!(127.5))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(585.5),
-                    OutcomeFee(BTreeMap::from([
-                        (XOR, balance!(2.14)),
-                        (XST, balance!(1.275))
-                    ]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(23), balance!(214))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(15), balance!(127.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(60),
+                balance!(585.5),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([
+                    (XOR, balance!(2.14)),
+                    (XST, balance!(1.275))
+                ]))
             )
         );
     }
@@ -2203,16 +2259,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(100))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::OrderBook, (balance!(8), balance!(100)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(100), balance!(8))
-                    )],
-                    balance!(8),
-                    Default::default()
-                )
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_output(balance!(100), balance!(8))
+                )],
+                balance!(100),
+                balance!(8),
+                SwapVariant::WithDesiredOutput,
+                Default::default()
             )
         );
 
@@ -2221,7 +2277,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(200))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(1), balance!(10))),
                     (
@@ -2229,20 +2285,20 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(10), balance!(1))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(18),
-                    OutcomeFee::xor(balance!(0.1))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(10), balance!(1))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(200),
+                balance!(18),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(0.1))
             )
         );
 
@@ -2251,7 +2307,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(300))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -2262,20 +2318,20 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(110), balance!(11.1))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(28.1),
-                    OutcomeFee::xor(balance!(1.1))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(110), balance!(11.1))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(300),
+                balance!(28.1),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(1.1))
             )
         );
 
@@ -2284,7 +2340,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(500))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (LiquiditySourceType::XSTPool, (balance!(1.25), balance!(10))),
@@ -2293,24 +2349,24 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(300), balance!(33))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(10), balance!(1.25))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(51.25),
-                    OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(0.1))]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(300), balance!(33))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(10), balance!(1.25))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(500),
+                balance!(51.25),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(0.1))]))
             )
         );
 
@@ -2319,7 +2375,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(600))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
                     (
@@ -2331,24 +2387,24 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(300), balance!(33))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(110), balance!(13.75))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(63.75),
-                    OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(1.1))]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(300), balance!(33))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(110), balance!(13.75))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(600),
+                balance!(63.75),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(3)), (XST, balance!(1.1))]))
             )
         );
 
@@ -2357,7 +2413,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(700))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -2372,24 +2428,24 @@ mod tests {
                         (balance!(17), balance!(190))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(360), balance!(40.8))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_output(balance!(150), balance!(18.75))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(190), balance!(17))
-                        )
-                    ],
-                    balance!(76.55),
-                    OutcomeFee(BTreeMap::from([(XOR, balance!(3.6)), (XST, balance!(1.5))]))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(360), balance!(40.8))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(150), balance!(18.75))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(190), balance!(17))
+                    )
+                ],
+                balance!(700),
+                balance!(76.55),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(3.6)), (XST, balance!(1.5))]))
             )
         );
     }
@@ -2401,16 +2457,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(10))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_input(balance!(10), balance!(100))
-                    )],
-                    balance!(100),
-                    OutcomeFee::xor(balance!(1))
-                )
+                vec![(
+                    LiquiditySourceType::XYKPool,
+                    SwapAmount::with_desired_input(balance!(10), balance!(100))
+                )],
+                balance!(10),
+                balance!(100),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(1))
             )
         );
 
@@ -2419,16 +2475,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(20))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(20), balance!(190)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_input(balance!(20), balance!(190))
-                    )],
-                    balance!(190),
-                    OutcomeFee::xor(balance!(1.9))
-                )
+                vec![(
+                    LiquiditySourceType::XYKPool,
+                    SwapAmount::with_desired_input(balance!(20), balance!(190))
+                )],
+                balance!(20),
+                balance!(190),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(1.9))
             )
         );
 
@@ -2438,7 +2494,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(30))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
                     (
@@ -2446,20 +2502,20 @@ mod tests {
                         (balance!(22), balance!(244))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(8), balance!(80))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(22), balance!(244))
-                        )
-                    ],
-                    balance!(324),
-                    OutcomeFee::xor(balance!(0.8))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(8), balance!(80))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(22), balance!(244))
+                    )
+                ],
+                balance!(30),
+                balance!(324),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(0.8))
             )
         );
     }
@@ -2471,16 +2527,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(100))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_output(balance!(100), balance!(10))
-                    )],
-                    balance!(10),
-                    OutcomeFee::xor(balance!(1))
-                )
+                vec![(
+                    LiquiditySourceType::XYKPool,
+                    SwapAmount::with_desired_output(balance!(100), balance!(10))
+                )],
+                balance!(100),
+                balance!(10),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(1))
             )
         );
 
@@ -2489,16 +2545,16 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(200))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(21), balance!(200)))]),
-                AggregatedSwapOutcome::new(
-                    vec![(
-                        LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_output(balance!(200), balance!(21))
-                    )],
-                    balance!(21),
-                    OutcomeFee::xor(balance!(2))
-                )
+                vec![(
+                    LiquiditySourceType::XYKPool,
+                    SwapAmount::with_desired_output(balance!(200), balance!(21))
+                )],
+                balance!(200),
+                balance!(21),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(2))
             )
         );
 
@@ -2508,7 +2564,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(300))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
                     (
@@ -2516,20 +2572,20 @@ mod tests {
                         (balance!(18.05), balance!(200))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(100), balance!(10))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(200), balance!(18.05))
-                        )
-                    ],
-                    balance!(28.05),
-                    OutcomeFee::xor(balance!(1))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(100), balance!(10))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(200), balance!(18.05))
+                    )
+                ],
+                balance!(300),
+                balance!(28.05),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(1))
             )
         );
     }
@@ -2541,7 +2597,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(10.65))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -2552,20 +2608,20 @@ mod tests {
                         (balance!(10.6), balance!(127.2))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(0.05), balance!(0.5))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_input(balance!(10.6), balance!(127.2))
-                        )
-                    ],
-                    balance!(127.7),
-                    OutcomeFee::xor(balance!(0.005))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(0.05), balance!(0.5))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(10.6), balance!(127.2))
+                    )
+                ],
+                balance!(10.65),
+                balance!(127.7),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee::xor(balance!(0.005))
             )
         );
     }
@@ -2578,7 +2634,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(101.585))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -2589,20 +2645,20 @@ mod tests {
                         (balance!(8.465), balance!(101.58))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(0.005), balance!(0.0005))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(101.58), balance!(8.465))
-                        )
-                    ],
-                    balance!(8.4655),
-                    OutcomeFee::xor(balance!(0.00005))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(0.005), balance!(0.0005))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(101.58), balance!(8.465))
+                    )
+                ],
+                balance!(101.585),
+                balance!(8.4655),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(0.00005))
             )
         );
 
@@ -2612,7 +2668,7 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(101.585))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
@@ -2623,20 +2679,20 @@ mod tests {
                         (balance!(8.46), balance!(101.52))
                     )
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_output(balance!(0.065), balance!(0.0065))
-                        ),
-                        (
-                            LiquiditySourceType::OrderBook,
-                            SwapAmount::with_desired_output(balance!(101.52), balance!(8.46))
-                        )
-                    ],
-                    balance!(8.4665),
-                    OutcomeFee::xor(balance!(0.00065))
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(0.065), balance!(0.0065))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(101.52), balance!(8.46))
+                    )
+                ],
+                balance!(101.585),
+                balance!(8.4665),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee::xor(balance!(0.00065))
             )
         );
     }
@@ -2666,25 +2722,25 @@ mod tests {
             aggregator
                 .aggregate_swap_outcome::<Runtime>(balance!(1.5))
                 .unwrap(),
-            (
+            AggregationResult::new(
                 SwapInfo::from([
                     (LiquiditySourceType::XYKPool, (balance!(0.5), balance!(4))),
                     (LiquiditySourceType::XSTPool, (balance!(1), balance!(10)))
                 ]),
-                AggregatedSwapOutcome::new(
-                    vec![
-                        (
-                            LiquiditySourceType::XYKPool,
-                            SwapAmount::with_desired_input(balance!(0.5), balance!(4))
-                        ),
-                        (
-                            LiquiditySourceType::XSTPool,
-                            SwapAmount::with_desired_input(balance!(1), balance!(10))
-                        )
-                    ],
-                    balance!(14),
-                    Default::default()
-                )
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(0.5), balance!(4))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(1), balance!(10))
+                    )
+                ],
+                balance!(1.5),
+                balance!(14),
+                SwapVariant::WithDesiredInput,
+                Default::default()
             )
         );
     }

@@ -1462,19 +1462,18 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let (swap_info, aggregate_swap_outcome) =
-            aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
+        let aggregation_result = aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
 
         let mut rewards = Rewards::new();
 
         if !skip_info {
-            for (source, (input, output)) in swap_info {
+            for (source, (input, output)) in &aggregation_result.swap_info {
                 let (mut reward, weight) = T::LiquidityRegistry::check_rewards(
                     &source,
                     input_asset_id,
                     output_asset_id,
-                    input,
-                    output,
+                    *input,
+                    *output,
                 )
                 .unwrap_or((Vec::new(), Weight::zero()));
 
@@ -1483,7 +1482,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        Ok((aggregate_swap_outcome, rewards, total_weight))
+        Ok((aggregation_result.into(), rewards, total_weight))
     }
 
     /// Implements the "smart" split algorithm.
