@@ -31,8 +31,10 @@
 use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
-use common::{mock_pallet_balances_config, DEXInfo, PSWAP, VAL, XST};
+use common::{
+    self, fixed_from_basis_points, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, DEXInfo, Fixed, PSWAP, VAL, XOR, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -132,15 +134,7 @@ impl Config<crate::Instance2> for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

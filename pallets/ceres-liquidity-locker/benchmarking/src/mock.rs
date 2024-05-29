@@ -4,7 +4,8 @@ use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_pallet_balances_config, Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
+    fixed, hash, mock_pallet_balances_config, mock_technical_config, Amount, DEXInfo, Fixed, PSWAP,
+    TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -188,15 +189,7 @@ impl dex_api::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

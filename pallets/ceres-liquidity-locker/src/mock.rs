@@ -3,7 +3,8 @@ use codec::Decode;
 use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, DEXInfo, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, DEXInfo, PSWAP, TBCD,
+    VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -186,15 +187,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

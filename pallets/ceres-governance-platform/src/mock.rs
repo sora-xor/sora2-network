@@ -2,8 +2,9 @@ use crate::{self as ceres_governance_platform};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL,
+    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName,
+    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD,
+    VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -220,15 +221,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
