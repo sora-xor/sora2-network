@@ -37,7 +37,7 @@ use sp_std::vec::Vec;
 #[cfg(feature = "wip")] // ALT
 use {
     crate::{Config, Error},
-    common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
+    common::alt::{AlignReason, DiscreteQuotation, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::{fixed, Balance},
     itertools::Itertools,
@@ -137,6 +137,7 @@ impl<AssetId: Ord, LiquiditySourceType, AmountType>
 pub struct LiquidityAggregator<AssetId: Ord + Clone, LiquiditySourceType> {
     liquidity_quotations: BTreeMap<LiquiditySourceType, DiscreteQuotation<AssetId, Balance>>,
     variant: SwapVariant,
+    locked_sources: Vec<LiquiditySourceType>,
 }
 
 #[cfg(feature = "wip")] // ALT
@@ -149,6 +150,13 @@ where
         Self {
             liquidity_quotations: BTreeMap::new(),
             variant,
+            locked_sources: Vec::new(),
+        }
+    }
+
+    pub fn lock_source(&mut self, source: LiquiditySourceType) {
+        if !self.locked_sources.contains(&source) {
+            self.locked_sources.push(source);
         }
     }
 
@@ -171,11 +179,10 @@ where
         }
 
         let mut remaining_amount = amount;
-        let mut locked_sources = Vec::new();
         let mut selected = BTreeMap::new();
 
         while remaining_amount > Balance::zero() {
-            let candidates = self.find_best_price_candidates(&locked_sources);
+            let candidates = self.find_best_price_candidates();
 
             let mut source = candidates
                 .first()
@@ -209,7 +216,7 @@ where
                 // max amount (already selected + new chunk) exceeded
                 chunk = aligned;
                 payback = remainder;
-                locked_sources.push(source.clone());
+                self.locked_sources.push(source.clone());
             }
 
             let remaining_side_amount = SideAmount::new(remaining_amount, self.variant);
@@ -252,7 +259,7 @@ where
                         .get_mut(source)
                         .ok_or(Error::<T>::InsufficientLiquidity)?;
 
-                    let (aligned, remainder) = discrete_quotation
+                    let (aligned, remainder, align_reason) = discrete_quotation
                         .limits
                         .align_chunk(total)
                         .ok_or(Error::<T>::CalculationError)?;
@@ -260,7 +267,7 @@ where
                         remaining_amount = remaining_amount
                             .checked_add(*remainder.get_associated_field(self.variant).amount())
                             .ok_or(Error::<T>::CalculationError)?;
-                        locked_sources.push(source.clone());
+                        self.locked_sources.push(source.clone());
 
                         if aligned.is_zero() {
                             // liquidity is not enough even for the min amount
@@ -309,15 +316,12 @@ where
     }
 
     /// Find liquidity sources where the top chunk has the best price.
-    fn find_best_price_candidates(
-        &self,
-        locked: &Vec<LiquiditySourceType>,
-    ) -> Vec<LiquiditySourceType> {
+    fn find_best_price_candidates(&self) -> Vec<LiquiditySourceType> {
         let mut candidates = Vec::new();
         let mut max = fixed!(0);
         for (source, discrete_quotation) in self.liquidity_quotations.iter() {
             // skip the locked source
-            if locked.contains(source) {
+            if self.locked_sources.contains(source) {
                 continue;
             }
 
@@ -996,7 +1000,7 @@ mod tests {
     fn check_find_best_price_candidates_with_desired_input_and_equal_chunks() {
         let mut aggregator = get_liquidity_aggregator_with_desired_input_and_equal_chunks();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
 
         // remove order book chunk 1
@@ -1007,18 +1011,25 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(
             candidates,
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
 
         // check with locked sources
-        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
-        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
-        let candidates =
-            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
-        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::XYKPool);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        }
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::OrderBook);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        }
 
         // remove order book chunk 2
         aggregator
@@ -1028,7 +1039,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 1
@@ -1039,7 +1050,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 2
@@ -1050,7 +1061,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 1
@@ -1061,7 +1072,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 2
@@ -1072,7 +1083,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
     }
 
@@ -1080,7 +1091,7 @@ mod tests {
     fn check_find_best_price_candidates_with_desired_output_and_equal_chunks() {
         let mut aggregator = get_liquidity_aggregator_with_desired_output_and_equal_chunks();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
 
         // remove order book chunk 1
@@ -1091,18 +1102,25 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(
             candidates,
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
 
         // check with locked sources
-        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
-        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
-        let candidates =
-            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
-        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::XYKPool);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        }
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::OrderBook);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        }
 
         // remove order book chunk 2
         aggregator
@@ -1112,7 +1130,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 1
@@ -1123,7 +1141,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 2
@@ -1134,7 +1152,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 3
@@ -1145,7 +1163,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 1
@@ -1156,7 +1174,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 2
@@ -1167,7 +1185,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
     }
 
@@ -1558,7 +1576,7 @@ mod tests {
     fn check_find_best_price_candidates_with_desired_input_and_different_chunks() {
         let mut aggregator = get_liquidity_aggregator_with_desired_input_and_different_chunks();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
 
         // remove order book chunk 1
@@ -1569,18 +1587,25 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(
             candidates,
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
 
         // check with locked sources
-        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
-        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
-        let candidates =
-            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
-        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::XYKPool);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        }
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::OrderBook);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        }
 
         // remove order book chunk 2
         aggregator
@@ -1590,7 +1615,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 1
@@ -1601,7 +1626,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 2
@@ -1612,7 +1637,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 1
@@ -1623,7 +1648,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 2
@@ -1634,7 +1659,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
     }
 
@@ -1642,7 +1667,7 @@ mod tests {
     fn check_find_best_price_candidates_with_desired_output_and_different_chunks() {
         let mut aggregator = get_liquidity_aggregator_with_desired_output_and_different_chunks();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
 
         // remove order book chunk 1
@@ -1653,18 +1678,25 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(
             candidates,
             vec![LiquiditySourceType::XYKPool, LiquiditySourceType::OrderBook]
         );
 
         // check with locked sources
-        let candidates = aggregator.find_best_price_candidates(&vec![LiquiditySourceType::XYKPool]);
-        assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
-        let candidates =
-            aggregator.find_best_price_candidates(&vec![LiquiditySourceType::OrderBook]);
-        assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::XYKPool);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::OrderBook]);
+        }
+        {
+            let mut aggregator = aggregator.clone();
+            aggregator.lock_source(LiquiditySourceType::OrderBook);
+            let candidates = aggregator.find_best_price_candidates();
+            assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
+        }
 
         // remove order book chunk 2
         aggregator
@@ -1674,7 +1706,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 1
@@ -1685,7 +1717,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 2
@@ -1696,7 +1728,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XYKPool]);
 
         // remove xyk pool chunk 3
@@ -1707,7 +1739,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 1
@@ -1718,7 +1750,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
 
         // remove xst pool chunk 2
@@ -1729,7 +1761,7 @@ mod tests {
             .chunks
             .pop_front();
 
-        let candidates = aggregator.find_best_price_candidates(&Vec::new());
+        let candidates = aggregator.find_best_price_candidates();
         assert_eq!(candidates, vec![LiquiditySourceType::XSTPool]);
     }
 
