@@ -20,18 +20,12 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 hex-literal = { version = "0.4.1", optional = true }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-serde = { version = "1.0.101", default-features = false, optional = true, features = [
-    "derive",
-] }
-sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 common = { path = "../../common", default-features = false }
-dex-api = { path = "../dex-api", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
@@ -56,10 +50,6 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
-    'orml-traits/std',
-    'orml-traits/std',
-    'serde',
-    'sp-arithmetic/std',
     'sp-runtime/std',
     'sp-std/std',
     'sp-core/std',

@@ -40,8 +40,9 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId,
-    FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR, XST,
+    balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName,
+    AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR,
+    XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -131,21 +132,7 @@ impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-}
-
-impl pallet_balances::Config for Test {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Test);
 
 impl tokens::Config for Test {
     type RuntimeEvent = RuntimeEvent;

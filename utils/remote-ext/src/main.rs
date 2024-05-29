@@ -2,30 +2,42 @@
 #![allow(clippy::all)]
 
 use clap::Parser;
-use common::{DEXId, FilterMode};
-use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities};
+use codec::Decode;
+use frame_remote_externalities::{
+    Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
+};
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
+use sp_core::H256;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
-use framenode_runtime::assets::AssetIdOf;
-use framenode_runtime::order_book::WeightInfo;
-use framenode_runtime::{Runtime, Weight};
+use sp_runtime::traits::Dispatchable;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-async fn create_ext<B>(client: Arc<WsClient>) -> AnyResult<RemoteExternalities<B>>
+async fn create_ext<B>(
+    client: Arc<WsClient>,
+    at: Option<H256>,
+    snapshot_path: Option<PathBuf>,
+) -> AnyResult<RemoteExternalities<B>>
 where
-    B: DeserializeOwned + BlockT,
+    B: DeserializeOwned + BlockT<Hash = H256>,
     <B as BlockT>::Header: DeserializeOwned,
 {
+    let snapshot_path = snapshot_path.unwrap_or_else(|| match at {
+        Some(at) => format!("state_snapshot_{}", at).into(),
+        None => "state_snapshot".to_string().into(),
+    });
+    let state_snapshot = SnapshotConfig::new(&snapshot_path);
     let res = Builder::<B>::new()
         .mode(Mode::OfflineOrElseOnline(
             OfflineConfig {
-                state_snapshot: "state_snapshot".to_string().into(),
+                state_snapshot: state_snapshot.clone(),
             },
             OnlineConfig {
                 transport: client.into(),
-                state_snapshot: Some("state_snapshot".to_string().into()),
+                state_snapshot: Some(state_snapshot),
+                at,
                 ..Default::default()
             },
         ))
@@ -38,7 +50,17 @@ where
 #[derive(Debug, Clone, Parser)]
 struct Cli {
     /// Sora node endpoint.
+    #[clap(long)]
     uri: String,
+    /// Sora block hash.
+    #[clap(long)]
+    at: Option<H256>,
+    /// Sora snapshot path.
+    #[clap(long)]
+    snapshot_path: Option<PathBuf>,
+    /// Encoded extrinsic
+    #[clap(long)]
+    xt: String,
 }
 
 #[tokio::main]
@@ -50,44 +72,15 @@ async fn main() -> AnyResult<()> {
         .build(cli.uri)
         .await?;
     let client = Arc::new(client);
-    let mut ext = create_ext::<framenode_runtime::Block>(client.clone()).await?;
+    let mut ext =
+        create_ext::<framenode_runtime::Block>(client.clone(), cli.at, cli.snapshot_path).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
-        fn get_path_weight(input: AssetIdOf<Runtime>, output: AssetIdOf<Runtime>) -> Weight {
-            liquidity_proxy::Pallet::<Runtime>::swap_weight(
-                &DEXId::Polkaswap.into(),
-                &input,
-                &output,
-                &Vec::new(),
-                &FilterMode::Disabled,
-            )
-        }
-        // Base -> Basic
-        let path_2_weight = get_path_weight(common::XOR, common::PSWAP);
-
-        // Basic -> Basic
-        let path_3_weight = get_path_weight(common::VAL, common::PSWAP);
-
-        // Synthetic -> Basic
-        let path_4_weight = get_path_weight(common::XSTUSD, common::PSWAP);
-
-        dbg!(path_2_weight);
-        dbg!(path_3_weight);
-        dbg!(path_4_weight);
-
-        let execute_order_weight =
-            <Runtime as framenode_runtime::order_book::Config>::WeightInfo::execute_market_order();
-        dbg!(execute_order_weight);
-
-        println!("\nexchange weights:");
-        let max_orders = <Runtime as framenode_runtime::order_book::Config>::HARD_MIN_MAX_RATIO
-            .try_into()
-            .unwrap();
-        for n in [1, max_orders / 2, max_orders] {
-            let exchange =
-                <Runtime as framenode_runtime::order_book::Config>::WeightInfo::exchange(n);
-            println!("{n} order(-s):");
-            dbg!(exchange);
-            println!();
+        let xt_encoded = hex::decode(&cli.xt).unwrap();
+        let xt = framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
+        if let Some((account, _signature, _extra)) = xt.signature {
+            xt.function
+                .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
+                .unwrap();
         }
         Ok(())
     });

@@ -30,7 +30,7 @@
 
 use core::str::FromStr;
 
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
@@ -613,7 +613,7 @@ fn check_step_quote_with_zero_samples_count() {
                     balance!(200),
                     Default::default()
                 )]),
-                limits: Default::default()
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
             }
         );
     })]);
@@ -765,7 +765,7 @@ fn check_step_quote_without_fee() {
                         Default::default()
                     ),
                 ]),
-                limits: Default::default()
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
             }
         );
 
@@ -901,7 +901,7 @@ fn check_step_quote_without_fee() {
                         Default::default()
                     ),
                 ]),
-                limits: Default::default()
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(99000))), None)
             }
         );
     })]);
@@ -1053,7 +1053,7 @@ fn check_step_quote_with_fee() {
                         OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030147523975218649))
                     ),
                 ]),
-                limits: Default::default()
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
             }
         );
 
@@ -1189,33 +1189,17 @@ fn check_step_quote_with_fee() {
                         OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
                     ),
                 ]),
-                limits: Default::default()
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(98703))), None)
             }
         );
     })]);
 }
 
-fn compare_quotes(
-    dex_id: &DEXId,
-    input_asset_id: &AssetId,
-    output_asset_id: &AssetId,
-    amount: QuoteAmount<Balance>,
-    deduce_fee: bool,
-) {
+fn sum_step_quote<AssetId: Ord + Clone>(
+    step_quote_result: DiscreteQuotation<AssetId, Balance>,
+) -> (Balance, Balance, OutcomeFee<AssetId, Balance>) {
     let (step_quote_input, step_quote_output, step_quote_fee) =
-        crate::Pallet::<Runtime>::step_quote(
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            10,
-            deduce_fee,
-        )
-        .unwrap()
-        .0
-        .chunks
-        .iter()
-        .fold(
+        step_quote_result.chunks.iter().fold(
             (balance!(0), balance!(0), OutcomeFee::default()),
             |acc, item| {
                 (
@@ -1225,6 +1209,28 @@ fn compare_quotes(
                 )
             },
         );
+    (step_quote_input, step_quote_output, step_quote_fee)
+}
+
+fn compare_quotes(
+    dex_id: &DEXId,
+    input_asset_id: &AssetId,
+    output_asset_id: &AssetId,
+    amount: QuoteAmount<Balance>,
+    deduce_fee: bool,
+) {
+    let (step_quote_input, step_quote_output, step_quote_fee) = sum_step_quote(
+        crate::Pallet::<Runtime>::step_quote(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            10,
+            deduce_fee,
+        )
+        .unwrap()
+        .0,
+    );
 
     let quote_result = crate::Pallet::<Runtime>::quote(
         dex_id,
@@ -1322,6 +1328,300 @@ fn check_step_quote_equal_with_qoute() {
             &gt,
             QuoteAmount::with_desired_output(balance!(100)),
             true,
+        );
+    })]);
+}
+
+#[test]
+fn check_exceed_reserves() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        let gt_reserve = balance!(100000);
+        let bp_reserve = balance!(200000);
+
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            gt_reserve,
+            bp_reserve,
+            gt_reserve,
+            bp_reserve,
+        ));
+
+        // quote
+
+        assert_eq!(
+            simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: gt_reserve + balance!(1)
+                },
+                true
+            )
+            .unwrap()),
+            (
+                balance!(99850.274658368380604529),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.003))
+            )
+        );
+
+        // error when desired output exceeds reserves
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: bp_reserve + balance!(1)
+                },
+                true
+            ),
+            crate::Error::<Runtime>::FixedWrapperCalculationFailed
+        );
+
+        assert_eq!(
+            simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: bp_reserve + balance!(1)
+                },
+                true
+            )
+            .unwrap()),
+            (
+                balance!(49850.124624688438278904),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(150.000374999062502344))
+            )
+        );
+
+        // error when desired output exceeds reserves
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: gt_reserve + balance!(1)
+                },
+                true
+            ),
+            crate::Error::<Runtime>::FixedWrapperCalculationFailed
+        );
+
+        // step quote
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &gt,
+                    &bp,
+                    QuoteAmount::WithDesiredInput {
+                        desired_amount_in: gt_reserve + balance!(1)
+                    },
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (
+                gt_reserve + balance!(1),
+                balance!(99850.274658368380604529),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.003))
+            )
+        );
+
+        // no error for step_quote
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &gt,
+                    &bp,
+                    QuoteAmount::WithDesiredOutput {
+                        desired_amount_out: bp_reserve + balance!(1)
+                    },
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (
+                balance!(9929789.368104312938821464),
+                balance!(198000),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(29789.368104312938816464))
+            )
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &bp,
+                    &gt,
+                    QuoteAmount::WithDesiredInput {
+                        desired_amount_in: bp_reserve + balance!(1)
+                    },
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (
+                bp_reserve + balance!(1),
+                balance!(49850.124624688438278904),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(150.000374999062502344))
+            )
+        );
+
+        // no error for step_quote
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &bp,
+                    &gt,
+                    QuoteAmount::WithDesiredOutput {
+                        desired_amount_out: gt_reserve + balance!(1)
+                    },
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (
+                balance!(19800000.00000000000002),
+                balance!(98703),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(297))
+            )
+        );
+    })]);
+}
+
+#[test]
+fn check_empty_reserves() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        // don't deposit any liquidity
+
+        // error for quote
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_input(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::with_desired_output(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(1)),
+                true
+            ),
+            crate::Error::<Runtime>::PoolIsEmpty
+        );
+
+        // no error for step_quote
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &gt,
+                    &bp,
+                    QuoteAmount::with_desired_input(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &gt,
+                    &bp,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &bp,
+                    &gt,
+                    QuoteAmount::with_desired_input(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
+        );
+
+        assert_eq!(
+            sum_step_quote(
+                crate::Pallet::<Runtime>::step_quote(
+                    &dex_id,
+                    &bp,
+                    &gt,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    10,
+                    true,
+                )
+                .unwrap()
+                .0,
+            ),
+            (balance!(0), balance!(0), Default::default())
         );
     })]);
 }

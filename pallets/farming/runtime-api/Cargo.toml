@@ -13,7 +13,6 @@ sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
 
 [features]
 default = ["std"]

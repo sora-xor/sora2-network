@@ -19,16 +19,12 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-serde = { version = "1.0.101", optional = true, features = [
-    "derive",
-], default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical", default-features = false }
@@ -63,7 +59,6 @@ std = [
     "frame-system/std",
     "multicollateral-bonding-curve-pool/std",
     "permissions/std",
-    "serde/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
@@ -76,7 +71,6 @@ std = [
 ]
 
 runtime-benchmarks = [
-    "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]

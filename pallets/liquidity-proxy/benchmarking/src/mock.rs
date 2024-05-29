@@ -36,11 +36,11 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_technical_config, Amount, AssetId32,
-    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description, Fixed,
-    FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD,
-    USDT, VAL, XOR, XST,
+    balance, fixed, fixed_from_basis_points, hash, mock_pallet_balances_config,
+    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider, PriceVariant, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -90,7 +90,6 @@ parameter_types! {
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
@@ -104,6 +103,7 @@ parameter_types! {
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -239,17 +239,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -334,10 +324,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 impl vested_rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
@@ -467,6 +458,7 @@ parameter_types! {
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.")
     };
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 pub struct MockPriceTools;
@@ -495,6 +487,7 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
@@ -504,8 +497,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {

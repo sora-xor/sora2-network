@@ -46,21 +46,58 @@ use pallet_tools::pool_xyk::AssetPairInput;
 fn should_xyk_initialize_pool() {
     ext().execute_with(|| {
         let pairs = vec![
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, ETH, balance!(0.1)),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1)),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, DAI, balance!(10)),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5)),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, TBCD, balance!(0.5)),
-            AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5)),
-            AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, PSWAP, balance!(0.5)),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5), None),
+            AssetPairInput::new(
+                DEXId::Polkaswap.into(),
+                XOR,
+                ETH,
+                balance!(0.1),
+                Some(balance!(1000)),
+            ),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1), None),
+            AssetPairInput::new(
+                DEXId::Polkaswap.into(),
+                XOR,
+                DAI,
+                balance!(10),
+                Some(balance!(1000)),
+            ),
+            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5), None),
+            AssetPairInput::new(
+                DEXId::Polkaswap.into(),
+                XOR,
+                TBCD,
+                balance!(0.5),
+                Some(balance!(1000)),
+            ),
+            AssetPairInput::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                VAL,
+                balance!(0.5),
+                None,
+            ),
+            AssetPairInput::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                PSWAP,
+                balance!(0.5),
+                Some(balance!(1000)),
+            ),
             AssetPairInput::new(
                 DEXId::PolkaswapXSTUSD.into(),
                 XSTUSD,
                 ETH,
                 balance!(0.000000000000000001),
+                None,
             ),
-            AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, DAI, balance!(0.5)),
+            AssetPairInput::new(
+                DEXId::PolkaswapXSTUSD.into(),
+                XSTUSD,
+                DAI,
+                balance!(0.5),
+                Some(balance!(1000)),
+            ),
         ];
         let prices = initialize_xyk::<Runtime>(alice(), pairs.clone()).unwrap();
 
@@ -91,8 +128,14 @@ fn should_not_initialize_existing_xyk_pool() {
             RuntimeOrigin::root(),
             alice(),
             vec![
-                AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5)),
-                AssetPairInput::new(DEXId::PolkaswapXSTUSD.into(), XSTUSD, VAL, balance!(0.5))
+                AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5), None),
+                AssetPairInput::new(
+                    DEXId::PolkaswapXSTUSD.into(),
+                    XSTUSD,
+                    VAL,
+                    balance!(0.5),
+                    None
+                )
             ],
         ));
         assert_eq!(
@@ -103,8 +146,9 @@ fn should_not_initialize_existing_xyk_pool() {
                     DEXId::Polkaswap.into(),
                     XOR,
                     VAL,
-                    balance!(0.5)
-                ),],
+                    balance!(0.5),
+                    None
+                )],
             ),
             Err(err_pays_no(
                 pool_xyk::Error::<Runtime>::PoolIsAlreadyInitialized

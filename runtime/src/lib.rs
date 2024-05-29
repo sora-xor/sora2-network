@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 84,
+    spec_version: 85,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 84,
+    transaction_version: 85,
     state_version: 0,
 };
 
@@ -990,6 +990,7 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 parameter_type_with_key! {
@@ -1019,10 +1020,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
-    type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1697,9 +1699,11 @@ parameter_types! {
         account_id
     };
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
@@ -1707,10 +1711,11 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -2925,7 +2930,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(quote_info, _, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(quote_info, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(0),
                 fee: quote_info.outcome.fee,
