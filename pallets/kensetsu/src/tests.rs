@@ -989,7 +989,15 @@ fn borrow_max_with_ken_incentivization() {
 #[test]
 fn borrow_xor_kxor_with_incentivization() {
     new_test_ext().execute_with(|| {
-        set_borrow_tax(Percent::from_percent(1));
+        let new_borrow_taxes = BorrowTaxes {
+            ken_borrow_tax: Percent::from_percent(1),
+            karma_borrow_tax: Percent::from_percent(1),
+            tbcd_borrow_tax: Percent::from_percent(1),
+        };
+        assert_ok!(KensetsuPallet::update_borrow_tax(
+            RuntimeOrigin::root(),
+            new_borrow_taxes
+        ));
         configure_kxor_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
@@ -2256,14 +2264,17 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
 #[test]
 fn test_update_borrow_tax_only_root() {
     new_test_ext().execute_with(|| {
-        let new_borrow_tax = Percent::from_percent(10);
-
+        let new_borrow_taxes = BorrowTaxes {
+            ken_borrow_tax: Percent::from_percent(1),
+            karma_borrow_tax: Percent::from_percent(2),
+            tbcd_borrow_tax: Percent::from_percent(3),
+        };
         assert_noop!(
-            KensetsuPallet::update_borrow_tax(RuntimeOrigin::none(), new_borrow_tax),
+            KensetsuPallet::update_borrow_tax(RuntimeOrigin::none(), new_borrow_taxes.clone()),
             BadOrigin
         );
         assert_noop!(
-            KensetsuPallet::update_borrow_tax(alice(), Percent::from_percent(10)),
+            KensetsuPallet::update_borrow_tax(alice(), new_borrow_taxes),
             BadOrigin
         );
     });
@@ -2273,22 +2284,37 @@ fn test_update_borrow_tax_only_root() {
 #[test]
 fn test_update_borrow_tax_sunny_day() {
     new_test_ext().execute_with(|| {
-        let new_borrow_tax = Percent::from_percent(10);
+        let new_borrow_taxes = BorrowTaxes {
+            ken_borrow_tax: Percent::from_percent(1),
+            karma_borrow_tax: Percent::from_percent(2),
+            tbcd_borrow_tax: Percent::from_percent(3),
+        };
 
         assert_ok!(KensetsuPallet::update_borrow_tax(
             RuntimeOrigin::root(),
-            new_borrow_tax
+            new_borrow_taxes.clone()
         ));
 
-        let old_borrow_tax = Percent::default();
+        let old_borrow_taxes = BorrowTaxes::default();
         System::assert_has_event(
             Event::BorrowTaxUpdated {
-                new_borrow_tax,
-                old_borrow_tax,
+                old_borrow_taxes,
+                new_borrow_taxes: new_borrow_taxes.clone(),
             }
             .into(),
         );
-        assert_eq!(new_borrow_tax, BorrowTax::<TestRuntime>::get());
+        assert_eq!(
+            new_borrow_taxes.ken_borrow_tax,
+            BorrowTax::<TestRuntime>::get()
+        );
+        assert_eq!(
+            new_borrow_taxes.karma_borrow_tax,
+            KarmaBorrowTax::<TestRuntime>::get()
+        );
+        assert_eq!(
+            new_borrow_taxes.tbcd_borrow_tax,
+            TbcdBorrowTax::<TestRuntime>::get()
+        );
     });
 }
 

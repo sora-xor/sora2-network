@@ -45,7 +45,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, AssetIdOf, AssetManager, Balance, DataFeed, Rate, SymbolName};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
-use sp_arithmetic::{FixedU128, Perbill};
+use sp_arithmetic::{FixedU128, Perbill, Percent};
 
 #[cfg(test)]
 mod mock;
@@ -184,6 +184,13 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     pub interest_coefficient: FixedU128,
 }
 
+#[derive(Clone, Debug, Default, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
+pub struct BorrowTaxes {
+    pub ken_borrow_tax: Percent,
+    pub karma_borrow_tax: Percent,
+    pub tbcd_borrow_tax: Percent,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -202,7 +209,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
-    use sp_arithmetic::Percent;
     use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
@@ -400,11 +406,21 @@ pub mod pallet {
         CollateralInfo<T::Moment>,
     >;
 
-    /// Risk parameter
-    /// Borrows tax to buy back and burn KEN
+    /// Borrows tax applied on borrow amount in any stablecoin and used to buy back and incentivize
+    /// KEN. It is a risk parameter.
     #[pallet::storage]
     #[pallet::getter(fn borrow_tax)]
     pub type BorrowTax<T> = StorageValue<_, Percent, ValueQuery>;
+
+    /// Borrow tax applied on borrow amount in KXOR and used to buy back and incentivize KARMA.
+    #[pallet::storage]
+    #[pallet::getter(fn karma_borrow_tax)]
+    pub type KarmaBorrowTax<T> = StorageValue<_, Percent, ValueQuery>;
+
+    /// Borrow tax applied on borrow amount in KXOR and used to buy back and burn TBCD.
+    #[pallet::storage]
+    #[pallet::getter(fn tbcd_borrow_tax)]
+    pub type TbcdBorrowTax<T> = StorageValue<_, Percent, ValueQuery>;
 
     /// Liquidation penalty
     #[pallet::storage]
@@ -522,8 +538,8 @@ pub mod pallet {
             risk_parameters: CollateralRiskParameters,
         },
         BorrowTaxUpdated {
-            old_borrow_tax: Percent,
-            new_borrow_tax: Percent,
+            old_borrow_taxes: BorrowTaxes,
+            new_borrow_taxes: BorrowTaxes,
         },
         LiquidationPenaltyUpdated {
             new_liquidation_penalty: Percent,
@@ -811,13 +827,22 @@ pub mod pallet {
         /// - `new_borrow_tax`: The new borrow tax percentage to be set.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_borrow_tax())]
-        pub fn update_borrow_tax(origin: OriginFor<T>, new_borrow_tax: Percent) -> DispatchResult {
+        pub fn update_borrow_tax(
+            origin: OriginFor<T>,
+            new_borrow_taxes: BorrowTaxes,
+        ) -> DispatchResult {
             ensure_root(origin)?;
-            let old_borrow_tax = BorrowTax::<T>::get();
-            BorrowTax::<T>::set(new_borrow_tax);
+            let old_borrow_taxes = BorrowTaxes {
+                ken_borrow_tax: BorrowTax::<T>::get(),
+                karma_borrow_tax: KarmaBorrowTax::<T>::get(),
+                tbcd_borrow_tax: TbcdBorrowTax::<T>::get(),
+            };
+            BorrowTax::<T>::set(new_borrow_taxes.ken_borrow_tax);
+            KarmaBorrowTax::<T>::set(new_borrow_taxes.karma_borrow_tax);
+            TbcdBorrowTax::<T>::set(new_borrow_taxes.tbcd_borrow_tax);
             Self::deposit_event(Event::BorrowTaxUpdated {
-                new_borrow_tax,
-                old_borrow_tax,
+                old_borrow_taxes,
+                new_borrow_taxes,
             });
 
             Ok(())
@@ -1295,12 +1320,12 @@ pub mod pallet {
             {
                 taxes.push(BorrowTax {
                     incentive_asset_id: T::KarmaAssetId::get(),
-                    tax_percent: Percent::from_percent(1),
+                    tax_percent: Self::karma_borrow_tax(),
                     remint_percent: T::KarmaIncentiveRemintPercent::get(),
                 });
                 taxes.push(BorrowTax {
                     incentive_asset_id: T::TbcdAssetId::get(),
-                    tax_percent: Percent::from_percent(1),
+                    tax_percent: Self::tbcd_borrow_tax(),
                     remint_percent: Percent::zero(),
                 });
                 total_borrow_tax_percent = total_borrow_tax_percent + Percent::from_percent(2);

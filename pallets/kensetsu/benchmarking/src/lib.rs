@@ -40,8 +40,8 @@ use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use kensetsu::{
-    BorrowTax, CdpId, CdpType, CollateralInfos, CollateralRiskParameters, Event, PegAsset,
-    StablecoinInfos, StablecoinParameters,
+    BorrowTax, BorrowTaxes, CdpId, CdpType, CollateralInfos, CollateralRiskParameters, Event,
+    KarmaBorrowTax, PegAsset, StablecoinInfos, StablecoinParameters, TbcdBorrowTax,
 };
 use price_tools::AVG_BLOCK_SPAN;
 use sp_arithmetic::{Perbill, Percent};
@@ -369,24 +369,30 @@ benchmarks! {
     }
 
     update_borrow_tax {
-        let new_borrow_tax = Percent::from_percent(1);
+        let new_borrow_taxes = BorrowTaxes{
+            ken_borrow_tax: Percent::from_percent(1),
+            karma_borrow_tax: Percent::from_percent(2),
+            tbcd_borrow_tax: Percent::from_percent(3),
+        };
     }:{
         kensetsu::Pallet::<T>::update_borrow_tax(
             RawOrigin::Root.into(),
-            new_borrow_tax
+            new_borrow_taxes.clone()
         ).unwrap();
     }
     verify {
-        let old_borrow_tax = Percent::default();
+        let old_borrow_taxes = BorrowTaxes::default();
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::BorrowTaxUpdated {
-                    new_borrow_tax,
-                    old_borrow_tax,
+                    old_borrow_taxes,
+                    new_borrow_taxes: new_borrow_taxes.clone(),
                 }
             ).into()
         );
-        assert_eq!(new_borrow_tax, BorrowTax::<T>::get());
+        assert_eq!(new_borrow_taxes.ken_borrow_tax, BorrowTax::<T>::get());
+        assert_eq!(new_borrow_taxes.karma_borrow_tax, KarmaBorrowTax::<T>::get());
+        assert_eq!(new_borrow_taxes.tbcd_borrow_tax, TbcdBorrowTax::<T>::get());
     }
 
     update_liquidation_penalty {}:{
