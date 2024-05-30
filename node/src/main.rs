@@ -28,21 +28,21 @@
 // // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// //! Substrate Node Template CLI library.
-// #![warn(missing_docs)]
-// // TODO #167: fix clippy warnings
-// #![allow(clippy::all)]
+//! Substrate Node Template CLI library.
+#![warn(missing_docs)]
+// TODO #167: fix clippy warnings
+#![allow(clippy::all)]
 
-// #[macro_use]
-// mod service;
-// mod cli;
-// mod command;
-// mod data_feed_metrics;
-// mod eth_bridge_metrics;
-// #[cfg(feature = "private-net")]
-// mod fork_off;
-// mod rpc;
+#[macro_use]
+mod service;
+mod cli;
+mod command;
+mod data_feed_metrics;
+mod eth_bridge_metrics;
+#[cfg(feature = "private-net")]
+mod fork_off;
+mod rpc;
 
-// fn main() -> sc_cli::Result<()> {
-//     command::run()
-// }
+fn main() -> sc_cli::Result<()> {
+    command::run()
+}

@@ -65,7 +65,7 @@
 
 // use hex_literal::hex;
 // use permissions::Scope;
-// use sc_finality_grandpa::AuthorityId as GrandpaId;
+// use sc_consensus_grandpa::AuthorityId as GrandpaId;
 // use sc_network_common::config::MultiaddrWithPeerId;
 // use sc_service::{ChainType, Properties};
 // use sp_consensus_aura::sr25519::AuthorityId as AuraId;

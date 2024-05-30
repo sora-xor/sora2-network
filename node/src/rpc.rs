@@ -34,7 +34,7 @@ use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
-    FilterMode, Index, LiquiditySourceType, ResolveTime, Runtime, SwapVariant, Symbol,
+    FilterMode, LiquiditySourceType, Nonce, ResolveTime, Runtime, SwapVariant, Symbol,
 };
 use jsonrpsee::RpcModule;
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
@@ -47,7 +47,7 @@ use std::sync::Arc;
 /// A type representing all RPC extensions.
 pub type RpcExtension = RpcModule<()>;
 
-use beefy_gadget::communication::notification::{
+use sc_consensus_beefy::communication::notification::{
     BeefyBestBlockStream, BeefyVersionedFinalityProofStream,
 };
 /// Dependencies for BEEFY
@@ -61,7 +61,7 @@ pub struct BeefyDeps {
 }
 
 /// Full client dependencies
-pub struct FullDeps<C, P> {
+pub struct FullDeps<C, P, B> {
     /// The client instance to use.
     pub client: Arc<C>,
     /// Transaction pool instance.
@@ -70,6 +70,8 @@ pub struct FullDeps<C, P> {
     pub deny_unsafe: DenyUnsafe,
     /// BEEFY specific dependencies.
     pub beefy: BeefyDeps,
+    /// Backend used by the node.
+    pub backend: Arc<B>,
 }
 
 #[cfg(feature = "wip")]
@@ -96,8 +98,8 @@ pub fn add_ready_for_test_rpc(
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(
-    deps: FullDeps<C, P>,
+pub fn create_full<C, P, B>(
+    deps: FullDeps<C, P, B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -108,8 +110,8 @@ where
         <Block as sp_runtime::traits::Block>::Hash,
         <<Block as sp_runtime::traits::Block>::Header as sp_runtime::traits::Header>::Number,
     >,
-    C::Api: sp_beefy::BeefyApi<Block>,
-    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
+    // C::Api: sp_beefy::BeefyApi<Block>,
+    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
     C::Api: dex_api_rpc::DEXRuntimeAPI<
         Block,
@@ -178,9 +180,10 @@ where
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
+    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashingFor<Block>>,
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
-    use beefy_gadget_rpc::{Beefy, BeefyApiServer};
     use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
@@ -194,6 +197,7 @@ where
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
+    use sc_consensus_beefy_rpc::{Beefy, BeefyApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
@@ -204,9 +208,18 @@ where
         pool,
         deny_unsafe,
         beefy,
+        backend,
     } = deps;
 
-    io.merge(Mmr::new(client.clone()).into_rpc())?;
+    io.merge(
+        Mmr::new(
+            client.clone(),
+            backend
+                .offchain_storage()
+                .ok_or("Backend doesn't provide the required offchain storage")?,
+        )
+        .into_rpc(),
+    )?;
     io.merge(
         Beefy::<Block>::new(
             beefy.beefy_finality_proof_stream,

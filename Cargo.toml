@@ -155,9 +155,11 @@ sc-basic-authorship = { path = "../sora-polkadot-sdk/substrate/client/basic-auth
 sc-chain-spec = { path = "../sora-polkadot-sdk/substrate/client/chain-spec" }
 sc-cli = { path = "../sora-polkadot-sdk/substrate/client/cli"}
 sc-client-api = { path = "../sora-polkadot-sdk/substrate/client/api"}
-# sc-consensus = { path = "../sora-polkadot-sdk/substrate/client/consensus"}
+sc-consensus = { path = "../sora-polkadot-sdk/substrate/client/consensus/common"}
 sc-consensus-aura = { path = "../sora-polkadot-sdk/substrate/client/consensus/aura"}
 sc-consensus-babe = { path = "../sora-polkadot-sdk/substrate/client/consensus/babe"}
+sc-consensus-beefy = { path = "../sora-polkadot-sdk/substrate/client/consensus/beefy"}
+sc-consensus-grandpa = { path = "../sora-polkadot-sdk/substrate/client/consensus/grandpa"}
 sc-consensus-slots = { path = "../sora-polkadot-sdk/substrate/client/consensus/slots"}
 sc-executor = { path = "../sora-polkadot-sdk/substrate/client/executor"}
 # sc-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/client/finality-grandpa"}
@@ -167,6 +169,7 @@ sc-rpc = { path = "../sora-polkadot-sdk/substrate/client/rpc"}
 sc-rpc-api = { path = "../sora-polkadot-sdk/substrate/client/rpc-api"}
 sc-service = { path = "../sora-polkadot-sdk/substrate/client/service"}
 sc-transaction-pool = { path = "../sora-polkadot-sdk/substrate/client/transaction-pool"}
+sc-transaction-pool-api = { path = "../sora-polkadot-sdk/substrate/client/transaction-pool/api"}
 sc-telemetry = { path = "../sora-polkadot-sdk/substrate/client/telemetry"}
 sp-api = { path = "../sora-polkadot-sdk/substrate/primitives/api"}
 sp-application-crypto = { path = "../sora-polkadot-sdk/substrate/primitives/application-crypto"}
@@ -177,6 +180,7 @@ sp-blockchain = { path = "../sora-polkadot-sdk/substrate/primitives/blockchain"}
 sp-consensus-aura = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/aura"}
 sp-consensus-babe = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/babe"}
 sp-core = { path = "../sora-polkadot-sdk/substrate/primitives/core"}
+sp-database = { path = "../sora-polkadot-sdk/substrate/primitives/database"}
 # sp-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/primitives/finality-grandpa"}
 sp-inherents = { path = "../sora-polkadot-sdk/substrate/primitives/inherents"}
 sp-io = { path = "../sora-polkadot-sdk/substrate/primitives/io"}
@@ -257,9 +261,11 @@ sc-basic-authorship = { path = "../sora-polkadot-sdk/substrate/client/basic-auth
 sc-chain-spec = { path = "../sora-polkadot-sdk/substrate/client/chain-spec" }
 sc-cli = { path = "../sora-polkadot-sdk/substrate/client/cli"}
 sc-client-api = { path = "../sora-polkadot-sdk/substrate/client/api"}
+sc-consensus = { path = "../sora-polkadot-sdk/substrate/client/consensus/common"}
 # sc-consensus = { path = "../sora-polkadot-sdk/substrate/client/consensus"}
 sc-consensus-aura = { path = "../sora-polkadot-sdk/substrate/client/consensus/aura"}
 sc-consensus-babe = { path = "../sora-polkadot-sdk/substrate/client/consensus/babe"}
+sc-consensus-grandpa = { path = "../sora-polkadot-sdk/substrate/client/consensus/grandpa"}
 sc-consensus-slots = { path = "../sora-polkadot-sdk/substrate/client/consensus/slots"}
 sc-executor = { path = "../sora-polkadot-sdk/substrate/client/executor"}
 # sc-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/client/finality-grandpa"}
@@ -269,6 +275,7 @@ sc-rpc = { path = "../sora-polkadot-sdk/substrate/client/rpc"}
 sc-rpc-api = { path = "../sora-polkadot-sdk/substrate/client/rpc-api"}
 sc-service = { path = "../sora-polkadot-sdk/substrate/client/service"}
 sc-transaction-pool = { path = "../sora-polkadot-sdk/substrate/client/transaction-pool"}
+sc-transaction-pool-api = { path = "../sora-polkadot-sdk/substrate/client/transaction-pool/api"}
 sc-telemetry = { path = "../sora-polkadot-sdk/substrate/client/telemetry"}
 sp-api = { path = "../sora-polkadot-sdk/substrate/primitives/api"}
 sp-application-crypto = { path = "../sora-polkadot-sdk/substrate/primitives/application-crypto"}
@@ -278,7 +285,9 @@ sp-blockchain = { path = "../sora-polkadot-sdk/substrate/primitives/blockchain"}
 # sp-consensus = { path = "../sora-polkadot-sdk/substrate/primitives/consensus"}
 sp-consensus-aura = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/aura"}
 sp-consensus-babe = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/babe"}
+sc-consensus-beefy = { path = "../sora-polkadot-sdk/substrate/client/consensus/beefy"}
 sp-core = { path = "../sora-polkadot-sdk/substrate/primitives/core"}
+sp-database = { path = "../sora-polkadot-sdk/substrate/primitives/database"}
 # sp-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/primitives/finality-grandpa"}
 sp-inherents = { path = "../sora-polkadot-sdk/substrate/primitives/inherents"}
 sp-io = { path = "../sora-polkadot-sdk/substrate/primitives/io"}

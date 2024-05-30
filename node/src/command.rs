@@ -76,7 +76,7 @@ impl SubstrateCli for Cli {
 
         #[cfg(not(feature = "private-net"))]
         if id == "main" {
-            chain_spec = Some(framenode_chain_spec::main_net()?);
+            // chain_spec = Some(framenode_chain_spec::main_net()?);
         }
 
         #[cfg(feature = "main-net-coded")]
@@ -87,15 +87,15 @@ impl SubstrateCli for Cli {
         let chain_spec = if let Some(chain_spec) = chain_spec {
             chain_spec
         } else {
-            framenode_chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
+            // framenode_chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
         };
 
         Ok(Box::new(chain_spec))
     }
 
-    fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-        &framenode_runtime::VERSION
-    }
+    // fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
+    //     &framenode_runtime::VERSION
+    // }
 }
 
 /// Parse and run command line arguments

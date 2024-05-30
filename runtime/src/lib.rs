@@ -69,9 +69,9 @@ use constants::time::*;
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
 
-// Make the WASM binary available.
-#[cfg(all(feature = "std", feature = "build-wasm-binary"))]
-include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+// // Make the WASM binary available.
+// #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
+// include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
