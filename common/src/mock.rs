@@ -219,6 +219,7 @@ macro_rules! mock_assets_config {
             type Currency = currencies::Pallet<$runtime>;
             type GetTotalBalance = ();
             type WeightInfo = ();
+            type AssetRegulator = permissions::Pallet<$runtime>;
         }
     };
 }
@@ -228,9 +229,7 @@ macro_rules! mock_assets_config {
 macro_rules! mock_pallet_balances_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const MaxLocks: u32 = 50;
-            pub const ExistentialDeposit: u128 = 1;
-            pub const MaxReserves: u32 = 50;
+            pub const ExistentialDeposit: u128 = 0;
         }
         impl pallet_balances::Config for $runtime {
             type Balance = Balance;
@@ -239,8 +238,8 @@ macro_rules! mock_pallet_balances_config {
             type ExistentialDeposit = ExistentialDeposit;
             type AccountStore = System;
             type WeightInfo = ();
-            type MaxLocks = MaxLocks;
-            type MaxReserves = MaxReserves;
+            type MaxLocks = ();
+            type MaxReserves = ();
             type ReserveIdentifier = ();
         }
     };
@@ -326,6 +325,17 @@ macro_rules! mock_technical_config {
             type Trigger = ();
             type Condition = ();
             type SwapAction = ();
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+        }
+    };
+    ($runtime:ty, $swap_action:ty) => {
+        impl technical::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type TechAssetId = TechAssetId;
+            type TechAccountId = TechAccountId;
+            type Trigger = ();
+            type Condition = ();
+            type SwapAction = $swap_action;
             type AssetInfoProvider = assets::Pallet<$runtime>;
         }
     };

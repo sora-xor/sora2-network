@@ -6,8 +6,10 @@ use common::ContentSource;
 use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, TBCD, XOR, XST};
-use common::{mock_assets_config, AssetSymbol};
+use common::{
+    balance, fixed, hash, mock_assets_config, mock_pallet_balances_config, mock_technical_config,
+    AssetSymbol, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, TBCD, XOR, XST,
+};
 use common::{AssetName, XSTUSD};
 use common::{BalancePrecision, PSWAP};
 use currencies::BasicCurrencyAdapter;
@@ -84,6 +86,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::new([104u8; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
     pub const MinimumPeriod: u64 = 5;
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl frame_system::Config for Runtime {
@@ -125,6 +128,7 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = TBCD;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 mock_assets_config!(Runtime);
@@ -175,13 +179,15 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
@@ -191,8 +197,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = ();
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {
@@ -252,15 +259,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -283,24 +282,7 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {

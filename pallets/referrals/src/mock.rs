@@ -32,8 +32,8 @@ use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    mock_assets_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_assets_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, Everything, GenesisBuild};
@@ -65,7 +65,6 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    pub const ExistentialDeposit: u128 = 0;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
@@ -141,17 +140,7 @@ impl currencies::Config for Runtime {
 }
 
 // Required by currencies::Config
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

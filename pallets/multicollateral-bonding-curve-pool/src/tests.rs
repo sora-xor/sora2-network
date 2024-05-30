@@ -31,7 +31,6 @@
 mod tests {
     use crate::{
         mock::*, DistributionAccount, DistributionAccountData, DistributionAccounts, Error, Pallet,
-        RETRY_DISTRIBUTION_FREQUENCY,
     };
     use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
     use common::assert_approx_eq_abs;
@@ -47,12 +46,23 @@ mod tests {
     use frame_support::assert_err;
     use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
-    use frame_support::traits::OnInitialize;
+    use frame_support::traits::{
+        GetStorageVersion, OnFinalize, OnInitialize, OnRuntimeUpgrade, StorageVersion,
+    };
     use sp_arithmetic::traits::Zero;
     use sp_runtime::DispatchError;
     use sp_std::collections::vec_deque::VecDeque;
 
     type MBCPool = Pallet<Runtime>;
+
+    pub fn run_to_block(n: u64) {
+        while System::block_number() < n {
+            System::on_finalize(System::block_number());
+            System::set_block_number(System::block_number() + 1);
+            System::on_initialize(System::block_number());
+            Mcbcp::on_initialize(System::block_number());
+        }
+    }
 
     fn assert_swap_outcome(
         left: SwapOutcome<Balance, AssetId>,
@@ -61,6 +71,12 @@ mod tests {
     ) {
         assert_approx_eq_abs!(left.amount, right.amount, tolerance);
         assert_approx_eq_abs!(left.fee.get_xor(), right.fee.get_xor(), tolerance);
+    }
+
+    fn ensure_empty_pending_free_reserves() {
+        crate::PendingFreeReserves::<Runtime>::iter().for_each(|(_id, v)| {
+            assert!(v.is_empty());
+        });
     }
 
     fn ensure_distribution_accounts_balances(
@@ -712,6 +728,7 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
             ensure_distribution_accounts_balances(
                 distribution_accounts,
                 vec![
@@ -823,6 +840,7 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
             ensure_distribution_accounts_balances(
                 distribution_accounts,
                 vec![
@@ -2569,7 +2587,7 @@ mod tests {
             // check pending list and reserves before trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             ensure_distribution_accounts_balances(
@@ -2594,11 +2612,12 @@ mod tests {
                     OutcomeFee::xor(balance!(0.003009027081243731))
                 )
             );
+            run_to_block(1);
 
             // check pending list and free reserves account
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             ensure_distribution_accounts_balances(
@@ -2681,7 +2700,7 @@ mod tests {
             // check pending list and reserves before trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             // perform buy on tbc
@@ -2702,23 +2721,28 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
 
             // check pending list and free reserves account
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
 
             // attempt for distribution, still not enough reserves
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY + 1);
             let free_reserves_balance_2 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
@@ -2738,20 +2762,22 @@ mod tests {
             );
 
             // attempt for distribution before retry period
-            MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY - 1).into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY * 2);
             let free_reserves_balance_3 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
             assert_eq!(free_reserves_balance_3, free_reserves_balance);
 
             // successful attempt for distribution
-            MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY * 2).into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             // actual accounts check after distribution
@@ -2835,7 +2861,7 @@ mod tests {
             // check pending list and reserves before trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
 
             // perform buy on tbc multiple times
@@ -2894,22 +2920,9 @@ mod tests {
             // check pending list and reserves after trade
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            let expected_balances = [
-                balance!(40.120436328358829805),
-                balance!(40.120586367106336349),
-                balance!(40.120736405853842892),
-            ];
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![
-                    (USDT, expected_balances[0]),
-                    (USDT, expected_balances[1]),
-                    (USDT, expected_balances[2])
-                ]
-            );
-            assert_eq!(
-                free_reserves_balance,
-                expected_balances.iter().fold(balance!(0), |a, b| a + b)
+                MBCPool::pending_free_reserves(1),
+                vec![(USDT, free_reserves_balance),].into_iter().collect()
             );
 
             // exchange becomes available
@@ -2920,10 +2933,10 @@ mod tests {
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance, balance!(0));
         })
     }
@@ -3003,13 +3016,14 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
 
             // check that failed distribution was postponed
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY + 1),
+                vec![(USDT, free_reserves_balance)].into_iter().collect()
             );
             assert_eq!(
                 free_reserves_balance,
@@ -3017,12 +3031,12 @@ mod tests {
             );
 
             // attempt for distribution
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY + 1);
             let free_reserves_balance_2 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance_2)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1),
+                vec![(USDT, free_reserves_balance_2)].into_iter().collect()
             );
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
@@ -3044,13 +3058,18 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY * 2 + 2);
 
             // second distribution was successful, pending list didn't change
             let free_reserves_balance_3 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance_3)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 3 + 1),
+                vec![(USDT, free_reserves_balance_3)].into_iter().collect()
+            );
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 3 + 2),
+                Default::default()
             );
             assert_eq!(free_reserves_balance_3, free_reserves_balance_2);
         })
@@ -3141,6 +3160,7 @@ mod tests {
                 ),
                 balance!(0.0001),
             );
+            run_to_block(1);
 
             // another exchange with reasonable amount, still current market can't handle it
             assert_swap_outcome(
@@ -3162,7 +3182,7 @@ mod tests {
             );
 
             // attempt for distribution
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY + 2);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let expected_balances = [
@@ -3170,8 +3190,12 @@ mod tests {
                 balance!(1504400.263624851428814147),
             ];
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, expected_balances[0]), (USDT, expected_balances[1])]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1),
+                vec![(USDT, expected_balances[0])].into_iter().collect()
+            );
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 2),
+                vec![(USDT, expected_balances[1])].into_iter().collect()
             );
             assert_eq!(
                 free_reserves_balance,
@@ -3186,12 +3210,12 @@ mod tests {
                 (TBCD, balance!(1000000)),
             ])
             .unwrap();
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY * 3);
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, expected_balances[0])]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 3 + 1),
+                vec![(USDT, expected_balances[0])].into_iter().collect()
             );
             assert_eq!(free_reserves_balance, expected_balances[0]);
         })
@@ -3285,11 +3309,20 @@ mod tests {
             // check pending list and free reserves account
             let free_reserves_balance =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, free_reserves_balance.clone())]
-            );
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
+            assert_eq!(
+                MBCPool::pending_free_reserves(1),
+                vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
+            );
+            run_to_block(1);
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY + 1),
+                vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
+            );
 
             // exchange becomes possible, but not for val, so second part of distribution fails
             MockDEXApi::add_reserves(vec![
@@ -3300,12 +3333,14 @@ mod tests {
             .unwrap();
 
             // check pending list
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY + 1);
             let free_reserves_balance_2 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1),
                 vec![(USDT, free_reserves_balance.clone())]
+                    .into_iter()
+                    .collect()
             );
 
             // val buy back and burn failed so exchanged xor is reverted
@@ -3339,11 +3374,17 @@ mod tests {
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             let second_pending_balance = balance!(55.124461117760692833);
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![
-                    (USDT, free_reserves_balance),
-                    (USDT, second_pending_balance)
-                ]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY + 2),
+                vec![(USDT, second_pending_balance)].into_iter().collect()
+            );
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY + 2);
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 1),
+                vec![(USDT, free_reserves_balance),].into_iter().collect()
+            );
+            assert_eq!(
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 2 + 2),
+                vec![(USDT, second_pending_balance)].into_iter().collect()
             );
             assert_eq!(
                 free_reserves_balance_3,
@@ -3354,12 +3395,12 @@ mod tests {
             MockDEXApi::add_reserves(vec![(VAL, balance!(0.4)), (TBCD, balance!(1000))]).unwrap();
 
             // val is not enough for one of distributions, it's still present
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY * 3);
             let free_reserves_balance_4 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(
-                MBCPool::pending_free_reserves(),
-                vec![(USDT, second_pending_balance)]
+                MBCPool::pending_free_reserves(RETRY_DISTRIBUTION_FREQUENCY * 3 + 2),
+                vec![(USDT, second_pending_balance)].into_iter().collect()
             );
             assert_eq!(free_reserves_balance_4, second_pending_balance);
 
@@ -3377,10 +3418,10 @@ mod tests {
             MockDEXApi::add_reserves(vec![(VAL, balance!(1))]).unwrap();
 
             // second pending distribution is performed
-            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            run_to_block(RETRY_DISTRIBUTION_FREQUENCY * 4);
             let free_reserves_balance_5 =
                 Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
-            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            ensure_empty_pending_free_reserves();
             assert_eq!(free_reserves_balance_5, balance!(0));
 
             // check distribution accounts
@@ -4020,7 +4061,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4072,17 +4113,6 @@ mod tests {
                 }
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
-
             assert_eq!(
                 MBCPool::step_quote(
                     &DEXId::Polkaswap.into(),
@@ -4097,14 +4127,10 @@ mod tests {
                 DiscreteQuotation {
                     chunks: VecDeque::from([SwapChunk::new(
                         balance!(100),
-                        balance!(410.104539406891639983),
+                        balance!(414.858183424687130844),
                         Default::default()
                     )]),
-                    limits: SwapLimits::new(
-                        None,
-                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
-                        None
-                    )
+                    limits: Default::default()
                 }
             );
 
@@ -4121,11 +4147,11 @@ mod tests {
                 .0,
                 DiscreteQuotation {
                     chunks: VecDeque::from([SwapChunk::new(
-                        balance!(23.009190725763937774),
+                        balance!(23.004689731209517723),
                         balance!(100),
                         Default::default()
                     )]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6930))), None)
                 }
             );
         });
@@ -4178,7 +4204,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4324,17 +4350,6 @@ mod tests {
                 }
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
-
             assert_eq!(
                 MBCPool::step_quote(
                     &DEXId::Polkaswap.into(),
@@ -4350,60 +4365,56 @@ mod tests {
                     chunks: VecDeque::from([
                         SwapChunk::new(
                             balance!(10),
-                            balance!(43.904162265615428784),
+                            balance!(43.823305668643334664),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(43.221097702920335502),
+                            balance!(43.278010298107334834),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(42.553850855426252604),
+                            balance!(42.742829700646139787),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(41.901937076677897369),
+                            balance!(42.217515252737595070),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(41.264890140760950125),
+                            balance!(41.701825923235404378),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(40.642261408482453968),
+                            balance!(41.195527996834176818),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(40.033619037255543993),
+                            balance!(40.698394809214418168),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(39.438547232089968657),
+                            balance!(40.210206493307049656),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.856645535262398030),
+                            balance!(39.730749736147108117),
                             Default::default()
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.287528152400410951),
+                            balance!(39.259817545814569352),
                             Default::default()
                         ),
                     ]),
-                    limits: SwapLimits::new(
-                        None,
-                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
-                        None
-                    )
+                    limits: Default::default()
                 }
             );
 
@@ -4421,57 +4432,57 @@ mod tests {
                 DiscreteQuotation {
                     chunks: VecDeque::from([
                         SwapChunk::new(
-                            balance!(2.263873863894484038),
+                            balance!(2.270849200934845097),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.271988107134249214),
+                            balance!(2.277355932169615427),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.280146053658968243),
+                            balance!(2.283890669421178168),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.288348017880763091),
+                            balance!(2.290453573643652819),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.296594317044297374),
+                            balance!(2.297044806949102179),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.304885271257453681),
+                            balance!(2.303664532617543395),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.313221203522399264),
+                            balance!(2.310312915107060116),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.321602439767045639),
+                            balance!(2.316990120064016936),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.330029308876907873),
+                            balance!(2.323696314333377333),
                             balance!(10),
                             Default::default()
                         ),
                         SwapChunk::new(
-                            balance!(2.338502142727369357),
+                            balance!(2.330431665969126253),
                             balance!(10),
                             Default::default()
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6930))), None)
                 }
             );
         });
@@ -4524,7 +4535,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4670,17 +4681,6 @@ mod tests {
                 }
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
-            )
-            .unwrap();
-
             assert_eq!(
                 MBCPool::step_quote(
                     &DEXId::Polkaswap.into(),
@@ -4696,60 +4696,56 @@ mod tests {
                     chunks: VecDeque::from([
                         SwapChunk::new(
                             balance!(10),
-                            balance!(39.850130809676012394),
+                            balance!(39.770893807080951145),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(39.286983602315626041),
+                            balance!(39.321525775628234446),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.735689920059406079),
+                            balance!(38.879731017472867352),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(38.195919412097553140),
+                            balance!(38.445340305128119635),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(37.667353156347034178),
+                            balance!(38.018189111658898198),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(37.149683188249749213),
+                            balance!(37.598117454869340434),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(36.642612052081387235),
+                            balance!(37.184969747482925276),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(36.145852373550272004),
+                            balance!(36.778594653053145625),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(35.659126452539466983),
+                            balance!(36.378844947355598238),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                         SwapChunk::new(
                             balance!(10),
-                            balance!(35.182165874914430417),
+                            balance!(35.985577385024467262),
                             OutcomeFee::xor(balance!(0.93))
                         ),
                     ]),
-                    limits: SwapLimits::new(
-                        None,
-                        Some(SideAmount::Input(balance!(1265.505489917016577573))),
-                        None
-                    )
+                    limits: Default::default()
                 }
             );
 
@@ -4767,60 +4763,77 @@ mod tests {
                 DiscreteQuotation {
                     chunks: VecDeque::from([
                         SwapChunk::new(
-                            balance!(2.496002055010456491),
+                            balance!(2.503692614040623039),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.232128191115972453))
+                            OutcomeFee::xor(balance!(0.232843413105777942))
                         ),
                         SwapChunk::new(
-                            balance!(2.504948298935225153),
+                            balance!(2.510866518378848321),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.232960191800975939))
+                            OutcomeFee::xor(balance!(0.233510586209232894))
                         ),
                         SwapChunk::new(
-                            balance!(2.513942727297649662),
+                            balance!(2.518071300354110439),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.233796673638681419))
+                            OutcomeFee::xor(balance!(0.234180630932932271))
                         ),
                         SwapChunk::new(
-                            balance!(2.522985686748360630),
+                            balance!(2.525307137424093516),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.234637668867597539))
+                            OutcomeFee::xor(balance!(0.234853563780440697))
                         ),
                         SwapChunk::new(
-                            balance!(2.532077527060967336),
+                            balance!(2.532574208323155655),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.235483210016669962))
+                            OutcomeFee::xor(balance!(0.235529401374053476))
                         ),
                         SwapChunk::new(
-                            balance!(2.541218601165880574),
+                            balance!(2.539872693073366477),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.236333329908426893))
+                            OutcomeFee::xor(balance!(0.236208160455823082))
                         ),
                         SwapChunk::new(
-                            balance!(2.550409265184563687),
+                            balance!(2.547202772995656137),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.237188061662164423))
+                            OutcomeFee::xor(balance!(0.236889857888596021))
                         ),
                         SwapChunk::new(
-                            balance!(2.559649878464217904),
+                            balance!(2.554564630721077107),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.238047438697172265))
+                            OutcomeFee::xor(balance!(0.237574510657060171))
                         ),
                         SwapChunk::new(
-                            balance!(2.568940803612908350),
+                            balance!(2.561958450202180080),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.238911494736000477))
+                            OutcomeFee::xor(balance!(0.238262135868802747))
                         ),
                         SwapChunk::new(
-                            balance!(2.578282406535137108),
+                            balance!(2.569384416724505241),
                             balance!(10),
-                            OutcomeFee::xor(balance!(0.239780263807767751))
+                            OutcomeFee::xor(balance!(0.238952750755378988))
                         ),
                     ]),
-                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(5600))), None)
+                    limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(6930))), None)
                 }
             );
         });
+    }
+
+    fn sum_step_quote<AssetId: Ord + Clone>(
+        step_quote_result: DiscreteQuotation<AssetId, Balance>,
+    ) -> (Balance, Balance, OutcomeFee<AssetId, Balance>) {
+        let (step_quote_input, step_quote_output, step_quote_fee) =
+            step_quote_result.chunks.iter().fold(
+                (balance!(0), balance!(0), OutcomeFee::default()),
+                |acc, item| {
+                    (
+                        acc.0 + item.input,
+                        acc.1 + item.output,
+                        acc.2.merge(item.fee.clone()),
+                    )
+                },
+            );
+        (step_quote_input, step_quote_output, step_quote_fee)
     }
 
     fn compare_quotes(
@@ -4830,27 +4843,17 @@ mod tests {
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) {
-        let (step_quote_input, step_quote_output, step_quote_fee) = MBCPool::step_quote(
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            10,
-            deduce_fee,
-        )
-        .unwrap()
-        .0
-        .chunks
-        .iter()
-        .fold(
-            (balance!(0), balance!(0), OutcomeFee::default()),
-            |acc, item| {
-                (
-                    acc.0 + item.input,
-                    acc.1 + item.output,
-                    acc.2.merge(item.fee.clone()),
-                )
-            },
+        let (step_quote_input, step_quote_output, step_quote_fee) = sum_step_quote(
+            MBCPool::step_quote(
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                10,
+                deduce_fee,
+            )
+            .unwrap()
+            .0,
         );
 
         let quote_result =
@@ -4919,7 +4922,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4959,46 +4962,276 @@ mod tests {
                 true,
             );
 
-            // to fill reserves
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &VAL,
+            compare_quotes(
+                &DEXId::Polkaswap,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(7000), Balance::zero()),
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(100)),
+                false,
+            );
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(100)),
+                false,
+            );
+
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
+            );
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(100)),
+                true,
+            );
+        });
+    }
+
+    #[test]
+    fn check_exceed_reserves() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                DAI,
+                balance!(0),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XOR,
+                balance!(0),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                balance!(200000),
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XSTUSD,
+                0,
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build();
+        ext.execute_with(|| {
+            let val_reserve = balance!(10000);
+
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, val_reserve)]).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
             )
-            .unwrap();
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
-            compare_quotes(
-                &DEXId::Polkaswap,
-                &XOR,
-                &VAL,
-                QuoteAmount::with_desired_input(balance!(100)),
-                false,
-            );
-            compare_quotes(
-                &DEXId::Polkaswap,
-                &XOR,
-                &VAL,
-                QuoteAmount::with_desired_output(balance!(100)),
-                false,
+            // XOR -> Asset with desired output is only one case when we can exceed reserves
+
+            assert_err!(
+                MBCPool::quote(
+                    &DEXId::Polkaswap,
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_output(val_reserve + balance!(1)),
+                    true
+                ),
+                Error::<Runtime>::NotEnoughReserves
             );
 
-            compare_quotes(
-                &DEXId::Polkaswap,
-                &XOR,
-                &VAL,
-                QuoteAmount::with_desired_input(balance!(100)),
-                true,
+            assert_eq!(
+                sum_step_quote(
+                    MBCPool::step_quote(
+                        &DEXId::Polkaswap,
+                        &XOR,
+                        &VAL,
+                        QuoteAmount::with_desired_output(val_reserve + balance!(1)),
+                        10,
+                        true
+                    )
+                    .unwrap()
+                    .0
+                ),
+                (
+                    balance!(247511.475120321649975018),
+                    val_reserve - val_reserve * 1 / 100,
+                    OutcomeFee::xor(balance!(23018.567186189913447676))
+                )
             );
-            compare_quotes(
-                &DEXId::Polkaswap,
-                &XOR,
-                &VAL,
-                QuoteAmount::with_desired_output(balance!(100)),
-                true,
+        });
+    }
+
+    #[test]
+    fn check_empty_reserves() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                DAI,
+                balance!(0),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XOR,
+                balance!(0),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                balance!(200000),
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                XSTUSD,
+                0,
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build();
+        ext.execute_with(|| {
+            let val_reserve = balance!(0);
+
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, val_reserve)]).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                VAL,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            // only for XOR -> Asset
+
+            assert_err!(
+                MBCPool::quote(
+                    &DEXId::Polkaswap,
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_input(balance!(1)),
+                    true
+                ),
+                Error::<Runtime>::NotEnoughReserves
             );
+
+            assert_err!(
+                MBCPool::quote(
+                    &DEXId::Polkaswap,
+                    &XOR,
+                    &VAL,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true
+                ),
+                Error::<Runtime>::NotEnoughReserves
+            );
+
+            assert_eq!(
+                sum_step_quote(
+                    MBCPool::step_quote(
+                        &DEXId::Polkaswap,
+                        &XOR,
+                        &VAL,
+                        QuoteAmount::with_desired_input(balance!(1)),
+                        10,
+                        true
+                    )
+                    .unwrap()
+                    .0
+                ),
+                (balance!(0), balance!(0), Default::default())
+            );
+
+            assert_eq!(
+                sum_step_quote(
+                    MBCPool::step_quote(
+                        &DEXId::Polkaswap,
+                        &XOR,
+                        &VAL,
+                        QuoteAmount::with_desired_output(balance!(1)),
+                        10,
+                        true
+                    )
+                    .unwrap()
+                    .0
+                ),
+                (balance!(0), balance!(0), Default::default())
+            );
+        });
+    }
+
+    #[test]
+    fn should_migrate_from_v3_to_v4_empty() {
+        ExtBuilder::default().build().execute_with(|| {
+            StorageVersion::new(3).put::<Pallet<Runtime>>();
+            crate::migrations::v4::MigrateToV4::<Runtime>::on_runtime_upgrade();
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 4);
+        });
+    }
+
+    #[test]
+    fn should_migrate_from_v3_to_v4() {
+        ExtBuilder::default().build().execute_with(|| {
+            StorageVersion::new(3).put::<Pallet<Runtime>>();
+            crate::migrations::v4::old_storage::PendingFreeReserves::<Runtime>::put(vec![(
+                DAI,
+                balance!(100),
+            )]);
+            crate::migrations::v4::MigrateToV4::<Runtime>::on_runtime_upgrade();
+            assert!(!crate::migrations::v4::old_storage::PendingFreeReserves::<
+                Runtime,
+            >::exists());
+            assert_eq!(crate::PendingFreeReserves::<Runtime>::iter().count(), 1);
+            assert_eq!(
+                crate::PendingFreeReserves::<Runtime>::get(1),
+                vec![(DAI, balance!(100))].into_iter().collect()
+            );
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 4);
         });
     }
 }

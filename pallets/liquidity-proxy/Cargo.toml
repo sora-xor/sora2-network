@@ -21,7 +21,6 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", default-features = false }
@@ -63,7 +62,6 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'pallet-balances/std',
-    'sp-arithmetic/std',
     'sp-runtime/std',
     'sp-std/std',
     'tokens/std',

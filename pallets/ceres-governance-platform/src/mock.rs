@@ -2,8 +2,9 @@ use crate::{self as ceres_governance_platform};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_assets_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD,
+    balance, fixed, mock_assets_config, mock_pallet_balances_config, mock_technical_config,
+    AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    CERES_ASSET_ID, PSWAP, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -115,6 +116,7 @@ impl crate::Config for Runtime {
 parameter_types! {
     pub const GetBaseAssetId: AssetId = CERES_ASSET_ID;
     pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 mock_assets_config!(Runtime);
@@ -157,10 +159,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -199,15 +202,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -231,27 +226,13 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
     pub const StringLimit: u32 = 64;
     pub const OptionsLimit: u32 = 6;
     pub const TitleLimit: u32 = 128;
     pub const DescriptionLimit: u32 = 4096;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {

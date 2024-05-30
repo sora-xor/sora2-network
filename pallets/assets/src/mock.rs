@@ -31,7 +31,10 @@
 use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
-use common::{AssetId32, DEXId, LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST};
+use common::{
+    mock_pallet_balances_config, AssetId32, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
+    PSWAP, VAL, XOR, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -130,6 +133,7 @@ impl crate::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
+    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl common::Config for Runtime {
@@ -164,24 +168,7 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 pub struct MockLiquidityProxy;
 

@@ -44,8 +44,8 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_assets_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId, LiquiditySourceType,
-    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_assets_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXId, LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -256,7 +256,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
@@ -347,19 +346,7 @@ where
     type OverarchingCall = RuntimeCall;
 }
 
-impl pallet_balances::Config for Runtime {
-    /// The type for recording an account's balance.
-    type Balance = Balance;
-    type DustRemoval = ();
-    /// The ubiquitous event type.
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

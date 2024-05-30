@@ -2,7 +2,10 @@ use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, mock_assets_config, DEXId, DEXInfo, TBCD, XOR, XST};
+use common::{
+    balance, fixed, hash, mock_assets_config, mock_pallet_balances_config, mock_technical_config,
+    DEXId, DEXInfo, TBCD, XOR, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -47,7 +50,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
     pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
-    pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = AccountId::new([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -55,6 +57,7 @@ parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 parameter_type_with_key! {
@@ -134,17 +137,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl orml_tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -174,15 +167,7 @@ parameter_types! {
 
 mock_assets_config!(Runtime);
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
@@ -216,10 +201,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);

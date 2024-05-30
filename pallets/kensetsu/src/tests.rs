@@ -914,6 +914,25 @@ fn test_repay_debt_only_signed_origin() {
     });
 }
 
+#[test]
+fn test_repay_debt_only_cdp_owner() {
+    new_test_ext().execute_with(|| {
+        set_xor_as_collateral_type(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        // Alice is CDP owner
+        let cdp_id = create_cdp_for_xor(alice(), balance!(0), balance!(0));
+
+        assert_noop!(
+            KensetsuPallet::close_cdp(bob(), cdp_id),
+            KensetsuError::OperationNotPermitted
+        );
+    });
+}
+
 /// If cdp doesn't exist, return error
 #[test]
 fn test_repay_debt_cdp_does_not_exist() {
