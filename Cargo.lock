@@ -3659,7 +3659,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-core",
  "sp-core-hashing-proc-macro",
- "sp-debug-derive 8.0.0",
+ "sp-debug-derive",
  "sp-genesis-builder",
  "sp-inherents",
  "sp-io",
@@ -3837,6 +3837,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-executor",
  "sc-informant",
+ "sc-keystore",
  "sc-network",
  "sc-offchain",
  "sc-rpc",
@@ -3858,8 +3859,7 @@ dependencies = [
  "sp-core",
  "sp-inherents",
  "sp-io",
- "sp-keystore",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives",
  "sp-runtime",
  "sp-timestamp",
  "sp-transaction-pool",
@@ -4026,7 +4026,7 @@ dependencies = [
  "sp-consensus-beefy",
  "sp-core",
  "sp-inherents",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
  "sp-runtime",
@@ -5281,7 +5281,7 @@ dependencies = [
  "sp-consensus-beefy",
  "sp-core",
  "sp-io",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives",
  "sp-runtime",
  "sp-std",
 ]
@@ -6224,7 +6224,7 @@ dependencies = [
  "sp-consensus 0.10.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "sp-consensus-beefy",
  "sp-core",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives",
  "sp-runtime",
 ]
 
@@ -6240,7 +6240,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives",
  "sp-runtime",
 ]
 
@@ -7173,7 +7173,7 @@ dependencies = [
  "scale-info",
  "sp-core",
  "sp-io",
- "sp-mmr-primitives 4.0.0-dev (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-mmr-primitives",
  "sp-runtime",
  "sp-std",
 ]
@@ -9342,7 +9342,7 @@ dependencies = [
  "sp-consensus-beefy",
  "sp-core",
  "sp-keystore",
- "sp-mmr-primitives 4.0.0-dev",
+ "sp-mmr-primitives",
  "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror",
@@ -10688,7 +10688,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-core",
  "sp-io",
- "sp-mmr-primitives 4.0.0-dev",
+ "sp-mmr-primitives",
  "sp-runtime",
  "sp-std",
  "strum 0.24.1",
@@ -10773,7 +10773,7 @@ dependencies = [
  "secrecy",
  "serde",
  "sp-core-hashing",
- "sp-debug-derive 8.0.0",
+ "sp-debug-derive",
  "sp-externalities",
  "sp-runtime-interface",
  "sp-std",
@@ -10818,26 +10818,6 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "8.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.65",
-]
-
-[[package]]
-name = "sp-debug-derive"
-version = "8.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#39482e78cc1580c9f16a8f8d8261baf914ab5559"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.65",
-]
-
-[[package]]
-name = "sp-debug-derive"
-version = "8.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -10950,43 +10930,7 @@ dependencies = [
  "serde",
  "sp-api",
  "sp-core",
- "sp-debug-derive 8.0.0",
- "sp-runtime",
- "sp-std",
- "thiserror",
-]
-
-[[package]]
-name = "sp-mmr-primitives"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#39482e78cc1580c9f16a8f8d8261baf914ab5559"
-dependencies = [
- "ckb-merkle-mountain-range",
- "log",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-core",
- "sp-debug-derive 8.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
- "sp-runtime",
- "sp-std",
- "thiserror",
-]
-
-[[package]]
-name = "sp-mmr-primitives"
-version = "4.0.0-dev"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0#27a9750c82f7603e4d5834c7f49cd8d8cb3abc42"
-dependencies = [
- "ckb-merkle-mountain-range",
- "log",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-core",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-debug-derive",
  "sp-runtime",
  "sp-std",
  "thiserror",
@@ -11163,7 +11107,7 @@ dependencies = [
  "parity-scale-codec",
  "ref-cast",
  "serde",
- "sp-debug-derive 8.0.0",
+ "sp-debug-derive",
  "sp-std",
 ]
 
@@ -11307,7 +11251,7 @@ dependencies = [
  "smallvec",
  "sp-arithmetic",
  "sp-core",
- "sp-debug-derive 8.0.0",
+ "sp-debug-derive",
  "sp-std",
 ]
 
@@ -12317,7 +12261,7 @@ dependencies = [
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
- "sp-debug-derive 8.0.0",
+ "sp-debug-derive",
  "sp-externalities",
  "sp-inherents",
  "sp-io",

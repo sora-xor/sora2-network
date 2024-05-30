@@ -162,6 +162,7 @@ sc-consensus-beefy = { path = "../sora-polkadot-sdk/substrate/client/consensus/b
 sc-consensus-grandpa = { path = "../sora-polkadot-sdk/substrate/client/consensus/grandpa"}
 sc-consensus-slots = { path = "../sora-polkadot-sdk/substrate/client/consensus/slots"}
 sc-executor = { path = "../sora-polkadot-sdk/substrate/client/executor"}
+sc-keystore = { path = "../sora-polkadot-sdk/substrate/client/keystore"}
 # sc-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/client/finality-grandpa"}
 sc-informant = { path = "../sora-polkadot-sdk/substrate/client/informant"}
 sc-network = { path = "../sora-polkadot-sdk/substrate/client/network"}
@@ -201,7 +202,7 @@ sp-rpc = { path = "../sora-polkadot-sdk/substrate/primitives/rpc"}
 sp-keyring = { path = "../sora-polkadot-sdk/substrate/primitives/keyring"}
 sp-state-machine = { path = "../sora-polkadot-sdk/substrate/primitives/state-machine"}
 sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externalities"}
-# sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/mmr-primitives"}
+sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/merkle-mountain-range"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
 # mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
@@ -268,6 +269,7 @@ sc-consensus-babe = { path = "../sora-polkadot-sdk/substrate/client/consensus/ba
 sc-consensus-grandpa = { path = "../sora-polkadot-sdk/substrate/client/consensus/grandpa"}
 sc-consensus-slots = { path = "../sora-polkadot-sdk/substrate/client/consensus/slots"}
 sc-executor = { path = "../sora-polkadot-sdk/substrate/client/executor"}
+sc-keystore = { path = "../sora-polkadot-sdk/substrate/client/keystore"}
 # sc-finality-grandpa = { path = "../sora-polkadot-sdk/substrate/client/finality-grandpa"}
 sc-informant = { path = "../sora-polkadot-sdk/substrate/client/informant"}
 sc-network = { path = "../sora-polkadot-sdk/substrate/client/network"}
@@ -308,7 +310,7 @@ sp-rpc = { path = "../sora-polkadot-sdk/substrate/primitives/rpc"}
 sp-keyring = { path = "../sora-polkadot-sdk/substrate/primitives/keyring"}
 sp-state-machine = { path = "../sora-polkadot-sdk/substrate/primitives/state-machine"}
 sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externalities"}
-# sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/mmr-primitives"}
+sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/merkle-mountain-range"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
 # mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }

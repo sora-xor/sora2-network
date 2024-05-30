@@ -44,14 +44,14 @@ use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
 pub use sc_executor::NativeElseWasmExecutor;
+use sc_keystore::{Keystore, LocalKeystore};
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
+use sc_service::WarpSyncParams;
 use sc_service::{Configuration, TaskManager};
+use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_core::offchain::OffchainStorage;
 use sp_core::{ByteArray, Pair};
-// use sp_keystore::SyncCryptoStore;
-use sc_service::WarpSyncParams;
-use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::IdentifyAccount;
 use std::collections::BTreeSet;
@@ -167,44 +167,44 @@ pub fn new_partial(
     let client = Arc::new(client);
     let mut bridge_peer_secret_key = None;
 
-    // TODO!!!!!!
-    // if let Some(first_pk_raw) =
-    //     SyncCryptoStore::keys(&*keystore_container.sync_keystore(), eth_bridge::KEY_TYPE)
-    //         .unwrap()
-    //         .first()
-    //         .map(|x| x.1.clone())
-    // {
-    // let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..])
-    //     .expect("should have correct size");
-    let pk = eth_bridge::offchain::crypto::Public::from_slice(&[1, 2, 3])
-        .expect("should have correct size");
-    let sub_public = sp_core::ecdsa::Public::from(pk.clone());
-    let public = secp256k1::PublicKey::parse_compressed(&sub_public.0).unwrap();
-    let address = common::eth::public_key_to_eth_address(&public);
-    let account = sp_runtime::MultiSigner::Ecdsa(sub_public.clone()).into_account();
-    log::warn!(
-        "Peer info: address: {:?}, account: {:?}, {}, public: {:?}",
-        address,
-        account,
-        account,
-        sub_public
-    );
-    let keystore = keystore_container.local_keystore();
-    if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
-        let seed = kep.to_raw_vec();
-        bridge_peer_secret_key = Some(seed);
-    } else {
-        log::error!("Ethereum bridge peer key not found.")
-    }
+    // TODO!!!!!! use LocalKeyStore/KeystorePtr
+    if let Some(first_pk_raw) =
+        LocalKeystore::keys(&*keystore_container.local_keystore(), eth_bridge::KEY_TYPE)
+            .unwrap()
+            .first()
+            .map(|x| x.clone())
+    {
+        let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..])
+            .expect("should have correct size");
+        // let pk = eth_bridge::offchain::crypto::Public::from_slice(&[1, 2, 3])
+        // .expect("should have correct size");
+        let sub_public = sp_core::ecdsa::Public::from(pk.clone());
+        let public = secp256k1::PublicKey::parse_compressed(&sub_public.0).unwrap();
+        let address = common::eth::public_key_to_eth_address(&public);
+        let account = sp_runtime::MultiSigner::Ecdsa(sub_public.clone()).into_account();
+        log::warn!(
+            "Peer info: address: {:?}, account: {:?}, {}, public: {:?}",
+            address,
+            account,
+            account,
+            sub_public
+        );
+        let keystore = keystore_container.local_keystore();
+        if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
+            let seed = kep.to_raw_vec();
+            bridge_peer_secret_key = Some(seed);
+        } else {
+            log::error!("Ethereum bridge peer key not found.")
+        }
     // if let Some(keystore) = keystore_container.local_keystore() {
     //     if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
     //         let seed = kep.to_raw_vec();
     //         bridge_peer_secret_key = Some(seed);
     //     }
     // }
-    // } else {
-    //     log::debug!("Ethereum bridge peer key not found.")
-    // }
+    } else {
+        log::debug!("Ethereum bridge peer key not found.")
+    }
 
     if let Some(sk) = bridge_peer_secret_key {
         let mut storage = backend.offchain_storage().unwrap();
@@ -368,27 +368,26 @@ pub fn new_partial(
         },
     };
 
-    let (import_queue, _) = sc_consensus_babe::import_queue(
-        import_queue_params, // babe_link.clone(),
-                             // babe_block_import.clone(),
-                             // Some(Box::new(grandpa_block_import)),
-                             // client.clone(),
-                             // select_chain.clone(),
-                             // move |_, ()| async move {
-                             //     let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+    let (import_queue, _) = sc_consensus_babe::import_queue(import_queue_params)?;
+    // babe_link.clone(),
+    // babe_block_import.clone(),
+    // Some(Box::new(grandpa_block_import)),
+    // client.clone(),
+    // select_chain.clone(),
+    // move |_, ()| async move {
+    //     let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-                             //     let slot =
-                             //         sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-                             //             *timestamp,
-                             //             slot_duration,
-                             //         );
+    //     let slot =
+    //         sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+    //             *timestamp,
+    //             slot_duration,
+    //         );
 
-                             //     Ok((slot, timestamp))
-                             // },
-                             // &task_manager.spawn_essential_handle(),
-                             // config.prometheus_registry(),
-                             // telemetry.as_ref().map(|x| x.handle()),
-    )?;
+    //     Ok((slot, timestamp))
+    // },
+    // &task_manager.spawn_essential_handle(),
+    // config.prometheus_registry(),
+    // telemetry.as_ref().map(|x| x.handle()),
 
     let import_setup = (
         babe_block_import.clone(),
@@ -488,12 +487,12 @@ pub fn new_full(
         grandpa_protocol_name.clone(),
     ));
 
-    // config
-    //     .network
-    //     .extra_sets
-    //     .push(sc_consensus_grandpa::grandpa_peers_set_config(
-    //         grandpa_protocol_name.clone(),
-    //     ));
+    // // config
+    // //     .network
+    // //     .extra_sets
+    // //     .push(sc_consensus_grandpa::grandpa_peers_set_config(
+    // //         grandpa_protocol_name.clone(),
+    // //     ));
 
     let beefy_gossip_proto_name =
         sc_consensus_beefy::gossip_protocol_name(&genesis_hash, config.chain_spec.fork_id());
@@ -551,9 +550,9 @@ pub fn new_full(
         //     network.clone(),
         // )
         // .expect("failed to build offchain workers");
-        use futures::stream::Stream;
+        // use futures::stream::Stream;
         use futures::FutureExt;
-        use sc_network::event::SyncEventStream;
+        // use sc_network::event::SyncEventStream;
 
         task_manager.spawn_handle().spawn(
             "offchain-workers-runner",
@@ -596,14 +595,14 @@ pub fn new_full(
         config,
         tx_handler_controller,
         telemetry: telemetry.as_mut(),
-        sync_service: sync_service,
+        sync_service: sync_service.clone(),
     })?;
 
     if role.is_authority() {
         let mut proposer = sc_basic_authorship::ProposerFactory::new(
             task_manager.spawn_handle(),
             client.clone(),
-            transaction_pool,
+            transaction_pool.clone(),
             prometheus_registry.as_ref(),
             telemetry.as_ref().map(|x| x.handle()),
         );
@@ -620,8 +619,8 @@ pub fn new_full(
             select_chain,
             env: proposer,
             block_import,
-            sync_oracle: network.clone(),
-            justification_sync_link: network.clone(),
+            sync_oracle: sync_service.clone(),
+            justification_sync_link: sync_service.clone(),
             force_authoring,
             babe_link,
             block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(2f32 / 3f32),
@@ -664,25 +663,11 @@ pub fn new_full(
         let justifications_protocol_name = beefy_on_demand_justifications_handler.protocol_name();
         let network_params = sc_consensus_beefy::BeefyNetworkParams {
             network: network.clone(),
-            sync: network.clone(),
+            sync: sync_service.clone(),
             gossip_protocol_name: beefy_gossip_proto_name,
             justifications_protocol_name,
             _phantom: core::marker::PhantomData::<Block>,
         };
-        impl<T, H> SyncEventStream for NetworkService<T, H>
-        where
-            T: Clone,
-            H: Clone,
-        {
-            type Event = sc_network::event::Event<T, H>;
-
-            fn sync_events(&self) -> Box<dyn Stream<Item = Self::Event> + Send> {
-                Box::new(self.network_events().filter_map(|event| match event {
-                    sc_network::event::Event::SyncEvent(event) => Some(event),
-                    _ => None,
-                }))
-            }
-        }
 
         let payload_provider = sp_beefy::mmr::MmrRootProvider::new(client.clone());
 

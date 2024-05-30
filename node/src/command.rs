@@ -87,10 +87,12 @@ impl SubstrateCli for Cli {
         let chain_spec = if let Some(chain_spec) = chain_spec {
             chain_spec
         } else {
+            todo!()
             // framenode_chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
         };
 
-        Ok(Box::new(chain_spec))
+        // Ok(Box::new(chain_spec))
+        todo!()
     }
 
     // fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
