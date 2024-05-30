@@ -32,7 +32,7 @@ use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash,
+    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_common_config,
     mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
     DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType,
     RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST,
@@ -264,12 +264,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 

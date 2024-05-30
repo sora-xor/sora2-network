@@ -31,7 +31,7 @@
 use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{mock_pallet_balances_config, PSWAP, VAL, XST};
+use common::{mock_common_config, mock_pallet_balances_config, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -121,12 +121,7 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 

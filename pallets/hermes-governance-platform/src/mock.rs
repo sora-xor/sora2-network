@@ -4,9 +4,9 @@ use codec::{Decode, Encode};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName,
-    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD,
-    VAL,
+    balance, fixed, mock_common_config, mock_pallet_balances_config, mock_technical_config,
+    AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    HERMES_ASSET_ID, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -160,12 +160,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

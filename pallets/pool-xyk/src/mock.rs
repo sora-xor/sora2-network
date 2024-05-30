@@ -31,8 +31,8 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, DEXInfo,
-    GetMarketInfo, PSWAP, TBCD, VAL,
+    balance, fixed, hash, mock_common_config, mock_pallet_balances_config, mock_technical_config,
+    DEXInfo, GetMarketInfo, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -154,12 +154,7 @@ impl trading_pair::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 

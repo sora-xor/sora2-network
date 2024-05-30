@@ -33,9 +33,10 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName,
-    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_common_config, mock_pallet_balances_config, mock_technical_config,
+    AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD,
+    VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -216,12 +217,7 @@ impl currencies::Config for Runtime {
 
 type DEXId = u32;
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;

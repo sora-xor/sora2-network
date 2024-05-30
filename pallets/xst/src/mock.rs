@@ -32,9 +32,10 @@ use crate::{self as xstpool, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, PriceToolsProvider};
 use common::{
-    self, balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, Amount,
-    AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, PriceVariant,
-    DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, hash, mock_common_config, mock_pallet_balances_config,
+    mock_technical_config, Amount, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed,
+    FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR,
+    XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -240,12 +241,7 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;

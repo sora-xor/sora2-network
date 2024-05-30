@@ -32,8 +32,8 @@ use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_common_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, Everything, GenesisBuild};
@@ -138,12 +138,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

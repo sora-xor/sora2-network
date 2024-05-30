@@ -44,8 +44,8 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId,
-    LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_common_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXId, LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -399,12 +399,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

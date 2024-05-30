@@ -4,8 +4,8 @@ use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, DEXId, Description, CERES_ASSET_ID,
+    balance, mock_common_config, mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, Description, CERES_ASSET_ID,
 };
 use common::{mock_technical_config, XST};
 use currencies::BasicCurrencyAdapter;
@@ -128,12 +128,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

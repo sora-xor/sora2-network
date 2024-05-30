@@ -3,7 +3,7 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        mock_pallet_balances_config, mock_technical_config,
+        mock_common_config, mock_pallet_balances_config, mock_technical_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -341,12 +341,7 @@ impl dex_manager::Config for Runtime {}
 
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
-impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

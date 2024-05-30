@@ -34,8 +34,8 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    self, balance, mock_common_config, mock_pallet_balances_config, Amount, AssetId32, AssetName,
+    AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
     ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
 
@@ -149,12 +149,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl currencies::Config for Runtime {
     type MultiCurrency = Tokens;

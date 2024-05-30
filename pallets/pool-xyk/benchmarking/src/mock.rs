@@ -33,8 +33,8 @@
 use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_pallet_balances_config, mock_technical_config, Amount, DEXInfo, Fixed, PSWAP,
-    TBCD, VAL, XST,
+    fixed, hash, mock_common_config, mock_pallet_balances_config, mock_technical_config, Amount,
+    DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -181,12 +181,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 

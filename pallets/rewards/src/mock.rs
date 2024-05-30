@@ -42,8 +42,9 @@ use sp_runtime::{MultiSignature, Perbill, Percent};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
-    self, balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32,
-    AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    self, balance, mock_common_config, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    XST,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -173,12 +174,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 // Required by assets::Config
 impl permissions::Config for Runtime {

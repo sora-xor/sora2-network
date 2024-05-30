@@ -40,9 +40,9 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName,
-    AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR,
-    XST,
+    balance, mock_common_config, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI,
+    ETH, PSWAP, VAL, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -121,12 +121,7 @@ impl system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-impl common::Config for Test {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Test>;
-    type MultiCurrency = currencies::Pallet<Test>;
-}
+mock_common_config!(Test);
 
 impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;

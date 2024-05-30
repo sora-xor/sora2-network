@@ -32,8 +32,8 @@ use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
 use common::{
-    mock_pallet_balances_config, AssetId32, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
-    PSWAP, VAL, XOR, XST,
+    mock_common_config, mock_pallet_balances_config, AssetId32, DEXId, LiquidityProxyTrait,
+    LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -135,12 +135,7 @@ impl crate::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

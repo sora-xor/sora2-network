@@ -31,8 +31,8 @@
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, FromGenericPair,
+    balance, fixed, mock_common_config, mock_pallet_balances_config, mock_technical_config,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, FromGenericPair,
     DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
@@ -246,12 +246,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 

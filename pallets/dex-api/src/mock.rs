@@ -33,7 +33,7 @@ use common::alt::DiscreteQuotation;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_pallet_balances_config,
+    balance, fixed, fixed_from_basis_points, hash, mock_common_config, mock_pallet_balances_config,
     mock_technical_config, Amount, AssetId32, DEXInfo, Fixed, LiquiditySource, LiquiditySourceType,
     RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
 };
@@ -342,12 +342,7 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
+mock_common_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 
