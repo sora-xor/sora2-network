@@ -43,7 +43,7 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild, Randomness};
+use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use permissions::Scope;
