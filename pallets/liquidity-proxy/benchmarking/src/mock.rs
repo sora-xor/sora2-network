@@ -710,14 +710,14 @@ impl ExtBuilder {
         trading_pair::GenesisConfig::<Runtime> {
             trading_pairs: vec![
                 (
-                    0,
+                    DEXId::Polkaswap,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: VAL,
                     },
                 ),
                 (
-                    0,
+                    DEXId::Polkaswap,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: PSWAP,
