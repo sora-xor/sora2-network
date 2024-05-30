@@ -34,7 +34,7 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_pallet_balances_config, mock_technical_config, Amount,
-    DEXId, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
+    DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -72,7 +72,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
