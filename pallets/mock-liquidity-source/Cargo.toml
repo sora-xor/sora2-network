@@ -19,10 +19,6 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-serde = { version = "1.0.101", optional = true, features = [
-    "derive",
-], default-features = false }
-sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
@@ -52,7 +48,6 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
-    'serde/std',
     'sp-std/std',
     'tokens/std',
     'traits/std',

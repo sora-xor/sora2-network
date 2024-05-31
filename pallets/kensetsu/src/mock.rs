@@ -232,9 +232,9 @@ mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
-mock_technical_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
+mock_technical_config!(TestRuntime);
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;

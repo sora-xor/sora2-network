@@ -46,7 +46,7 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 default = ['std']
 std = [
     'codec/std',
-    "scale-info/std",
+    'scale-info/std',
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',

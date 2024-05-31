@@ -31,8 +31,10 @@
 use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
-use common::{DEXInfo, PSWAP, VAL, XST};
+use common::{
+    self, fixed_from_basis_points, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, DEXInfo, Fixed, PSWAP, VAL, XOR, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -67,7 +69,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -133,15 +134,7 @@ impl Config<crate::Instance2> for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -200,17 +193,7 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
