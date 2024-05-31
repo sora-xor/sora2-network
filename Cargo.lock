@@ -4228,6 +4228,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "generate-bags"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "framenode-runtime",
+ "num-format",
+ "pallet-staking",
+ "sp-io",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7557,6 +7572,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "parse"
+version = "0.1.0"
+dependencies = [
+ "framenode-runtime",
+ "hex",
+ "parity-scale-codec",
+ "rustc-hex",
+ "scale-info",
+]
+
+[[package]]
 name = "partial_sort"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8629,6 +8655,36 @@ name = "regex-syntax"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
+
+[[package]]
+name = "remote-ext"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "common 0.1.0",
+ "dex-manager",
+ "env_logger",
+ "frame-election-provider-support",
+ "frame-remote-externalities 0.10.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "frame-support",
+ "frame-system",
+ "framenode-runtime",
+ "hex",
+ "jsonrpsee",
+ "liquidity-proxy",
+ "log",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-version",
+ "thiserror",
+ "tokio",
+ "xst",
+]
 
 [[package]]
 name = "resolv-conf"

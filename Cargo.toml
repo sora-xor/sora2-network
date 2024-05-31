@@ -363,7 +363,6 @@ multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
 pallet-multisig = { path = "../sora2-common/pallets/multisig" }
 evm-fungible-app = { path = "../sora2-common/pallets/evm-fungible-app" }
 bridge-channel = { path = "../sora2-common/pallets/channel" }
-# substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
 
 [workspace]
 members = [
@@ -406,9 +405,9 @@ members = [
     "pallets/band",
     "pallets/qa-tools",
     "node/",
-    # "utils/parse",
-    # "utils/generate-bags",
-    # "utils/remote-ext",
+    "utils/parse",
+    "utils/generate-bags",
+    "utils/remote-ext",
 ]
 
 resolver = "2"

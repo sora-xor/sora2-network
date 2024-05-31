@@ -2520,7 +2520,7 @@ construct_runtime! {
 
         // Trustless substrate bridge
         #[cfg(feature = "wip")] // Trustless substrate bridge
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
+        BeefyLightClient: beefy_light_client = 104,
 
         // Federated substrate bridge
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,

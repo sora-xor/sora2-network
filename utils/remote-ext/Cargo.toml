@@ -11,7 +11,7 @@ repository = "https://github.com/sora-xor/sora2-network"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0" }
-clap = { version = "=4.3.17", features = ["derive"] }
+clap = { version = "=4.5.4", features = ["derive"] }
 jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
 log = "0.4.17"
 serde = "1.0.137"
