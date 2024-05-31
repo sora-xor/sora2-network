@@ -85,7 +85,7 @@ pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
 
 parameter_types! {
     pub GetBaseAssetId: AssetId = XOR.into();
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub const PoolTokenAId: AssetId = common::AssetId32::from_bytes(hex!("0211110000000000000000000000000000000000000000000000000000000000"));
     pub const PoolTokenBId: AssetId = common::AssetId32::from_bytes(hex!("0222220000000000000000000000000000000000000000000000000000000000"));
     pub const BlockHashCount: u64 = 250;
@@ -328,7 +328,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    common::PSWAP.into(),
+                    PSWAP.into(),
                     alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
@@ -380,7 +380,7 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         ExtBuilder::with_accounts(vec![
             (fees_account_a(), XOR.into(), balance!(1)),
-            (fees_account_a(), common::PSWAP.into(), balance!(6)),
+            (fees_account_a(), PSWAP.into(), balance!(6)),
         ])
     }
 }
