@@ -12,6 +12,7 @@ use sp_core::H256;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
+use frame_support::traits::OnRuntimeUpgrade;
 use sp_runtime::traits::Dispatchable;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -59,6 +60,9 @@ struct Cli {
     /// Sora snapshot path.
     #[clap(long)]
     snapshot_path: Option<PathBuf>,
+    /// Run migrations
+    #[clap(long)]
+    run_migrations: bool,
     /// Command type
     #[clap(subcommand)]
     command: Command,
@@ -100,6 +104,9 @@ async fn main() -> AnyResult<()> {
     let mut ext =
         create_ext::<framenode_runtime::Block>(client.clone(), cli.at, cli.snapshot_path).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
+        if cli.run_migrations {
+            framenode_runtime::migrations::Migrations::on_runtime_upgrade();
+        }
         match cli.command {
             Command::Call { call, account } => {
                 let origin = if account.unsigned {
