@@ -47,6 +47,7 @@ use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_arithmetic::traits::{Saturating, Zero};
+use sp_std::vec::Vec;
 
 pub mod weights;
 
@@ -636,7 +637,6 @@ pub mod pallet {
         pub burn_info: (Fixed, Fixed, Fixed),
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

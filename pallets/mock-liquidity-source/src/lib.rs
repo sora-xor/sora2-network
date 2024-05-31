@@ -55,7 +55,6 @@ mod tests;
 
 #[allow(non_snake_case)]
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
-    #[cfg(feature = "std")]
     fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
         reserves
             .iter()

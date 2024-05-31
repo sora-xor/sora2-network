@@ -40,6 +40,7 @@ use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::DispatchError;
 use sp_runtime::RuntimeDebug;
+use sp_std::vec::Vec;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;

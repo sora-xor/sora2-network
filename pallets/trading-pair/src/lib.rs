@@ -348,7 +348,6 @@ pub mod pallet {
         pub trading_pairs: Vec<(T::DEXId, TradingPair<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

@@ -149,7 +149,6 @@ pub mod pallet {
         pub dex_list: Vec<(T::DEXId, DEXInfo<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

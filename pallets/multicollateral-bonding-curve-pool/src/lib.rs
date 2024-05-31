@@ -67,7 +67,6 @@ use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
-#[cfg(feature = "std")]
 use {
     common::USDT,
     serde::{Deserialize, Serialize},
@@ -87,8 +86,7 @@ pub const RETRY_DISTRIBUTION_FREQUENCY: u32 = 1000;
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo, Serialize, Deserialize)]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
     TechAccount(TechAccountId),
@@ -100,8 +98,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo, Serialize, Deserialize)]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
     pub coefficient: Fixed,
@@ -125,8 +122,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo, Serialize, Deserialize)]
 pub struct DistributionAccounts<DistributionAccountData> {
     pub xor_allocation: DistributionAccountData,
     pub val_holders: DistributionAccountData,

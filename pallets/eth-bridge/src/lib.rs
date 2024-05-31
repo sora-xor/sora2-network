@@ -103,7 +103,6 @@ use log::{debug, error, info, warn};
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{RuntimeDebug, H160, H256};
 use sp_runtime::DispatchError;
@@ -209,8 +208,9 @@ pub struct NetworkParams<AccountId: Ord> {
 }
 
 /// Network configuration.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
@@ -270,8 +270,9 @@ impl Default for BridgeStatus {
 }
 
 /// Bridge asset parameters.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
 pub enum AssetConfig<AssetId> {
     Thischain {
         id: AssetId,
@@ -1461,7 +1462,6 @@ pub mod pallet {
         pub networks: Vec<NetworkConfig<T>>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

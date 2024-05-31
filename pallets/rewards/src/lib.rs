@@ -42,7 +42,6 @@
 use codec::{Decode, Encode};
 use frame_support::storage::StorageMap as StorageMapTrait;
 use frame_system::pallet_prelude::BlockNumberFor;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::RuntimeDebug;
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
@@ -51,7 +50,6 @@ use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
 use assets::AssetIdOf;
-#[cfg(feature = "std")]
 use common::balance;
 use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
@@ -76,8 +74,18 @@ mod tests;
 
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Encode,
+    Decode,
+    Clone,
+    RuntimeDebug,
+    Default,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
+)]
 pub struct RewardInfo {
     claimable: Balance,
     pub total: Balance,

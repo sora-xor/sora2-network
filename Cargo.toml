@@ -360,6 +360,7 @@ substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" 
 bridge-types = { path = "../sora2-common/pallets/types" }
 bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
 multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
+pallet-multisig = { path = "../sora2-common/pallets/multisig" }
 evm-fungible-app = { path = "../sora2-common/pallets/evm-fungible-app" }
 bridge-channel = { path = "../sora2-common/pallets/channel" }
 # substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }

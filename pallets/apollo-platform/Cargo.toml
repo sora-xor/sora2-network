@@ -73,6 +73,7 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "sp-io/std",
+    "permissions/std",
 ]
 
 runtime-benchmarks = [
