@@ -66,7 +66,8 @@ use framenode_runtime::{
 use hex_literal::hex;
 use permissions::Scope;
 use sc_consensus_grandpa::AuthorityId as GrandpaId;
-use sc_network_common::config::MultiaddrWithPeerId;
+// use sc_network_common::config::MultiaddrWithPeerId;
+use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -1257,6 +1258,7 @@ fn testnet_genesis(
 
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
+            ..Default::default()
         },
         sudo: SudoConfig {
             key: Some(root_key.clone()),
@@ -1267,9 +1269,11 @@ fn testnet_genesis(
         babe: BabeConfig {
             authorities: vec![],
             epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+            ..Default::default()
         },
         grandpa: GrandpaConfig {
             authorities: vec![],
+            ..Default::default()
         },
         session: SessionConfig {
             keys: initial_authorities
@@ -1589,6 +1593,7 @@ fn testnet_genesis(
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
+            ..Default::default()
         },
         eth_bridge: EthBridgeConfig {
             authority_account: Some(eth_bridge_authority_account_id.clone()),
@@ -1673,6 +1678,7 @@ fn testnet_genesis(
         },
         beefy: BeefyConfig {
             authorities: vec![],
+            genesis_block: None,
         },
     }
 }

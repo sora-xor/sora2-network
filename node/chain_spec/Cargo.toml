@@ -25,6 +25,8 @@ sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = 
 serde = { version = "1.0.101", features = ["derive"] }
 serde_json = "1.0.61"
 
+bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
+
 # bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 
 common = { path = "../../common" }
@@ -41,15 +43,15 @@ xor-fee = { path = "../../pallets/xor-fee" }
 common = { path = "../../common", features = ["test"] }
 
 [features]
-# include-real-files = []
-# main-net-coded = []
-# test = ["common/test"]
-test = []
+include-real-files = []
+main-net-coded = []
+test = ["common/test"]
+# test = []
 
 
-# private-net = ["faucet", "framenode-runtime/private-net"]
-private-net = []
-# wip = ["framenode-runtime/wip"]
-wip = []
-ready-to-test = []
-# ready-to-test = ["framenode-runtime/ready-to-test"]
+private-net = ["faucet", "framenode-runtime/private-net"]
+# private-net = []
+wip = ["framenode-runtime/wip"]
+# wip = []
+# ready-to-test = []
+ready-to-test = ["framenode-runtime/ready-to-test"]

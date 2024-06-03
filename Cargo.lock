@@ -1817,7 +1817,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b34115915337defe99b2aff5c2ce6771e5fbc4079f4b506301f5cf394c8452f7"
 dependencies = [
  "strum 0.26.2",
- "strum_macros 0.26.2",
+ "strum_macros 0.26.3",
  "unicode-width",
 ]
 
@@ -3816,6 +3816,7 @@ dependencies = [
  "mmr-gadget",
  "mmr-rpc",
  "oracle-proxy-rpc",
+ "pallet-multisig 3.2.3",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -3888,6 +3889,7 @@ dependencies = [
  "hex-literal",
  "iroha-migration",
  "order-book",
+ "pallet-multisig 3.2.3",
  "parity-scale-codec",
  "permissions",
  "rewards",
@@ -4225,21 +4227,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
-]
-
-[[package]]
-name = "generate-bags"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "frame-election-provider-support",
- "frame-support",
- "frame-system",
- "framenode-runtime",
- "num-format",
- "pallet-staking",
- "sp-io",
 ]
 
 [[package]]
@@ -7572,17 +7559,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parse"
-version = "0.1.0"
-dependencies = [
- "framenode-runtime",
- "hex",
- "parity-scale-codec",
- "rustc-hex",
- "scale-info",
-]
-
-[[package]]
 name = "partial_sort"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8655,36 +8631,6 @@ name = "regex-syntax"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
-
-[[package]]
-name = "remote-ext"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "common 0.1.0",
- "dex-manager",
- "env_logger",
- "frame-election-provider-support",
- "frame-remote-externalities 0.10.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
- "frame-support",
- "frame-system",
- "framenode-runtime",
- "hex",
- "jsonrpsee",
- "liquidity-proxy",
- "log",
- "parity-scale-codec",
- "serde",
- "serde_json",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-version",
- "thiserror",
- "tokio",
- "xst",
-]
 
 [[package]]
 name = "resolv-conf"
@@ -11472,11 +11418,11 @@ dependencies = [
 
 [[package]]
 name = "strum_macros"
-version = "0.26.2"
+version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6cf59daf282c0a494ba14fd21610a0325f9f90ec9d1231dea26bcb1d696c946"
+checksum = "f7993a8e3a9e88a00351486baae9522c91b123a088f76469e5bd5cc17198ea87"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "rustversion",

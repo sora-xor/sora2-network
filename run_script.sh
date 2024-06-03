@@ -96,9 +96,9 @@ do
 	mkdir -p "db$num/chains/sora-substrate-$chain/bridge"
 	cp misc/eth.json "db$num/chains/sora-substrate-$chain/bridge"
 	if [ "$num" == "0" ]; then
-		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
-		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
 	port="$newport"

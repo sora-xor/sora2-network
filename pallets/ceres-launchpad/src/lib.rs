@@ -134,7 +134,6 @@ pub mod pallet {
     type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 

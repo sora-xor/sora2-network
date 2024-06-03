@@ -53,6 +53,8 @@ beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git",
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
 
+bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
+
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }
 

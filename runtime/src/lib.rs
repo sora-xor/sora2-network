@@ -3139,25 +3139,23 @@ impl_runtime_apis! {
             >,
             key_owner_proof: sp_beefy::OpaqueKeyOwnershipProof,
         ) -> Option<()> {
-            // let key_owner_proof = key_owner_proof.decode()?;
+            let key_owner_proof = key_owner_proof.decode()?;
 
-            // Beefy::submit_unsigned_equivocation_report(
-            // 	equivocation_proof,
-            // 	key_owner_proof,
-            // )
-            None
+            Beefy::submit_unsigned_equivocation_report(
+                equivocation_proof,
+                key_owner_proof,
+            )
         }
 
         fn generate_key_ownership_proof(
             _set_id: sp_beefy::ValidatorSetId,
             authority_id: BeefyId,
         ) -> Option<sp_beefy::OpaqueKeyOwnershipProof> {
-            // use parity_scale_codec::Encode;
+            use codec::Encode;
 
-            // Historical::prove((sp_beefy::KEY_TYPE, authority_id))
-            // 	.map(|p| p.encode())
-            // 	.map(sp_beefy::OpaqueKeyOwnershipProof::new)
-            None
+            Historical::prove((sp_beefy::KEY_TYPE, authority_id))
+                .map(|p| p.encode())
+                .map(sp_beefy::OpaqueKeyOwnershipProof::new)
         }
     }
 

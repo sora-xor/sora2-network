@@ -405,9 +405,9 @@ members = [
     "pallets/band",
     "pallets/qa-tools",
     "node/",
-    "utils/parse",
-    "utils/generate-bags",
-    "utils/remote-ext",
+    # "utils/parse",
+    # "utils/generate-bags",
+    # "utils/remote-ext",
 ]
 
 resolver = "2"
