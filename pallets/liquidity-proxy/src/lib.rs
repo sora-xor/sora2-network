@@ -1441,7 +1441,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
 
-        let mut aggregator = LiquidityAggregator::new(amount.variant());
+        let mut aggregator: LiquidityAggregator<T, _> = LiquidityAggregator::new(amount.variant());
 
         let mut total_weight = Weight::zero();
 
@@ -1462,7 +1462,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let aggregation_result = aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
+        let aggregation_result = aggregator.aggregate_liquidity(amount.amount())?;
 
         let mut rewards = Rewards::new();
 
@@ -2736,7 +2736,7 @@ pub mod pallet {
         InvalidFeeValue,
         /// None of the sources has enough reserves to execute a trade
         InsufficientLiquidity,
-        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
+        /// Unable to aggregate the liquidity from sources.
         AggregationError,
         /// Specified parameters lead to arithmetic error
         CalculationError,
