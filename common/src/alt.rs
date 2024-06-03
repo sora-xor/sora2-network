@@ -173,9 +173,10 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
             return Some(Balance::zero());
         }
 
-        let price = self.price()?;
-
-        (FixedWrapper::from(output) / price).try_into_balance().ok()
+        ((FixedWrapper::from(output) * FixedWrapper::from(self.input))
+            / (FixedWrapper::from(self.output)))
+        .try_into_balance()
+        .ok()
     }
 
     /// Calculates a linearly proportional output amount depending on the price and an input amount.
@@ -185,9 +186,10 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
             return Some(Balance::zero());
         }
 
-        let price = self.price()?;
-
-        (FixedWrapper::from(input) * price).try_into_balance().ok()
+        (FixedWrapper::from(input) * FixedWrapper::from(self.output)
+            / FixedWrapper::from(self.input))
+        .try_into_balance()
+        .ok()
     }
 
     pub fn rescale_by_input(self, input: Balance) -> Option<Self> {

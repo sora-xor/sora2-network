@@ -29,21 +29,19 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::prelude::SwapVariant;
-use common::AssetIdOf;
-use common::{
-    alt::SwapLimits,
-    prelude::{OutcomeFee, SwapAmount},
-};
-use frame_support::traits::Get;
+use common::prelude::{OutcomeFee, SwapAmount};
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
 
 #[cfg(feature = "wip")] // ALT
 use {
     crate::{Config, Error},
+    common::alt::SwapLimits,
     common::alt::{AlignReason, DiscreteQuotation, SideAmount, SwapChunk},
+    common::prelude::SwapVariant,
+    common::AssetIdOf,
     common::{fixed, Balance},
+    frame_support::traits::Get,
     itertools::Itertools,
     sp_runtime::traits::Zero,
     sp_runtime::DispatchError,
@@ -2895,27 +2893,36 @@ mod tests {
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
-                        (balance!(0.0065), balance!(0.065))
+                        (
+                            balance!(0.006499999999999999),
+                            balance!(0.064999999999999993)
+                        )
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        (balance!(8.46), balance!(101.52))
+                        (balance!(8.46), balance!(101.520000000000000007))
                     )
                 ]),
                 vec![
                     (
                         LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_output(balance!(0.065), balance!(0.0065))
+                        SwapAmount::with_desired_output(
+                            balance!(0.064999999999999993),
+                            balance!(0.006499999999999999)
+                        )
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(101.52), balance!(8.46))
+                        SwapAmount::with_desired_output(
+                            balance!(101.520000000000000007),
+                            balance!(8.46)
+                        )
                     )
                 ],
                 balance!(101.585),
-                balance!(8.4665),
+                balance!(8.466499999999999999),
                 SwapVariant::WithDesiredOutput,
-                OutcomeFee::xor(balance!(0.00065))
+                OutcomeFee::xor(balance!(0.000649999999999999))
             )
         );
     }
