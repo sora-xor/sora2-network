@@ -198,16 +198,13 @@ macro_rules! mock_assets_config {
             pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
             pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
             pub const GetBuyBackPercentage: u8 = 0;
-            pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+            pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
         }
         impl assets::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
             type ExtraAccountId = [u8; 32];
-            type ExtraAssetRecordArg = common::AssetIdExtraAssetRecordArg<
-                common::DEXId,
-                common::LiquiditySourceType,
-                [u8; 32],
-            >;
+            type ExtraAssetRecordArg =
+                common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
             type AssetId = AssetId;
             type GetBaseAssetId = GetBaseAssetId;
             type GetBuyBackAssetId = GetBuyBackAssetId;

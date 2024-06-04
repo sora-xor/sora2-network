@@ -32,7 +32,7 @@ use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash,
+    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_assets_config,
     mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
     DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType,
     RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST,
@@ -48,7 +48,6 @@ use traits::MultiCurrency;
 
 use common::prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
-use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
@@ -236,34 +235,10 @@ impl currencies::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEX_A_ID;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
-// TODO: Not mocked, because of different DEX types
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
+mock_assets_config!(Runtime);
 
 impl common::Config for Runtime {
     type DEXId = DEXId;
