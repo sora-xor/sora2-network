@@ -1295,13 +1295,11 @@ pub mod pallet {
         /// Applies borrow tax of 1% on borrow to buy back and burn KEN.
         ///
         /// ## Parameters
-        /// - `collateral_asset_id`
         /// - `stablecoin_asset_id`
         /// - `borrow_amount_min` - borrow amount with slippage tolerance
         /// - `borrow_amount_min` - borrow amount with slippage tolerance
         /// - `borrow_amount_safe_with_tax` - borrow amount limit
         fn charge_borrow_tax(
-            collateral_asset_id: &AssetIdOf<T>,
             stablecoin_asset_id: &AssetIdOf<T>,
             borrow_amount_min: Balance,
             borrow_amount_max: Balance,
@@ -1323,12 +1321,10 @@ pub mod pallet {
             // charge 1% for $KEN buyback
             let mut total_borrow_tax_percent = Self::borrow_tax();
 
-            // for XOR/KXOR cdps:
+            // for KXOR cdps:
             // - 1% for KARMA buyback
             // - 1% for TBCD buyback
-            if *collateral_asset_id == Into::<AssetIdOf<T>>::into(XOR)
-                && *stablecoin_asset_id == Into::<AssetIdOf<T>>::into(KXOR)
-            {
+            if *stablecoin_asset_id == Into::<AssetIdOf<T>>::into(KXOR) {
                 taxes.push(BorrowTax {
                     incentive_asset_id: T::KarmaAssetId::get(),
                     tax_percent: Self::karma_borrow_tax(),
@@ -1411,7 +1407,6 @@ pub mod pallet {
                 .checked_sub(cdp.debt)
                 .ok_or(Error::<T>::ArithmeticError)?;
             let (borrow_amount_with_tax, borrow_amount) = Self::charge_borrow_tax(
-                &cdp.collateral_asset_id,
                 &cdp.stablecoin_asset_id,
                 borrow_amount_min,
                 borrow_amount_max,
