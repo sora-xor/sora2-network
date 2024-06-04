@@ -38,6 +38,7 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 [features]
 default = ['std']
 std = [
+    'assets/std',
     'codec/std',
     "scale-info/std",
     'frame-support/std',
