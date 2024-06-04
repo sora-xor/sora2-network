@@ -565,7 +565,6 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         ArithmeticError,
-        SymbolNotEnabledByOracle,
         WrongAssetId,
         CDPNotFound,
         CollateralInfoNotFound,
@@ -574,7 +573,6 @@ pub mod pallet {
         CDPUnsafe,
         /// Too many CDPs per user
         CDPLimitPerUser,
-        StablecoinInfoNotFound,
         OperationNotPermitted,
         /// Uncollected stability fee is too small for accrue
         UncollectedStabilityFeeTooSmall,
@@ -586,6 +584,9 @@ pub mod pallet {
         LiquidationLimit,
         /// Wrong borrow amounts
         WrongBorrowAmounts,
+        SymbolNotEnabledByOracle,
+        StablecoinInfoNotFound,
+
         /// Collateral must be registered in PriceTools.
         CollateralNotRegisteredInPriceTools,
     }
@@ -896,6 +897,7 @@ pub mod pallet {
             ensure_root(origin)?;
             ensure!(
                 stablecoin_asset_id == T::KenAssetId::get()
+                    || stablecoin_asset_id == T::KarmaAssetId::get()
                     || StablecoinInfos::<T>::contains_key(stablecoin_asset_id),
                 Error::<T>::WrongAssetId
             );
