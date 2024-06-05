@@ -28,6 +28,7 @@
 "pswap_distribution":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"pswap_distribution/pallet/enum.Error.html\" title=\"enum pswap_distribution::pallet::Error\">Error</a>&lt;T&gt;"]],
 "qa_tools":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"qa_tools/pallet/enum.Error.html\" title=\"enum qa_tools::pallet::Error\">Error</a>&lt;T&gt;"]],
 "referrals":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"referrals/pallet/enum.Error.html\" title=\"enum referrals::pallet::Error\">Error</a>&lt;T&gt;"]],
+"regulated_assets":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"regulated_assets/pallet/enum.Error.html\" title=\"enum regulated_assets::pallet::Error\">Error</a>&lt;T&gt;"]],
 "rewards":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"rewards/pallet/enum.Error.html\" title=\"enum rewards::pallet::Error\">Error</a>&lt;T&gt;"]],
 "technical":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"technical/pallet/enum.Error.html\" title=\"enum technical::pallet::Error\">Error</a>&lt;T&gt;"]],
 "trading_pair":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"trading_pair/pallet/enum.Error.html\" title=\"enum trading_pair::pallet::Error\">Error</a>&lt;T&gt;"]],

@@ -61,6 +61,7 @@ var sourcesIndex = JSON.parse('{\
 "pswap_distribution_runtime_api":["",[],["lib.rs"]],\
 "qa_tools":["",[["pallet_tools",[],["assets.rs","liquidity_proxy.rs","mcbc.rs","mod.rs","order_book.rs","pool_xyk.rs","price_tools.rs","xst.rs"]]],["lib.rs","weights.rs"]],\
 "referrals":["",[],["lib.rs","weights.rs"]],\
+"regulated_assets":["",[],["lib.rs","weights.rs"]],\
 "remote_ext":["",[],["main.rs"]],\
 "rewards":["",[],["lib.rs","weights.rs"]],\
 "rewards_rpc":["",[],["lib.rs"]],\

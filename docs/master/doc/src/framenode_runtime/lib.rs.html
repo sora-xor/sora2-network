@@ -3433,6 +3433,27 @@
 <a href="#3418" id="3418">3418</a>
 <a href="#3419" id="3419">3419</a>
 <a href="#3420" id="3420">3420</a>
+<a href="#3421" id="3421">3421</a>
+<a href="#3422" id="3422">3422</a>
+<a href="#3423" id="3423">3423</a>
+<a href="#3424" id="3424">3424</a>
+<a href="#3425" id="3425">3425</a>
+<a href="#3426" id="3426">3426</a>
+<a href="#3427" id="3427">3427</a>
+<a href="#3428" id="3428">3428</a>
+<a href="#3429" id="3429">3429</a>
+<a href="#3430" id="3430">3430</a>
+<a href="#3431" id="3431">3431</a>
+<a href="#3432" id="3432">3432</a>
+<a href="#3433" id="3433">3433</a>
+<a href="#3434" id="3434">3434</a>
+<a href="#3435" id="3435">3435</a>
+<a href="#3436" id="3436">3436</a>
+<a href="#3437" id="3437">3437</a>
+<a href="#3438" id="3438">3438</a>
+<a href="#3439" id="3439">3439</a>
+<a href="#3440" id="3440">3440</a>
+<a href="#3441" id="3441">3441</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4396,7 +4417,13 @@
     <span class="kw">type </span>Currency = currencies::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>GetTotalBalance = GetTotalBalance;
     <span class="kw">type </span>WeightInfo = assets::weights::SubstrateWeight&lt;Runtime&gt;;
-    <span class="kw">type </span>AssetRegulator = permissions::Pallet&lt;Runtime&gt;;
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// DEFI-R
+    </span><span class="kw">type </span>AssetRegulator = permissions::Pallet&lt;Runtime&gt;;
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
+    </span><span class="kw">type </span>AssetRegulator = (
+        permissions::Pallet&lt;Runtime&gt;,
+        regulated_assets::Pallet&lt;Runtime&gt;,
+    );
 }
 
 <span class="kw">impl </span>trading_pair::Config <span class="kw">for </span>Runtime {
@@ -5818,6 +5845,15 @@
     <span class="kw">type </span>ThisNetworkId = ThisNetworkId;
 }
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
+</span><span class="kw">impl </span>regulated_assets::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    <span class="kw">type </span>MaxAllowedTokensPerSBT = ConstU32&lt;<span class="number">10000</span>&gt;;
+    <span class="kw">type </span>MaxSBTsPerAsset = ConstU32&lt;<span class="number">10000</span>&gt;;
+    <span class="kw">type </span>AssetInfoProvider = Assets;
+    <span class="kw">type </span>WeightInfo = regulated_assets::weights::SubstrateWeight&lt;Runtime&gt;;
+}
+
 <span class="macro">construct_runtime! </span>{
     <span class="kw">pub enum </span>Runtime <span class="kw">where
         </span>Block = Block,
@@ -5943,6 +5979,8 @@
 
         <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// Apollo
         </span>ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
+        </span>RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">115</span>,
     }
 }
 
@@ -6706,6 +6744,8 @@
             <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             <span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
             <span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
+            </span><span class="macro">list_benchmark!</span>(list, extra, regulated_assets, RegulatedAssets);
 
             <span class="kw">let </span>storage_info = AllPalletsWithSystem::storage_info();
 
@@ -6802,6 +6842,8 @@
             <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             <span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
             <span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
+            </span><span class="macro">add_benchmark!</span>(params, batches, regulated_assets, RegulatedAssets);
 
             <span class="kw">if </span>batches.is_empty() { <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Benchmark not found for this pallet.&quot;</span>.into()) }
             <span class="prelude-val">Ok</span>(batches)

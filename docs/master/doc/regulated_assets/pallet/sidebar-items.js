@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_regulated_asset"],"struct":["DefaultRegulatedAsset","Pallet"],"trait":["Config"],"type":["Module","RegulatedAsset","SBTsByAsset","SoulboundAsset"]};

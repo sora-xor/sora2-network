@@ -1176,6 +1176,7 @@
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1231,7 +1232,7 @@
 </span><span class="kw">mod </span>tests;
 
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::permissions::{BURN, MINT};
+<span class="kw">use </span>common::permissions::{BURN, MINT, TRANSFER};
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};
 <span class="kw">use </span>common::{
     Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
@@ -1939,6 +1940,7 @@
         to: <span class="kw-2">&amp;</span>T::AccountId,
         amount: Balance,
     ) -&gt; DispatchResult {
+        T::AssetRegulator::check_permission(from, to, asset_id, <span class="kw-2">&amp;</span>TRANSFER)<span class="question-mark">?</span>;
         <span class="kw">let </span>r = T::Currency::transfer(<span class="kw-2">*</span>asset_id, from, to, amount);
         <span class="kw">if </span>r.is_err() {
             <span class="self">Self</span>::ensure_asset_exists(asset_id)<span class="question-mark">?</span>;
