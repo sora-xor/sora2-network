@@ -4,8 +4,8 @@ use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
-    DEMETER_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    balance, fixed, hash, mock_pallet_balances_config, mock_technical_config, DEXId, DEXInfo,
+    Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -259,15 +259,7 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

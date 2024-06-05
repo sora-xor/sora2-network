@@ -329,6 +329,17 @@ macro_rules! mock_technical_config {
             type AssetInfoProvider = assets::Pallet<$runtime>;
         }
     };
+    ($runtime:ty, $swap_action:ty) => {
+        impl technical::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type TechAssetId = TechAssetId;
+            type TechAccountId = TechAccountId;
+            type Trigger = ();
+            type Condition = ();
+            type SwapAction = $swap_action;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+        }
+    };
 }
 
 /// Mock of pallet `tokens::Config`.
