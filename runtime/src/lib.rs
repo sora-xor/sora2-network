@@ -961,7 +961,13 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
     type AssetRegulator = permissions::Pallet<Runtime>;
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = (
+        permissions::Pallet<Runtime>,
+        regulated_assets::Pallet<Runtime>,
+    );
 }
 
 impl trading_pair::Config for Runtime {
@@ -2386,8 +2392,10 @@ impl multisig_verifier::Config for Runtime {
 #[cfg(feature = "wip")] // DEFI-R
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
+    type MaxAllowedTokensPerSBT = ConstU32<10000>;
+    type MaxSBTsPerAsset = ConstU32<10000>;
     type AssetInfoProvider = Assets;
+    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
