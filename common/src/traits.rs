@@ -1166,6 +1166,7 @@ pub trait AssetManager<
         + MaybeSerializeDeserialize
         + Ord
         + Default
+        + Clone
         + From<AssetId32<PredefinedAssetId>>
         + From<H256>
         + Into<H256>
