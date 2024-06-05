@@ -107,13 +107,13 @@ benchmarks! {
         let asset_id = add_asset::<T>();
         let asset_name =  AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
-
+        let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
     }: {
         Pallet::<T>::issue_sbt(
             owner_origin,
             asset_symbol,
             asset_name.clone(),
-            vec![asset_id],
+            bounded_vec_assets.clone(),
             None
         ).unwrap();
     }
@@ -124,11 +124,7 @@ benchmarks! {
         assert_last_event::<T>(Event::SoulboundTokenIssued {
              asset_id: *sbt_asset_id,
              owner: asset_owner::<T>(),
-             metadata: SoulboundTokenMetadata{
-                    name: asset_name,
-                    description: None,
-                    allowed_assets: vec![asset_id]
-                }
+             allowed_assets:  vec![asset_id]
             }.into()
         );
     }

@@ -46,14 +46,15 @@ mod tests;
 
 pub mod weights;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
     permissions::{PermissionId, ISSUE_SBT, TRANSFER},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
     BalancePrecision, ContentSource, Description,
 };
 use frame_support::sp_runtime::DispatchError;
-use sp_std::collections::btree_set::BTreeSet;
+use frame_support::{BoundedBTreeSet, BoundedVec};
+use sp_core::Get;
 use sp_std::vec::Vec;
 use weights::WeightInfo;
 
@@ -63,11 +64,12 @@ type Technical<T> = technical::Pallet<T>;
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, scale_info::TypeInfo, Clone, PartialEq)]
-pub struct SoulboundTokenMetadata<AssetId> {
+#[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
+#[scale_info(skip_type_params(MaxAllowedTokensPerSBT))]
+pub struct SoulboundTokenMetadata<AssetId, MaxAllowedTokensPerSBT: Get<u32>> {
     name: AssetName,
     description: Option<Description>,
-    allowed_assets: Vec<AssetId>,
+    allowed_assets: BoundedVec<AssetId, MaxAllowedTokensPerSBT>,
 }
 
 #[frame_support::pallet]
@@ -84,6 +86,14 @@ pub mod pallet {
         frame_system::Config + common::Config + permissions::Config + technical::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+        /// Max number of allowed tokens per one Soulbound Token
+        #[pallet::constant]
+        type MaxAllowedTokensPerSBT: Get<u32>;
+
+        /// Max number of SBTs per one Soulbound Token
+        #[pallet::constant]
+        type MaxSBTsPerAsset: Get<u32>;
 
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
@@ -106,7 +116,6 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -155,7 +164,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             symbol: AssetSymbol,
             name: AssetName,
-            allowed_assets: Vec<AssetIdOf<T>>,
+            allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
             description: Option<Description>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -176,20 +185,20 @@ pub mod pallet {
             let metadata = SoulboundTokenMetadata {
                 name,
                 description,
-                allowed_assets: allowed_assets.clone(),
+                allowed_assets: allowed_assets.clone().into(),
             };
             <SoulboundAsset<T>>::insert(sbt_asset_id, &metadata);
 
-            for allowed_asset in allowed_assets {
+            for allowed_asset in allowed_assets.clone().into_iter() {
                 <SBTsByAsset<T>>::mutate(allowed_asset, |sbts| {
-                    sbts.insert(sbt_asset_id);
+                    sbts.try_insert(sbt_asset_id).ok();
                 });
             }
 
             Self::deposit_event(Event::SoulboundTokenIssued {
                 asset_id: sbt_asset_id,
                 owner: who,
-                metadata,
+                allowed_assets: allowed_assets.clone().into(),
             });
 
             Ok(())
@@ -205,7 +214,7 @@ pub mod pallet {
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
             owner: AccountIdOf<T>,
-            metadata: SoulboundTokenMetadata<AssetIdOf<T>>,
+            allowed_assets: Vec<AssetIdOf<T>>,
         },
     }
 
@@ -237,14 +246,24 @@ pub mod pallet {
     /// Mapping from SBT (asset_id) to its metadata
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
-    pub type SoulboundAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, SoulboundTokenMetadata<AssetIdOf<T>>, OptionQuery>;
+    pub type SoulboundAsset<T: Config> = StorageMap<
+        _,
+        Identity,
+        AssetIdOf<T>,
+        SoulboundTokenMetadata<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
+        OptionQuery,
+    >;
 
     /// Mapping from `asset_id` to its SBTs which grant permission to transfer, mint, and burn the `asset_id`
     #[pallet::storage]
     #[pallet::getter(fn sbts_by_asset)]
-    pub type SBTsByAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
+    pub type SBTsByAsset<T: Config> = StorageMap<
+        _,
+        Identity,
+        AssetIdOf<T>,
+        BoundedBTreeSet<AssetIdOf<T>, T::MaxSBTsPerAsset>,
+        ValueQuery,
+    >;
 }
 
 impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
