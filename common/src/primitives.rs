@@ -60,6 +60,17 @@ pub const ASSET_CONTENT_SOURCE_MAX_LENGTH: usize = 2048;
 /// Max length of asset description, it should be enough to describe everything the user wants
 pub const ASSET_DESCRIPTION_MAX_LENGTH: usize = 512;
 
+/// Predefined asset ids start with 0x02...
+pub const ASSET_ID_PREFIX_PREDEFINED: u8 = 2;
+
+/// Synthetic asset ids start with 0x03...
+pub const ASSET_ID_PREFIX_SYNTHETIC: u8 = 3;
+
+/// Kensetsu asset ids pegged to sora assets start with 0x04...
+pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_SORA: u8 = 4;
+
+/// Kensetsu asset ids pegged to oracle start with 0x05...
+pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_ORACLE: u8 = 5;
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
@@ -350,7 +361,7 @@ impl<AssetId> AssetId32<AssetId> {
 
     pub const fn from_asset_id(asset_id: PredefinedAssetId) -> Self {
         let mut bytes = [0u8; 32];
-        bytes[0] = 2;
+        bytes[0] = ASSET_ID_PREFIX_PREDEFINED;
         bytes[2] = asset_id as u8;
         Self::from_bytes(bytes)
     }
@@ -364,17 +375,17 @@ impl<AssetId> AssetId32<AssetId> {
             return Self::from_asset_id(PredefinedAssetId::XSTUSD);
         }
 
-        Self::from_reference_symbol(3, reference_symbol)
+        Self::from_reference_symbol(ASSET_ID_PREFIX_SYNTHETIC, reference_symbol)
     }
 
     /// Construct asset id for Kensetsu debt asset using its `peg_symbol` on Sora network
     pub fn from_kensetsu_sora_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
-        Self::from_reference_symbol(4, reference_symbol)
+        Self::from_reference_symbol(ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_SORA, reference_symbol)
     }
 
     /// Construct asset id for Kensetsu debt asset using its `peg_symbol` from Oracle
     pub fn from_kensetsu_oracle_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
-        Self::from_reference_symbol(5, reference_symbol)
+        Self::from_reference_symbol(ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_ORACLE, reference_symbol)
     }
 
     /// Constructs Asset id from symbol with provided zero byte.
