@@ -204,6 +204,7 @@ sp-state-machine = { path = "../sora-polkadot-sdk/substrate/primitives/state-mac
 sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externalities"}
 sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/merkle-mountain-range"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
+sp-transaction-storage-proof = { path = "../sora-polkadot-sdk/substrate/primitives/transaction-storage-proof" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
 # mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # pallet-mmr = { path = "../sora-polkadot-sdk/substrate/frame/mmr" }
@@ -312,6 +313,7 @@ sp-state-machine = { path = "../sora-polkadot-sdk/substrate/primitives/state-mac
 sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externalities"}
 sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/merkle-mountain-range"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
+sp-transaction-storage-proof = { path = "../sora-polkadot-sdk/substrate/primitives/transaction-storage-proof" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
 # mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 # pallet-mmr = { path = "../sora-polkadot-sdk/substrate/frame/mmr" }

@@ -167,7 +167,6 @@ pub fn new_partial(
     let client = Arc::new(client);
     let mut bridge_peer_secret_key = None;
 
-    // TODO!!!!!! use LocalKeyStore/KeystorePtr
     if let Some(first_pk_raw) =
         LocalKeystore::keys(&*keystore_container.local_keystore(), eth_bridge::KEY_TYPE)
             .unwrap()
@@ -336,7 +335,7 @@ pub fn new_partial(
             grandpa_block_import.clone(),
             backend.clone(),
             client.clone(),
-            None,
+            config.prometheus_registry().cloned(),
         );
 
     let babe_config = sc_consensus_babe::configuration(&*client)?;
@@ -369,6 +368,7 @@ pub fn new_partial(
     };
 
     let (import_queue, _) = sc_consensus_babe::import_queue(import_queue_params)?;
+
     // babe_link.clone(),
     // babe_block_import.clone(),
     // Some(Box::new(grandpa_block_import)),
@@ -537,7 +537,6 @@ pub fn new_full(
             spawn_handle: task_manager.spawn_handle(),
             import_queue,
             block_announce_validator_builder: None,
-            // warp_sync: Some(warp_sync),
             warp_sync_params: Some(WarpSyncParams::WithProvider(warp_sync)),
             net_config,
         })?;
@@ -613,6 +612,7 @@ pub fn new_full(
             Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
         let slot_duration = babe_link.config().slot_duration();
 
+        let client_clone = client.clone();
         let babe_config = sc_consensus_babe::BabeParams {
             keystore: keystore_container.keystore(),
             client: client.clone(),
@@ -626,18 +626,37 @@ pub fn new_full(
             block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(2f32 / 3f32),
             max_block_proposal_slot_portion: None,
             backoff_authoring_blocks,
-            create_inherent_data_providers: move |_parent, ()| {
+            create_inherent_data_providers: move |parent, ()| {
+                let client_clone = client_clone.clone();
                 async move {
-                    let time = sp_timestamp::InherentDataProvider::from_system_time();
+                    let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
                     let slot =
-                        sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-                            *time,
-                            slot_duration //slot_duration.slot_duration(),
-                        );
+						sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+							*timestamp,
+							slot_duration,
+						);
 
-                    Ok((slot, time))
+                    let storage_proof =
+                        sp_transaction_storage_proof::registration::new_data_provider(
+                            &*client_clone,
+                            &parent,
+                        )?;
+
+                    Ok((slot, timestamp, storage_proof))
                 }
+
+                // async move {
+                //     let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+                //     let slot =
+                //         sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+                //             *time,
+                //             slot_duration //slot_duration.slot_duration(),
+                //         );
+
+                //     Ok((slot, time))
+                // }
             },
             telemetry: telemetry.as_ref().map(|x| x.handle()),
         };

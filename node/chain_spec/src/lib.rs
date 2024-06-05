@@ -876,7 +876,7 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
         },
         vec![],
         None,
-        None,
+        Some("local"),
         None,
         Some(properties),
         None,
