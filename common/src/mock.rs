@@ -241,10 +241,10 @@ macro_rules! mock_assets_config {
             type GetBuyBackAccountId = GetBuyBackAccountId;
             type GetBuyBackDexId = GetBuyBackDexId;
             type BuyBackLiquidityProxy = ();
-            type Currency = currencies::Pallet<TestRuntime>;
+            type Currency = currencies::Pallet<$runtime>;
             type GetTotalBalance = ();
             type WeightInfo = ();
-            type AssetRegulator = permissions::Pallet<TestRuntime>;
+            type AssetRegulator = permissions::Pallet<$runtime>;
         }
     };
 }

@@ -55,7 +55,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::permissions::{BURN, MINT};
+use common::permissions::{BURN, MINT, TRANSFER};
 use common::prelude::{Balance, SwapAmount};
 use common::{
     Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
@@ -763,6 +763,7 @@ impl<T: Config> Pallet<T> {
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
+        T::AssetRegulator::check_permission(from, to, asset_id, &TRANSFER)?;
         let r = T::Currency::transfer(*asset_id, from, to, amount);
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;

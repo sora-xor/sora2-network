@@ -587,6 +587,12 @@ impl IsValid for AssetName {
     }
 }
 
+impl MaxEncodedLen for AssetName {
+    fn max_encoded_len() -> usize {
+        ASSET_NAME_MAX_LENGTH
+    }
+}
+
 #[derive(
     Encode,
     Decode,
@@ -662,6 +668,12 @@ impl Display for Description {
 impl IsValid for Description {
     fn is_valid(&self) -> bool {
         self.0.len() <= ASSET_DESCRIPTION_MAX_LENGTH
+    }
+}
+
+impl MaxEncodedLen for Description {
+    fn max_encoded_len() -> usize {
+        ASSET_DESCRIPTION_MAX_LENGTH
     }
 }
 
