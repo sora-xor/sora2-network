@@ -961,7 +961,13 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
     type AssetRegulator = permissions::Pallet<Runtime>;
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = (
+        permissions::Pallet<Runtime>,
+        regulated_assets::Pallet<Runtime>,
+    );
 }
 
 impl trading_pair::Config for Runtime {
@@ -2383,6 +2389,15 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
+impl regulated_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type MaxAllowedTokensPerSBT = ConstU32<10000>;
+    type MaxSBTsPerAsset = ConstU32<10000>;
+    type AssetInfoProvider = Assets;
+    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2508,6 +2523,8 @@ construct_runtime! {
 
         #[cfg(feature = "ready-to-test")] // Apollo
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
+        #[cfg(feature = "wip")] // DEFI-R
+        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
 
@@ -3271,6 +3288,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3367,6 +3386,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
