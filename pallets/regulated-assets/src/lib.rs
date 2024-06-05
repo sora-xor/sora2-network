@@ -185,7 +185,7 @@ pub mod pallet {
             let metadata = SoulboundTokenMetadata {
                 name,
                 description,
-                allowed_assets: allowed_assets.clone().into(),
+                allowed_assets: allowed_assets.clone(),
             };
             <SoulboundAsset<T>>::insert(sbt_asset_id, &metadata);
 
