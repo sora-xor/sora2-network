@@ -28,10 +28,4 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::*;
-
-pub type Migrations = (
-    kensetsu::migrations::init::RegisterTreasuryTechAccount<Runtime>,
-    kensetsu::migrations::init::GrantPermissionsTreasuryTechAccount<Runtime>,
-    multicollateral_bonding_curve_pool::migrations::v4::MigrateToV4<Runtime>,
-);
+pub type Migrations = ();
