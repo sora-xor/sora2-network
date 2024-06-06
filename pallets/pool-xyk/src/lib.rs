@@ -364,37 +364,45 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Returns (input reserves, output reserves, max output amount)
     pub fn get_actual_reserves(
         pool_acc_id: &T::AccountId,
         base_asset_id: &AssetIdOf<T>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
-    ) -> Result<(Balance, Balance), DispatchError> {
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
         let (tpair, base_chameleon_asset_id, is_chameleon_pool) =
             Self::get_pair_info(base_asset_id, input_asset_id, output_asset_id)?;
         let reserve_base =
             <T as Config>::AssetInfoProvider::free_balance(&tpair.base_asset_id, &pool_acc_id)?;
         let reserve_target =
             <T as Config>::AssetInfoProvider::free_balance(&tpair.target_asset_id, &pool_acc_id)?;
-        let reserve_base = if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
+        let reserve_chameleon = if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
             if is_chameleon_pool {
-                let reserve_chameleon = <T as Config>::AssetInfoProvider::free_balance(
+                <T as Config>::AssetInfoProvider::free_balance(
                     &base_chameleon_asset_id,
                     &pool_acc_id,
-                )?;
-                reserve_base
-                    .checked_add(reserve_chameleon)
-                    .ok_or(Error::<T>::PoolTokenSupplyOverflow)?
+                )?
             } else {
-                reserve_base
+                0
             }
         } else {
+            0
+        };
+        let reserve_base_chameleon = reserve_base
+            .checked_add(reserve_chameleon)
+            .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
+        let max_output = if *output_asset_id == tpair.target_asset_id {
+            reserve_target
+        } else if *output_asset_id == tpair.base_asset_id {
             reserve_base
+        } else {
+            reserve_chameleon
         };
         if tpair.target_asset_id == *input_asset_id {
-            Ok((reserve_target, reserve_base))
+            Ok((reserve_target, reserve_base_chameleon, max_output))
         } else {
-            Ok((reserve_base, reserve_target))
+            Ok((reserve_base_chameleon, reserve_target, max_output))
         }
     }
 }
@@ -437,7 +445,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let (reserve_input, reserve_output) = Self::get_actual_reserves(
+        let (reserve_input, reserve_output, max_output_available) = Self::get_actual_reserves(
             &pool_acc_id,
             &dex_info.base_asset_id,
             &input_asset_id,
@@ -461,16 +469,30 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         // Calculate quote.
         let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                Pallet::<T>::calc_output_for_exact_input(
+                let (calculated, fee_amount) = Pallet::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_in,
                     deduce_fee,
-                )?
+                )?;
+                let required_output = if get_fee_from_destination {
+                    calculated + fee_amount
+                } else {
+                    calculated
+                };
+                ensure!(
+                    required_output <= max_output_available,
+                    Error::<T>::NotEnoughOutputReserves
+                );
+                (calculated, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                ensure!(
+                    desired_amount_out <= max_output_available,
+                    Error::<T>::NotEnoughOutputReserves
+                );
                 Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
@@ -519,7 +541,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let (reserve_input, reserve_output) = Self::get_actual_reserves(
+        let (reserve_input, reserve_output, max_output_available) = Self::get_actual_reserves(
             &pool_acc_id,
             &dex_info.base_asset_id,
             &input_asset_id,
@@ -540,7 +562,24 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         let variant = amount.variant();
         let amount = match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => desired_amount_in,
+            QuoteAmount::WithDesiredInput { desired_amount_in }
+                if max_output_available == reserve_output =>
+            {
+                desired_amount_in
+            }
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (calculated, _fee) = Pallet::<T>::calc_input_for_exact_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &max_output_available,
+                    deduce_fee,
+                )
+                .unwrap_or((Balance::MAX, 0));
+                quotation.limits.max_amount = Some(SideAmount::Input(calculated));
+                desired_amount_in.min(calculated)
+            }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let max_output = Pallet::<T>::calc_max_output(
                     T::GetFee::get(),
@@ -548,9 +587,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     reserve_output,
                     deduce_fee,
                 )?;
-                quotation.limits.max_amount = Some(SideAmount::Output(max_output));
+                quotation.limits.max_amount =
+                    Some(SideAmount::Output(max_output.min(max_output_available)));
 
-                max_output.min(desired_amount_out)
+                max_output.min(desired_amount_out).min(max_output_available)
             }
         };
 
@@ -724,7 +764,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let (reserve_input, reserve_output) = Self::get_actual_reserves(
+        let (reserve_input, reserve_output, _max_output_available) = Self::get_actual_reserves(
             &pool_acc_id,
             &dex_info.base_asset_id,
             &input_asset_id,
@@ -1214,6 +1254,8 @@ pub mod pallet {
         TargetAssetIsRestricted,
         /// Restricted Chameleon pool
         RestrictedChameleonPool,
+        /// Output asset reserves is not enough
+        NotEnoughOutputReserves,
     }
 
     /// Updated after last liquidity change operation.
