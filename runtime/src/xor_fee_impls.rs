@@ -36,6 +36,8 @@ use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
 
+pub type PriceTool = price_tools::Pallet<Runtime>;
+
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
     pub fn withdraw_evm_fee(&self, who: &AccountId) -> DispatchResult {
@@ -405,6 +407,27 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                 ExistenceRequirement::KeepAlive,
             )?),
         ))
+    }
+}
+
+pub struct DynamicMultiplier;
+impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
+    fn fetch_price_to_reference_asset(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<Balance, DispatchError> {
+        PriceTool::get_average_price(input_asset, ref_asset, common::PriceVariant::Buy)
+    }
+
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+        reference_amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(
+            Self::fetch_price_to_reference_asset(input_asset, ref_asset)?
+                .saturating_mul(reference_amount),
+        )
     }
 }
 

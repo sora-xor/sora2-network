@@ -428,6 +428,45 @@ pub trait WithdrawFee<T: Config> {
     ) -> Result<(T::AccountId, Option<NegativeImbalanceOf<T>>), DispatchError>;
 }
 
+/// Trait for dynamic fee update via multiplier
+pub trait CalculateMultiplier<AssetId, Error> {
+    /// Parameters:
+    /// `input_asset` is asset id which price should be fetched
+    /// `ref_asset` is asset id in which price will be fetched
+    fn fetch_price_to_reference_asset(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<Balance, Error>;
+
+    /// Parameters:
+    /// `reference_amount` is Balance used to calculate multiplier
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+        reference_amount: Balance,
+    ) -> Result<Balance, Error>;
+}
+
+impl<AssetId> CalculateMultiplier<AssetId, DispatchError> for () {
+    fn fetch_price_to_reference_asset(
+        _input_asset: &AssetId,
+        _ref_asset: &AssetId,
+    ) -> Result<Balance, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+        reference_amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(
+            Self::fetch_price_to_reference_asset(input_asset, ref_asset)?
+                .saturating_mul(reference_amount),
+        )
+    }
+}
+
 impl<T: Config> Pallet<T>
 where
     CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
@@ -683,6 +722,7 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;
+        type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
     }
 
     /// The current storage version.

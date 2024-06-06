@@ -1289,6 +1289,7 @@ impl xor_fee::Config for Runtime {
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
 }
 
 pub struct ConstantFeeMultiplier;

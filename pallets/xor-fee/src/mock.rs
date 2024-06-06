@@ -310,6 +310,7 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
+    type DynamicMultiplier = ();
 }
 
 pub struct MockReferrerAccountProvider;
