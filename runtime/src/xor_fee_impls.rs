@@ -419,7 +419,7 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
         input_asset: &AssetId,
         ref_asset: &AssetId,
     ) -> Result<Balance, DispatchError> {
-        PriceTool::get_average_price(input_asset, ref_asset, common::PriceVariant::Buy)
+        PriceTool::get_average_price(input_asset, ref_asset, common::PriceVariant::Sell)
     }
 
     fn calculate_multiplier(
