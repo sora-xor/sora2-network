@@ -29,8 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
+use _feps::sp_arithmetic::FixedU128;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
+use common::prelude::constants::SMALL_REFERENCE_AMOUNT;
+use common::prelude::FixedWrapper;
 use common::LiquidityProxyTrait;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
@@ -422,12 +425,17 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
     fn calculate_multiplier(
         input_asset: &AssetId,
         ref_asset: &AssetId,
-        reference_amount: Balance,
-    ) -> Result<Balance, DispatchError> {
-        Ok(
-            Self::fetch_price_to_reference_asset(input_asset, ref_asset)?
-                .saturating_mul(reference_amount),
-        )
+    ) -> Result<FixedU128, DispatchError> {
+        let price: FixedWrapper = FixedWrapper::from(Self::fetch_price_to_reference_asset(
+            input_asset,
+            ref_asset,
+        )?);
+        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
+            .try_into_balance()
+            .map_err(|_| {
+                xor_fee::pallet::Error::<xor_fee::mock::Runtime>::MultiplierCalculationFailed
+            })?;
+        Ok(FixedU128::from_inner(new_multiplier))
     }
 }
 
