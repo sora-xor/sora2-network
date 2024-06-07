@@ -48,6 +48,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use common::permissions::TRANSFER;
 use common::{hash, AssetRegulator};
 use frame_support::codec::{Decode, Encode};
 use frame_support::sp_runtime::DispatchError;
@@ -380,6 +381,9 @@ impl<T: Config, AssetId: Encode> AssetRegulator<AccountIdOf<T>, AssetId> for Pal
     ) -> Result<(), DispatchError> {
         // Holders can burn their own assets.
         if permission_id == &BURN && affected_account == issuer {
+            return Ok(());
+        }
+        if permission_id == &TRANSFER {
             return Ok(());
         }
         Self::check_permission_with_scope(
