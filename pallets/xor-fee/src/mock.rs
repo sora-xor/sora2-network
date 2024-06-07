@@ -36,7 +36,7 @@ use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmoun
 use common::{
     self, balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
+    ReferrerAccountProvider, DAI, PSWAP, TBCD, VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -47,7 +47,9 @@ use frame_support::traits::{
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
+use sp_arithmetic::FixedU128;
 
+use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -310,7 +312,35 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
-    type DynamicMultiplier = ();
+    type DynamicMultiplier = DynamicMultiplier;
+}
+
+pub struct DynamicMultiplier;
+
+impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
+    fn fetch_price_to_reference_asset(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<Balance, DispatchError> {
+        match (input_asset, ref_asset) {
+            (&XOR, &DAI) => Ok(balance!(0.00008)),
+            _ => Ok(balance!(0.000000000000000001)),
+        }
+    }
+
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<FixedU128, DispatchError> {
+        let price: FixedWrapper = FixedWrapper::from(Self::fetch_price_to_reference_asset(
+            input_asset,
+            ref_asset,
+        )?);
+        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
+            .try_into_balance()
+            .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
+        Ok(FixedU128::from_inner(new_multiplier))
+    }
 }
 
 pub struct MockReferrerAccountProvider;

@@ -431,7 +431,7 @@ pub trait WithdrawFee<T: Config> {
 /// Trait for dynamic fee update via multiplier
 pub trait CalculateMultiplier<AssetId, Error> {
     /// Parameters:
-    /// `input_asset` is asset id which price should be fetched
+    /// `input_asset` is asset id which price should be fetched;
     /// `ref_asset` is asset id in which price will be fetched
     fn fetch_price_to_reference_asset(
         input_asset: &AssetId,
@@ -439,12 +439,10 @@ pub trait CalculateMultiplier<AssetId, Error> {
     ) -> Result<Balance, Error>;
 
     /// Parameters:
-    /// `reference_amount` is Balance used to calculate multiplier
-    fn calculate_multiplier(
-        input_asset: &AssetId,
-        ref_asset: &AssetId,
-        reference_amount: Balance,
-    ) -> Result<Balance, Error>;
+    /// `input_asset` is asset id which price should be fetched;
+    /// `ref_asset` is asset id in which price will be fetched
+    fn calculate_multiplier(input_asset: &AssetId, ref_asset: &AssetId)
+        -> Result<FixedU128, Error>;
 }
 
 impl<AssetId> CalculateMultiplier<AssetId, DispatchError> for () {
@@ -456,14 +454,10 @@ impl<AssetId> CalculateMultiplier<AssetId, DispatchError> for () {
     }
 
     fn calculate_multiplier(
-        input_asset: &AssetId,
-        ref_asset: &AssetId,
-        reference_amount: Balance,
-    ) -> Result<Balance, DispatchError> {
-        Ok(
-            Self::fetch_price_to_reference_asset(input_asset, ref_asset)?
-                .saturating_mul(reference_amount),
-        )
+        _input_asset: &AssetId,
+        _ref_asset: &AssetId,
+    ) -> Result<FixedU128, DispatchError> {
+        Err(DispatchError::CannotLookup)
     }
 }
 
@@ -766,6 +760,12 @@ pub mod pallet {
         /// New multiplier for weight to fee conversion is set
         /// (*1_000_000_000_000_000_000). [New value]
         WeightToFeeMultiplierUpdated(FixedU128),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Failed to calculate new multiplier.
+        MultiplierCalculationFailed,
     }
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session

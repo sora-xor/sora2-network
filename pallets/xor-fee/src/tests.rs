@@ -32,10 +32,12 @@
 #![allow(clippy::all)]
 
 use crate::extension::ChargeTransactionPayment;
-use crate::{mock::*, LiquidityInfo, XorToVal};
+use crate::{mock::*, CalculateMultiplier, LiquidityInfo, XorToVal};
 use common::balance;
 
 use common::mock::{alice, bob};
+use common::prelude::FixedWrapper;
+use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
 use frame_support::error::BadOrigin;
 use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
@@ -495,5 +497,29 @@ fn it_works_referrer_refund() {
             balance!(1000.00007)
         );
         assert_eq!(XorToVal::<Runtime>::get(), balance!(0.00035));
+    });
+}
+
+#[test]
+fn calculate_multiplier_using_ref_amount_works() {
+    ExtBuilder::build().execute_with(|| {
+        let input_asset = common::XOR;
+        let ref_asset = common::DAI;
+
+        let multiplier = DynamicMultiplier::calculate_multiplier(&input_asset, &ref_asset)
+            .unwrap()
+            .into_inner();
+        let price =
+            DynamicMultiplier::fetch_price_to_reference_asset(&input_asset, &ref_asset).unwrap();
+        let ref_amount = FixedWrapper::from(price) * SMALL_FEE * multiplier;
+        assert_eq!(
+            ref_amount.into_balance(),
+            SMALL_REFERENCE_AMOUNT - balance!(0.000000000000000001)
+        );
+
+        assert_noop!(
+            DynamicMultiplier::calculate_multiplier(&input_asset, &input_asset),
+            xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed
+        );
     });
 }

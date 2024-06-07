@@ -50,6 +50,7 @@ pub mod constants {
     pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_parts(100_000_000, 0);
     pub const SMALL_FEE: Balance = balance!(0.0007);
     pub const BIG_FEE: Balance = balance!(0.007);
+    pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.2);
 }
 
 pub struct PresetWeightInfo<T>(PhantomData<T>);
