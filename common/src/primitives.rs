@@ -71,6 +71,7 @@ pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_SORA: u8 = 4;
 
 /// Kensetsu asset ids pegged to oracle start with 0x05...
 pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_ORACLE: u8 = 5;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
