@@ -568,7 +568,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                 desired_amount_in
             }
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let (calculated, _fee) = Pallet::<T>::calc_input_for_exact_output(
+                let max_amount = Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
@@ -576,9 +576,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     &max_output_available,
                     deduce_fee,
                 )
-                .unwrap_or((Balance::MAX, 0));
-                quotation.limits.max_amount = Some(SideAmount::Input(calculated));
-                desired_amount_in.min(calculated)
+                .ok();
+                quotation.limits.max_amount =
+                    max_amount.map(|(calculated, _fee)| SideAmount::Input(calculated));
+                if let Some((calculated, _fee)) = max_amount {
+                    desired_amount_in.min(calculated)
+                } else {
+                    desired_amount_in
+                }
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let max_output = Pallet::<T>::calc_max_output(

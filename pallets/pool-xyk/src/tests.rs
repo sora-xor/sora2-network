@@ -3875,7 +3875,7 @@ fn check_step_quote_chameleon_limits() {
                         OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049459192168892569))
                     ),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Input(Balance::MAX)), None)
+                limits: SwapLimits::new(None, None, None)
             }
         );
 
