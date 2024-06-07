@@ -36,8 +36,8 @@ use common::{
     balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
     LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
 };
-use frame_support::assert_noop;
 use frame_support::assert_ok;
+use frame_support::{assert_err, assert_noop};
 
 use crate::mock::*;
 use crate::{PoolProviders, TotalIssuances};
@@ -3820,4 +3820,250 @@ fn initialize_pool_with_synthetics() {
             BlackPepper.into(),
         ));
     });
+}
+
+#[test]
+fn check_step_quote_chameleon_limits() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, pt, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            Potato.into(),
+            BlackPepper.into(),
+            balance!(10),
+            balance!(20),
+            balance!(10),
+            balance!(20),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(33),
+                        balance!(16.447786386607548998),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049491834663814090))
+                    ),
+                    SwapChunk::new(
+                        balance!(33),
+                        balance!(16.442360950037693547),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049475509378247824))
+                    ),
+                    SwapChunk::new(
+                        balance!(33),
+                        balance!(16.436938197461963666),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049459192168892569))
+                    ),
+                ]),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(Balance::MAX)), None)
+            }
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(6.687397532149040098),
+                        balance!(3.333556216843500771),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030760933330494))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687397532149040098),
+                        balance!(3.333333325882023583),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090248391245))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687397532149040099),
+                        balance!(3.333110457274475645),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010029419630715573))
+                    ),
+                ]),
+                limits: SwapLimits::new(
+                    None,
+                    Some(SideAmount::Input(balance!(20.062192596447120295))),
+                    None
+                )
+            }
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(6.686950393907246094),
+                        balance!(3.333333333333333333),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687397517200078968),
+                        balance!(3.333333333333333333),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687844685339795233),
+                        balance!(3.333333333333333334),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                    ),
+                ]),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10))), None)
+            }
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(66.220512120302212237),
+                        balance!(33),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043129))
+                    ),
+                    SwapChunk::new(
+                        balance!(66.264373819107869477),
+                        balance!(33),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043129))
+                    ),
+                    SwapChunk::new(
+                        balance!(66.308279110583909913),
+                        balance!(33),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043130))
+                    ),
+                ]),
+                limits: SwapLimits::new(
+                    None,
+                    Some(SideAmount::Output(balance!(98712.870300000000000000))),
+                    None
+                )
+            }
+        );
+    })]);
+}
+
+#[test]
+fn check_quote_chameleon_limits() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, pt, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            Potato.into(),
+            BlackPepper.into(),
+            balance!(10),
+            balance!(20),
+            balance!(10),
+            balance!(20),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(
+                balance!(49.327085534107206211),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.148426536210954483))
+            ),
+        );
+
+        assert_err!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                true
+            ),
+            crate::Error::<Runtime>::NotEnoughOutputReserves
+        );
+
+        assert_err!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                true
+            ),
+            crate::Error::<Runtime>::NotEnoughOutputReserves
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(
+                balance!(198.793165049993991627),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.297893681043129388))
+            ),
+        );
+    })]);
 }
