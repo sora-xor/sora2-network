@@ -691,6 +691,9 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + pallet_transaction_payment::Config + common::Config
     {
+        /// Period to update Multiplier in blocks
+        #[pallet::constant]
+        type BlocksToUpdate: Get<Self::BlockNumber>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
@@ -729,7 +732,33 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_idle(current_block: BlockNumberFor<T>, _remaining_weight: Weight) -> Weight {
+            let mut weight: Weight = Weight::default();
+
+            if current_block >= Self::next_update_block() {
+                // 1 read
+                match T::DynamicMultiplier::calculate_multiplier(
+                    &common::XOR.into(),
+                    &common::DAI.into(),
+                ) {
+                    Ok(new_multiplier) => {
+                        <Multiplier<T>>::put(new_multiplier); // 1 write
+                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier)); // 1 write
+
+                        let next_update_block = current_block + T::BlocksToUpdate::get(); // 1 read
+                        <NextUpdateBlock<T>>::put(next_update_block); // 1 write
+                        weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(3);
+                    }
+                    Err(e) => {
+                        frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                        weight += T::DbWeight::get().reads(1);
+                    }
+                }
+            }
+            weight
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -767,6 +796,12 @@ pub mod pallet {
         /// Failed to calculate new multiplier.
         MultiplierCalculationFailed,
     }
+
+    /// Next block number to update multiplier
+    #[pallet::storage]
+    #[pallet::getter(fn next_update_block)]
+    pub type NextUpdateBlock<T> =
+        StorageValue<_, <T as frame_system::Config>::BlockNumber, ValueQuery>;
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]

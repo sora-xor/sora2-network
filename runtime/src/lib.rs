@@ -1265,9 +1265,11 @@ where
 
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
+    pub const BlocksToUpdate: BlockNumber = (MILLISECS_PER_MULTIPLIER_UPDATE / MILLISECS_PER_BLOCK) as BlockNumber;
 }
 
 impl xor_fee::Config for Runtime {
+    type BlocksToUpdate = BlocksToUpdate;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;

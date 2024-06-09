@@ -171,6 +171,7 @@ parameter_types! {
     pub const GetBuyBackPercentage: u8 = 10;
     pub GetBuyBackAccountId: AccountId = account_from_str("buy-back");
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub const BlocksToUpdate: BlockNumber = 3600;
 }
 
 impl assets::Config for Runtime {
@@ -313,6 +314,7 @@ impl Config for Runtime {
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
     type DynamicMultiplier = DynamicMultiplier;
+    type BlocksToUpdate = BlocksToUpdate;
 }
 
 pub struct DynamicMultiplier;
