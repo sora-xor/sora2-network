@@ -365,6 +365,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns (input reserves, output reserves, max output amount)
+    /// Output reserves could only be greater than max output amount if it's chameleon pool
     pub fn get_actual_reserves(
         pool_acc_id: &T::AccountId,
         base_asset_id: &AssetIdOf<T>,
@@ -490,7 +491,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 ensure!(
-                    desired_amount_out <= max_output_available,
+                    desired_amount_out < max_output_available,
                     Error::<T>::NotEnoughOutputReserves
                 );
                 Pallet::<T>::calc_input_for_exact_output(
