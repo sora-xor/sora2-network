@@ -34,6 +34,8 @@
 //! The pallet checks permissions based on asset ownership and SBT holdings, preventing unauthorized operations and transfers.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -179,7 +181,6 @@ pub mod pallet {
         /// - `description`: The description of the SBT. (Optional)
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
-        #[allow(clippy::too_many_arguments)]
         pub fn issue_sbt(
             origin: OriginFor<T>,
             token_id: ContentSource,
@@ -196,6 +197,14 @@ pub mod pallet {
             // Check permission `who` can issue SBT
             Permissions::<T>::check_permission(who.clone(), ISSUE_SBT)?;
 
+            let now_timestamp = Timestamp::<T>::now();
+            if let Some(expires_at) = expires_at {
+                ensure!(
+                    expires_at > now_timestamp,
+                    <Error<T>>::SBTExpirationDateCannotBeInThePast
+                );
+            }
+
             let sbt_asset_id = T::AssetManager::register_from(
                 &who,
                 symbol,
@@ -206,6 +215,7 @@ pub mod pallet {
                 image.clone(),
                 description.clone(),
             )?;
+
             let metadata = SoulboundTokenMetadata {
                 owner: who.clone(),
                 token_id,
@@ -213,7 +223,7 @@ pub mod pallet {
                 description,
                 image,
                 external_url,
-                issued_at: Timestamp::<T>::now(),
+                issued_at: now_timestamp,
                 expires_at,
                 allowed_assets: allowed_assets.clone(),
             };
@@ -260,6 +270,8 @@ pub mod pallet {
         AssetAlreadyRegulated,
         /// All involved users of a regulated asset operation should hold SBT
         AllInvolvedUsersShouldHoldSBT,
+        /// SBT Expiration Date cannot be in the past
+        SBTExpirationDateCannotBeInThePast,
     }
 
     #[pallet::type_value]
