@@ -37,7 +37,7 @@ use common::{
     PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{ConstU16, ConstU64, Everything};
+use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::{ConstU32, H256};
