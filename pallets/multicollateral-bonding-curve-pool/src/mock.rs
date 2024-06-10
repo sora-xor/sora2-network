@@ -326,6 +326,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -363,6 +364,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = common::mock::GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
@@ -637,6 +640,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
 }
 
 impl PriceToolsProvider<AssetId> for MockDEXApi {
+    fn is_asset_registered(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,

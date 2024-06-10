@@ -75,6 +75,10 @@ pub enum ComicAssetId {
     MichaelJacksonCD,
     JesterMarotte,
     CrackedBrassBell,
+    Tomato,
+    Potato,
+    Mouse,
+    Table,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -109,6 +113,10 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KEN => JesterMarotte,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
+            PredefinedAssetId::KGOLD => Tomato,
+            PredefinedAssetId::KXOR => Potato,
+            PredefinedAssetId::SB => Mouse,
+            PredefinedAssetId::KARMA => Table,
         }
     }
 }
@@ -178,6 +186,22 @@ impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedF
     }
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId32<PredefinedAssetId>| -> Option<AssetId32<PredefinedAssetId>> {
+        if base_asset_id == &crate::XOR {
+            Some(crate::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: crate::TradingPair<AssetId32<PredefinedAssetId>>| -> bool {
+        tpair.base_asset_id == crate::XOR && tpair.target_asset_id == crate::ETH
+    };
+}
+
 pub fn alice() -> AccountId32 {
     AccountId32::from([1; 32])
 }
@@ -217,10 +241,10 @@ macro_rules! mock_assets_config {
             type GetBuyBackAccountId = GetBuyBackAccountId;
             type GetBuyBackDexId = GetBuyBackDexId;
             type BuyBackLiquidityProxy = ();
-            type Currency = currencies::Pallet<TestRuntime>;
+            type Currency = currencies::Pallet<$runtime>;
             type GetTotalBalance = ();
             type WeightInfo = ();
-            type AssetRegulator = permissions::Pallet<TestRuntime>;
+            type AssetRegulator = permissions::Pallet<$runtime>;
         }
     };
 }
