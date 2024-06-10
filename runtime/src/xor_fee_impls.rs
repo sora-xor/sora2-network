@@ -432,9 +432,7 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
         )?);
         let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
             .try_into_balance()
-            .map_err(|_| {
-                xor_fee::pallet::Error::<xor_fee::mock::Runtime>::MultiplierCalculationFailed
-            })?;
+            .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
         Ok(FixedU128::from_inner(new_multiplier))
     }
 }
