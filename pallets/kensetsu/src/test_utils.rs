@@ -36,7 +36,6 @@ use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
 use sp_arithmetic::{Perbill, Percent};
-use sp_runtime::traits::Zero;
 use sp_runtime::AccountId32;
 
 type AccountId = AccountId32;
@@ -146,18 +145,28 @@ pub fn configure_kensetsu_dollar_for_xor(
     minimal_collateral_deposit: Balance,
 ) {
     set_kensetsu_dollar_stablecoin();
-    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
-        RuntimeOrigin::root(),
-        XOR,
-        KUSD,
-        CollateralRiskParameters {
-            hard_cap,
-            max_liquidation_lot: balance!(1000),
-            liquidation_ratio,
-            stability_fee_rate,
-            minimal_collateral_deposit,
-        }
-    ));
+    CollateralInfos::<TestRuntime>::set(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        },
+        Some(CollateralInfo {
+            risk_parameters: CollateralRiskParametersInternal {
+                hard_cap,
+                liquidation_ratio,
+                max_liquidation_lot: balance!(1000),
+                stability_fee_rate: StabilityFeeRate {
+                    annual: Percent::zero(),
+                    per_second: stability_fee_rate,
+                },
+                minimal_collateral_deposit,
+            },
+            total_collateral: 0,
+            stablecoin_supply: 0,
+            last_fee_update_time: 0,
+            interest_coefficient: FixedU128::one(),
+        }),
+    );
 }
 
 /// Configures Kensetsu with basic parameters.
@@ -167,7 +176,7 @@ pub fn configure_kensetsu_dollar_for_xor(
 pub fn configure_kxor_for_xor(
     hard_cap: Balance,
     liquidation_ratio: Perbill,
-    stability_fee_rate: FixedU128,
+    stability_fee_rate: Percent,
     minimal_collateral_deposit: Balance,
 ) {
     set_kensetsu_xor_stablecoin();
@@ -186,7 +195,7 @@ pub fn configure_kxor_for_xor(
 }
 
 /// Makes CDPs unsafe by changing liquidation ratio.
-pub fn make_cdps_unsafe() {
+pub fn make_cdps_unsafe<T: Config>() {
     CollateralInfos::<TestRuntime>::mutate(
         StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -194,11 +203,11 @@ pub fn make_cdps_unsafe() {
         },
         |info| {
             if let Some(info) = info.as_mut() {
-                info.risk_parameters = CollateralRiskParameters {
+                info.risk_parameters = CollateralRiskParametersInternal {
                     hard_cap: Balance::MAX,
                     max_liquidation_lot: balance!(1000),
                     liquidation_ratio: Perbill::from_percent(1),
-                    stability_fee_rate: FixedU128::zero(),
+                    stability_fee_rate: StabilityFeeRate::new::<T>(Percent::zero()).unwrap(),
                     minimal_collateral_deposit: balance!(0),
                 }
             }

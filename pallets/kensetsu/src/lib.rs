@@ -45,6 +45,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, AssetIdOf, AssetManager, Balance, DataFeed, Rate, SymbolName};
 use frame_support::log::{debug, warn};
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating};
 use sp_arithmetic::{FixedU128, Perbill, Percent};
 
 #[cfg(test)]
@@ -114,7 +115,129 @@ pub struct StablecoinCollateralIdentifier<AssetId> {
     pub collateral_asset_id: AssetId,
     pub stablecoin_asset_id: AssetId,
 }
+
+/// Stability fee in both human-readable form and efficient per-second form.
+/// - Human-readable annual form used by front-end only;
+/// - Per-second is used in fee calculation.
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    TypeInfo,
+    MaxEncodedLen,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
+pub struct StabilityFeeRate {
+    pub annual: Percent,
+    pub per_second: FixedU128,
+}
+
+impl StabilityFeeRate {
+    /// Checks that precision `eps` is achieved.
+    fn check_precision(a: &FixedU128, b: &FixedU128, eps: &FixedU128) -> bool {
+        dbg!(a);
+        dbg!(b);
+        let x = if a > b { a.sub(*b) } else { b.sub(*a) };
+        x <= *eps
+    }
+
+    /// Constructs `StabilityFeeRate` from annual rate only.
+    pub fn new<T>(rate: Percent) -> Result<StabilityFeeRate, Error<T>> {
+        let seconds_per_year: u32 = 31556952;
+        // Now we have to calculate per-second rate:
+        // (1 + rate) ^ 1 = (1 + x) ^ 31556952
+        // x = (1 + rate) ^ (1 / 31556952) - 1
+        //
+        // We use iterative Newton's formula for n_th root:
+        // x_k+1 = 1 / n * ((n - 1) * x_k + A / x_k^(n-1))
+        // Where:
+        // A is num = 1 + rate;
+        // n is root_degree = seconds_per_year;
+        // epsilon = 0.0000000000000001.
+        let eps = FixedU128::from_inner(100);
+        let num = FixedU128::one() + FixedU128::from(rate);
+        let root_degree = FixedU128::from_u32(seconds_per_year);
+        let mut x = num;
+        let mut i = 0;
+        loop {
+            let x_prev = x;
+            x = ((root_degree.sub(FixedU128::one()).checked_mul(&x_prev))
+                .ok_or(Error::<T>::ArithmeticError)?
+                .checked_add(
+                    &num.checked_div(&x_prev.saturating_pow((seconds_per_year - 1) as usize))
+                        .ok_or(Error::<T>::ArithmeticError)?,
+                )
+                .ok_or(Error::<T>::ArithmeticError)?)
+            .checked_div(&root_degree)
+            .ok_or(Error::<T>::ArithmeticError)?;
+            i += 1;
+            if i == 1000 {
+                break;
+            }
+            if Self::check_precision(&x_prev, &x, &eps) {
+                break;
+            }
+        }
+        x = x
+            .checked_sub(&FixedU128::one())
+            .ok_or(Error::<T>::ArithmeticError)?;
+
+        Ok(StabilityFeeRate {
+            annual: rate,
+            per_second: x,
+        })
+    }
+
+    #[cfg(feature = "test")]
+    pub fn from_per_second(per_second: FixedU128) -> StabilityFeeRate {
+        StabilityFeeRate {
+            annual: Default::default(),
+            per_second,
+        }
+    }
+}
+
+/// Risk parameters used in extrinsic parameters.
+#[derive(
+    Debug,
+    Default,
+    Encode,
+    Decode,
+    MaxEncodedLen,
+    TypeInfo,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
+pub struct CollateralRiskParameters {
+    /// Hard cap of total stablecoins issued for the collateral.
+    pub hard_cap: Balance,
+
+    /// Loan-to-value liquidation threshold
+    pub liquidation_ratio: Perbill,
+
+    /// The max amount of collateral can be liquidated in one round
+    pub max_liquidation_lot: Balance,
+
+    /// Protocol Interest rate per second
+    pub stability_fee_rate: Percent,
+
+    /// Minimal deposit in collateral AssetId.
+    /// In order to protect from empty CDPs.
+    pub minimal_collateral_deposit: Balance,
+}
+
 /// Risk management parameters for the specific collateral type.
+/// Internal storage implementation for
 #[derive(
     Debug,
     Default,
@@ -129,7 +252,7 @@ pub struct StablecoinCollateralIdentifier<AssetId> {
     Ord,
     Copy,
 )]
-pub struct CollateralRiskParameters {
+pub struct CollateralRiskParametersInternal {
     /// Hard cap of total stablecoins issued for the collateral.
     pub hard_cap: Balance,
 
@@ -139,19 +262,33 @@ pub struct CollateralRiskParameters {
     /// The max amount of collateral can be liquidated in one round
     pub max_liquidation_lot: Balance,
 
-    /// Protocol Interest rate per millisecond
-    pub stability_fee_rate: FixedU128,
+    /// Protocol Interest rate per second
+    pub stability_fee_rate: StabilityFeeRate,
 
     /// Minimal deposit in collateral AssetId.
     /// In order to protect from empty CDPs.
     pub minimal_collateral_deposit: Balance,
 }
 
+impl CollateralRiskParametersInternal {
+    pub fn new<T>(
+        parameters: CollateralRiskParameters,
+    ) -> Result<CollateralRiskParametersInternal, Error<T>> {
+        Ok(CollateralRiskParametersInternal {
+            hard_cap: parameters.hard_cap,
+            liquidation_ratio: parameters.liquidation_ratio,
+            max_liquidation_lot: parameters.max_liquidation_lot,
+            stability_fee_rate: StabilityFeeRate::new(parameters.stability_fee_rate)?,
+            minimal_collateral_deposit: parameters.minimal_collateral_deposit,
+        })
+    }
+}
+
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
 #[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
-    pub risk_parameters: CollateralRiskParameters,
+    pub risk_parameters: CollateralRiskParametersInternal,
 
     /// Total collateral locked in all CDPs
     pub total_collateral: Balance,
@@ -1526,9 +1663,14 @@ pub mod pallet {
                     .ok_or(Error::<T>::ArithmeticError)?;
                 let new_coefficient = compound(
                     collateral_info.interest_coefficient.into_inner(),
-                    collateral_info.risk_parameters.stability_fee_rate,
+                    collateral_info
+                        .risk_parameters
+                        .stability_fee_rate
+                        .per_second,
                     time_passed
                         .checked_into::<u64>()
+                        .ok_or(Error::<T>::ArithmeticError)?
+                        .checked_div(1000)
                         .ok_or(Error::<T>::ArithmeticError)?,
                 )
                 .map_err(|_| Error::<T>::ArithmeticError)?;
@@ -1555,6 +1697,10 @@ pub mod pallet {
                 &cdp.stablecoin_asset_id,
             )?;
             let interest_coefficient = collateral_info.interest_coefficient;
+            ensure!(
+                interest_coefficient >= cdp.interest_coefficient,
+                Error::<T>::AccrueWrongTime
+            );
             let interest_percent = interest_coefficient
                 .checked_sub(&cdp.interest_coefficient)
                 .ok_or(Error::<T>::ArithmeticError)?
@@ -2063,12 +2209,15 @@ pub mod pallet {
                                 collateral_asset_id,
                                 stablecoin_asset_id,
                             )?;
-                            new_info.risk_parameters = new_risk_parameters;
+                            new_info.risk_parameters =
+                                CollateralRiskParametersInternal::new::<T>(new_risk_parameters)?;
                             *collateral_info = new_info;
                         }
                         None => {
                             let _ = option_collateral_info.insert(CollateralInfo {
-                                risk_parameters: new_risk_parameters,
+                                risk_parameters: CollateralRiskParametersInternal::new::<T>(
+                                    new_risk_parameters,
+                                )?,
                                 total_collateral: Balance::zero(),
                                 stablecoin_supply: balance!(0),
                                 last_fee_update_time: Timestamp::<T>::get(),

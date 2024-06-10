@@ -106,7 +106,9 @@ pub mod v1_to_v2 {
     use sp_core::Get;
 
     mod v1 {
-        use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
+        use crate::{
+            CdpId, CollateralRiskParameters, CollateralRiskParametersInternal, Config, Pallet,
+        };
         use codec::{Decode, Encode, MaxEncodedLen};
         use common::{AccountIdOf, AssetIdOf, Balance};
         use frame_support::dispatch::TypeInfo;
@@ -127,13 +129,19 @@ pub mod v1_to_v2 {
         }
 
         impl<Moment> CollateralInfo<Moment> {
-            pub fn into_v2(self) -> crate::CollateralInfo<Moment> {
-                crate::CollateralInfo {
-                    risk_parameters: self.risk_parameters,
-                    total_collateral: self.total_collateral,
-                    stablecoin_supply: self.kusd_supply,
-                    last_fee_update_time: self.last_fee_update_time,
-                    interest_coefficient: self.interest_coefficient,
+            pub fn into_v2<T>(self) -> Option<crate::CollateralInfo<Moment>> {
+                match CollateralRiskParametersInternal::new::<T>(self.risk_parameters) {
+                    Ok(risk_parameters) => {
+                        Some(crate::CollateralInfo {
+                            // TODO multiply stability fee x1000
+                            risk_parameters: risk_parameters,
+                            total_collateral: self.total_collateral,
+                            stablecoin_supply: self.kusd_supply,
+                            last_fee_update_time: self.last_fee_update_time,
+                            interest_coefficient: self.interest_coefficient,
+                        })
+                    }
+                    Err(_) => None,
                 }
             }
         }
@@ -270,14 +278,18 @@ pub mod v1_to_v2 {
 
                 for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
                 {
-                    CollateralInfos::<T>::insert(
-                        StablecoinCollateralIdentifier {
-                            collateral_asset_id,
-                            stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
-                        },
-                        old_collateral_info.into_v2(),
-                    );
-                    weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                    if let Some(old_collateral_info) = old_collateral_info.into_v2::<T>() {
+                        CollateralInfos::<T>::insert(
+                            StablecoinCollateralIdentifier {
+                                collateral_asset_id,
+                                stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
+                            },
+                            old_collateral_info,
+                        );
+                        weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                    } else {
+                        error!("Failed to convert collater info");
+                    }
                 }
 
                 v1::CDPDepository::<T>::translate(
