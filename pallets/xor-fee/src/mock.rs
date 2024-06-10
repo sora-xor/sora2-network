@@ -32,11 +32,11 @@
 #![allow(clippy::all)]
 
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
+    self, balance, mock_frame_system_config, mock_pallet_balances_config, Amount, AssetId32,
+    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -107,32 +107,7 @@ construct_runtime! {
     }
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = BlockLength;
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+mock_frame_system_config!(Runtime);
 
 mock_pallet_balances_config!(Runtime);
 
