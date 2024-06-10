@@ -40,8 +40,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KGOLD,
-    KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
+    KEN, KGOLD, KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1675,9 +1675,12 @@ fn testnet_genesis(
         },
         iroha_migration: iroha_migration_config,
         kensetsu: KensetsuConfig {
-            predefined_stablecoin_infos: vec![
+            predefined_stablecoin_sora_peg: vec![
                 (KUSD, DAI, balance!(1)),
                 (KXOR, XOR, balance!(100000))
+            ],
+            predefined_stablecoin_oracle_peg: vec![
+                (KGOLD, SymbolName::xau(), 1000000000000000),
             ],
         },
         rewards: rewards_config,
@@ -1697,7 +1700,7 @@ fn testnet_genesis(
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![(
                 XSTUSD.into(),
-                common::SymbolName::usd().into(),
+                SymbolName::usd().into(),
                 fixed!(0.00666),
             )],
         },

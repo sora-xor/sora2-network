@@ -97,7 +97,7 @@ pub mod v1_to_v2 {
         CollateralInfos, Config, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfo,
         StablecoinInfos, StablecoinParameters,
     };
-    use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD, XOR};
+    use common::{balance, AssetIdOf, SymbolName, DAI, KARMA, KGOLD, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::log::error;
@@ -257,6 +257,19 @@ pub mod v1_to_v2 {
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
                 StablecoinInfos::<T>::insert(
+                    AssetIdOf::<T>::from(KGOLD),
+                    StablecoinInfo {
+                        bad_debt: balance!(0),
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
+                            // approximately ~$4
+                            minimal_stability_fee_accrue: 1000000000000000,
+                        },
+                    },
+                );
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                StablecoinInfos::<T>::insert(
                     AssetIdOf::<T>::from(KXOR),
                     StablecoinInfo {
                         bad_debt: balance!(0),
@@ -315,7 +328,7 @@ pub mod v1_to_v2 {
             CollateralInfos, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
             StablecoinParameters,
         };
-        use common::{balance, DAI, KUSD, KXOR, XOR};
+        use common::{balance, SymbolName, DAI, KGOLD, KUSD, KXOR, XOR};
         use core::default::Default;
         use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
         use sp_arithmetic::FixedU128;
@@ -352,7 +365,7 @@ pub mod v1_to_v2 {
 
                 assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 2);
 
-                assert_eq!(2, StablecoinInfos::<TestRuntime>::iter().count());
+                assert_eq!(3, StablecoinInfos::<TestRuntime>::iter().count());
                 let kusd_info = StablecoinInfos::<TestRuntime>::get(KUSD).unwrap();
                 assert_eq!(kusd_bad_debt, kusd_info.bad_debt);
                 assert_eq!(
@@ -361,6 +374,16 @@ pub mod v1_to_v2 {
                         minimal_stability_fee_accrue: balance!(1),
                     },
                     kusd_info.stablecoin_parameters
+                );
+
+                let kgold_info = StablecoinInfos::<TestRuntime>::get(KGOLD).unwrap();
+                assert_eq!(balance!(0), kgold_info.bad_debt);
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
+                        minimal_stability_fee_accrue: 1000000000000000,
+                    },
+                    kgold_info.stablecoin_parameters
                 );
 
                 let kxor_info = StablecoinInfos::<TestRuntime>::get(KXOR).unwrap();
