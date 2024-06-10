@@ -75,6 +75,10 @@ pub enum ComicAssetId {
     MichaelJacksonCD,
     JesterMarotte,
     CrackedBrassBell,
+    Tomato,
+    Potato,
+    Mouse,
+    Table,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -109,6 +113,10 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KEN => JesterMarotte,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
+            PredefinedAssetId::KGOLD => Tomato,
+            PredefinedAssetId::KXOR => Potato,
+            PredefinedAssetId::SB => Mouse,
+            PredefinedAssetId::KARMA => Table,
         }
     }
 }
@@ -176,6 +184,22 @@ impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedF
     fn get(_key: &T) -> bool {
         false
     }
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId32<PredefinedAssetId>| -> Option<AssetId32<PredefinedAssetId>> {
+        if base_asset_id == &crate::XOR {
+            Some(crate::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: crate::TradingPair<AssetId32<PredefinedAssetId>>| -> bool {
+        tpair.base_asset_id == crate::XOR && tpair.target_asset_id == crate::ETH
+    };
 }
 
 pub fn alice() -> AccountId32 {
@@ -300,7 +324,7 @@ macro_rules! mock_frame_system_config {
             type SystemWeightInfo = ();
             type SS58Prefix = ConstU16<42>;
             type OnSetCode = ();
-            type MaxConsumers = frame_support::traits::ConstU32<16>;
+            type MaxConsumers = frame_support::traits::ConstU32<65536>;
         }
     };
 }

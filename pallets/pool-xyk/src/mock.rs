@@ -233,6 +233,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -320,6 +321,22 @@ parameter_type_with_key! {
     };
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if base_asset_id == &GoldenTicket.into() {
+            Some(Potato.into())
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        tpair.base_asset_id == GoldenTicket.into() && tpair.target_asset_id == BlackPepper.into()
+    };
+}
+
 impl Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -338,6 +355,8 @@ impl Config for Runtime {
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
@@ -415,8 +434,10 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),
+                (ALICE(), Potato.into(), balance!(2000000)),
                 (BOB(), RedPepper.into(), balance!(2000000)),
                 (CHARLIE(), BlackPepper.into(), balance!(2000000)),
+                (CHARLIE(), Potato.into(), balance!(2000000)),
             ],
             // some assets must be registered (synthetic assets and base synthetic asset)
             // before the initialization of XSTPool
@@ -451,6 +472,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
