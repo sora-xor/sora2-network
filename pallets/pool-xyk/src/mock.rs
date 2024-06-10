@@ -31,8 +31,8 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
-    balance, fixed, hash, mock_currencies_config, mock_pallet_balances_config,
-    mock_technical_config, DEXInfo, GetMarketInfo, PSWAP, TBCD, VAL,
+    balance, fixed, hash, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -116,33 +116,7 @@ construct_runtime! {
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+mock_frame_system_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -225,6 +199,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -312,6 +287,22 @@ parameter_type_with_key! {
     };
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if base_asset_id == &GoldenTicket.into() {
+            Some(Potato.into())
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        tpair.base_asset_id == GoldenTicket.into() && tpair.target_asset_id == BlackPepper.into()
+    };
+}
+
 impl Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -330,6 +321,8 @@ impl Config for Runtime {
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
@@ -407,8 +400,10 @@ impl Default for ExtBuilder {
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),
+                (ALICE(), Potato.into(), balance!(2000000)),
                 (BOB(), RedPepper.into(), balance!(2000000)),
                 (CHARLIE(), BlackPepper.into(), balance!(2000000)),
+                (CHARLIE(), Potato.into(), balance!(2000000)),
             ],
             // some assets must be registered (synthetic assets and base synthetic asset)
             // before the initialization of XSTPool
@@ -443,6 +438,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();

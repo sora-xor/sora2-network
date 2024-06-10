@@ -77,7 +77,7 @@ impl<T: Config>
                 )
             };
         }
-        match liquidity_source_id.liquidity_source_index {
+        let res = match liquidity_source_id.liquidity_source_index {
             XYKPool => can_exchange!(XYKPool),
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
             XSTPool => can_exchange!(XSTPool),
@@ -87,7 +87,9 @@ impl<T: Config>
             MockPool3 => can_exchange!(MockLiquiditySource3),
             MockPool4 => can_exchange!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
-        }
+        };
+        frame_support::log::trace!("can_exchange({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}): {res:?}");
+        res
     }
 
     fn quote(
@@ -109,7 +111,7 @@ impl<T: Config>
                 )
             };
         }
-        match liquidity_source_id.liquidity_source_index {
+        let res = match liquidity_source_id.liquidity_source_index {
             XYKPool => quote!(XYKPool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             XSTPool => quote!(XSTPool),
@@ -119,7 +121,9 @@ impl<T: Config>
             MockPool3 => quote!(MockLiquiditySource3),
             MockPool4 => quote!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
-        }
+        };
+        frame_support::log::trace!("quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}");
+        res
     }
 
     fn step_quote(
@@ -143,7 +147,7 @@ impl<T: Config>
                 )
             };
         }
-        match liquidity_source_id.liquidity_source_index {
+        let res = match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => step_quote!(XYKPool),
             MulticollateralBondingCurvePool => step_quote!(MulticollateralBondingCurvePool),
             XSTPool => step_quote!(XSTPool),
@@ -153,7 +157,9 @@ impl<T: Config>
             MockPool3 => step_quote!(MockLiquiditySource3),
             MockPool4 => step_quote!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
-        }
+        };
+        frame_support::log::trace!("step_quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {recommended_samples_count:?}, {deduce_fee:?}): {res:?}");
+        res
     }
 
     fn exchange(
@@ -177,7 +183,7 @@ impl<T: Config>
                 )
             };
         }
-        match liquidity_source_id.liquidity_source_index {
+        let res = match liquidity_source_id.liquidity_source_index {
             XYKPool => exchange!(XYKPool),
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
             XSTPool => exchange!(XSTPool),
@@ -187,7 +193,9 @@ impl<T: Config>
             MockPool3 => exchange!(MockLiquiditySource3),
             MockPool4 => exchange!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
-        }
+        };
+        frame_support::log::trace!("exchange({sender:?}, {receiver:?}, {liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {swap_amount:?}): {res:?}");
+        res
     }
 
     fn check_rewards(
@@ -209,7 +217,7 @@ impl<T: Config>
                 )
             };
         }
-        match liquidity_source_id.liquidity_source_index {
+        let res = match liquidity_source_id.liquidity_source_index {
             XYKPool => check_rewards!(XYKPool),
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
             XSTPool => check_rewards!(XSTPool),
@@ -219,7 +227,9 @@ impl<T: Config>
             MockPool3 => check_rewards!(MockLiquiditySource3),
             MockPool4 => check_rewards!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
-        }
+        };
+        frame_support::log::trace!("check_rewards({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {input_amount:?}, {output_amount:?}): {res:?}");
+        res
     }
 
     fn quote_without_impact(
@@ -241,7 +251,7 @@ impl<T: Config>
                 )
             };
         }
-        match liquidity_source_id.liquidity_source_index {
+        let res = match liquidity_source_id.liquidity_source_index {
             XYKPool => quote_without_impact!(XYKPool),
             MulticollateralBondingCurvePool => {
                 quote_without_impact!(MulticollateralBondingCurvePool)
@@ -253,7 +263,9 @@ impl<T: Config>
             MockPool3 => quote_without_impact!(MockLiquiditySource3),
             MockPool4 => quote_without_impact!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
-        }
+        };
+        frame_support::log::trace!("quote_without_impact({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}");
+        res
     }
 
     fn quote_weight() -> Weight {
