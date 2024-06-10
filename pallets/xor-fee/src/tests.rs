@@ -32,14 +32,14 @@
 #![allow(clippy::all)]
 
 use crate::extension::ChargeTransactionPayment;
-use crate::{mock::*, CalculateMultiplier, LiquidityInfo, XorToVal};
+use crate::{mock::*, CalculateMultiplier, LiquidityInfo, Multiplier, NextUpdateBlock, XorToVal};
 use common::balance;
 
 use common::mock::{alice, bob};
 use common::prelude::FixedWrapper;
 use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
 use frame_support::error::BadOrigin;
-use frame_support::traits::Currency;
+use frame_support::traits::{Currency, Hooks};
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::SignedExtension;
@@ -521,5 +521,23 @@ fn calculate_multiplier_using_ref_amount_works() {
             DynamicMultiplier::calculate_multiplier(&input_asset, &input_asset),
             xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed
         );
+    });
+}
+
+#[test]
+fn update_multiplier_on_idle() {
+    ExtBuilder::build().execute_with(|| {
+        System::set_block_number(0);
+
+        NextUpdateBlock::<Runtime>::put(10);
+        XorFee::on_idle(9, Weight::default());
+        assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
+
+        XorFee::on_idle(10, Weight::default());
+        assert_eq!(
+            Multiplier::<Runtime>::get().into_inner(),
+            3571428571428571428571428
+        );
+        assert_eq!(NextUpdateBlock::<Runtime>::get(), 3610);
     });
 }
