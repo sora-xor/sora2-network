@@ -32,8 +32,9 @@ use crate::{self as pswap_distribution, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL,
+    balance, fixed, mock_pallet_balances_config, mock_technical_config, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, Description, Fixed, FromGenericPair,
+    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -119,13 +120,13 @@ parameter_types! {
     };
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 3;
-    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -259,27 +260,9 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl dex_manager::Config for Runtime {}
 
@@ -308,10 +291,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

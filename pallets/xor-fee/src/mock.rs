@@ -34,9 +34,9 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
-    VAL, XOR,
+    self, balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -83,7 +83,6 @@ parameter_types! {
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
-    pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;
@@ -135,17 +134,7 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 parameter_types! {
     pub const OperationalFeeMultiplier: u8 = 5;

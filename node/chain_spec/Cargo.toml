@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "3.4.0"
+version = "3.4.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -12,7 +12,6 @@ codec = { package = "parity-scale-codec", version = "3", features = [
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 hex-literal = "0.4.1"
 sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-network-common = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -21,16 +20,12 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
-serde = { version = "1.0.101", features = ["derive"] }
-serde_json = "1.0.61"
-
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 
 common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
 framenode-runtime = { path = "../../runtime" }
 iroha-migration = { path = "../../pallets/iroha-migration" }
-order-book = { path = "../../pallets/order-book" }
 permissions = { path = "../../pallets/permissions" }
 rewards = { path = "../../pallets/rewards" }
 technical = { path = "../../pallets/technical" }

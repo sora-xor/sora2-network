@@ -23,7 +23,6 @@ pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "
     "historical",
 ] }
 pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-serde = { version = "1.0.101", features = ["derive"], optional = true }
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -54,7 +53,6 @@ std = [
     "frame-system/std",
     "pallet-session/std",
     "pallet-transaction-payment/std",
-    "serde/std",
     "sp-arithmetic/std",
     "sp-runtime/std",
     "sp-staking/std",

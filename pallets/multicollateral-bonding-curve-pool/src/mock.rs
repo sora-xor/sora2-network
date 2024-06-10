@@ -35,10 +35,10 @@ use common::prelude::{
     SwapAmount, SwapOutcome,
 };
 use common::{
-    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,
-    BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP,
-    TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, fixed_wrapper, hash, mock_pallet_balances_config, mock_technical_config,
+    Amount, AssetId32, AssetName, AssetSymbol, BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -110,7 +110,6 @@ parameter_types! {
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -125,6 +124,8 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -209,8 +210,9 @@ impl Config for Runtime {
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = BuyBackHandlerImpl;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 pub struct BuyBackHandlerImpl;
@@ -327,27 +329,9 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
@@ -401,10 +385,11 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;

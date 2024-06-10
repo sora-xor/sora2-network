@@ -272,22 +272,22 @@ impl SwapLimits<Balance> {
     pub fn align_chunk_min<AssetId: Ord + Clone>(
         &self,
         chunk: SwapChunk<AssetId, Balance>,
-    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
+    ) -> (SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>) {
         if let Some(min) = self.min_amount {
             match min {
                 SideAmount::Input(min_amount) => {
                     if chunk.input < min_amount {
-                        return Some((Zero::zero(), chunk));
+                        return (Zero::zero(), chunk);
                     }
                 }
                 SideAmount::Output(min_amount) => {
                     if chunk.output < min_amount {
-                        return Some((Zero::zero(), chunk));
+                        return (Zero::zero(), chunk);
                     }
                 }
             }
         }
-        Some((chunk, Zero::zero()))
+        (chunk, Zero::zero())
     }
 
     /// Aligns the `chunk` regarding to the `max_amount` limit.
@@ -384,7 +384,7 @@ impl SwapLimits<Balance> {
         &self,
         chunk: SwapChunk<AssetId, Balance>,
     ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
-        let (chunk, remainder) = self.align_chunk_min(chunk)?;
+        let (chunk, remainder) = self.align_chunk_min(chunk);
         if !remainder.is_zero() {
             return Some((chunk, remainder));
         }
@@ -439,65 +439,65 @@ mod tests {
         let chunk5 = SwapChunk::new(balance!(1), balance!(1), mock_fee);
 
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk1.clone()),
             (Zero::zero(), chunk1.clone())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk2.clone()),
             (chunk2.clone(), Zero::zero())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk3.clone()),
             (Zero::zero(), chunk3.clone())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4.clone(), Zero::zero())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5.clone(), Zero::zero())
         );
 
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk1.clone()),
             (Zero::zero(), chunk1.clone())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk2.clone()),
             (Zero::zero(), chunk2.clone())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk3.clone()),
             (chunk3.clone(), Zero::zero())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4.clone(), Zero::zero())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5.clone(), Zero::zero())
         );
 
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk1.clone()),
             (chunk1, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk2.clone()),
             (chunk2, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk3.clone()),
             (chunk3, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5, Zero::zero())
         );
     }
