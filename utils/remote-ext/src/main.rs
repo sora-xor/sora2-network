@@ -6,14 +6,16 @@ use codec::Decode;
 use frame_remote_externalities::{
     Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
 };
+use frame_support::log::info;
 use framenode_runtime::AccountId;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use sp_core::H256;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
+use frame_support::dispatch::GetDispatchInfo;
 use frame_support::traits::OnRuntimeUpgrade;
-use sp_runtime::traits::Dispatchable;
+use sp_runtime::traits::{Dispatchable, SignedExtension};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -124,10 +126,33 @@ async fn main() -> AnyResult<()> {
                 let xt_encoded = hex::decode(xt.strip_prefix("0x").unwrap_or(&xt)).unwrap();
                 let xt =
                     framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
-                if let Some((account, _signature, _extra)) = xt.signature {
-                    xt.function
-                        .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
+                if let Some((account, _signature, extra)) = xt.signature {
+                    let info = xt.function.get_dispatch_info();
+                    info!("Dispatch info: {info:?}");
+                    extra
+                        .validate(&account, &xt.function, &info, xt_encoded.len())
                         .unwrap();
+                    let pre = extra
+                        .pre_dispatch(&account, &xt.function, &info, xt_encoded.len())
+                        .unwrap();
+                    info!("Pre dispatch: {pre:?}");
+                    let result = xt
+                        .function
+                        .dispatch(framenode_runtime::RuntimeOrigin::signed(account));
+                    let (post_info, result) = match result {
+                        Ok(post_info) => (post_info, Ok(())),
+                        Err(error) => (error.post_info, Err(error.error)),
+                    };
+                    info!("Post info: {post_info:?}");
+                    info!("Dispatch result: {result:?}");
+                    framenode_runtime::SignedExtra::post_dispatch(
+                        Some(pre),
+                        &info,
+                        &post_info,
+                        xt_encoded.len(),
+                        &result,
+                    )
+                    .unwrap();
                 }
             }
         }
