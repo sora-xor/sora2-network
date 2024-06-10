@@ -179,6 +179,7 @@ pub mod pallet {
         /// - `description`: The description of the SBT. (Optional)
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
+        #[allow(clippy::too_many_arguments)]
         pub fn issue_sbt(
             origin: OriginFor<T>,
             token_id: ContentSource,
