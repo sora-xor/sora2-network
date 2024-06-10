@@ -139,7 +139,7 @@ pub struct CollateralRiskParameters {
     /// The max amount of collateral can be liquidated in one round
     pub max_liquidation_lot: Balance,
 
-    /// Protocol Interest rate per millisecond
+    /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
 
     /// Minimal deposit in collateral AssetId.
@@ -1513,7 +1513,8 @@ pub mod pallet {
                 stablecoin_asset_id: *stablecoin_asset_id,
             })
             .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let now = Timestamp::<T>::get();
+            // now from ms to seconds, no need to check
+            let now = Timestamp::<T>::get() / 1000u32.into();
             ensure!(
                 now >= collateral_info.last_fee_update_time,
                 Error::<T>::AccrueWrongTime
@@ -2071,7 +2072,8 @@ pub mod pallet {
                                 risk_parameters: new_risk_parameters,
                                 total_collateral: Balance::zero(),
                                 stablecoin_supply: balance!(0),
-                                last_fee_update_time: Timestamp::<T>::get(),
+                                // now from ms to seconds, no need to check
+                                last_fee_update_time: Timestamp::<T>::get() / 1000u32.into(),
                                 interest_coefficient: FixedU128::one(),
                             });
                         }
