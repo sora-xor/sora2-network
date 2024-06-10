@@ -116,12 +116,12 @@ fn test_only_permissioned_account_can_issue_sbt() {
             RuntimeOrigin::signed(owner),
             token_id,
             asset_symbol,
-            asset_name.clone(),
+            asset_name,
             None,
             None,
             None,
             None,
-            bounded_vec_assets.clone(),
+            bounded_vec_assets,
         ));
     })
 }
@@ -228,12 +228,12 @@ fn test_sbt_only_operationable_by_its_owner() {
             RuntimeOrigin::signed(owner.clone()),
             token_id,
             asset_symbol,
-            asset_name.clone(),
+            asset_name,
             None,
             None,
             None,
             None,
-            bounded_vec_assets.clone(),
+            bounded_vec_assets,
         ));
 
         // Extract the issued SBT asset ID
@@ -292,12 +292,12 @@ fn test_check_permission_pass_only_if_all_invloved_accounts_have_sbt() {
             RuntimeOrigin::signed(owner.clone()),
             token_id,
             asset_symbol,
-            asset_name.clone(),
+            asset_name,
             None,
             None,
             None,
             None,
-            bounded_vec_assets.clone(),
+            bounded_vec_assets,
         );
         assert_ok!(result);
 
@@ -366,12 +366,12 @@ fn test_sbt_cannot_be_transferred() {
             RuntimeOrigin::signed(owner.clone()),
             token_id,
             asset_symbol,
-            asset_name.clone(),
+            asset_name,
             None,
             None,
             None,
             None,
-            bounded_vec_assets.clone(),
+            bounded_vec_assets,
         ));
 
         // Extract the issued SBT asset ID
