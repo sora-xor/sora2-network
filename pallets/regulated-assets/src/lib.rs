@@ -61,14 +61,29 @@ use weights::WeightInfo;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type Permissions<T> = permissions::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;
-
+type Timestamp<T> = pallet_timestamp::Pallet<T>;
 pub use pallet::*;
 
 #[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
 #[scale_info(skip_type_params(MaxAllowedTokensPerSBT))]
-pub struct SoulboundTokenMetadata<AssetId, MaxAllowedTokensPerSBT: Get<u32>> {
+pub struct SoulboundTokenMetadata<AccountId, AssetId, MaxAllowedTokensPerSBT: Get<u32>, Moment> {
+    /// Owner of the token
+    owner: AccountId,
+    /// Token ID uniquely identifies the token (uuid)
+    token_id: ContentSource,
+    /// Name of the token
     name: AssetName,
+    /// Description of the token
     description: Option<Description>,
+    /// Image Link of the token
+    image: Option<ContentSource>,
+    /// External link of issued place
+    external_url: Option<ContentSource>,
+    /// Issuance Timestamp
+    issued_at: Moment,
+    /// Expiration Timestamp (None if not expirable)
+    expires_at: Option<Moment>,
+    /// List of assets allowed to be operationable by this Soulbound Token
     allowed_assets: BoundedVec<AssetId, MaxAllowedTokensPerSBT>,
 }
 
@@ -83,7 +98,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + permissions::Config + technical::Config
+        frame_system::Config
+        + common::Config
+        + permissions::Config
+        + technical::Config
+        + pallet_timestamp::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -91,7 +110,7 @@ pub mod pallet {
         #[pallet::constant]
         type MaxAllowedTokensPerSBT: Get<u32>;
 
-        /// Max number of SBTs per one Soulbound Token
+        /// Max number of SBTs per one Asset
         #[pallet::constant]
         type MaxSBTsPerAsset: Get<u32>;
 
@@ -162,10 +181,14 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
         pub fn issue_sbt(
             origin: OriginFor<T>,
+            token_id: ContentSource,
             symbol: AssetSymbol,
             name: AssetName,
-            allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
             description: Option<Description>,
+            image: Option<ContentSource>,
+            external_url: Option<ContentSource>,
+            expires_at: Option<T::Moment>,
+            allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -179,12 +202,18 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
-                None,
+                image.clone(),
                 description.clone(),
             )?;
             let metadata = SoulboundTokenMetadata {
+                owner: who.clone(),
+                token_id,
                 name,
                 description,
+                image,
+                external_url,
+                issued_at: Timestamp::<T>::now(),
+                expires_at,
                 allowed_assets: allowed_assets.clone(),
             };
             <SoulboundAsset<T>>::insert(sbt_asset_id, &metadata);
@@ -250,7 +279,7 @@ pub mod pallet {
         _,
         Identity,
         AssetIdOf<T>,
-        SoulboundTokenMetadata<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
+        SoulboundTokenMetadata<T::AccountId, AssetIdOf<T>, T::MaxAllowedTokensPerSBT, T::Moment>,
         OptionQuery,
     >;
 

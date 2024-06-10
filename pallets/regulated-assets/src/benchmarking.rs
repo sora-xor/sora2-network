@@ -107,14 +107,19 @@ benchmarks! {
         let asset_id = add_asset::<T>();
         let asset_name =  AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
+        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
     }: {
         Pallet::<T>::issue_sbt(
             owner_origin,
+            token_id,
             asset_symbol,
             asset_name.clone(),
+            None,
+            None,
+            None,
+            None,
             bounded_vec_assets.clone(),
-            None
         ).unwrap();
     }
     verify{
