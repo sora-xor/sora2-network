@@ -40,8 +40,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KUSD,
-    PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KGOLD,
+    KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -56,7 +56,7 @@ use framenode_runtime::{
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
     DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
     GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
     StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
@@ -896,7 +896,7 @@ fn testnet_genesis(
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
 ) -> GenesisConfig {
-    use common::XSTUSD;
+    use common::{KARMA, KXOR, SB, XSTUSD};
 
     // Initial balances
     let initial_staking = balance!(1000000000);
@@ -1449,6 +1449,50 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                (
+                    KGOLD,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KGOLD".to_vec()),
+                    AssetName(b"Kensetsu ounce of gold".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    KXOR,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KXOR".to_vec()),
+                    AssetName(b"Kensetsu XOR".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    SB,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"SB".to_vec()),
+                    AssetName(b"SORA Builders".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    KARMA,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"KARMA".to_vec()),
+                    AssetName(b"Chameleon".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
         },
         permissions: PermissionsConfig {
@@ -1630,6 +1674,12 @@ fn testnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         },
         iroha_migration: iroha_migration_config,
+        kensetsu: KensetsuConfig {
+            predefined_stablecoin_infos: vec![
+                (KUSD, DAI, balance!(1)),
+                (KXOR, XOR, balance!(100000))
+            ],
+        },
         rewards: rewards_config,
         council: CouncilConfig {
             members: council_accounts,
@@ -2123,6 +2173,50 @@ fn mainnet_genesis(
             None,
             None,
         ),
+        (
+            KGOLD,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KGOLD".to_vec()),
+            AssetName(b"Kensetsu ounce of gold".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            KXOR,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KXOR".to_vec()),
+            AssetName(b"Kensetsu XOR".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            SB,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"SB".to_vec()),
+            AssetName(b"SORA Builders".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            KARMA,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"KARMA".to_vec()),
+            AssetName(b"Chameleon".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
     ];
     let bridge_assets_data: Vec<BridgeAssetData<Runtime>> = Vec::new();
     bridge_assets.extend(bridge_assets_data.iter().map(|x| {
@@ -2436,6 +2530,12 @@ fn mainnet_genesis(
         iroha_migration: IrohaMigrationConfig {
             iroha_accounts: Vec::new(),
             account_id: Some(iroha_migration_account_id),
+        },
+        kensetsu: KensetsuConfig {
+            predefined_stablecoin_infos: vec![
+                (KUSD, DAI, balance!(1)),
+                (KXOR, XOR, balance!(100000)),
+            ],
         },
         rewards: rewards_config,
         council: CouncilConfig {

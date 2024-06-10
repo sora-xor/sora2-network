@@ -4957,6 +4957,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-core",
  "sp-runtime",
+ "sp-std",
  "technical",
  "trading-pair",
 ]
@@ -8465,8 +8466,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "framenode-chain-spec",
- "framenode-runtime",
  "hex-literal",
  "orml-currencies",
  "orml-tokens",

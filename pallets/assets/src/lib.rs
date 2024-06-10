@@ -46,6 +46,8 @@ pub mod weights;
 
 mod benchmarking;
 
+pub mod migration;
+
 #[cfg(test)]
 mod mock;
 
