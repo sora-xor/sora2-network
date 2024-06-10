@@ -681,6 +681,28 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -849,46 +871,67 @@
         dex_id: T::DEXId,
     ) -&gt; DispatchResult {
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>base_chameleon_asset_id =
+            &lt;T::GetChameleonPoolBaseAssetId <span class="kw">as </span>traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(
+                <span class="kw-2">&amp;</span>dex_info.base_asset_id,
+            );
         <span class="kw">let </span>base_total = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
             <span class="kw-2">&amp;</span>dex_info.base_asset_id,
             <span class="kw-2">&amp;</span>fees_account_id,
         )<span class="question-mark">?</span>;
-        <span class="kw">if </span>base_total == <span class="number">0 </span>{
+        <span class="kw">let </span>chameleon_total = <span class="kw">if let </span><span class="prelude-val">Some</span>(asset_id) = base_chameleon_asset_id {
+            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>fees_account_id)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="number">0
+        </span>};
+        <span class="kw">if </span>base_total == <span class="number">0 </span>&amp;&amp; chameleon_total == <span class="number">0 </span>{
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::NothingToExchange(
                 dex_id.clone(),
                 fees_account_id.clone(),
             ));
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="kw">let </span>outcome = T::LiquidityProxy::exchange(
-            dex_id,
-            fees_account_id,
-            fees_account_id,
-            <span class="kw-2">&amp;</span>dex_info.base_asset_id,
-            <span class="kw-2">&amp;</span>T::GetIncentiveAssetId::get(),
-            SwapAmount::with_desired_input(base_total.clone(), Balance::zero()),
-            LiquiditySourceFilter::with_allowed(
-                dex_id.clone(),
-                [LiquiditySourceType::XYKPool].into(),
-            ),
-        );
-        <span class="kw">match </span>outcome {
-            <span class="prelude-val">Ok</span>(swap_outcome) =&gt; <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::FeesExchanged(
-                dex_id.clone(),
-                fees_account_id.clone(),
-                dex_info.base_asset_id,
-                base_total,
-                T::GetIncentiveAssetId::get(),
-                swap_outcome.amount,
-            )),
-            <span class="prelude-val">Err</span>(error) =&gt; <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::FeesExchangeFailed(
-                dex_id.clone(),
-                fees_account_id.clone(),
-                dex_info.base_asset_id,
-                base_total,
-                T::GetIncentiveAssetId::get(),
-                error,
-            )),
+        <span class="kw">for </span>(asset_id, balance) <span class="kw">in </span><span class="prelude-val">Some</span>((dex_info.base_asset_id, base_total))
+            .into_iter()
+            .chain(
+                base_chameleon_asset_id
+                    .map(|x| (x, chameleon_total))
+                    .into_iter(),
+            )
+        {
+            <span class="kw">if </span>balance == <span class="number">0 </span>{
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            }
+            <span class="kw">let </span>outcome = T::LiquidityProxy::exchange(
+                dex_id,
+                fees_account_id,
+                fees_account_id,
+                <span class="kw-2">&amp;</span>asset_id,
+                <span class="kw-2">&amp;</span>T::GetIncentiveAssetId::get(),
+                SwapAmount::with_desired_input(balance.clone(), Balance::zero()),
+                LiquiditySourceFilter::with_allowed(
+                    dex_id.clone(),
+                    [LiquiditySourceType::XYKPool].into(),
+                ),
+            );
+            <span class="kw">match </span>outcome {
+                <span class="prelude-val">Ok</span>(swap_outcome) =&gt; <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::FeesExchanged(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                    asset_id,
+                    balance,
+                    T::GetIncentiveAssetId::get(),
+                    swap_outcome.amount,
+                )),
+                <span class="prelude-val">Err</span>(error) =&gt; <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::FeesExchangeFailed(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                    asset_id,
+                    balance,
+                    T::GetIncentiveAssetId::get(),
+                    error,
+                )),
+            }
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1159,6 +1202,7 @@
         <span class="kw">type </span>PoolXykPallet: XykPool&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
+        <span class="kw">type </span>GetChameleonPoolBaseAssetId: traits::GetByKey&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
             AssetIdOf&lt;<span class="self">Self</span>&gt;,

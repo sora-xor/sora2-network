@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AssetRecord","AssetRecordArg"],"mod":["pallet","weights"],"trait":["GetTotalBalance"],"type":["AssetIdOf"]};
+window.SIDEBAR_ITEMS = {"enum":["AssetRecord","AssetRecordArg"],"mod":["migration","pallet","weights"],"trait":["GetTotalBalance"],"type":["AssetIdOf"]};

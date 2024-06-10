@@ -339,7 +339,7 @@
 <span class="kw">use </span>sp_runtime::traits::Zero;
 
 <span class="kw">use </span>common::prelude::FixedWrapper;
-<span class="kw">use </span>common::{AssetIdOf, AssetInfoProvider};
+<span class="kw">use </span>common::AssetIdOf;
 
 <span class="kw">use crate</span>::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
@@ -358,7 +358,7 @@
     <span class="kw">fn </span>prepare_and_validate(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         source_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;&gt;,
-        _base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; DispatchResult {
         <span class="comment">//TODO: replace unwrap.
         </span><span class="kw">let </span>source = source_opt.unwrap();
@@ -405,15 +405,11 @@
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::AccountBalanceIsInvalid)<span class="question-mark">?</span>;
         }
 
-        <span class="comment">// Balance of pool account for asset pair basic asset.
-        </span><span class="kw">let </span>balance_bp = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+        <span class="kw">let </span>(balance_bp, balance_tp) = Pallet::&lt;T&gt;::get_actual_reserves(
+            <span class="kw-2">&amp;</span>pool_account_repr_sys,
+            <span class="kw-2">&amp;</span>base_asset_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">0</span>.asset,
-            <span class="kw-2">&amp;</span>pool_account_repr_sys,
-        )<span class="question-mark">?</span>;
-        <span class="comment">// Balance of pool account for asset pair target asset.
-        </span><span class="kw">let </span>balance_tp = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
             <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">1</span>.asset,
-            <span class="kw-2">&amp;</span>pool_account_repr_sys,
         )<span class="question-mark">?</span>;
 
         <span class="kw">if </span>balance_bp == <span class="number">0 </span>&amp;&amp; balance_tp == <span class="number">0 </span>{
@@ -432,11 +428,17 @@
         <span class="comment">// Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
         </span><span class="kw">let </span>fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
 
+        <span class="kw">let </span>tpair = Pallet::&lt;T&gt;::get_trading_pair(
+            base_asset_id,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">0</span>.asset,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">1</span>.asset,
+        )<span class="question-mark">?</span>;
+
         <span class="kw">let </span>has_enough_unlocked_liquidity =
             ceres_liquidity_locker::Pallet::&lt;T&gt;::check_if_has_enough_unlocked_liquidity(
                 <span class="kw-2">&amp;</span>source,
-                <span class="self">self</span>.destination.<span class="number">0</span>.asset,
-                <span class="self">self</span>.destination.<span class="number">1</span>.asset,
+                tpair.base_asset_id,
+                tpair.target_asset_id,
                 <span class="self">self</span>.pool_tokens,
             );
         <span class="macro">ensure!</span>(
@@ -447,8 +449,8 @@
         <span class="kw">let </span>has_enough_liquidity_out_of_farming =
             demeter_farming_platform::Pallet::&lt;T&gt;::check_if_has_enough_liquidity_out_of_farming(
                 source,
-                <span class="self">self</span>.destination.<span class="number">0</span>.asset,
-                <span class="self">self</span>.destination.<span class="number">1</span>.asset,
+                tpair.base_asset_id,
+                tpair.target_asset_id,
                 <span class="self">self</span>.pool_tokens,
             );
         <span class="macro">ensure!</span>(
@@ -558,7 +560,7 @@
             .is_zero()
             &amp;&amp; !<span class="self">self</span>.pool_tokens.is_zero()
         {
-            <span class="kw">let </span>pair = Pallet::&lt;T&gt;::strict_sort_pair(
+            <span class="kw">let </span>pair = Pallet::&lt;T&gt;::get_trading_pair(
                 base_asset_id,
                 <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">0</span>.asset,
                 <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">1</span>.asset,
@@ -567,13 +569,11 @@
                 set.remove(<span class="kw-2">&amp;</span>pair.target_asset_id)
             });
         }
-        <span class="kw">let </span>balance_a = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+        <span class="kw">let </span>(balance_a, balance_b) = Pallet::&lt;T&gt;::get_actual_reserves(
+            <span class="kw-2">&amp;</span>pool_account_repr_sys,
+            <span class="kw-2">&amp;</span>base_asset_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">0</span>.asset,
-            <span class="kw-2">&amp;</span>pool_account_repr_sys,
-        )<span class="question-mark">?</span>;
-        <span class="kw">let </span>balance_b = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
             <span class="kw-2">&amp;</span><span class="self">self</span>.destination.<span class="number">1</span>.asset,
-            <span class="kw-2">&amp;</span>pool_account_repr_sys,
         )<span class="question-mark">?</span>;
         Pallet::&lt;T&gt;::update_reserves(
             base_asset_id,

@@ -240,6 +240,19 @@
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -271,7 +284,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
-<span class="kw">use </span>frame_support::{ensure, fail};
+<span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>orml_traits::GetByKey;
 
 <span class="kw">use </span><span class="kw">crate</span>::aliases::{TechAccountIdOf, TechAssetIdOf};
@@ -289,10 +302,11 @@
         asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, DispatchError&gt; {
-        <span class="kw">if </span>base_asset_id == asset_a {
-            <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-        } <span class="kw">else if </span>base_asset_id == asset_b {
+        <span class="kw">let </span>tpair = <span class="self">Self</span>::get_trading_pair(base_asset_id, asset_a, asset_b)<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="kw-2">&amp;</span>tpair.target_asset_id == asset_a {
             <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+        } <span class="kw">else if </span><span class="kw-2">&amp;</span>tpair.target_asset_id == asset_b {
+            <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnsupportedQuotePath.into())
         }
@@ -337,18 +351,7 @@
         <span class="kw">let </span>dexinfo = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>base_asset_id = dexinfo.base_asset_id;
         <span class="macro">ensure!</span>(asset_a != asset_b, Error::&lt;T&gt;::AssetsMustNotBeSame);
-        <span class="kw">let </span>ba = base_asset_id;
-        <span class="kw">let </span>ta = <span class="kw">if </span>base_asset_id == asset_a {
-            asset_b
-        } <span class="kw">else if </span>base_asset_id == asset_b {
-            asset_a
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)<span class="question-mark">?
-        </span>};
-        <span class="kw">let </span>tpair = common::TradingPair::&lt;AssetIdOf&lt;T&gt;&gt; {
-            base_asset_id: ba,
-            target_asset_id: ta,
-        };
+        <span class="kw">let </span>tpair = <span class="self">Self</span>::get_trading_pair(<span class="kw-2">&amp;</span>base_asset_id, <span class="kw-2">&amp;</span>asset_a, <span class="kw-2">&amp;</span>asset_b)<span class="question-mark">?</span>;
         <span class="kw">let </span>tpair: common::TradingPair&lt;TechAssetIdOf&lt;T&gt;&gt; = tpair.map(|a| a.into());
         <span class="prelude-val">Ok</span>((
             tpair,
@@ -445,26 +448,49 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
-    </span><span class="kw">pub fn </span>strict_sort_pair(
+    <span class="comment">// Returns trading pair, chameleon base asset id (if exists) and chameleon pool flag
+    </span><span class="kw">pub fn </span>get_pair_info(
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(TradingPair&lt;AssetIdOf&lt;T&gt;&gt;, <span class="prelude-ty">Option</span>&lt;AssetIdOf&lt;T&gt;&gt;, bool), DispatchError&gt; {
+        <span class="macro">ensure!</span>(asset_a != asset_b, Error::&lt;T&gt;::AssetsMustNotBeSame);
+        <span class="kw">let </span>base_chameleon_asset_id =
+            &lt;T::GetChameleonPoolBaseAssetId <span class="kw">as </span>GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(<span class="kw-2">&amp;</span>base_asset_id);
+        <span class="kw">let </span>(ta, is_chameleon_pool) = <span class="kw">if </span>base_asset_id == asset_a {
+            (asset_b, <span class="bool-val">false</span>)
+        } <span class="kw">else if </span>base_asset_id == asset_b {
+            (asset_a, <span class="bool-val">false</span>)
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(base_chameleon_asset_id) = base_chameleon_asset_id {
+            <span class="kw">if </span><span class="kw-2">&amp;</span>base_chameleon_asset_id == asset_a {
+                (asset_b, <span class="bool-val">true</span>)
+            } <span class="kw">else if </span><span class="kw-2">&amp;</span>base_chameleon_asset_id == asset_b {
+                (asset_a, <span class="bool-val">true</span>)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Err</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)<span class="question-mark">?
+            </span>}
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)<span class="question-mark">?
+        </span>};
+        <span class="kw">let </span>tpair = common::TradingPair::&lt;AssetIdOf&lt;T&gt;&gt; {
+            base_asset_id: <span class="kw-2">*</span>base_asset_id,
+            target_asset_id: <span class="kw-2">*</span>ta,
+        };
+        <span class="kw">let </span>is_allowed_chameleon_pool = T::GetChameleonPool::get(<span class="kw-2">&amp;</span>tpair);
+        <span class="kw">if </span>is_chameleon_pool &amp;&amp; !is_allowed_chameleon_pool {
+            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::RestrictedChameleonPool)<span class="question-mark">?
+        </span>}
+        <span class="prelude-val">Ok</span>((tpair, base_chameleon_asset_id, is_allowed_chameleon_pool))
+    }
+
+    <span class="doccomment">/// Get trading pair from assets
+    </span><span class="kw">pub fn </span>get_trading_pair(
         base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         asset_a: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;TradingPair&lt;AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
-        <span class="macro">ensure!</span>(asset_a != asset_b, Error::&lt;T&gt;::AssetsMustNotBeSame);
-        <span class="kw">if </span>asset_a == base_asset_id {
-            <span class="prelude-val">Ok</span>(TradingPair {
-                base_asset_id: asset_a.clone(),
-                target_asset_id: asset_b.clone(),
-            })
-        } <span class="kw">else if </span>asset_b == base_asset_id {
-            <span class="prelude-val">Ok</span>(TradingPair {
-                base_asset_id: asset_b.clone(),
-                target_asset_id: asset_a.clone(),
-            })
-        } <span class="kw">else </span>{
-            <span class="macro">fail!</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)
-        }
+        <span class="kw">let </span>(tpair, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="self">Self</span>::get_pair_info(base_asset_id, asset_a, asset_b)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(tpair)
     }
 }
 </code></pre></div>

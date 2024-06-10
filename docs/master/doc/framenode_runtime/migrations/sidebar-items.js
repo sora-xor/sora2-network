@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["Migrations"]};
+window.SIDEBAR_ITEMS = {"struct":["KARMAAssetId","KARMAAssetName","KARMAAssetSymbol","KGOLDAssetId","KGOLDAssetName","KGOLDAssetSymbol","KXORAssetId","KXORAssetName","KXORAssetSymbol","MaxMigrations","PredefinedAssetOwnerAccountId","SBAssetId","SBAssetName","SBAssetSymbol"],"type":["Migrations"]};

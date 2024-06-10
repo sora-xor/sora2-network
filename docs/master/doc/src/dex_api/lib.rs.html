@@ -544,6 +544,18 @@
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -623,7 +635,7 @@
                 )
             };
         }
-        <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
+        <span class="kw">let </span>res = <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
             XYKPool =&gt; <span class="macro">can_exchange!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; <span class="macro">can_exchange!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">can_exchange!</span>(XSTPool),
@@ -633,7 +645,9 @@
             MockPool3 =&gt; <span class="macro">can_exchange!</span>(MockLiquiditySource3),
             MockPool4 =&gt; <span class="macro">can_exchange!</span>(MockLiquiditySource4),
             BondingCurvePool =&gt; <span class="macro">unreachable!</span>(),
-        }
+        };
+        <span class="macro">frame_support::log::trace!</span>(<span class="string">&quot;can_exchange({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}): {res:?}&quot;</span>);
+        res
     }
 
     <span class="kw">fn </span>quote(
@@ -655,7 +669,7 @@
                 )
             };
         }
-        <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
+        <span class="kw">let </span>res = <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
             XYKPool =&gt; <span class="macro">quote!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; <span class="macro">quote!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">quote!</span>(XSTPool),
@@ -665,7 +679,9 @@
             MockPool3 =&gt; <span class="macro">quote!</span>(MockLiquiditySource3),
             MockPool4 =&gt; <span class="macro">quote!</span>(MockLiquiditySource4),
             BondingCurvePool =&gt; <span class="macro">unreachable!</span>(),
-        }
+        };
+        <span class="macro">frame_support::log::trace!</span>(<span class="string">&quot;quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}&quot;</span>);
+        res
     }
 
     <span class="kw">fn </span>step_quote(
@@ -689,7 +705,7 @@
                 )
             };
         }
-        <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
+        <span class="kw">let </span>res = <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool =&gt; <span class="macro">step_quote!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; <span class="macro">step_quote!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">step_quote!</span>(XSTPool),
@@ -699,7 +715,9 @@
             MockPool3 =&gt; <span class="macro">step_quote!</span>(MockLiquiditySource3),
             MockPool4 =&gt; <span class="macro">step_quote!</span>(MockLiquiditySource4),
             BondingCurvePool =&gt; <span class="macro">unreachable!</span>(),
-        }
+        };
+        <span class="macro">frame_support::log::trace!</span>(<span class="string">&quot;step_quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {recommended_samples_count:?}, {deduce_fee:?}): {res:?}&quot;</span>);
+        res
     }
 
     <span class="kw">fn </span>exchange(
@@ -723,7 +741,7 @@
                 )
             };
         }
-        <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
+        <span class="kw">let </span>res = <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
             XYKPool =&gt; <span class="macro">exchange!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; <span class="macro">exchange!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">exchange!</span>(XSTPool),
@@ -733,7 +751,9 @@
             MockPool3 =&gt; <span class="macro">exchange!</span>(MockLiquiditySource3),
             MockPool4 =&gt; <span class="macro">exchange!</span>(MockLiquiditySource4),
             BondingCurvePool =&gt; <span class="macro">unreachable!</span>(),
-        }
+        };
+        <span class="macro">frame_support::log::trace!</span>(<span class="string">&quot;exchange({sender:?}, {receiver:?}, {liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {swap_amount:?}): {res:?}&quot;</span>);
+        res
     }
 
     <span class="kw">fn </span>check_rewards(
@@ -755,7 +775,7 @@
                 )
             };
         }
-        <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
+        <span class="kw">let </span>res = <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
             XYKPool =&gt; <span class="macro">check_rewards!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; <span class="macro">check_rewards!</span>(MulticollateralBondingCurvePool),
             XSTPool =&gt; <span class="macro">check_rewards!</span>(XSTPool),
@@ -765,7 +785,9 @@
             MockPool3 =&gt; <span class="macro">check_rewards!</span>(MockLiquiditySource3),
             MockPool4 =&gt; <span class="macro">check_rewards!</span>(MockLiquiditySource4),
             BondingCurvePool =&gt; <span class="macro">unreachable!</span>(),
-        }
+        };
+        <span class="macro">frame_support::log::trace!</span>(<span class="string">&quot;check_rewards({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {input_amount:?}, {output_amount:?}): {res:?}&quot;</span>);
+        res
     }
 
     <span class="kw">fn </span>quote_without_impact(
@@ -787,7 +809,7 @@
                 )
             };
         }
-        <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
+        <span class="kw">let </span>res = <span class="kw">match </span>liquidity_source_id.liquidity_source_index {
             XYKPool =&gt; <span class="macro">quote_without_impact!</span>(XYKPool),
             MulticollateralBondingCurvePool =&gt; {
                 <span class="macro">quote_without_impact!</span>(MulticollateralBondingCurvePool)
@@ -799,7 +821,9 @@
             MockPool3 =&gt; <span class="macro">quote_without_impact!</span>(MockLiquiditySource3),
             MockPool4 =&gt; <span class="macro">quote_without_impact!</span>(MockLiquiditySource4),
             BondingCurvePool =&gt; <span class="macro">unreachable!</span>(),
-        }
+        };
+        <span class="macro">frame_support::log::trace!</span>(<span class="string">&quot;quote_without_impact({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}&quot;</span>);
+        res
     }
 
     <span class="kw">fn </span>quote_weight() -&gt; Weight {

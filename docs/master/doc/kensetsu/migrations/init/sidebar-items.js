@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["GrantPermissionsTreasuryTechAccount","RegisterTreasuryTechAccount"]};
+window.SIDEBAR_ITEMS = {"struct":["RegisterTreasuryTechAccount"]};

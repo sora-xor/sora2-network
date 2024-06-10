@@ -3449,6 +3449,40 @@
 <a href="#3434" id="3434">3434</a>
 <a href="#3435" id="3435">3435</a>
 <a href="#3436" id="3436">3436</a>
+<a href="#3437" id="3437">3437</a>
+<a href="#3438" id="3438">3438</a>
+<a href="#3439" id="3439">3439</a>
+<a href="#3440" id="3440">3440</a>
+<a href="#3441" id="3441">3441</a>
+<a href="#3442" id="3442">3442</a>
+<a href="#3443" id="3443">3443</a>
+<a href="#3444" id="3444">3444</a>
+<a href="#3445" id="3445">3445</a>
+<a href="#3446" id="3446">3446</a>
+<a href="#3447" id="3447">3447</a>
+<a href="#3448" id="3448">3448</a>
+<a href="#3449" id="3449">3449</a>
+<a href="#3450" id="3450">3450</a>
+<a href="#3451" id="3451">3451</a>
+<a href="#3452" id="3452">3452</a>
+<a href="#3453" id="3453">3453</a>
+<a href="#3454" id="3454">3454</a>
+<a href="#3455" id="3455">3455</a>
+<a href="#3456" id="3456">3456</a>
+<a href="#3457" id="3457">3457</a>
+<a href="#3458" id="3458">3458</a>
+<a href="#3459" id="3459">3459</a>
+<a href="#3460" id="3460">3460</a>
+<a href="#3461" id="3461">3461</a>
+<a href="#3462" id="3462">3462</a>
+<a href="#3463" id="3463">3463</a>
+<a href="#3464" id="3464">3464</a>
+<a href="#3465" id="3465">3465</a>
+<a href="#3466" id="3466">3466</a>
+<a href="#3467" id="3467">3467</a>
+<a href="#3468" id="3468">3468</a>
+<a href="#3469" id="3469">3469</a>
+<a href="#3470" id="3470">3470</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4460,6 +4494,30 @@
     };
 }
 
+<span class="macro">parameter_type_with_key! </span>{
+    <span class="kw">pub </span>GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;AssetId&gt; {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;ready-to-test&quot;</span>) { <span class="comment">// tokenomics-upgrade
+            </span><span class="kw">if </span>base_asset_id == <span class="kw-2">&amp;</span>common::XOR {
+                <span class="prelude-val">Some</span>(common::KXOR)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    };
+}
+
+<span class="macro">parameter_type_with_key! </span>{
+    <span class="kw">pub </span>GetChameleonPool: |tpair: common::TradingPair&lt;AssetId&gt;| -&gt; bool {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;ready-to-test&quot;</span>) { <span class="comment">// tokenomics-upgrade
+            </span>tpair.base_asset_id == common::XOR &amp;&amp; tpair.target_asset_id == common::ETH
+        } <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
+    };
+}
+
 <span class="kw">impl </span>pool_xyk::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>MIN_XOR: Balance = <span class="macro">balance!</span>(<span class="number">0.0007</span>);
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -4479,6 +4537,8 @@
     <span class="kw">type </span>OnPoolReservesChanged = PriceTools;
     <span class="kw">type </span>XSTMarketInfo = XSTPool;
     <span class="kw">type </span>GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    <span class="kw">type </span>GetChameleonPool = GetChameleonPool;
+    <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>IrreducibleReserve = GetXykIrreducibleReservePercent;
     <span class="kw">type </span>WeightInfo = pool_xyk::weights::SubstrateWeight&lt;Runtime&gt;;
@@ -4541,6 +4601,8 @@
     &gt;;
     <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    <span class="kw">type </span>GetChameleonPool = GetChameleonPool;
+    <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
@@ -5081,6 +5143,7 @@
     <span class="kw">type </span>PoolXykPallet = PoolXYK;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 
@@ -5417,9 +5480,10 @@
     };
 
     <span class="kw">pub const </span>KenAssetId: AssetId = common::KEN;
-    <span class="kw">pub const </span>KusdAssetId: AssetId = common::KUSD;
+    <span class="kw">pub const </span>KarmaAssetId: AssetId = common::KARMA;
 
     <span class="kw">pub </span>GetKenIncentiveRemintPercent: Percent = Percent::from_percent(<span class="number">80</span>);
+    <span class="kw">pub </span>GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(<span class="number">80</span>);
 
     <span class="comment">// 1 Kensetsu dollar of uncollected stability fee triggers accrue
     </span><span class="kw">pub const </span>MinimalStabilityFeeAccrue: Balance = <span class="macro">balance!</span>(<span class="number">1</span>);
@@ -5435,12 +5499,16 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
     <span class="kw">type </span>AssetInfoProvider = Assets;
-    <span class="kw">type </span>TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    <span class="kw">type </span>KenAssetId = KenAssetId;
-    <span class="kw">type </span>KusdAssetId = KusdAssetId;
     <span class="kw">type </span>PriceTools = PriceTools;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
+    <span class="kw">type </span>Oracle = OracleProxy;
+    <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    <span class="kw">type </span>KenAssetId = KenAssetId;
+    <span class="kw">type </span>KarmaAssetId = KarmaAssetId;
+    <span class="kw">type </span>TbcdAssetId = GetTbcdAssetId;
     <span class="kw">type </span>KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    <span class="kw">type </span>KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     <span class="kw">type </span>MaxCdpsPerOwner = ConstU32&lt;<span class="number">10000</span>&gt;;
     <span class="kw">type </span>MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     <span class="kw">type </span>UnsignedPriority = KensetsuOffchainWorkerTxPriority;
@@ -5919,7 +5987,7 @@
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">55</span>,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">56</span>,
         OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
 
         <span class="comment">// Leaf provider should be placed before any pallet which is uses it
         </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,

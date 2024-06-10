@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["init","remove_hard_cap"]};
+window.SIDEBAR_ITEMS = {"mod":["init","v1_to_v2"]};

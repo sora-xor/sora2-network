@@ -1508,6 +1508,13 @@
 <a href="#1493" id="1493">1493</a>
 <a href="#1494" id="1494">1494</a>
 <a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2391,6 +2398,9 @@
 }
 
 <span class="kw">pub trait </span>PriceToolsProvider&lt;AssetId&gt; {
+    <span class="doccomment">/// Checks if asset is registered in PriceTools.
+    </span><span class="kw">fn </span>is_asset_registered(asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; bool;
+
     <span class="doccomment">/// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
     /// `price_variant` specifies the correction for price, either for buy or sell.
     </span><span class="kw">fn </span>get_average_price(
@@ -2404,6 +2414,10 @@
 }
 
 <span class="kw">impl</span>&lt;AssetId&gt; PriceToolsProvider&lt;AssetId&gt; <span class="kw">for </span>() {
+    <span class="kw">fn </span>is_asset_registered(_asset_id: <span class="kw-2">&amp;</span>AssetId) -&gt; bool {
+        <span class="macro">unimplemented!</span>()
+    }
+
     <span class="kw">fn </span>get_average_price(
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>AssetId,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span>AssetId,

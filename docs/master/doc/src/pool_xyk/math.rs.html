@@ -300,7 +300,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span>common::prelude::{Balance, Fixed, FixedWrapper};
-<span class="kw">use </span>common::{fixed_wrapper, AssetIdOf, AssetInfoProvider, TradingPair};
+<span class="kw">use </span>common::{fixed_wrapper, AssetIdOf, TradingPair};
 <span class="kw">use </span>frame_support::dispatch::DispatchError;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -511,11 +511,11 @@
         trading_pair: <span class="kw-2">&amp;</span>TradingPair&lt;AssetIdOf&lt;T&gt;&gt;,
         liq_amount: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>b_in_pool =
-            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>trading_pair.base_asset_id, pool_acc)<span class="question-mark">?</span>;
-        <span class="kw">let </span>t_in_pool = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
-            <span class="kw-2">&amp;</span>trading_pair.target_asset_id,
+        <span class="kw">let </span>(b_in_pool, t_in_pool) = <span class="self">Self</span>::get_actual_reserves(
             pool_acc,
+            <span class="kw-2">&amp;</span>trading_pair.base_asset_id,
+            <span class="kw-2">&amp;</span>trading_pair.base_asset_id,
+            <span class="kw-2">&amp;</span>trading_pair.target_asset_id,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>fxw_liq_in_pool =
             <span class="macro">to_fixed_wrapper!</span>(b_in_pool).multiply_and_sqrt(<span class="kw-2">&amp;</span><span class="macro">to_fixed_wrapper!</span>(t_in_pool));
