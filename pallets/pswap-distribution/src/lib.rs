@@ -166,46 +166,67 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
+                &dex_info.base_asset_id,
+            );
         let base_total = <T as Config>::AssetInfoProvider::free_balance(
             &dex_info.base_asset_id,
             &fees_account_id,
         )?;
-        if base_total == 0 {
+        let chameleon_total = if let Some(asset_id) = base_chameleon_asset_id {
+            <T as Config>::AssetInfoProvider::free_balance(&asset_id, &fees_account_id)?
+        } else {
+            0
+        };
+        if base_total == 0 && chameleon_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
                 dex_id.clone(),
                 fees_account_id.clone(),
             ));
             return Ok(());
         }
-        let outcome = T::LiquidityProxy::exchange(
-            dex_id,
-            fees_account_id,
-            fees_account_id,
-            &dex_info.base_asset_id,
-            &T::GetIncentiveAssetId::get(),
-            SwapAmount::with_desired_input(base_total.clone(), Balance::zero()),
-            LiquiditySourceFilter::with_allowed(
-                dex_id.clone(),
-                [LiquiditySourceType::XYKPool].into(),
-            ),
-        );
-        match outcome {
-            Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
-                dex_id.clone(),
-                fees_account_id.clone(),
-                dex_info.base_asset_id,
-                base_total,
-                T::GetIncentiveAssetId::get(),
-                swap_outcome.amount,
-            )),
-            Err(error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
-                dex_id.clone(),
-                fees_account_id.clone(),
-                dex_info.base_asset_id,
-                base_total,
-                T::GetIncentiveAssetId::get(),
-                error,
-            )),
+        for (asset_id, balance) in Some((dex_info.base_asset_id, base_total))
+            .into_iter()
+            .chain(
+                base_chameleon_asset_id
+                    .map(|x| (x, chameleon_total))
+                    .into_iter(),
+            )
+        {
+            if balance == 0 {
+                return Ok(());
+            }
+            let outcome = T::LiquidityProxy::exchange(
+                dex_id,
+                fees_account_id,
+                fees_account_id,
+                &asset_id,
+                &T::GetIncentiveAssetId::get(),
+                SwapAmount::with_desired_input(balance.clone(), Balance::zero()),
+                LiquiditySourceFilter::with_allowed(
+                    dex_id.clone(),
+                    [LiquiditySourceType::XYKPool].into(),
+                ),
+            );
+            match outcome {
+                Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                    asset_id,
+                    balance,
+                    T::GetIncentiveAssetId::get(),
+                    swap_outcome.amount,
+                )),
+                Err(error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                    asset_id,
+                    balance,
+                    T::GetIncentiveAssetId::get(),
+                    error,
+                )),
+            }
         }
         Ok(())
     }
@@ -476,6 +497,7 @@ pub mod pallet {
         type PoolXykPallet: XykPool<Self::AccountId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,

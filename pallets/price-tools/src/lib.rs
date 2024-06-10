@@ -445,6 +445,10 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> PriceToolsProvider<AssetIdOf<T>> for Pallet<T> {
+    fn is_asset_registered(asset_id: &AssetIdOf<T>) -> bool {
+        PriceInfos::<T>::get(asset_id).is_some()
+    }
+
     fn get_average_price(
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,

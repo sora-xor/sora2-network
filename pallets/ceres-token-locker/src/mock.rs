@@ -176,6 +176,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = common::mock::GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
@@ -197,6 +199,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
