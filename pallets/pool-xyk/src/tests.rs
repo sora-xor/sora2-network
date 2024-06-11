@@ -545,14 +545,14 @@ fn quote_case_exact_output_for_input_base_second() {
                     &bp,
                     &gt,
                     QuoteAmount::WithDesiredOutput {
-                        desired_amount_out: balance!(50000)
+                        desired_amount_out: balance!(5000)
                     },
                     true,
                 )
                 .unwrap()),
                 (
-                    201207243460764587525158,
-                    OutcomeFee::from_asset(GoldenTicket.into(), 150451354062186559679)
+                    10559662090813093980992,
+                    OutcomeFee::from_asset(GoldenTicket.into(), 15045135406218655967)
                 )
             );
         })],
