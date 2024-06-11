@@ -446,14 +446,17 @@ pub mod pallet {
     pub type CdpOwnerIndex<T: Config> =
         StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
 
-    /// Configuration parameters of predefined assets. Populates storage StablecoinInfos with
-    /// predefined assets on initialization. Contains list of:
+    /// Genesis configuration parameters for predefined assets. Populates storage StablecoinInfos
+    /// with predefined assets on initialization. Contains list of:
     /// - predefined asset id;
-    /// - peg asset id;
+    /// - peg AssetId or oracle SymbolName;
     /// - minimal stability fee accrue.
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
+        /// Predefined assets pegged to Sora2 AssetID
         pub predefined_stablecoin_sora_peg: Vec<(AssetIdOf<T>, AssetIdOf<T>, Balance)>,
+
+        /// Predefined assets pegged to Oracle SymbolName
         pub predefined_stablecoin_oracle_peg: Vec<(AssetIdOf<T>, SymbolName, Balance)>,
     }
 
