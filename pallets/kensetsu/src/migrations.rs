@@ -263,7 +263,7 @@ pub mod v1_to_v2 {
                         stablecoin_parameters: StablecoinParameters {
                             peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
                             // approximately ~$4
-                            minimal_stability_fee_accrue: 1000000000000000,
+                            minimal_stability_fee_accrue: balance!(0.001),
                         },
                     },
                 );
