@@ -1680,7 +1680,7 @@ fn testnet_genesis(
                 (KXOR, XOR, balance!(100000))
             ],
             predefined_stablecoin_oracle_peg: vec![
-                (KGOLD, SymbolName::xau(), 1000000000000000),
+                (KGOLD, SymbolName::xau(), balance!(0.001)),
             ],
         },
         rewards: rewards_config,
