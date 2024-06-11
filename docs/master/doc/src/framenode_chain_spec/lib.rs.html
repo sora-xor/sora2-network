@@ -2635,6 +2635,9 @@
 <a href="#2620" id="2620">2620</a>
 <a href="#2621" id="2621">2621</a>
 <a href="#2622" id="2622">2622</a>
+<a href="#2623" id="2623">2623</a>
+<a href="#2624" id="2624">2624</a>
+<a href="#2625" id="2625">2625</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2677,8 +2680,8 @@
 </span><span class="kw">use </span>common::prelude::{Balance, DEXInfo, FixedWrapper};
 <span class="kw">use </span>common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, KEN, KGOLD,
-    KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
+    KEN, KGOLD, KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_support::sp_runtime::Percent;
 <span class="kw">use </span>framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -4312,9 +4315,12 @@
         },
         iroha_migration: iroha_migration_config,
         kensetsu: KensetsuConfig {
-            predefined_stablecoin_infos: <span class="macro">vec!</span>[
+            predefined_stablecoin_sora_peg: <span class="macro">vec!</span>[
                 (KUSD, DAI, <span class="macro">balance!</span>(<span class="number">1</span>)),
                 (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>))
+            ],
+            predefined_stablecoin_oracle_peg: <span class="macro">vec!</span>[
+                (KGOLD, SymbolName::xau(), <span class="macro">balance!</span>(<span class="number">0.001</span>)),
             ],
         },
         rewards: rewards_config,
@@ -4334,7 +4340,7 @@
             reference_asset_id: DAI,
             initial_synthetic_assets: <span class="macro">vec!</span>[(
                 XSTUSD.into(),
-                common::SymbolName::usd().into(),
+                SymbolName::usd().into(),
                 <span class="macro">fixed!</span>(<span class="number">0.00666</span>),
             )],
         },
