@@ -478,22 +478,26 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     &desired_amount_in,
                     deduce_fee,
                 )?;
-                let required_output = if get_fee_from_destination {
-                    calculated + fee_amount
-                } else {
-                    calculated
-                };
-                ensure!(
-                    required_output <= max_output_available,
-                    Error::<T>::NotEnoughOutputReserves
-                );
+                if max_output_available != reserve_output {
+                    let required_output = if get_fee_from_destination {
+                        calculated + fee_amount
+                    } else {
+                        calculated
+                    };
+                    ensure!(
+                        required_output <= max_output_available,
+                        Error::<T>::NotEnoughOutputReserves
+                    );
+                }
                 (calculated, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                ensure!(
-                    desired_amount_out < max_output_available,
-                    Error::<T>::NotEnoughOutputReserves
-                );
+                if max_output_available != reserve_output {
+                    ensure!(
+                        desired_amount_out <= max_output_available,
+                        Error::<T>::NotEnoughOutputReserves
+                    );
+                }
                 Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
