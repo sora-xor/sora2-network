@@ -314,7 +314,7 @@ macro_rules! mock_frame_system_config {
             type Lookup = IdentityLookup<Self::AccountId>;
             type Header = Header;
             type RuntimeEvent = RuntimeEvent;
-            type BlockHashCount = ConstU64<250>;
+            type BlockHashCount = frame_support::traits::ConstU64<250>;
             type DbWeight = ();
             type Version = ();
             type PalletInfo = PalletInfo;
@@ -322,7 +322,7 @@ macro_rules! mock_frame_system_config {
             type OnNewAccount = ();
             type OnKilledAccount = ();
             type SystemWeightInfo = ();
-            type SS58Prefix = ConstU16<42>;
+            type SS58Prefix = ();
             type OnSetCode = ();
             type MaxConsumers = frame_support::traits::ConstU32<65536>;
         }
