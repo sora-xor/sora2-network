@@ -381,7 +381,7 @@ pub mod v1_to_v2 {
                 assert_eq!(
                     StablecoinParameters {
                         peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
-                        minimal_stability_fee_accrue: 1000000000000000,
+                        minimal_stability_fee_accrue: balance!(0.001),
                     },
                     kgold_info.stablecoin_parameters
                 );
