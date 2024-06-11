@@ -1418,7 +1418,7 @@ fn check_exceed_reserves() {
                 },
                 true
             ),
-            crate::Error::<Runtime>::NotEnoughOutputReserves
+            crate::Error::<Runtime>::FixedWrapperCalculationFailed
         );
 
         assert_eq!(
@@ -1449,7 +1449,7 @@ fn check_exceed_reserves() {
                 },
                 true
             ),
-            crate::Error::<Runtime>::NotEnoughOutputReserves
+            crate::Error::<Runtime>::FixedWrapperCalculationFailed
         );
 
         // step quote
