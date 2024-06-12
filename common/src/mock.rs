@@ -190,7 +190,7 @@ pub fn charlie() -> AccountId32 {
     AccountId32::from([3; 32])
 }
 
-/// Mock of pallet `assets:Config`.
+/// Mock of pallet `assets::Config`.
 #[macro_export]
 macro_rules! mock_assets_config {
     ($runtime:ty) => {
