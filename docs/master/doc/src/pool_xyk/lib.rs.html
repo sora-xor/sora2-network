@@ -1287,6 +1287,58 @@
 <a href="#1272" id="1272">1272</a>
 <a href="#1273" id="1273">1273</a>
 <a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1653,37 +1705,46 @@
         }
     }
 
-    <span class="kw">pub fn </span>get_actual_reserves(
+    <span class="doccomment">/// Returns (input reserves, output reserves, max output amount)
+    /// Output reserves could only be greater than max output amount if it&#39;s chameleon pool
+    </span><span class="kw">pub fn </span>get_actual_reserves(
         pool_acc_id: <span class="kw-2">&amp;</span>T::AccountId,
         base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Balance, Balance), DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Balance, Balance, Balance), DispatchError&gt; {
         <span class="kw">let </span>(tpair, base_chameleon_asset_id, is_chameleon_pool) =
             <span class="self">Self</span>::get_pair_info(base_asset_id, input_asset_id, output_asset_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>reserve_base =
             &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>tpair.base_asset_id, <span class="kw-2">&amp;</span>pool_acc_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>reserve_target =
             &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(<span class="kw-2">&amp;</span>tpair.target_asset_id, <span class="kw-2">&amp;</span>pool_acc_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>reserve_base = <span class="kw">if let </span><span class="prelude-val">Some</span>(base_chameleon_asset_id) = base_chameleon_asset_id {
+        <span class="kw">let </span>reserve_chameleon = <span class="kw">if let </span><span class="prelude-val">Some</span>(base_chameleon_asset_id) = base_chameleon_asset_id {
             <span class="kw">if </span>is_chameleon_pool {
-                <span class="kw">let </span>reserve_chameleon = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
+                &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
                     <span class="kw-2">&amp;</span>base_chameleon_asset_id,
                     <span class="kw-2">&amp;</span>pool_acc_id,
-                )<span class="question-mark">?</span>;
-                reserve_base
-                    .checked_add(reserve_chameleon)
-                    .ok_or(Error::&lt;T&gt;::PoolTokenSupplyOverflow)<span class="question-mark">?
+                )<span class="question-mark">?
             </span>} <span class="kw">else </span>{
-                reserve_base
-            }
+                <span class="number">0
+            </span>}
         } <span class="kw">else </span>{
+            <span class="number">0
+        </span>};
+        <span class="kw">let </span>reserve_base_chameleon = reserve_base
+            .checked_add(reserve_chameleon)
+            .ok_or(Error::&lt;T&gt;::PoolTokenSupplyOverflow)<span class="question-mark">?</span>;
+        <span class="kw">let </span>max_output = <span class="kw">if </span><span class="kw-2">*</span>output_asset_id == tpair.target_asset_id {
+            reserve_target
+        } <span class="kw">else if </span><span class="kw-2">*</span>output_asset_id == tpair.base_asset_id {
             reserve_base
+        } <span class="kw">else </span>{
+            reserve_chameleon
         };
         <span class="kw">if </span>tpair.target_asset_id == <span class="kw-2">*</span>input_asset_id {
-            <span class="prelude-val">Ok</span>((reserve_target, reserve_base))
+            <span class="prelude-val">Ok</span>((reserve_target, reserve_base_chameleon, max_output))
         } <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>((reserve_base, reserve_target))
+            <span class="prelude-val">Ok</span>((reserve_base_chameleon, reserve_target, max_output))
         }
     }
 }
@@ -1726,7 +1787,7 @@
         <span class="kw">let </span>pool_acc_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_acc_id)<span class="question-mark">?</span>;
 
         <span class="comment">// Get actual pool reserves.
-        </span><span class="kw">let </span>(reserve_input, reserve_output) = <span class="self">Self</span>::get_actual_reserves(
+        </span><span class="kw">let </span>(reserve_input, reserve_output, max_output_available) = <span class="self">Self</span>::get_actual_reserves(
             <span class="kw-2">&amp;</span>pool_acc_id,
             <span class="kw-2">&amp;</span>dex_info.base_asset_id,
             <span class="kw-2">&amp;</span>input_asset_id,
@@ -1750,16 +1811,34 @@
         <span class="comment">// Calculate quote.
         </span><span class="kw">let </span>(calculated, fee_amount) = <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
-                Pallet::&lt;T&gt;::calc_output_for_exact_input(
+                <span class="kw">let </span>(calculated, fee_amount) = Pallet::&lt;T&gt;::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     <span class="kw-2">&amp;</span>reserve_input,
                     <span class="kw-2">&amp;</span>reserve_output,
                     <span class="kw-2">&amp;</span>desired_amount_in,
                     deduce_fee,
-                )<span class="question-mark">?
-            </span>}
+                )<span class="question-mark">?</span>;
+                <span class="kw">if </span>max_output_available != reserve_output {
+                    <span class="kw">let </span>required_output = <span class="kw">if </span>get_fee_from_destination {
+                        calculated + fee_amount
+                    } <span class="kw">else </span>{
+                        calculated
+                    };
+                    <span class="macro">ensure!</span>(
+                        required_output &lt;= max_output_available,
+                        Error::&lt;T&gt;::NotEnoughOutputReserves
+                    );
+                }
+                (calculated, fee_amount)
+            }
             QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
+                <span class="kw">if </span>max_output_available != reserve_output {
+                    <span class="macro">ensure!</span>(
+                        desired_amount_out &lt;= max_output_available,
+                        Error::&lt;T&gt;::NotEnoughOutputReserves
+                    );
+                }
                 Pallet::&lt;T&gt;::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
@@ -1808,7 +1887,7 @@
         <span class="kw">let </span>pool_acc_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_acc_id)<span class="question-mark">?</span>;
 
         <span class="comment">// Get actual pool reserves.
-        </span><span class="kw">let </span>(reserve_input, reserve_output) = <span class="self">Self</span>::get_actual_reserves(
+        </span><span class="kw">let </span>(reserve_input, reserve_output, max_output_available) = <span class="self">Self</span>::get_actual_reserves(
             <span class="kw-2">&amp;</span>pool_acc_id,
             <span class="kw-2">&amp;</span>dex_info.base_asset_id,
             <span class="kw-2">&amp;</span>input_asset_id,
@@ -1829,7 +1908,29 @@
 
         <span class="kw">let </span>variant = amount.variant();
         <span class="kw">let </span>amount = <span class="kw">match </span>amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; desired_amount_in,
+            QuoteAmount::WithDesiredInput { desired_amount_in }
+                <span class="kw">if </span>max_output_available == reserve_output =&gt;
+            {
+                desired_amount_in
+            }
+            QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
+                <span class="kw">let </span>max_amount = Pallet::&lt;T&gt;::calc_input_for_exact_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    <span class="kw-2">&amp;</span>reserve_input,
+                    <span class="kw-2">&amp;</span>reserve_output,
+                    <span class="kw-2">&amp;</span>max_output_available,
+                    deduce_fee,
+                )
+                .ok();
+                quotation.limits.max_amount =
+                    max_amount.map(|(calculated, _fee)| SideAmount::Input(calculated));
+                <span class="kw">if let </span><span class="prelude-val">Some</span>((calculated, _fee)) = max_amount {
+                    desired_amount_in.min(calculated)
+                } <span class="kw">else </span>{
+                    desired_amount_in
+                }
+            }
             QuoteAmount::WithDesiredOutput { desired_amount_out } =&gt; {
                 <span class="kw">let </span>max_output = Pallet::&lt;T&gt;::calc_max_output(
                     T::GetFee::get(),
@@ -1837,9 +1938,10 @@
                     reserve_output,
                     deduce_fee,
                 )<span class="question-mark">?</span>;
-                quotation.limits.max_amount = <span class="prelude-val">Some</span>(SideAmount::Output(max_output));
+                quotation.limits.max_amount =
+                    <span class="prelude-val">Some</span>(SideAmount::Output(max_output.min(max_output_available)));
 
-                max_output.min(desired_amount_out)
+                max_output.min(desired_amount_out).min(max_output_available)
             }
         };
 
@@ -2013,7 +2115,7 @@
         <span class="kw">let </span>pool_acc_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_acc_id)<span class="question-mark">?</span>;
 
         <span class="comment">// Get actual pool reserves.
-        </span><span class="kw">let </span>(reserve_input, reserve_output) = <span class="self">Self</span>::get_actual_reserves(
+        </span><span class="kw">let </span>(reserve_input, reserve_output, _max_output_available) = <span class="self">Self</span>::get_actual_reserves(
             <span class="kw-2">&amp;</span>pool_acc_id,
             <span class="kw-2">&amp;</span>dex_info.base_asset_id,
             <span class="kw-2">&amp;</span>input_asset_id,
@@ -2503,6 +2605,8 @@
         </span>TargetAssetIsRestricted,
         <span class="doccomment">/// Restricted Chameleon pool
         </span>RestrictedChameleonPool,
+        <span class="doccomment">/// Output asset reserves is not enough
+        </span>NotEnoughOutputReserves,
     }
 
     <span class="doccomment">/// Updated after last liquidity change operation.

@@ -469,7 +469,7 @@
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::AccountBalanceIsInvalid)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">let </span>(balance_bp, balance_tp) = Pallet::&lt;T&gt;::get_actual_reserves(
+        <span class="kw">let </span>(balance_bp, balance_tp, _max_output_available) = Pallet::&lt;T&gt;::get_actual_reserves(
             <span class="kw-2">&amp;</span>pool_account_repr_sys,
             <span class="kw-2">&amp;</span>base_asset_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset,
@@ -677,7 +677,7 @@
             });
         }
         Pallet::&lt;T&gt;::mint(<span class="kw-2">&amp;</span>pool_account_repr_sys, receiver_account, <span class="self">self</span>.pool_tokens)<span class="question-mark">?</span>;
-        <span class="kw">let </span>(balance_a, balance_b) = Pallet::&lt;T&gt;::get_actual_reserves(
+        <span class="kw">let </span>(balance_a, balance_b, _max_output_available) = Pallet::&lt;T&gt;::get_actual_reserves(
             <span class="kw-2">&amp;</span>pool_account_repr_sys,
             <span class="kw-2">&amp;</span>base_asset_id,
             <span class="kw-2">&amp;</span><span class="self">self</span>.source.<span class="number">0</span>.asset,
