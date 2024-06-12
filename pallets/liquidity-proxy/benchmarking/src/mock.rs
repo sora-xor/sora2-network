@@ -36,7 +36,7 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_currencies_config,
+    balance, fixed, fixed_from_basis_points, hash, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, Amount,
     AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description,
     Fixed, FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
@@ -139,6 +139,7 @@ mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl liquidity_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -204,13 +205,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}

@@ -6,7 +6,7 @@ use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_currencies_config, mock_frame_system_config,
+    balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_technical_config, AssetSymbol, BalancePrecision, DEXId,
     DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
 };
@@ -71,6 +71,7 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -127,13 +128,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {

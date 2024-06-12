@@ -32,7 +32,8 @@ use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
-    mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config, PSWAP, VAL, XST,
+    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
@@ -95,16 +96,10 @@ construct_runtime! {
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {

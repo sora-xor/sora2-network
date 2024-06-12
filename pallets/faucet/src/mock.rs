@@ -32,9 +32,9 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    self, balance, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
+    TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -110,6 +110,7 @@ mock_currencies_config!(Runtime);
 // Required by currencies::Config
 mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -154,13 +155,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 // Required by assets::Config

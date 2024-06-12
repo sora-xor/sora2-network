@@ -32,9 +32,9 @@ use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    hash, mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config, AssetId32,
-    AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
+    hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -86,6 +86,7 @@ parameter_types! {
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -114,13 +115,6 @@ parameter_types! {
 }
 
 type DEXId = u32;
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;

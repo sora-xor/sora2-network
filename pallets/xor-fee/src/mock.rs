@@ -34,9 +34,10 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
+    self, balance, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
+    VAL, XOR,
 };
 
 use currencies::BasicCurrencyAdapter;
@@ -110,6 +111,7 @@ construct_runtime! {
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 parameter_types! {
     pub const OperationalFeeMultiplier: u8 = 5;
@@ -122,13 +124,6 @@ impl pallet_transaction_payment::Config for Runtime {
     type FeeMultiplierUpdate = ();
     type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 parameter_types! {

@@ -32,8 +32,9 @@ use crate::{self as dex_manager, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, fixed_from_basis_points, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, AssetId32, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR, XST,
+    self, fixed_from_basis_points, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, AssetId32, DEXInfo, Fixed, DOT, PSWAP,
+    VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -91,6 +92,7 @@ construct_runtime! {
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl Config for Runtime {}
 
@@ -137,13 +139,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 pub struct ExtBuilder {
