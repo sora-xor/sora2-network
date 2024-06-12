@@ -30,13 +30,15 @@
 
 #[cfg(feature = "ready-to-test")] // Dynamic fee
 pub mod v2 {
+    use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::{log::info, traits::StorageVersion};
 
+    use crate::pallet::NextUpdateBlock;
     use crate::*;
 
-    pub struct Migrate<T>;
+    pub struct Migrate<T>(PhantomData<T>);
 
     impl<T> OnRuntimeUpgrade for Migrate<T>
     where
@@ -46,7 +48,7 @@ pub mod v2 {
             if StorageVersion::get::<Pallet<T>>() < StorageVersion::new(2) {
                 // 1 read
                 let next_update_block = <frame_system::Pallet<T>>::block_number();
-                NextUpdateBlock::<T>::put(Some(next_update_block)); // 1 write
+                <NextUpdateBlock<T>>::put(Some(next_update_block)); // 1 write
                 info!("NextUpdateBlock initialized to {:?}", next_update_block);
                 StorageVersion::new(2).put::<Pallet<T>>();
                 return T::DbWeight::get().reads_writes(1, 1);
@@ -70,7 +72,7 @@ pub mod v2 {
                 "Wrong storage version after upgrade"
             );
             frame_support::ensure!(
-                NextUpdateBlock::<T>::get() == Some(<frame_system::Pallet<T>>::block_number()),
+                <NextUpdateBlock<T>>::get() == Some(<frame_system::Pallet<T>>::block_number()),
                 "Did not set right next update block"
             );
             Ok(())
