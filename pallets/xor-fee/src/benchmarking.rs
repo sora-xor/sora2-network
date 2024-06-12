@@ -36,6 +36,8 @@ use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use crate::pallet::NextUpdateBlock;
 use crate::{Config, Pallet};
 
 benchmarks! {
@@ -46,11 +48,12 @@ benchmarks! {
         assert_eq!(Multiplier::<T>::get(), new_multiplier);
     }
 
-    update_next_update_block {
+    set_fee_update_period {
         let new_block_number = <T as frame_system::Config>::BlockNumber::default();
-    }: _(RawOrigin::Root, new_block_number)
+    }: _(RawOrigin::Root, Some(new_block_number))
     verify {
-        assert_eq!(<NextUpdateBlock<T>>::get(), new_block_number);
+        #[cfg(feature = "ready-to-test")] // Dynamic fee
+        assert_eq!(<NextUpdateBlock<T>>::get(), Some(new_block_number));
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
