@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 85,
+    spec_version: 86,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 85,
+    transaction_version: 86,
     state_version: 0,
 };
 
@@ -961,7 +961,13 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
     type AssetRegulator = permissions::Pallet<Runtime>;
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = (
+        permissions::Pallet<Runtime>,
+        regulated_assets::Pallet<Runtime>,
+    );
 }
 
 impl trading_pair::Config for Runtime {
@@ -1003,6 +1009,30 @@ parameter_type_with_key! {
     };
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
+            if base_asset_id == &common::XOR {
+                Some(common::KXOR)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
+            tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
+        } else {
+            false
+        }
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -1022,6 +1052,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = PriceTools;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
@@ -1084,6 +1116,8 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -1630,6 +1664,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -1966,9 +2001,10 @@ parameter_types! {
     };
 
     pub const KenAssetId: AssetId = common::KEN;
-    pub const KusdAssetId: AssetId = common::KUSD;
+    pub const KarmaAssetId: AssetId = common::KARMA;
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 Kensetsu dollar of uncollected stability fee triggers accrue
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
@@ -1984,12 +2020,16 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type Oracle = OracleProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = GetTbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
@@ -1997,14 +2037,12 @@ impl kensetsu::Config for Runtime {
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // Apollo
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
     pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 5; // set 100 for release
 }
 
-#[cfg(feature = "ready-to-test")] // Apollo
 impl apollo_platform::Config for Runtime {
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
@@ -2389,6 +2427,15 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
+impl regulated_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type MaxAllowedTokensPerSBT = ConstU32<10000>;
+    type MaxSBTsPerAsset = ConstU32<10000>;
+    type AssetInfoProvider = Assets;
+    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2461,7 +2508,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
@@ -2512,8 +2559,9 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
-        #[cfg(feature = "ready-to-test")] // Apollo
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
+        #[cfg(feature = "wip")] // DEFI-R
+        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
 
@@ -3254,7 +3302,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
-            #[cfg(feature = "ready-to-test")] // Apollo
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
@@ -3277,6 +3324,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3350,7 +3399,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
-            #[cfg(feature = "ready-to-test")] // Apollo
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
@@ -3373,6 +3421,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
