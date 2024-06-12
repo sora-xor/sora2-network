@@ -44,9 +44,9 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config, Amount,
-    AssetId32, AssetName, AssetSymbol, DEXId, LiquiditySourceType, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId,
+    LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -278,6 +278,7 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
@@ -366,13 +367,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {

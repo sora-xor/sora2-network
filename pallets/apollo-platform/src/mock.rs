@@ -3,8 +3,8 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-        mock_technical_config,
+        mock_common_config, mock_currencies_config, mock_frame_system_config,
+        mock_pallet_balances_config, mock_technical_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -91,6 +91,9 @@ pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
 
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_common_config!(Runtime);
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
@@ -113,8 +116,6 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
-
-mock_frame_system_config!(Runtime);
 
 parameter_types! {
     pub const GetNumSamples: usize = 40;
@@ -313,15 +314,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {}
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

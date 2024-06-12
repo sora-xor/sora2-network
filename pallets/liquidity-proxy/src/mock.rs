@@ -32,11 +32,11 @@ use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, Amount,
-    AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo,
-    LiquiditySource, LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH,
-    KSM, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_common_config,
+    mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, RewardReason, DAI,
+    DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -169,6 +169,7 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -235,13 +236,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}

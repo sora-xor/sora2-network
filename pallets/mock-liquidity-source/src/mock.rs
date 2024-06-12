@@ -32,9 +32,9 @@ use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, fixed_from_basis_points, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, DEXInfo, Fixed, PSWAP,
-    VAL, XOR, XST,
+    self, fixed_from_basis_points, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, Amount,
+    AssetId32, DEXInfo, Fixed, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
@@ -98,6 +98,7 @@ mock_technical_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl Config<crate::Instance1> for Runtime {
     type GetFee = GetFee;
@@ -154,13 +155,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {

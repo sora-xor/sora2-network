@@ -31,9 +31,10 @@
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL, XOR,
+    balance, fixed, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD,
+    VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -146,6 +147,7 @@ mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 impl Config for Runtime {}
 
@@ -215,13 +217,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
