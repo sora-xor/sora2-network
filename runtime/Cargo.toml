@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.4.1"
+version = "3.4.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -92,6 +92,7 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
+regulated-assets = { path = "../pallets/regulated-assets", default-features = false, optional = true }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -263,6 +264,7 @@ std = [
     "pswap-distribution/std",
     "qa-tools/std",
     "referrals/std",
+    "regulated-assets/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde/std",
@@ -310,6 +312,7 @@ wip = [
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
+    "regulated-assets/wip",
 ]
 
 ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
@@ -369,6 +372,7 @@ runtime-benchmarks = [
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
+    "regulated-assets/runtime-benchmarks"
 ]
 
 reduced-pswap-reward-periods = []
@@ -455,6 +459,7 @@ try-runtime = [
     "bridge-data-signer/try-runtime",
     "multisig-verifier/try-runtime",
     "qa-tools/try-runtime",
+    "regulated-assets/try-runtime",
 ]
 
 test = ["framenode-chain-spec/test", "liquidity-proxy/test", "order-book/test"]
