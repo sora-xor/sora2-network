@@ -65,6 +65,7 @@ pub mod weights;
 #[cfg(test)]
 pub mod mock;
 
+pub mod migrations;
 #[cfg(test)]
 mod tests;
 
@@ -754,7 +755,7 @@ pub mod pallet {
                             Self::deposit_event(Event::NextUpdateBlockUpdated(Some(
                                 next_block_number,
                             )));
-                            weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(2);
+                            weight += T::DbWeight::get().reads_writes(2, 2);
                         }
                         Err(e) => {
                             frame_support::log::error!("Could not update Multiplier due to: {e:?}");
