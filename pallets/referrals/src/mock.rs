@@ -33,8 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -91,6 +91,7 @@ mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
@@ -121,20 +122,6 @@ impl assets::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 impl referrals::Config for Runtime {

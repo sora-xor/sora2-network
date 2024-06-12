@@ -1,14 +1,13 @@
 use crate::{self as ceres_launchpad};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
-use common::ContentSource;
-use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
     balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, AssetSymbol, BalancePrecision, DEXId,
-    DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed, CERES_ASSET_ID, PSWAP,
+    TBCD, VAL, XOR, XST,
 };
 use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
@@ -72,6 +71,7 @@ mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -250,20 +250,6 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 #[allow(clippy::type_complexity)]
