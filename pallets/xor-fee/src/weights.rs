@@ -61,6 +61,7 @@ use core::marker::PhantomData;
 /// Weight functions needed for xor_fee.
 pub trait WeightInfo {
 	fn update_multiplier() -> Weight;
+	fn update_next_update_block() -> Weight;
 }
 
 /// Weights for xor_fee using the Substrate node and recommended hardware.
@@ -76,6 +77,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(16_241_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	/// Locally generated
+	/// Storage: XorFee NextUpdateBlock (r:0 w:1)
+	/// Proof Skipped: XorFee NextUpdateBlock (max_values: Some(1), max_size: None, mode: Measured)
+	fn update_next_update_block() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 13_694 nanoseconds.
+		Weight::from_ref_time(14_209_000)
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 }
 
 // For backwards compatibility and tests
@@ -89,5 +102,17 @@ impl WeightInfo for () {
 		// Minimum execution time: 15_812_000 picoseconds.
 		Weight::from_parts(16_241_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	/// Locally generated
+	/// Storage: XorFee NextUpdateBlock (r:0 w:1)
+	/// Proof Skipped: XorFee NextUpdateBlock (max_values: Some(1), max_size: None, mode: Measured)
+	fn update_next_update_block() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 13_694 nanoseconds.
+		Weight::from_ref_time(14_209_000)
+			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 }

@@ -694,6 +694,7 @@ pub mod pallet {
         /// Period to update Multiplier in blocks
         #[pallet::constant]
         type BlocksToUpdate: Get<Self::BlockNumber>;
+        type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
@@ -719,7 +720,6 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;
-        type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
     }
 
     /// The current storage version.
@@ -733,6 +733,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        #[cfg(feature = "ready-to-test")] // Dynamic fee
         fn on_idle(current_block: BlockNumberFor<T>, _remaining_weight: Weight) -> Weight {
             let mut weight: Weight = Weight::default();
 
@@ -744,11 +745,12 @@ pub mod pallet {
                 ) {
                     Ok(new_multiplier) => {
                         <Multiplier<T>>::put(new_multiplier); // 1 write
-                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier)); // 1 write
+                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
 
-                        let next_update_block = current_block + T::BlocksToUpdate::get(); // 1 read
-                        <NextUpdateBlock<T>>::put(next_update_block); // 1 write
-                        weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(3);
+                        let next_block_number = current_block + T::BlocksToUpdate::get(); // 1 read
+                        <NextUpdateBlock<T>>::put(&next_block_number); // 1 write
+                        Self::deposit_event(Event::NextUpdateBlockUpdated(next_block_number));
+                        weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(2);
                     }
                     Err(e) => {
                         frame_support::log::error!("Could not update Multiplier due to: {e:?}");
@@ -777,6 +779,22 @@ pub mod pallet {
             Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
             Ok(().into())
         }
+
+        #[allow(unused_variables)]
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_next_update_block())]
+        pub fn update_next_update_block(
+            origin: OriginFor<T>,
+            next_block_number: <T as frame_system::Config>::BlockNumber,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            #[cfg(feature = "ready-to-test")] // Dynamic fee
+            {
+                <NextUpdateBlock<T>>::put(&next_block_number);
+                Self::deposit_event(Event::NextUpdateBlockUpdated(next_block_number));
+            }
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -789,15 +807,20 @@ pub mod pallet {
         /// New multiplier for weight to fee conversion is set
         /// (*1_000_000_000_000_000_000). [New value]
         WeightToFeeMultiplierUpdated(FixedU128),
+        #[cfg(feature = "ready-to-test")] // Dynamic fee
+        /// New block number to update multiplier is set. [New value]
+        NextUpdateBlockUpdated(<T as frame_system::Config>::BlockNumber),
     }
-
     #[pallet::error]
     pub enum Error<T> {
         /// Failed to calculate new multiplier.
         MultiplierCalculationFailed,
     }
 
+    #[cfg(feature = "ready-to-test")] // Dynamic fee
     /// Next block number to update multiplier
+    /// If it is necessary to stop updating the multiplier,
+    /// set BlockNumber::MAX or another large value
     #[pallet::storage]
     #[pallet::getter(fn next_update_block)]
     pub type NextUpdateBlock<T> =

@@ -43,8 +43,15 @@ benchmarks! {
         let new_multiplier = FixedU128::from(1);
     }: _(RawOrigin::Root, new_multiplier)
     verify {
-        assert_eq!(crate::Multiplier::<T>::get(), new_multiplier);
+        assert_eq!(Multiplier::<T>::get(), new_multiplier);
     }
 
-    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::build(), crate::mock::Runtime);
+    update_next_update_block {
+        let new_block_number = <T as frame_system::Config>::BlockNumber::default();
+    }: _(RawOrigin::Root, new_block_number)
+    verify {
+        assert_eq!(<NextUpdateBlock<T>>::get(), new_block_number);
+    }
+
+    impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
 }

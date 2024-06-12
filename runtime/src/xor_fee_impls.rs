@@ -29,16 +29,20 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 use _feps::sp_arithmetic::FixedU128;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 use common::prelude::constants::SMALL_REFERENCE_AMOUNT;
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 use common::prelude::FixedWrapper;
 use common::LiquidityProxyTrait;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 pub type PriceTool = price_tools::Pallet<Runtime>;
 
 impl RuntimeCall {
@@ -413,7 +417,10 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     }
 }
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 pub struct DynamicMultiplier;
+
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
     fn fetch_price_to_reference_asset(
         input_asset: &AssetId,

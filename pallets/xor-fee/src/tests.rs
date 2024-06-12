@@ -32,14 +32,20 @@
 #![allow(clippy::all)]
 
 use crate::extension::ChargeTransactionPayment;
-use crate::{mock::*, CalculateMultiplier, LiquidityInfo, Multiplier, NextUpdateBlock, XorToVal};
+use crate::{mock::*, LiquidityInfo, XorToVal};
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use crate::{CalculateMultiplier, Multiplier, NextUpdateBlock};
 use common::balance;
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use common::prelude::FixedWrapper;
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use frame_support::traits::Hooks;
 
 use common::mock::{alice, bob};
-use common::prelude::FixedWrapper;
-use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
 use frame_support::error::BadOrigin;
-use frame_support::traits::{Currency, Hooks};
+use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::SignedExtension;
@@ -500,6 +506,7 @@ fn it_works_referrer_refund() {
     });
 }
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 #[test]
 fn calculate_multiplier_using_ref_amount_works() {
     ExtBuilder::build().execute_with(|| {
@@ -524,6 +531,7 @@ fn calculate_multiplier_using_ref_amount_works() {
     });
 }
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 #[test]
 fn update_multiplier_on_idle() {
     ExtBuilder::build().execute_with(|| {
@@ -539,5 +547,35 @@ fn update_multiplier_on_idle() {
             3571428571428571428571428
         );
         assert_eq!(NextUpdateBlock::<Runtime>::get(), 3610);
+    });
+}
+
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[test]
+fn test_update_next_update_block() {
+    ExtBuilder::build().execute_with(|| {
+        System::set_block_number(0);
+
+        assert_ok!(XorFee::update_next_update_block(
+            RuntimeOrigin::root(),
+            BlockNumber::MAX
+        ));
+        assert_eq!(NextUpdateBlock::<Runtime>::get(), BlockNumber::MAX);
+    });
+}
+
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[test]
+fn non_root_update_block_fails() {
+    ExtBuilder::build().execute_with(|| {
+        assert_noop!(
+            XorFee::update_next_update_block(RuntimeOrigin::signed(alice()), BlockNumber::MAX),
+            BadOrigin
+        );
+
+        assert_noop!(
+            XorFee::update_next_update_block(RuntimeOrigin::none(), BlockNumber::MAX),
+            BadOrigin
+        );
     });
 }

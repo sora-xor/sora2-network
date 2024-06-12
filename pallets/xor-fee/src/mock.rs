@@ -33,11 +33,17 @@
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use common::DAI;
 use common::{
     self, balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    ReferrerAccountProvider, DAI, PSWAP, TBCD, VAL, XOR,
+    ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
@@ -47,9 +53,6 @@ use frame_support::traits::{
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
-use sp_arithmetic::FixedU128;
-
-use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -313,12 +316,20 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
+    #[cfg(not(feature = "ready-to-test"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(not(feature = "ready-to-test"))] // Dynamic fee
+    type BlocksToUpdate = ();
+    #[cfg(feature = "ready-to-test")] // Dynamic fee
     type DynamicMultiplier = DynamicMultiplier;
+    #[cfg(feature = "ready-to-test")] // Dynamic fee
     type BlocksToUpdate = BlocksToUpdate;
 }
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 pub struct DynamicMultiplier;
 
+#[cfg(feature = "ready-to-test")] // Dynamic fee
 impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
     fn fetch_price_to_reference_asset(
         input_asset: &AssetId,

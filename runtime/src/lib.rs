@@ -1270,6 +1270,10 @@ parameter_types! {
 
 impl xor_fee::Config for Runtime {
     type BlocksToUpdate = BlocksToUpdate;
+    #[cfg(not(feature = "ready-to-test"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "ready-to-test")] // Dynamic fee
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
@@ -1291,7 +1295,6 @@ impl xor_fee::Config for Runtime {
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
-    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
 }
 
 pub struct ConstantFeeMultiplier;
