@@ -736,25 +736,30 @@ pub mod pallet {
         #[cfg(feature = "ready-to-test")] // Dynamic fee
         fn on_idle(current_block: BlockNumberFor<T>, _remaining_weight: Weight) -> Weight {
             let mut weight: Weight = Weight::default();
+            if let Some(next_update_block) = Self::next_update_block() {
+                if current_block >= next_update_block {
+                    // 1 read
+                    match T::DynamicMultiplier::calculate_multiplier(
+                        &common::XOR.into(),
+                        &common::DAI.into(),
+                    ) {
+                        Ok(new_multiplier) => {
+                            <Multiplier<T>>::put(new_multiplier); // 1 write
+                            Self::deposit_event(Event::WeightToFeeMultiplierUpdated(
+                                new_multiplier,
+                            ));
 
-            if current_block >= Self::next_update_block() {
-                // 1 read
-                match T::DynamicMultiplier::calculate_multiplier(
-                    &common::XOR.into(),
-                    &common::DAI.into(),
-                ) {
-                    Ok(new_multiplier) => {
-                        <Multiplier<T>>::put(new_multiplier); // 1 write
-                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
-
-                        let next_block_number = current_block + T::BlocksToUpdate::get(); // 1 read
-                        <NextUpdateBlock<T>>::put(&next_block_number); // 1 write
-                        Self::deposit_event(Event::NextUpdateBlockUpdated(next_block_number));
-                        weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(2);
-                    }
-                    Err(e) => {
-                        frame_support::log::error!("Could not update Multiplier due to: {e:?}");
-                        weight += T::DbWeight::get().reads(1);
+                            let next_block_number = current_block + T::BlocksToUpdate::get(); // 1 read
+                            <NextUpdateBlock<T>>::put(Some(&next_block_number)); // 1 write
+                            Self::deposit_event(Event::NextUpdateBlockUpdated(Some(
+                                next_block_number,
+                            )));
+                            weight += T::DbWeight::get().reads(2) + T::DbWeight::get().writes(2);
+                        }
+                        Err(e) => {
+                            frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                            weight += T::DbWeight::get().reads(1);
+                        }
                     }
                 }
             }
@@ -782,15 +787,15 @@ pub mod pallet {
 
         #[allow(unused_variables)]
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_next_update_block())]
-        pub fn update_next_update_block(
+        #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
+        pub fn set_fee_update_period(
             origin: OriginFor<T>,
-            next_block_number: <T as frame_system::Config>::BlockNumber,
+            next_block_number: Option<<T as frame_system::Config>::BlockNumber>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             #[cfg(feature = "ready-to-test")] // Dynamic fee
             {
-                <NextUpdateBlock<T>>::put(&next_block_number);
+                <NextUpdateBlock<T>>::put(next_block_number);
                 Self::deposit_event(Event::NextUpdateBlockUpdated(next_block_number));
             }
             Ok(().into())
@@ -809,7 +814,7 @@ pub mod pallet {
         WeightToFeeMultiplierUpdated(FixedU128),
         #[cfg(feature = "ready-to-test")] // Dynamic fee
         /// New block number to update multiplier is set. [New value]
-        NextUpdateBlockUpdated(<T as frame_system::Config>::BlockNumber),
+        NextUpdateBlockUpdated(Option<<T as frame_system::Config>::BlockNumber>),
     }
     #[pallet::error]
     pub enum Error<T> {
@@ -824,7 +829,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn next_update_block)]
     pub type NextUpdateBlock<T> =
-        StorageValue<_, <T as frame_system::Config>::BlockNumber, ValueQuery>;
+        StorageValue<_, Option<<T as frame_system::Config>::BlockNumber>, ValueQuery>;
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]

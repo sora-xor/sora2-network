@@ -537,7 +537,7 @@ fn update_multiplier_on_idle() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
-        NextUpdateBlock::<Runtime>::put(10);
+        NextUpdateBlock::<Runtime>::put(Some(10));
         XorFee::on_idle(9, Weight::default());
         assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
 
@@ -546,7 +546,19 @@ fn update_multiplier_on_idle() {
             Multiplier::<Runtime>::get().into_inner(),
             3571428571428571428571428
         );
-        assert_eq!(NextUpdateBlock::<Runtime>::get(), 3610);
+        assert_eq!(NextUpdateBlock::<Runtime>::get(), Some(3610));
+    });
+}
+
+#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[test]
+fn not_update_multiplier_on_idle() {
+    ExtBuilder::build().execute_with(|| {
+        System::set_block_number(0);
+
+        NextUpdateBlock::<Runtime>::put(None::<BlockNumber>);
+        XorFee::on_idle(BlockNumber::MAX, Weight::default());
+        assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
     });
 }
 
@@ -556,11 +568,11 @@ fn test_update_next_update_block() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
-        assert_ok!(XorFee::update_next_update_block(
+        assert_ok!(XorFee::set_fee_update_period(
             RuntimeOrigin::root(),
-            BlockNumber::MAX
+            Some(BlockNumber::MAX)
         ));
-        assert_eq!(NextUpdateBlock::<Runtime>::get(), BlockNumber::MAX);
+        assert_eq!(NextUpdateBlock::<Runtime>::get(), Some(BlockNumber::MAX));
     });
 }
 
@@ -569,12 +581,12 @@ fn test_update_next_update_block() {
 fn non_root_update_block_fails() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
-            XorFee::update_next_update_block(RuntimeOrigin::signed(alice()), BlockNumber::MAX),
+            XorFee::set_fee_update_period(RuntimeOrigin::signed(alice()), Some(BlockNumber::MAX)),
             BadOrigin
         );
 
         assert_noop!(
-            XorFee::update_next_update_block(RuntimeOrigin::none(), BlockNumber::MAX),
+            XorFee::set_fee_update_period(RuntimeOrigin::none(), Some(BlockNumber::MAX)),
             BadOrigin
         );
     });

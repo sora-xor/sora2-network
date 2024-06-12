@@ -61,7 +61,7 @@ use core::marker::PhantomData;
 /// Weight functions needed for xor_fee.
 pub trait WeightInfo {
 	fn update_multiplier() -> Weight;
-	fn update_next_update_block() -> Weight;
+	fn set_fee_update_period() -> Weight;
 }
 
 /// Weights for xor_fee using the Substrate node and recommended hardware.
@@ -81,7 +81,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Locally generated
 	/// Storage: XorFee NextUpdateBlock (r:0 w:1)
 	/// Proof Skipped: XorFee NextUpdateBlock (max_values: Some(1), max_size: None, mode: Measured)
-	fn update_next_update_block() -> Weight {
+	fn set_fee_update_period() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -107,7 +107,7 @@ impl WeightInfo for () {
 	/// Locally generated
 	/// Storage: XorFee NextUpdateBlock (r:0 w:1)
 	/// Proof Skipped: XorFee NextUpdateBlock (max_values: Some(1), max_size: None, mode: Measured)
-	fn update_next_update_block() -> Weight {
+	fn set_fee_update_period() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
