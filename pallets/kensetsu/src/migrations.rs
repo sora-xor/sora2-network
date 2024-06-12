@@ -112,6 +112,7 @@ pub mod v1_to_v2 {
         use frame_support::dispatch::TypeInfo;
         use frame_support::pallet_prelude::ValueQuery;
         use frame_support::Identity;
+        use sp_arithmetic::traits::{AtLeast32Bit, Saturating};
         use sp_arithmetic::FixedU128;
 
         #[derive(
@@ -126,13 +127,19 @@ pub mod v1_to_v2 {
             pub interest_coefficient: FixedU128,
         }
 
-        impl<Moment> CollateralInfo<Moment> {
+        impl<Moment: AtLeast32Bit> CollateralInfo<Moment> {
             pub fn into_v2(self) -> crate::CollateralInfo<Moment> {
+                let mut new_risk_parameters = self.risk_parameters;
+                // It is rough approximation, but it is fast. Need to reset parameters after the
+                // migration.
+                new_risk_parameters.stability_fee_rate = new_risk_parameters
+                    .stability_fee_rate
+                    .saturating_mul(FixedU128::from_u32(1000));
                 crate::CollateralInfo {
-                    risk_parameters: self.risk_parameters,
+                    risk_parameters: new_risk_parameters,
                     total_collateral: self.total_collateral,
                     stablecoin_supply: self.kusd_supply,
-                    last_fee_update_time: self.last_fee_update_time,
+                    last_fee_update_time: self.last_fee_update_time / 1000u32.into(),
                     interest_coefficient: self.interest_coefficient,
                 }
             }
@@ -281,16 +288,21 @@ pub mod v1_to_v2 {
                 );
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
-                for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
-                {
-                    CollateralInfos::<T>::insert(
-                        StablecoinCollateralIdentifier {
-                            collateral_asset_id,
-                            stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
-                        },
-                        old_collateral_info.into_v2(),
-                    );
-                    weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                // remove all elements before inserting them back, otherwise we get UB
+                let r: Vec<_> = v1::CollateralInfos::<T>::drain()
+                    .map(|(collateral_asset_id, old_collateral_info)| {
+                        weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                        (
+                            StablecoinCollateralIdentifier {
+                                collateral_asset_id,
+                                stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
+                            },
+                            old_collateral_info.into_v2(),
+                        )
+                    })
+                    .collect();
+                for (stablecoin_identifier, collateral_info) in r {
+                    CollateralInfos::<T>::insert(stablecoin_identifier, collateral_info);
                 }
 
                 v1::CDPDepository::<T>::translate(
@@ -342,7 +354,7 @@ pub mod v1_to_v2 {
 
                 let total_collateral = balance!(500100);
                 let kusd_supply = balance!(100500);
-                let last_fee_update_time = 12345;
+                let last_fee_update_time = 12345000; // in ms
                 let interest_coefficient = FixedU128::from_inner(54321);
                 let old_dai_collateral_info = v1::CollateralInfo {
                     risk_parameters: Default::default(),
@@ -396,7 +408,9 @@ pub mod v1_to_v2 {
                     kxor_info.stablecoin_parameters
                 );
 
-                assert_eq!(2, CollateralInfos::<TestRuntime>::iter().count());
+                // ms to seconds
+                let new_last_fee_update_time = last_fee_update_time / 1000;
+                assert_eq!(2, crate::CollateralInfos::<TestRuntime>::iter().count());
                 let dai_kusd_collateral_info =
                     CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
                         collateral_asset_id: DAI,
@@ -406,7 +420,7 @@ pub mod v1_to_v2 {
                 assert_eq!(total_collateral, dai_kusd_collateral_info.total_collateral);
                 assert_eq!(kusd_supply, dai_kusd_collateral_info.stablecoin_supply);
                 assert_eq!(
-                    last_fee_update_time,
+                    new_last_fee_update_time,
                     dai_kusd_collateral_info.last_fee_update_time
                 );
                 assert_eq!(
@@ -422,7 +436,7 @@ pub mod v1_to_v2 {
                 assert_eq!(total_collateral, xor_kusd_collateral_info.total_collateral);
                 assert_eq!(kusd_supply, xor_kusd_collateral_info.stablecoin_supply);
                 assert_eq!(
-                    last_fee_update_time,
+                    new_last_fee_update_time,
                     xor_kusd_collateral_info.last_fee_update_time
                 );
                 assert_eq!(
