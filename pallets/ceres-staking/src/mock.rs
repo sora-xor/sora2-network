@@ -4,10 +4,10 @@ use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, mock_common_config, mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, Description, CERES_ASSET_ID,
+    balance, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, Description, CERES_ASSET_ID, XST,
 };
-use common::{mock_technical_config, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -51,38 +51,17 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 
+mock_technical_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-}
-
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {
@@ -128,13 +107,9 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-mock_common_config!(Runtime);
-
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-mock_technical_config!(Runtime);
 
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -149,15 +124,6 @@ impl tokens::Config for Runtime {
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-mock_pallet_balances_config!(Runtime);
 
 pub struct ExtBuilder {
     pub endowed_assets: Vec<(
