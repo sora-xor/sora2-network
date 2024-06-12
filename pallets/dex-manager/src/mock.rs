@@ -33,8 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     self, fixed_from_basis_points, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, AssetId32, DEXInfo, Fixed, DOT, PSWAP,
-    VAL, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXInfo,
+    Fixed, DOT, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -93,22 +93,9 @@ mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl Config for Runtime {}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

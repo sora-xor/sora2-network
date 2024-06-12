@@ -41,8 +41,8 @@ use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_common_config, mock_currencies_config, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId,
-    FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR, XST,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, Balance,
+    DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -95,6 +95,7 @@ mock_pallet_balances_config!(Test);
 mock_technical_config!(Test);
 mock_currencies_config!(Test);
 mock_common_config!(Test);
+mock_tokens_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -129,20 +130,6 @@ impl system::Config for Test {
 
 impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-}
-
-impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
