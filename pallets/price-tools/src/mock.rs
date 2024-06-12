@@ -32,10 +32,10 @@ use crate::{self as price_tools, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
-    ETH, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    self, balance, fixed, hash, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    DEFAULT_BALANCE_PRECISION, ETH, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -124,6 +124,9 @@ construct_runtime! {
     }
 }
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
@@ -154,13 +157,6 @@ impl tokens::Config for Runtime {
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 impl common::Config for Runtime {
@@ -202,10 +198,6 @@ impl assets::Config for Runtime {
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-mock_pallet_balances_config!(Runtime);
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
