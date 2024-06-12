@@ -32,8 +32,8 @@ use crate::{self as dex_manager, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, fixed_from_basis_points, mock_frame_system_config, mock_pallet_balances_config,
-    AssetId32, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR, XST,
+    self, fixed_from_basis_points, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, AssetId32, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -88,6 +88,8 @@ construct_runtime! {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 
 impl Config for Runtime {}
@@ -108,13 +110,6 @@ impl tokens::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -150,8 +145,6 @@ impl common::Config for Runtime {
     type AssetManager = assets::Pallet<Runtime>;
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
-
-mock_pallet_balances_config!(Runtime);
 
 pub struct ExtBuilder {
     pub initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,

@@ -1,12 +1,10 @@
-pub use common::mock::*;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, PSWAP, TBCD,
-    VAL, XOR, XST, XSTUSD,
+    balance, fixed, hash, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, DEXId, DEXInfo, Fixed, CERES_ASSET_ID,
+    DEMETER_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -62,6 +60,11 @@ pub const BUY_BACK_ACCOUNT: AccountId = AccountId32::new([23u8; 32]);
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
@@ -79,8 +82,6 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
-
-mock_frame_system_config!(Runtime);
 
 parameter_types! {
     pub const DemeterAssetId: AssetId = DEMETER_ASSET_ID;
@@ -238,8 +239,6 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -253,15 +252,6 @@ impl tokens::Config for Runtime {
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-mock_pallet_balances_config!(Runtime);
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,

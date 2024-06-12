@@ -31,8 +31,8 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
-    balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, DEXInfo, GetMarketInfo, PSWAP, TBCD, VAL,
+    balance, fixed, hash, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, PSWAP, TBCD, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -113,6 +113,9 @@ construct_runtime! {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 
 impl permissions::Config for Runtime {
@@ -136,8 +139,6 @@ impl common::Config for Runtime {
     type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
-mock_pallet_balances_config!(Runtime);
-
 impl orml_tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -150,14 +151,6 @@ impl orml_tokens::Config for Runtime {
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = orml_tokens::Pallet<Runtime>;
-    type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -188,8 +181,6 @@ impl assets::Config for Runtime {
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
