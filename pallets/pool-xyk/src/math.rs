@@ -240,7 +240,7 @@ impl<T: Config> Pallet<T> {
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let (b_in_pool, t_in_pool) = Self::get_actual_reserves(
+        let (b_in_pool, t_in_pool, _max_output_available) = Self::get_actual_reserves(
             pool_acc,
             &trading_pair.base_asset_id,
             &trading_pair.base_asset_id,
