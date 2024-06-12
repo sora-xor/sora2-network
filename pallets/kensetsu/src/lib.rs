@@ -446,21 +446,26 @@ pub mod pallet {
     pub type CdpOwnerIndex<T: Config> =
         StorageMap<_, Identity, AccountIdOf<T>, BoundedVec<CdpId, T::MaxCdpsPerOwner>>;
 
-    /// Configuration parameters of predefined assets. Populates storage StablecoinInfos with
-    /// predefined assets on initialization. Contains list of:
+    /// Genesis configuration parameters for predefined assets. Populates storage StablecoinInfos
+    /// with predefined assets on initialization. Contains list of:
     /// - predefined asset id;
-    /// - peg asset id;
+    /// - peg AssetId or oracle SymbolName;
     /// - minimal stability fee accrue.
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub predefined_stablecoin_infos: Vec<(AssetIdOf<T>, AssetIdOf<T>, Balance)>,
+        /// Predefined assets pegged to Sora2 AssetID
+        pub predefined_stablecoin_sora_peg: Vec<(AssetIdOf<T>, AssetIdOf<T>, Balance)>,
+
+        /// Predefined assets pegged to Oracle SymbolName
+        pub predefined_stablecoin_oracle_peg: Vec<(AssetIdOf<T>, SymbolName, Balance)>,
     }
 
     #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                predefined_stablecoin_infos: Default::default(),
+                predefined_stablecoin_sora_peg: Default::default(),
+                predefined_stablecoin_oracle_peg: Default::default(),
             }
         }
     }
@@ -470,20 +475,40 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            self.predefined_stablecoin_infos.iter().cloned().for_each(
-                |(predefined_asset_id, peg_asset_id, minimal_stability_fee_accrue)| {
-                    StablecoinInfos::<T>::insert(
-                        predefined_asset_id,
-                        StablecoinInfo {
-                            bad_debt: Balance::zero(),
-                            stablecoin_parameters: StablecoinParameters {
-                                peg_asset: PegAsset::SoraAssetId(peg_asset_id),
-                                minimal_stability_fee_accrue,
+            self.predefined_stablecoin_sora_peg
+                .iter()
+                .cloned()
+                .for_each(
+                    |(predefined_asset_id, peg_asset_id, minimal_stability_fee_accrue)| {
+                        StablecoinInfos::<T>::insert(
+                            predefined_asset_id,
+                            StablecoinInfo {
+                                bad_debt: Balance::zero(),
+                                stablecoin_parameters: StablecoinParameters {
+                                    peg_asset: PegAsset::SoraAssetId(peg_asset_id),
+                                    minimal_stability_fee_accrue,
+                                },
                             },
-                        },
-                    );
-                },
-            )
+                        );
+                    },
+                );
+            self.predefined_stablecoin_oracle_peg
+                .iter()
+                .cloned()
+                .for_each(
+                    |(predefined_asset_id, symbol, minimal_stability_fee_accrue)| {
+                        StablecoinInfos::<T>::insert(
+                            predefined_asset_id,
+                            StablecoinInfo {
+                                bad_debt: Balance::zero(),
+                                stablecoin_parameters: StablecoinParameters {
+                                    peg_asset: PegAsset::OracleSymbol(symbol),
+                                    minimal_stability_fee_accrue,
+                                },
+                            },
+                        );
+                    },
+                );
         }
     }
 
