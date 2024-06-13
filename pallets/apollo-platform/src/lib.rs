@@ -1176,7 +1176,7 @@ pub mod pallet {
 
         /// Add more collateral to borrowing position
         #[pallet::call_index(11)]
-        #[pallet::weight(<T as Config>::WeightInfo::borrow())]
+        #[pallet::weight(<T as Config>::WeightInfo::add_collateral())]
         pub fn add_collateral(
             origin: OriginFor<T>,
             collateral_asset: AssetIdOf<T>,
