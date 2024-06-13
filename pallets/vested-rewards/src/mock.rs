@@ -33,10 +33,10 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
-    KSM, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, AssetId32, AssetName,
+    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -132,6 +132,13 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
@@ -153,8 +160,6 @@ parameter_types! {
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
-mock_frame_system_config!(Runtime);
-
 impl Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 14400;
     type RuntimeEvent = RuntimeEvent;
@@ -165,39 +170,11 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 type DEXId = u32;
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
@@ -228,8 +205,6 @@ impl assets::Config for Runtime {
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
@@ -300,8 +275,6 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = ();
 }
-
-mock_pallet_balances_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

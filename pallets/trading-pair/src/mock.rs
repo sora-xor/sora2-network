@@ -32,7 +32,8 @@ use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    hash, mock_frame_system_config, mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol,
+    hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
     BalancePrecision, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, VAL,
     XOR, XST, XSTUSD,
 };
@@ -83,7 +84,11 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -93,39 +98,11 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 type DEXId = u32;
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
@@ -153,8 +130,6 @@ impl assets::Config for Runtime {
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
-
-mock_pallet_balances_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

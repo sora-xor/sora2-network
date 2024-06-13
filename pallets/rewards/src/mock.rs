@@ -42,9 +42,9 @@ use sp_runtime::{MultiSignature, Perbill, Percent};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
-    self, balance, mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL,
-    XOR, XST,
+    self, balance, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -105,6 +105,15 @@ construct_runtime! {
     }
 }
 
+mock_technical_config!(Runtime);
+// Required by assets::Config
+mock_currencies_config!(Runtime);
+// Required by currencies::Config
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+
 impl Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 20;
     const UPDATE_FREQUENCY: BlockNumber = 5;
@@ -115,10 +124,6 @@ impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
 }
-
-mock_frame_system_config!(Runtime);
-
-mock_technical_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
@@ -149,41 +154,9 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
 // Required by assets::Config
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-}
-
-// Required by assets::Config
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 pub struct ExtBuilder {

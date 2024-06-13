@@ -32,8 +32,9 @@ use crate::{self as price_tools, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    self, balance, fixed, hash, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
     ETH, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
@@ -124,7 +125,12 @@ construct_runtime! {
     }
 }
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -140,34 +146,6 @@ impl Config for Runtime {
     type LiquidityProxy = MockDEXApi;
     type TradingPairSourceManager = TradingPair;
     type WeightInfo = ();
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -202,10 +180,6 @@ impl assets::Config for Runtime {
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-mock_pallet_balances_config!(Runtime);
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);

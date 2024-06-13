@@ -31,7 +31,10 @@
 use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{mock_frame_system_config, mock_pallet_balances_config, PSWAP, VAL, XST};
+use common::{
+    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, PSWAP, VAL, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -90,41 +93,14 @@ construct_runtime! {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = tokens::Pallet<Runtime>;
-    type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {

@@ -276,7 +276,7 @@ macro_rules! mock_common_config {
     ($runtime:ty) => {
         impl common::Config for $runtime {
             type DEXId = DEXId;
-            type LstId = LiquiditySourceType;
+            type LstId = common::LiquiditySourceType;
             type MultiCurrency = currencies::Pallet<$runtime>;
             type AssetManager = assets::Pallet<$runtime>;
         }
@@ -289,8 +289,8 @@ macro_rules! mock_currencies_config {
     ($runtime:ty) => {
         impl currencies::Config for $runtime {
             type MultiCurrency = Tokens;
-            type NativeCurrency = BasicCurrencyAdapter<TestRuntime, Balances, Amount, u64>;
-            type GetNativeCurrencyId = <TestRuntime as assets::Config>::GetBaseAssetId;
+            type NativeCurrency = BasicCurrencyAdapter<$runtime, Balances, Amount, BlockNumber>;
+            type GetNativeCurrencyId = <$runtime as assets::Config>::GetBaseAssetId;
             type WeightInfo = ();
         }
     };
@@ -374,7 +374,7 @@ macro_rules! mock_tokens_config {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
             type Amount = Amount;
-            type CurrencyId = <TestRuntime as assets::Config>::AssetId;
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();

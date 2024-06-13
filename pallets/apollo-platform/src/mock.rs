@@ -3,7 +3,8 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+        mock_common_config, mock_currencies_config, mock_frame_system_config,
+        mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -88,6 +89,13 @@ construct_runtime! {
 
 pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
 
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
     RuntimeCall: From<LocalCall>,
@@ -109,10 +117,6 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
-
-mock_frame_system_config!(Runtime);
-
-mock_pallet_balances_config!(Runtime);
 
 parameter_types! {
     pub const GetNumSamples: usize = 40;
@@ -161,27 +165,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -318,15 +301,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {}
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

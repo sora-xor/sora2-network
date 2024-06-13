@@ -33,8 +33,9 @@
 use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST,
+    fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, DEXInfo, Fixed,
+    PSWAP, TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -104,28 +105,12 @@ construct_runtime! {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
@@ -156,15 +141,6 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
-
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
@@ -192,8 +168,6 @@ impl dex_api::Config for Runtime {
     type OrderBook = ();
     type WeightInfo = ();
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

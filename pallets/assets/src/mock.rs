@@ -32,7 +32,8 @@ use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
 use common::{
-    mock_frame_system_config, mock_pallet_balances_config, AssetId32, DEXId, LiquidityProxyTrait,
+    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId, LiquidityProxyTrait,
     LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
@@ -73,14 +74,18 @@ pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT: AccountId = 24;
 
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
-
-mock_frame_system_config!(Runtime);
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
@@ -91,7 +96,7 @@ parameter_types! {
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
-impl crate::Config for Runtime {
+impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
@@ -110,39 +115,9 @@ impl crate::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-mock_pallet_balances_config!(Runtime);
 
 pub struct MockLiquidityProxy;
 

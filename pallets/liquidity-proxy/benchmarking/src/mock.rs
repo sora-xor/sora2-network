@@ -36,11 +36,12 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXInfo, Description, Fixed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider,
-    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    balance, fixed, fixed_from_basis_points, hash, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION,
+    DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -134,7 +135,12 @@ construct_runtime! {
     }
 }
 
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl liquidity_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -156,27 +162,6 @@ impl liquidity_proxy::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -209,15 +194,6 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
-
 impl dex_manager::Config for Runtime {}
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -247,8 +223,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

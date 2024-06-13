@@ -32,8 +32,9 @@ use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, fixed_from_basis_points, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, DEXInfo, Fixed, PSWAP, VAL, XOR, XST,
+    self, fixed_from_basis_points, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, DEXInfo, Fixed, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
@@ -93,7 +94,12 @@ construct_runtime! {
     }
 }
 
+mock_technical_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl Config<crate::Instance1> for Runtime {
     type GetFee = GetFee;
@@ -107,29 +113,6 @@ impl Config<crate::Instance2> for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-mock_technical_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -160,15 +143,6 @@ impl assets::Config for Runtime {
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

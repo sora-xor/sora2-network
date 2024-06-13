@@ -2,9 +2,10 @@ use crate::{self as ceres_governance_platform};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    CERES_ASSET_ID, PSWAP, TBCD, VAL,
+    balance, fixed, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, AssetId32, AssetName,
+    AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, CERES_ASSET_ID, PSWAP, TBCD,
+    VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -54,6 +55,13 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
@@ -67,8 +75,6 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = 101;
     pub const MinimumPeriod: u64 = 5;
 }
-
-mock_frame_system_config!(Runtime);
 
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
@@ -110,13 +116,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
@@ -196,37 +195,12 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const StringLimit: u32 = 64;
     pub const OptionsLimit: u32 = 6;
     pub const TitleLimit: u32 = 128;
     pub const DescriptionLimit: u32 = 4096;
 }
-
-mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {

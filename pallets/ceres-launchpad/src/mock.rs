@@ -1,17 +1,14 @@
 use crate::{self as ceres_launchpad};
-pub use common::mock::*;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
-use common::BalancePrecision;
-use common::ContentSource;
-use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config, DEXId, DEXInfo,
-    Fixed, CERES_ASSET_ID, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed, CERES_ASSET_ID, PSWAP,
+    TBCD, VAL, XOR, XST,
 };
-use common::{mock_technical_config, AssetSymbol};
 use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -69,6 +66,13 @@ pub const EMILY: AccountId = 5;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
@@ -87,8 +91,6 @@ parameter_types! {
     pub const MinimumPeriod: u64 = 5;
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
-
-mock_frame_system_config!(Runtime);
 
 impl crate::Config for Runtime {
     const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
@@ -126,13 +128,6 @@ impl assets::Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
@@ -256,31 +251,6 @@ impl pswap_distribution::Config for Runtime {
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-mock_pallet_balances_config!(Runtime);
 
 #[allow(clippy::type_complexity)]
 pub struct ExtBuilder {
