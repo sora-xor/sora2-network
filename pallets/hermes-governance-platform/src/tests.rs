@@ -874,7 +874,7 @@ fn withdraw_funds_creator_funds_already_withdrawn() {
         let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
         assert_ok!(Assets::transfer_from(
             &HERMES_ASSET_ID.into(),
-            &user,
+            &hermes_poll_info.creator,
             &pallet_account,
             hermes_poll_info.hermes_locked
         ));
@@ -929,7 +929,7 @@ fn withdraw_funds_creator_ok() {
         let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
         assert_ok!(Assets::transfer_from(
             &HERMES_ASSET_ID.into(),
-            &user,
+            &hermes_poll_info.creator,
             &pallet_account,
             hermes_poll_info.hermes_locked
         ));
@@ -1079,8 +1079,8 @@ fn hermes_governance_storage_migration_works() {
             creator_hermes_withdrawn: false,
         };
 
-        OldHermesVotings::insert(&poll_id_a, user, old_voting_info_a);
-        OldHermesVotings::insert(&poll_id_b, user1, old_voting_info_b);
+        OldHermesVotings::insert(&poll_id_a, &old_poll_data.creator, old_voting_info_a);
+        OldHermesVotings::insert(&poll_id_b, &user1, old_voting_info_b);
 
         OldHermesPollData::insert(&poll_id_a, &old_poll_data);
         OldHermesPollData::insert(&poll_id_b, &old_poll_data);
@@ -1092,7 +1092,8 @@ fn hermes_governance_storage_migration_works() {
         pallet::Pallet::<Runtime>::on_runtime_upgrade();
 
         let poll_a = pallet::HermesPollData::<Runtime>::get(&poll_id_a).unwrap();
-        let voting_a = pallet::HermesVotings::<Runtime>::get(&poll_id_a, &user).unwrap();
+        let voting_a =
+            pallet::HermesVotings::<Runtime>::get(&poll_id_a, &old_poll_data.creator).unwrap();
         assert_eq!(poll_a.options, options);
         assert_eq!(voting_a.voting_option, "Yes".try_into().unwrap());
 
@@ -1109,7 +1110,8 @@ fn hermes_governance_storage_migration_works() {
         pallet::Pallet::<Runtime>::on_runtime_upgrade();
 
         let poll_a = pallet::HermesPollData::<Runtime>::get(&poll_id_a).unwrap();
-        let voting_a = pallet::HermesVotings::<Runtime>::get(&poll_id_a, &user).unwrap();
+        let voting_a =
+            pallet::HermesVotings::<Runtime>::get(&poll_id_a, &old_poll_data.creator).unwrap();
         assert_eq!(poll_a.options, options);
         assert_eq!(voting_a.voting_option, "Yes".try_into().unwrap());
 

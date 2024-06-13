@@ -33,17 +33,17 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, hash, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
+    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
+    KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
-use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -96,7 +96,6 @@ pub fn eve() -> AccountId {
 pub fn initial_assets_owner() -> AccountId {
     AccountId32::from([4u8; 32])
 }
-pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub struct MockLiquidityProxy;
@@ -136,6 +135,9 @@ mock_pallet_balances_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -168,61 +170,13 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
 }
 
-type DEXId = u32;
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = 0;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -386,7 +340,7 @@ impl Default for ExtBuilder {
             ],
             endowed_accounts: vec![],
             dex_list: vec![(
-                DEX_ID,
+                DEXId::Polkaswap,
                 DEXInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
@@ -395,11 +349,19 @@ impl Default for ExtBuilder {
             )],
             initial_permission_owners: vec![
                 (INIT_DEX, Scope::Unlimited, vec![alice()]),
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_ID)), vec![alice()]),
+                (
+                    MANAGE_DEX,
+                    Scope::Limited(hash(&DEXId::Polkaswap)),
+                    vec![alice()],
+                ),
             ],
             initial_permissions: vec![
                 (alice(), Scope::Unlimited, vec![INIT_DEX]),
-                (alice(), Scope::Limited(hash(&DEX_ID)), vec![MANAGE_DEX]),
+                (
+                    alice(),
+                    Scope::Limited(hash(&DEXId::Polkaswap)),
+                    vec![MANAGE_DEX],
+                ),
             ],
         }
     }

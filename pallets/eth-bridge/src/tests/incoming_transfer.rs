@@ -46,7 +46,7 @@ use crate::{types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL};
 use codec::Encode;
 use common::{
     balance, AssetId32, AssetInfoProvider, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
-    VAL, XOR,
+    PSWAP, VAL, XOR,
 };
 use frame_support::assert_noop;
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};

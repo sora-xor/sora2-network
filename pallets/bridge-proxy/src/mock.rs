@@ -40,9 +40,9 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_currencies_config, mock_pallet_balances_config, mock_technical_config, Amount,
-    AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI,
-    ETH, PSWAP, VAL, XOR, XST,
+    balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -89,11 +89,13 @@ pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub const BASE_EVM_NETWORK_ID: EVMChainId = EVMChainId::zero();
-pub const BUY_BACK_ACCOUNT: AccountId = AccountId32::new([23u8; 32]);
 
 mock_pallet_balances_config!(Test);
 mock_technical_config!(Test);
 mock_currencies_config!(Test);
+mock_common_config!(Test);
+mock_tokens_config!(Test);
+mock_assets_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -126,57 +128,13 @@ impl system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-impl common::Config for Test {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Test>;
-    type MultiCurrency = currencies::Pallet<Test>;
-}
-
 impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-}
-
-impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl assets::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Test>;
-    type WeightInfo = ();
-    type GetTotalBalance = ();
-    type AssetRegulator = permissions::Pallet<Test>;
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;

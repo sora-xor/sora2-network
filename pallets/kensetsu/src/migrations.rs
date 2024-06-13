@@ -281,16 +281,21 @@ pub mod v1_to_v2 {
                 );
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
-                for (collateral_asset_id, old_collateral_info) in v1::CollateralInfos::<T>::drain()
-                {
-                    CollateralInfos::<T>::insert(
-                        StablecoinCollateralIdentifier {
-                            collateral_asset_id,
-                            stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
-                        },
-                        old_collateral_info.into_v2(),
-                    );
-                    weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+                let collateral_infos: sp_std::vec::Vec<_> = v1::CollateralInfos::<T>::drain()
+                    .map(|(collateral_asset_id, old_collateral_info)| {
+                        weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                        (
+                            StablecoinCollateralIdentifier {
+                                collateral_asset_id,
+                                stablecoin_asset_id: AssetIdOf::<T>::from(KUSD),
+                            },
+                            old_collateral_info.into_v2(),
+                        )
+                    })
+                    .collect();
+                for (stablecoin_identifier, collateral_info) in collateral_infos {
+                    CollateralInfos::<T>::insert(stablecoin_identifier, collateral_info);
                 }
 
                 v1::CDPDepository::<T>::translate(
