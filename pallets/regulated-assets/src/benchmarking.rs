@@ -74,17 +74,6 @@ fn add_asset<T: Config>() -> AssetIdOf<T> {
     .expect("Failed to register asset")
 }
 
-fn assign_issue_sbt_permission<T: Config>(owner: T::AccountId, holder: T::AccountId) {
-    frame_system::Pallet::<T>::inc_providers(&owner);
-    permissions::Pallet::<T>::assign_permission(
-        owner,
-        &holder,
-        common::permissions::ISSUE_SBT,
-        permissions::Scope::Unlimited,
-    )
-    .unwrap();
-}
-
 benchmarks! {
     regulate_asset {
         let owner = asset_owner::<T>();
@@ -102,7 +91,6 @@ benchmarks! {
 
     issue_sbt{
         let owner = asset_owner::<T>();
-        assign_issue_sbt_permission::<T>(owner.clone(), owner.clone());
         let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
         let asset_id = add_asset::<T>();
         let asset_name =  AssetName(b"Soulbound Token".to_vec());

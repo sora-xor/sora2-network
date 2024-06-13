@@ -63,17 +63,6 @@ pub fn add_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
     .expect("Failed to register asset")
 }
 
-pub fn assign_issue_sbt_permission<T: Config>(owner: T::AccountId, holder: T::AccountId) {
-    frame_system::Pallet::<T>::inc_providers(&owner);
-    permissions::Pallet::<T>::assign_permission(
-        owner,
-        &holder,
-        common::permissions::ISSUE_SBT,
-        permissions::Scope::Unlimited,
-    )
-    .unwrap();
-}
-
 #[test]
 fn test_default_value_asset_regulated() {
     new_test_ext().execute_with(|| {
@@ -83,34 +72,15 @@ fn test_default_value_asset_regulated() {
 }
 
 #[test]
-fn test_only_permissioned_account_can_issue_sbt() {
+fn test_can_issue_sbt() {
     new_test_ext().execute_with(|| {
         let owner = bob();
-        let non_owner = alice();
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let bounded_vec_assets = BoundedVec::try_from(vec![XOR]).unwrap();
-        // Non-owner cannot issue SBT
-        assert_err!(
-            RegulatedAssets::issue_sbt(
-                RuntimeOrigin::signed(non_owner),
-                token_id,
-                asset_symbol.clone(),
-                asset_name.clone(),
-                None,
-                None,
-                None,
-                None,
-                bounded_vec_assets.clone(),
-            ),
-            permissions::Error::<TestRuntime>::Forbidden
-        );
-
-        // Assign permission to owner
-        assign_issue_sbt_permission::<TestRuntime>(owner.clone(), owner.clone());
 
         let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
+        frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
         // Owner can issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner),
@@ -191,7 +161,7 @@ fn test_tech_account_can_pass_check_permission() {
             &account_id,
             &non_owner,
             &asset_id,
-            &ISSUE_SBT
+            &TRANSFER
         ));
     })
 }
@@ -205,7 +175,7 @@ fn test_unregulated_asset_can_pass_check_permission() {
 
         // Unregulated asset can pass permission check
         assert_ok!(RegulatedAssets::check_permission(
-            &owner, &non_owner, &asset_id, &ISSUE_SBT
+            &owner, &non_owner, &asset_id, &TRANSFER
         ));
     })
 }
@@ -219,10 +189,10 @@ fn test_sbt_only_operationable_by_its_owner() {
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
 
-        // Assign permission to owner
-        assign_issue_sbt_permission::<TestRuntime>(owner.clone(), owner.clone());
         let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let bounded_vec_assets = BoundedVec::try_from(vec![XOR]).unwrap();
+
+        frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
         // Issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
@@ -250,7 +220,7 @@ fn test_sbt_only_operationable_by_its_owner() {
 
         // SBT operations by non-owner should fail
         assert_err!(
-            RegulatedAssets::check_permission(&non_owner, &non_owner, &sbt_asset_id, &ISSUE_SBT),
+            RegulatedAssets::check_permission(&non_owner, &non_owner, &sbt_asset_id, &TRANSFER),
             Error::<TestRuntime>::SoulboundAssetNotOperationable
         );
 
@@ -273,9 +243,6 @@ fn test_check_permission_pass_only_if_all_invloved_accounts_have_sbt() {
         let another_account = AccountId32::from([3u8; 32]);
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
-
-        // Assign permission to owner
-        assign_issue_sbt_permission::<TestRuntime>(owner.clone(), owner.clone());
 
         // Regulate an asset
         let asset_id = add_asset::<TestRuntime>(&owner);
@@ -357,10 +324,9 @@ fn test_sbt_cannot_be_transferred() {
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
 
-        // Assign permission to owner
-        assign_issue_sbt_permission::<TestRuntime>(owner.clone(), owner.clone());
         let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let bounded_vec_assets = BoundedVec::try_from(vec![XOR]).unwrap();
+        frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
         // Owner can issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),

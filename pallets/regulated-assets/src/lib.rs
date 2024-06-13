@@ -50,7 +50,7 @@ pub mod weights;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
-    permissions::{PermissionId, ISSUE_SBT, TRANSFER},
+    permissions::{PermissionId, TRANSFER},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
     BalancePrecision, ContentSource, Description,
 };
@@ -61,7 +61,6 @@ use sp_std::vec::Vec;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type Permissions<T> = permissions::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;
 type Timestamp<T> = pallet_timestamp::Pallet<T>;
 pub use pallet::*;
@@ -100,11 +99,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + common::Config
-        + permissions::Config
-        + technical::Config
-        + pallet_timestamp::Config
+        frame_system::Config + common::Config + technical::Config + pallet_timestamp::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -193,9 +188,6 @@ pub mod pallet {
             allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-
-            // Check permission `who` can issue SBT
-            Permissions::<T>::check_permission(who.clone(), ISSUE_SBT)?;
 
             let now_timestamp = Timestamp::<T>::now();
             if let Some(expires_at) = expires_at {
