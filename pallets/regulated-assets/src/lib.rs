@@ -170,10 +170,14 @@ pub mod pallet {
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `symbol`: The symbol of the SBT which should represent string with only uppercase latin chars with max length of 7.
-        /// - `name`: The name of the SBT should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
-        /// - `allowed_assets`: TThe list of assets allowed to be operated with by holding the SBT.
+        /// - `token_id`: The unique identifier for the SBT.
+        /// - `symbol`: The symbol of the SBT which should represent a string with only uppercase Latin characters with a maximum length of 7.
+        /// - `name`: The name of the SBT which should represent a string with only uppercase or lowercase Latin characters, numbers, or spaces, with a maximum length of 33.
         /// - `description`: The description of the SBT. (Optional)
+        /// - `image`: The URL or identifier for the image associated with the SBT. (Optional)
+        /// - `external_url`: The URL pointing to an external resource related to the SBT. (Optional)
+        /// - `expires_at`: The timestamp indicating when the SBT expires. (Optional)
+        /// - `allowed_assets`: The list of assets allowed to be operated with by holding the SBT.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
         pub fn issue_sbt(
