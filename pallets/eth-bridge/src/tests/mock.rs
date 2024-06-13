@@ -44,8 +44,9 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_assets_config, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
-    DEXId, LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -273,32 +274,12 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
     }
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
@@ -346,40 +327,8 @@ where
     type OverarchingCall = RuntimeCall;
 }
 
-mock_pallet_balances_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-mock_assets_config!(Runtime);
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
