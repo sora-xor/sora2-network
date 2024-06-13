@@ -1230,7 +1230,7 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100),
+                balance!(80),
                 balance!(0.8)
             ));
 
@@ -4227,16 +4227,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100),
-                balance!(1)
+                balance!(80),
+                balance!(0.8)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
                 DAI,
                 XOR,
-                balance!(100),
-                balance!(1)
+                balance!(80),
+                balance!(0.8)
             ));
 
             let dot_collateral_asset_pool_info_before_lq =
@@ -4254,33 +4254,33 @@ mod test {
 
             assert_eq!(
                 borrow_user_info_dot_coll_before_lq.collateral_amount,
-                balance!(125)
+                balance!(100)
             );
             assert_eq!(
                 borrow_user_info_dai_coll_before_lq.collateral_amount,
-                balance!(1250)
+                balance!(1000)
             );
 
-            assert_eq!(borrowing_pool_before_lq.total_borrowed, balance!(200));
+            assert_eq!(borrowing_pool_before_lq.total_borrowed, balance!(160));
 
             assert_eq!(
                 dot_collateral_asset_pool_info_before_lq.total_collateral,
-                balance!(125)
+                balance!(100)
             );
 
             assert_eq!(
                 dai_collateral_asset_pool_info_before_lq.total_collateral,
-                balance!(1250)
+                balance!(1000)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
-                balance!(200)
+                balance!(160)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account()).unwrap(),
-                balance!(299800)
+                balance!(299840)
             );
 
             assert_eq!(
@@ -4310,10 +4310,10 @@ mod test {
             ));
 
             let (treasury_reserve_dot, _, developer_amount_dot) =
-                calculate_reserve_amounts(DOT, balance!(25));
+                calculate_reserve_amounts(DOT, balance!(20));
 
             let (treasury_reserve_dai, _, developer_amount_dai) =
-                calculate_reserve_amounts(DAI, balance!(250));
+                calculate_reserve_amounts(DAI, balance!(200));
 
             let borrowing_asset_pool_info_after_lq = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
@@ -4332,7 +4332,7 @@ mod test {
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&DAI, &get_pallet_account()).unwrap(),
-                balance!(250)
+                balance!(500)
             );
 
             assert_eq!(
@@ -4384,7 +4384,7 @@ mod test {
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID, &exchange_account())
                     .unwrap(),
-                balance!(998)
+                balance!(998.4)
             );
         });
     }
