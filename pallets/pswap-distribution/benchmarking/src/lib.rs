@@ -79,7 +79,7 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
 fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
     #[cfg(not(test))]
     {
-        use common::{XOR, XST};
+        use common::{TBCD, XOR, XST};
         let authority = alice::<T>();
         pool_xyk::Pallet::<T>::initialize_pool(
             RawOrigin::Signed(authority.clone()).into(),
@@ -95,9 +95,17 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
             XST.into(),
         )
         .unwrap();
+        pool_xyk::Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            TBCD.into(),
+        )
+        .unwrap();
         T::AssetManager::mint_to(&XOR.into(), &authority, &authority, balance!(20000)).unwrap();
         T::AssetManager::mint_to(&XST.into(), &authority, &authority, balance!(100000)).unwrap();
         T::AssetManager::mint_to(&PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
+        T::AssetManager::mint_to(&TBCD.into(), &authority, &authority, balance!(1000000)).unwrap();
         pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
             authority.clone(),
             common::DEXId::Polkaswap.into(),
@@ -114,6 +122,17 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
             common::DEXId::Polkaswap.into(),
             XOR.into(),
             PSWAP.into(),
+            balance!(10000),
+            balance!(1000000),
+            balance!(10000),
+            balance!(1000000),
+        )
+        .unwrap();
+        pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
+            authority.clone(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            TBCD.into(),
             balance!(10000),
             balance!(1000000),
             balance!(10000),
