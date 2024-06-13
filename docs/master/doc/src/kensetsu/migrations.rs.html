@@ -448,6 +448,11 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -731,16 +736,21 @@
                 );
                 weight += &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().writes(<span class="number">1</span>);
 
-                <span class="kw">for </span>(collateral_asset_id, old_collateral_info) <span class="kw">in </span>v1::CollateralInfos::&lt;T&gt;::drain()
-                {
-                    CollateralInfos::&lt;T&gt;::insert(
-                        StablecoinCollateralIdentifier {
-                            collateral_asset_id,
-                            stablecoin_asset_id: AssetIdOf::&lt;T&gt;::from(KUSD),
-                        },
-                        old_collateral_info.into_v2(),
-                    );
-                    weight += &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().writes(<span class="number">1</span>);
+                <span class="kw">let </span>collateral_infos: sp_std::vec::Vec&lt;<span class="kw">_</span>&gt; = v1::CollateralInfos::&lt;T&gt;::drain()
+                    .map(|(collateral_asset_id, old_collateral_info)| {
+                        weight += &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().writes(<span class="number">1</span>);
+
+                        (
+                            StablecoinCollateralIdentifier {
+                                collateral_asset_id,
+                                stablecoin_asset_id: AssetIdOf::&lt;T&gt;::from(KUSD),
+                            },
+                            old_collateral_info.into_v2(),
+                        )
+                    })
+                    .collect();
+                <span class="kw">for </span>(stablecoin_identifier, collateral_info) <span class="kw">in </span>collateral_infos {
+                    CollateralInfos::&lt;T&gt;::insert(stablecoin_identifier, collateral_info);
                 }
 
                 v1::CDPDepository::&lt;T&gt;::translate(
