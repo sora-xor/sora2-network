@@ -341,13 +341,29 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         }
 
         let sbts = Self::sbts_by_asset(asset_id);
-
+        let now_timestamp = Timestamp::<T>::now();
         let issuer_has_sbt = sbts.iter().any(|sbt| {
+            if let Some(metadata) = Self::soulbound_asset(sbt) {
+                // Check if the asset has an expiration date and if it has expired
+                if let Some(expires_at) = metadata.expires_at {
+                    if expires_at < now_timestamp {
+                        return false;
+                    }
+                }
+            }
             <T as Config>::AssetInfoProvider::total_balance(sbt, issuer)
                 .map_or(false, |balance| balance > 0)
         });
 
         let affected_account_has_sbt = sbts.iter().any(|sbt| {
+            if let Some(metadata) = Self::soulbound_asset(sbt) {
+                // Check if the asset has an expiration date and if it has expired
+                if let Some(expires_at) = metadata.expires_at {
+                    if expires_at < now_timestamp {
+                        return false;
+                    }
+                }
+            }
             <T as Config>::AssetInfoProvider::total_balance(sbt, affected_account)
                 .map_or(false, |balance| balance > 0)
         });
