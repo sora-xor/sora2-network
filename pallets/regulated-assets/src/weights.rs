@@ -84,26 +84,28 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	
-	/// Storage: Permissions Permissions (r:4 w:1)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Timestamp Now (r:1 w:0)
+	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	/// Storage: Assets AssetOwners (r:1 w:1)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Owners (r:2 w:2)
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Permissions Permissions (r:3 w:1)
+	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
 	/// Storage: RegulatedAssets SBTsByAsset (r:1 w:1)
-	/// Proof Skipped: RegulatedAssets SBTsByAsset (max_values: None, max_size: None, mode: Measured)
+	/// Proof: RegulatedAssets SBTsByAsset (max_values: None, max_size: Some(320034), added: 322509, mode: MaxEncodedLen)
 	/// Storage: RegulatedAssets SoulboundAsset (r:0 w:1)
-	/// Proof Skipped: RegulatedAssets SoulboundAsset (max_values: None, max_size: None, mode: Measured)
+	/// Proof: RegulatedAssets SoulboundAsset (max_values: None, max_size: Some(326775), added: 329250, mode: MaxEncodedLen)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	fn issue_sbt() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2294`
-		//  Estimated: `36167`
-		// Minimum execution time: 97_000 nanoseconds.
-		Weight::from_parts(108_000_000, 36167)
+		//  Measured:  `2435`
+		//  Estimated: `350205`
+		// Minimum execution time: 89_000 nanoseconds.
+		Weight::from_parts(94_000_000, 350205)
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().writes(8))
 	}
@@ -119,9 +121,9 @@ impl WeightInfo for () {
     }
 	
 	fn issue_sbt() -> Weight {
-		Weight::from_parts(124_000_000, 44201)
-			.saturating_add(RocksDbWeight::get().reads(11))
-			.saturating_add(RocksDbWeight::get().writes(10))
+		Weight::from_parts(94_000_000, 350205)
+			.saturating_add(RocksDbWeight::get().reads(9))
+			.saturating_add(RocksDbWeight::get().writes(8))
 	}
 }
 
