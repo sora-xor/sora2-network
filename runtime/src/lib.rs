@@ -1011,12 +1011,8 @@ parameter_type_with_key! {
 
 parameter_type_with_key! {
     pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
-        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
-            if base_asset_id == &common::XOR {
-                Some(common::KXOR)
-            } else {
-                None
-            }
+        if base_asset_id == &common::XOR {
+            Some(common::KXOR)
         } else {
             None
         }
@@ -1025,11 +1021,7 @@ parameter_type_with_key! {
 
 parameter_type_with_key! {
     pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
-        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
-            tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
-        } else {
-            false
-        }
+        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
     };
 }
 
