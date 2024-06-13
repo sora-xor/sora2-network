@@ -47,7 +47,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
-use hex_literal::hex;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
@@ -316,6 +315,11 @@ parameter_types! {
     pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
     pub const GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
+}
+
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBuyBackAssetId: AssetId = XST;
 }
 
 mock_assets_config!(TestRuntime);

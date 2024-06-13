@@ -281,7 +281,7 @@ pub mod v1_to_v2 {
                 );
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
-                let collateral_infos: Vec<_> = v1::CollateralInfos::<T>::drain()
+                let collateral_infos: sp_std::vec::Vec<_> = v1::CollateralInfos::<T>::drain()
                     .map(|(collateral_asset_id, old_collateral_info)| {
                         weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 

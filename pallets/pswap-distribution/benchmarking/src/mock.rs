@@ -31,10 +31,10 @@
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    balance, fixed, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, FromGenericPair,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VAL, XOR,
+    balance, fixed, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -86,7 +86,7 @@ pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
 
 parameter_types! {
     pub GetBaseAssetId: AssetId = XOR.into();
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub const PoolTokenAId: AssetId = common::AssetId32::from_bytes(hex!("0211110000000000000000000000000000000000000000000000000000000000"));
     pub const PoolTokenBId: AssetId = common::AssetId32::from_bytes(hex!("0222220000000000000000000000000000000000000000000000000000000000"));
     pub const BlockHashCount: u64 = 250;
@@ -149,6 +149,7 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 impl Config for Runtime {}
 
@@ -179,31 +180,6 @@ impl permissions::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -302,7 +278,7 @@ impl ExtBuilder {
                     None,
                 ),
                 (
-                    common::PSWAP.into(),
+                    PSWAP.into(),
                     alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
@@ -354,7 +330,7 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         ExtBuilder::with_accounts(vec![
             (fees_account_a(), XOR.into(), balance!(1)),
-            (fees_account_a(), common::PSWAP.into(), balance!(6)),
+            (fees_account_a(), PSWAP.into(), balance!(6)),
         ])
     }
 }
