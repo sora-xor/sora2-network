@@ -331,19 +331,21 @@ impl<T: Config>
         T::DexInfoProvider::ensure_dex_exists(&filter.dex_id)?;
         Ok(supported_types
             .iter()
-            .filter_map(|source_type| match filter.matches_index(*source_type) {
-                true if Self::can_exchange(
-                    &LiquiditySourceId::new(filter.dex_id, *source_type),
-                    input_asset_id,
-                    output_asset_id,
-                ) =>
+            .filter_map(|source_type| {
+                if filter.matches_index(*source_type)
+                    && Self::can_exchange(
+                        &LiquiditySourceId::new(filter.dex_id, *source_type),
+                        input_asset_id,
+                        output_asset_id,
+                    )
                 {
                     Some(LiquiditySourceId::new(
                         filter.dex_id.clone(),
                         source_type.clone(),
                     ))
+                } else {
+                    None
                 }
-                _ => None,
             })
             .collect())
     }
