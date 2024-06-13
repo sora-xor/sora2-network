@@ -1289,27 +1289,3 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
         self.0.cmp(&other.0)
     }
 }
-
-#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    RuntimeDebug,
-    Default,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
-#[repr(u8)]
-pub enum TokenType {
-    #[default]
-    /// Utility Token
-    UT = 0,
-    /// Security Token e.g. SBT
-    ST = 1,
-}
