@@ -5,8 +5,8 @@ WORKDIR /app
 RUN adduser -DH appuser && \
     chown -R appuser:appuser /app
 
-COPY ./misc/runtime_upgrade/main.py \
-    ./misc/runtime_upgrade/requirements.txt /app/
+COPY ./misc/open_hrmp_channel/main.py \
+    ./misc/open_hrmp_channel/requirements.txt /app/
 
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
