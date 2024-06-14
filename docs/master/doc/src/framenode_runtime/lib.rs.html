@@ -3475,14 +3475,6 @@
 <a href="#3460" id="3460">3460</a>
 <a href="#3461" id="3461">3461</a>
 <a href="#3462" id="3462">3462</a>
-<a href="#3463" id="3463">3463</a>
-<a href="#3464" id="3464">3464</a>
-<a href="#3465" id="3465">3465</a>
-<a href="#3466" id="3466">3466</a>
-<a href="#3467" id="3467">3467</a>
-<a href="#3468" id="3468">3468</a>
-<a href="#3469" id="3469">3469</a>
-<a href="#3470" id="3470">3470</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3738,10 +3730,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">86</span>,
+    spec_version: <span class="number">87</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">86</span>,
+    transaction_version: <span class="number">87</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4496,12 +4488,8 @@
 
 <span class="macro">parameter_type_with_key! </span>{
     <span class="kw">pub </span>GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;AssetId&gt; {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;ready-to-test&quot;</span>) { <span class="comment">// tokenomics-upgrade
-            </span><span class="kw">if </span>base_asset_id == <span class="kw-2">&amp;</span>common::XOR {
-                <span class="prelude-val">Some</span>(common::KXOR)
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
+        <span class="kw">if </span>base_asset_id == <span class="kw-2">&amp;</span>common::XOR {
+            <span class="prelude-val">Some</span>(common::KXOR)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
@@ -4510,11 +4498,7 @@
 
 <span class="macro">parameter_type_with_key! </span>{
     <span class="kw">pub </span>GetChameleonPool: |tpair: common::TradingPair&lt;AssetId&gt;| -&gt; bool {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;ready-to-test&quot;</span>) { <span class="comment">// tokenomics-upgrade
-            </span>tpair.base_asset_id == common::XOR &amp;&amp; tpair.target_asset_id == common::ETH
-        } <span class="kw">else </span>{
-            <span class="bool-val">false
-        </span>}
+        tpair.base_asset_id == common::XOR &amp;&amp; tpair.target_asset_id == common::ETH
     };
 }
 
