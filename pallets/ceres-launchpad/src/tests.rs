@@ -3216,9 +3216,11 @@ fn claim_lp_tokens_ok() {
             pool_xyk::Pallet::<Runtime>::properties_of_pool(base_asset, CERES_ASSET_ID)
                 .expect("Pool doesn't exist")
                 .0;
-        let lp_tokens =
-            pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(pool_account, pallet_account)
-                .unwrap_or(0);
+        let lp_tokens = pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(
+            pool_account.clone(),
+            pallet_account,
+        )
+        .unwrap_or(0);
 
         assert_eq!(lp_tokens, balance!(0));
 
@@ -3298,9 +3300,11 @@ fn claim_lp_tokens_base_asset_xstusd_ok() {
             pool_xyk::Pallet::<Runtime>::properties_of_pool(base_asset, CERES_ASSET_ID)
                 .expect("Pool doesn't exist")
                 .0;
-        let lp_tokens =
-            pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(pool_account, pallet_account)
-                .unwrap_or(0);
+        let lp_tokens = pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(
+            pool_account.clone(),
+            pallet_account,
+        )
+        .unwrap_or(0);
 
         assert_eq!(lp_tokens, balance!(0));
 
@@ -3443,9 +3447,9 @@ fn claim_pswap_rewards_ok() {
 
         run_to_block(20000);
 
-        let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
+        let pallet_account: AccountId = PalletId(*b"crslaunc").into_account_truncating();
         let share = FixedWrapper::from(1.00).get().unwrap();
-        ShareholderAccounts::<Runtime>::mutate(pallet_account, |current| {
+        ShareholderAccounts::<Runtime>::mutate(pallet_account.clone(), |current| {
             *current = current.saturating_add(share)
         });
         ClaimableShares::<Runtime>::mutate(|current| *current = current.saturating_add(share));

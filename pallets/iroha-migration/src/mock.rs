@@ -33,34 +33,37 @@ use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol,
-    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XST,
+    balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{self, Perbill};
 
 type DEXId = common::DEXId;
-type AccountId = u64;
+type AccountId = AccountId32;
+type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CHARLIE: AccountId = 3;
-pub const MINTING_ACCOUNT: AccountId = 4;
-pub const REFERRALS_RESERVES_ACC: AccountId = 22;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub const ALICE: AccountId = AccountId::new([1; 32]);
+pub const BOB: AccountId = AccountId::new([2; 32]);
+pub const CHARLIE: AccountId = AccountId::new([3; 32]);
+pub const MINTING_ACCOUNT: AccountId = AccountId::new([4; 32]);
+pub const REFERRALS_RESERVES_ACC: AccountId = AccountId::new([22; 32]);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -93,104 +96,22 @@ construct_runtime!(
     }
 );
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
-
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_technical_config!(Runtime);
+// Required by assets::Config
+mock_currencies_config!(Runtime);
+// Required by currencies::Config
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 parameter_types! {
-    pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
-    pub GetBuyBackSupplyAssets: Vec<common::AssetId32<PredefinedAssetId>> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = u64;
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
-    type AssetId = common::AssetId32<PredefinedAssetId>;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
+    pub const GetBuyBackAssetId: AssetId = XST;
 }
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-}
-
-// Required by assets::Config
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 impl referrals::Config for Runtime {
@@ -265,7 +186,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     tokens::GenesisConfig::<Runtime> {
         balances: vec![
             (ALICE, VAL, 0u128.into()),
-            (eth_bridge_account_id, VAL, balance!(1000)),
+            (eth_bridge_account_id.clone(), VAL, balance!(1000)),
         ],
     }
     .assimilate_storage(&mut t)

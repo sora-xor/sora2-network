@@ -33,16 +33,17 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, hash, mock_pallet_balances_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, Description, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
+    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
+    KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
-use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -95,7 +96,6 @@ pub fn eve() -> AccountId {
 pub fn initial_assets_owner() -> AccountId {
     AccountId32::from([4u8; 32])
 }
-pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub struct MockLiquidityProxy;
@@ -131,6 +131,14 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
@@ -152,33 +160,6 @@ parameter_types! {
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
-
 impl Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 14400;
     type RuntimeEvent = RuntimeEvent;
@@ -189,78 +170,13 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-type DEXId = u32;
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = 0;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -280,6 +196,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -310,6 +227,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = common::mock::GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
@@ -329,8 +248,6 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = ();
 }
-
-mock_pallet_balances_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -423,7 +340,7 @@ impl Default for ExtBuilder {
             ],
             endowed_accounts: vec![],
             dex_list: vec![(
-                DEX_ID,
+                DEXId::Polkaswap,
                 DEXInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
@@ -432,11 +349,19 @@ impl Default for ExtBuilder {
             )],
             initial_permission_owners: vec![
                 (INIT_DEX, Scope::Unlimited, vec![alice()]),
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_ID)), vec![alice()]),
+                (
+                    MANAGE_DEX,
+                    Scope::Limited(hash(&DEXId::Polkaswap)),
+                    vec![alice()],
+                ),
             ],
             initial_permissions: vec![
                 (alice(), Scope::Unlimited, vec![INIT_DEX]),
-                (alice(), Scope::Limited(hash(&DEX_ID)), vec![MANAGE_DEX]),
+                (
+                    alice(),
+                    Scope::Limited(hash(&DEXId::Polkaswap)),
+                    vec![MANAGE_DEX],
+                ),
             ],
         }
     }

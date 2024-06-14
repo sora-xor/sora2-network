@@ -51,7 +51,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     fn prepare_and_validate(
         &mut self,
         source_opt: Option<&AccountIdOf<T>>,
-        _base_asset_id: &AssetIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
         let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::is_abstract_checking(self);
 
@@ -110,15 +110,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             Err(Error::<T>::AccountBalanceIsInvalid)?;
         }
 
-        // Balance of pool account for asset pair basic asset.
-        let balance_bp = <T as Config>::AssetInfoProvider::free_balance(
+        let (balance_bp, balance_tp, _max_output_available) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
             &self.source.0.asset,
-            &pool_account_repr_sys,
-        )?;
-        // Balance of pool account for asset pair target asset.
-        let balance_tp = <T as Config>::AssetInfoProvider::free_balance(
             &self.source.1.asset,
-            &pool_account_repr_sys,
         )?;
 
         let mut empty_pool = false;
@@ -312,7 +308,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(
+            let pair = Pallet::<T>::get_trading_pair(
                 base_asset_id,
                 &self.source.0.asset,
                 &self.source.1.asset,
@@ -322,13 +318,11 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             });
         }
         Pallet::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
-        let balance_a = <T as Config>::AssetInfoProvider::free_balance(
+        let (balance_a, balance_b, _max_output_available) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
             &self.source.0.asset,
-            &pool_account_repr_sys,
-        )?;
-        let balance_b = <T as Config>::AssetInfoProvider::free_balance(
             &self.source.1.asset,
-            &pool_account_repr_sys,
         )?;
         Pallet::<T>::update_reserves(
             base_asset_id,

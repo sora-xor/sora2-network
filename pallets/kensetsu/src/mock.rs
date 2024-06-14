@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as kensetsu;
+use std::collections::BTreeSet;
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
@@ -36,16 +37,16 @@ use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, PriceToolsProvider,
-    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, KEN, KUSD, XOR, XST,
+    AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
+    PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
+    DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU16, ConstU64, Everything, GenesisBuild, Randomness};
+use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
-use hex_literal::hex;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
@@ -79,6 +80,10 @@ impl Randomness<Option<Hash>, BlockNumber> for MockRandomness {
 pub struct MockPriceTools;
 
 impl PriceToolsProvider<AssetId> for MockPriceTools {
+    fn is_asset_registered(_asset_id: &AssetId) -> bool {
+        true
+    }
+
     /// Returns `asset_id` price is $1
     fn get_average_price(
         _input_asset_id: &AssetId,
@@ -88,9 +93,9 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
         Ok(balance!(1))
     }
 
-    /// Method not used
+    /// Mocks asset id registration in PriceToolsProvider.
     fn register_asset(_asset_id: &AssetId) -> DispatchResult {
-        unimplemented!()
+        Ok(())
     }
 }
 
@@ -126,20 +131,21 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
-        if *output_asset_id == KUSD {
-            let amount =
-                assets::Pallet::<TestRuntime>::free_balance(&KUSD, &Self::EXCHANGE_TECH_ACCOUNT)
-                    .expect("must succeed");
-            Ok(SwapOutcome::new(amount, Default::default()))
-        } else if *output_asset_id == KEN {
-            let amount =
-                assets::Pallet::<TestRuntime>::free_balance(&KEN, &Self::EXCHANGE_TECH_ACCOUNT)
-                    .expect("must succeed");
-            Ok(SwapOutcome::new(amount, Default::default()))
-        } else {
+        if *output_asset_id != KUSD
+            && *output_asset_id != KEN
+            && *output_asset_id != KARMA
+            && *output_asset_id != TBCD
+        {
             Err(DispatchError::Other(
-                "Wrong asset id for MockLiquidityProxy::quote, KUSD and KEN only supported",
+                "Wrong asset id for MockLiquidityProxy::quote, KUSD, KEN, KARMA, TBCD only supported",
             ))
+        } else {
+            let amount = assets::Pallet::<TestRuntime>::free_balance(
+                output_asset_id,
+                &Self::EXCHANGE_TECH_ACCOUNT,
+            )
+            .expect("must succeed");
+            Ok(SwapOutcome::new(amount, Default::default()))
         }
     }
 
@@ -155,9 +161,13 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         _amount: SwapAmount<common::Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
-        if *output_asset_id != KUSD && *output_asset_id != KEN {
+        if *output_asset_id != KUSD
+            && *output_asset_id != KEN
+            && *output_asset_id != KARMA
+            && *output_asset_id != TBCD
+        {
             Err(DispatchError::Other(
-                "Wrong asset id for MockLiquidityProxy::exchange, KUSD and KEN only supported",
+                "Wrong asset id for MockLiquidityProxy::exchange, KUSD, KEN, KARMA, TBCD only supported",
             ))
         } else {
             let swap_amount = assets::Pallet::<TestRuntime>::free_balance(
@@ -178,6 +188,85 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             )?;
             Ok(SwapOutcome::new(swap_amount, Default::default()))
         }
+    }
+}
+
+pub struct MockOracle;
+
+impl DataFeed<SymbolName, Rate, u64> for MockOracle {
+    fn quote(symbol: &SymbolName) -> Result<Option<Rate>, DispatchError> {
+        if *symbol == SymbolName::xau() {
+            Ok(Some(Rate {
+                value: balance!(2500),
+                last_updated: 0,
+                dynamic_fee: Default::default(),
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn list_enabled_symbols() -> Result<Vec<(SymbolName, u64)>, DispatchError> {
+        Ok(vec![(SymbolName::xau(), 0)])
+    }
+
+    fn quote_unchecked(_symbol: &SymbolName) -> Option<Rate> {
+        unimplemented!();
+    }
+}
+
+pub struct MockTradingPairSourceManager;
+
+impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
+    fn list_enabled_sources_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        unimplemented!();
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn enable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Ok(())
+    }
+
+    fn disable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        unimplemented!();
+    }
+
+    fn is_trading_pair_enabled(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<bool, DispatchError> {
+        Ok(false)
+    }
+
+    fn register_pair(
+        _dex_id: DEXId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
     }
 }
 
@@ -221,9 +310,16 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.")
     };
     pub const KenAssetId: AssetId = KEN;
-    pub const KusdAssetId: AssetId = KUSD;
+    pub const KarmaAssetId: AssetId = KARMA;
+    pub const TbcdAssetId: AssetId = TBCD;
     pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub const GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
+}
+
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBuyBackAssetId: AssetId = XST;
 }
 
 mock_assets_config!(TestRuntime);
@@ -232,20 +328,24 @@ mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
-mock_technical_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
+mock_technical_config!(TestRuntime);
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = MockRandomness;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = MockPriceTools;
     type LiquidityProxy = MockLiquidityProxy;
+    type Oracle = MockOracle;
+    type TradingPairSourceManager = MockTradingPairSourceManager;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = TbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = ConstU64<100>;
@@ -323,6 +423,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
             ),
             (
+                TBCD,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"TBCD Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
                 DAI,
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"DAI".to_vec()),
@@ -337,7 +448,18 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 KEN,
                 assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KEN".to_vec()),
-                AssetName(b"Kensetsu token".to_vec()),
+                AssetName(b"KEN token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KARMA,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"KARMA".to_vec()),
+                AssetName(b"KARMA token".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
@@ -346,9 +468,31 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             ),
             (
                 KUSD,
-                assets_and_permissions_account_id,
+                assets_and_permissions_account_id.clone(),
                 AssetSymbol(b"KUSD".to_vec()),
                 AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KGOLD,
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"KGOLD".to_vec()),
+                AssetName(b"Kensetsu ounce of gold".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                KXOR,
+                assets_and_permissions_account_id,
+                AssetSymbol(b"KXOR".to_vec()),
+                AssetName(b"Kensetsu Stable XOR".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,

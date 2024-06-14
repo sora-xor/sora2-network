@@ -101,7 +101,13 @@ const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 /// Possible exchange paths for two assets.
 #[derive(Clone)]
-pub struct ExchangePath<T: Config>(Vec<AssetIdOf<T>>);
+pub struct ExchangePath<T: Config>(pub(crate) Vec<AssetIdOf<T>>);
+
+impl<T: Config> core::fmt::Debug for ExchangePath<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list().entries(self.0.iter()).finish()
+    }
+}
 
 #[derive(Debug, Eq, PartialEq)]
 enum AssetType {
@@ -109,6 +115,8 @@ enum AssetType {
     SyntheticBase,
     Basic,
     Synthetic,
+    ChameleonBase,
+    ChameleonPoolAsset,
 }
 
 impl AssetType {
@@ -117,12 +125,27 @@ impl AssetType {
         synthetic_assets: &BTreeSet<AssetIdOf<T>>,
         asset_id: AssetIdOf<T>,
     ) -> Self {
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
+                &dex_info.base_asset_id,
+            );
         if asset_id == dex_info.base_asset_id {
             AssetType::Base
         } else if asset_id == dex_info.synthetic_base_asset_id {
             AssetType::SyntheticBase
         } else if synthetic_assets.contains(&asset_id) {
             AssetType::Synthetic
+        } else if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
+            if asset_id == base_chameleon_asset_id {
+                AssetType::ChameleonBase
+            } else if <T::GetChameleonPool as traits::GetByKey<_, _>>::get(&common::TradingPair {
+                base_asset_id: dex_info.base_asset_id,
+                target_asset_id: asset_id,
+            }) {
+                AssetType::ChameleonPoolAsset
+            } else {
+                AssetType::Basic
+            }
         } else {
             AssetType::Basic
         }
@@ -135,6 +158,136 @@ macro_rules! forward_or_backward {
     };
 }
 
+struct PathBuilder<T: Config> {
+    pub paths: Vec<ExchangePath<T>>,
+    pub input_asset_id: AssetIdOf<T>,
+    pub output_asset_id: AssetIdOf<T>,
+    pub base_asset_id: AssetIdOf<T>,
+    pub synthetic_base_asset_id: AssetIdOf<T>,
+    pub base_chameleon_asset_id: Option<AssetIdOf<T>>,
+}
+
+impl<T: Config> core::fmt::Debug for PathBuilder<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PathBuilder")
+            .field("paths", &self.paths)
+            .field("input_asset_id", &self.input_asset_id)
+            .field("output_asset_id", &self.output_asset_id)
+            .field("base_asset_id", &self.base_asset_id)
+            .field("synthetic_base_asset_id", &self.synthetic_base_asset_id)
+            .field("base_chameleon_asset_id", &self.base_chameleon_asset_id)
+            .finish()
+    }
+}
+
+impl<T: Config> PathBuilder<T> {
+    pub fn direct(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_synthetic_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.synthetic_base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+    pub fn via_base_and_synthetic_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.base_asset_id,
+            self.synthetic_base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_synthetic_base_and_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.synthetic_base_asset_id,
+            self.base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_base_chameleon(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                base_chameleon_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_base_and_base_chameleon(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                self.base_asset_id,
+                base_chameleon_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_base_chameleon_and_base(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                base_chameleon_asset_id,
+                self.base_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_base_chameleon_and_base_and_synthetic_base(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                base_chameleon_asset_id,
+                self.base_asset_id,
+                self.synthetic_base_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_synthetic_base_and_base_and_base_chameleon(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                self.synthetic_base_asset_id,
+                self.base_asset_id,
+                base_chameleon_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+}
+
 impl<T: Config> ExchangePath<T> {
     pub fn new_trivial(
         dex_info: &DEXInfo<AssetIdOf<T>>,
@@ -143,74 +296,79 @@ impl<T: Config> ExchangePath<T> {
     ) -> Option<Vec<Self>> {
         use AssetType::*;
 
+        if input_asset_id == output_asset_id {
+            return None;
+        }
+
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
+                &dex_info.base_asset_id,
+            );
+
+        let mut path_builder = PathBuilder::<T> {
+            input_asset_id,
+            output_asset_id,
+            paths: Vec::new(),
+            base_asset_id: dex_info.base_asset_id,
+            synthetic_base_asset_id: dex_info.synthetic_base_asset_id,
+            base_chameleon_asset_id,
+        };
 
         match (input_type, output_type) {
-            forward_or_backward!(Base, Basic) | forward_or_backward!(Base, SyntheticBase) => {
-                Some(vec![Self(vec![input_asset_id, output_asset_id])])
+            forward_or_backward!(Base, Basic)
+            | forward_or_backward!(Base, SyntheticBase)
+            | forward_or_backward!(Base, ChameleonBase) => path_builder.direct(),
+            forward_or_backward!(SyntheticBase, Synthetic) => path_builder.direct().via_base(),
+            (Basic, Basic)
+            | forward_or_backward!(SyntheticBase, Basic)
+            | forward_or_backward!(ChameleonBase, SyntheticBase)
+            | forward_or_backward!(Basic, ChameleonBase) => path_builder.via_base(),
+            (Synthetic, Synthetic) => path_builder.via_synthetic_base().via_base(),
+            forward_or_backward!(Base, Synthetic) => path_builder.direct().via_synthetic_base(),
+            (Basic, Synthetic) | (ChameleonBase, Synthetic) => {
+                path_builder.via_base().via_base_and_synthetic_base()
             }
-            forward_or_backward!(SyntheticBase, Synthetic) => Some(vec![
-                Self(vec![input_asset_id, output_asset_id]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Basic, Basic) | forward_or_backward!(SyntheticBase, Basic) => Some(vec![Self(vec![
-                input_asset_id,
-                dex_info.base_asset_id,
-                output_asset_id,
-            ])]),
-            (Synthetic, Synthetic) => Some(vec![
-                Self(vec![
-                    input_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    output_asset_id,
-                ]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            forward_or_backward!(Base, Synthetic) => Some(vec![
-                Self(vec![input_asset_id, output_asset_id]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Basic, Synthetic) => Some(vec![
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    output_asset_id,
-                ]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Synthetic, Basic) => Some(vec![
-                Self(vec![
-                    input_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Base, Base) | (SyntheticBase, SyntheticBase) => None,
+            (Synthetic, Basic) | (Synthetic, ChameleonBase) => {
+                path_builder.via_base().via_synthetic_base_and_base()
+            }
+            forward_or_backward!(ChameleonPoolAsset, ChameleonBase) => {
+                path_builder.direct().via_base()
+            }
+            forward_or_backward!(Base, ChameleonPoolAsset) => {
+                path_builder.direct().via_base_chameleon()
+            }
+            (SyntheticBase, ChameleonPoolAsset) | (Basic, ChameleonPoolAsset) => {
+                path_builder.via_base().via_base_and_base_chameleon()
+            }
+            (ChameleonPoolAsset, SyntheticBase) | (ChameleonPoolAsset, Basic) => {
+                path_builder.via_base().via_base_chameleon_and_base()
+            }
+            (Synthetic, ChameleonPoolAsset) => path_builder
+                .via_base()
+                .via_synthetic_base_and_base()
+                .via_base_and_base_chameleon()
+                .via_synthetic_base_and_base_and_base_chameleon(),
+            (ChameleonPoolAsset, Synthetic) => path_builder
+                .via_base()
+                .via_base_and_synthetic_base()
+                .via_base_chameleon_and_base()
+                .via_base_chameleon_and_base_and_synthetic_base(),
+            (ChameleonPoolAsset, ChameleonPoolAsset) => path_builder
+                .via_base()
+                .via_base_chameleon_and_base()
+                .via_base_and_base_chameleon(),
+            (Base, Base) | (SyntheticBase, SyntheticBase) | (ChameleonBase, ChameleonBase) => {
+                &mut path_builder
+            }
+        };
+        frame_support::log::trace!("Found paths: {:?}", path_builder);
+        if path_builder.paths.is_empty() {
+            None
+        } else {
+            Some(path_builder.paths)
         }
     }
 }
@@ -2390,6 +2548,8 @@ pub mod pallet {
         type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
         type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
+        type GetChameleonPool: traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
