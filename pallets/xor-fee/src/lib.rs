@@ -739,7 +739,10 @@ pub mod pallet {
                 // 1 read
                 weight += T::DbWeight::get().reads(1);
                 if current_block % update_period == 0_u32.into() {
-                    match T::DynamicMultiplier::calculate_multiplier(&XOR.into(), &DAI.into()) {
+                    match T::DynamicMultiplier::calculate_multiplier(
+                        &common::XOR.into(),
+                        &common::DAI.into(),
+                    ) {
                         Ok(new_multiplier) => {
                             <crate::pallet::Multiplier<T>>::put(new_multiplier); // 1 write
                             Self::deposit_event(

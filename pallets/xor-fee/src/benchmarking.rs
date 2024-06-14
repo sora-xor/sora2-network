@@ -37,7 +37,7 @@ use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
 
 #[cfg(feature = "wip")] // Dynamic fee
-use crate::pallet::NextUpdateBlock;
+use crate::pallet::UpdatePeriod;
 use crate::{Config, Pallet};
 
 benchmarks! {
@@ -53,7 +53,7 @@ benchmarks! {
     }: _(RawOrigin::Root, Some(new_block_number))
     verify {
         #[cfg(feature = "wip")] // Dynamic fee
-        assert_eq!(<NextUpdateBlock<T>>::get(), Some(new_block_number));
+        assert_eq!(<UpdatePeriod<T>>::get(), Some(new_block_number));
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
