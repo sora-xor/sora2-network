@@ -434,26 +434,11 @@ pub trait CalculateMultiplier<AssetId, Error> {
     /// Parameters:
     /// `input_asset` is asset id which price should be fetched;
     /// `ref_asset` is asset id in which price will be fetched
-    fn fetch_price_to_reference_asset(
-        input_asset: &AssetId,
-        ref_asset: &AssetId,
-    ) -> Result<Balance, Error>;
-
-    /// Parameters:
-    /// `input_asset` is asset id which price should be fetched;
-    /// `ref_asset` is asset id in which price will be fetched
     fn calculate_multiplier(input_asset: &AssetId, ref_asset: &AssetId)
         -> Result<FixedU128, Error>;
 }
 
 impl<AssetId> CalculateMultiplier<AssetId, DispatchError> for () {
-    fn fetch_price_to_reference_asset(
-        _input_asset: &AssetId,
-        _ref_asset: &AssetId,
-    ) -> Result<Balance, DispatchError> {
-        Err(DispatchError::CannotLookup)
-    }
-
     fn calculate_multiplier(
         _input_asset: &AssetId,
         _ref_asset: &AssetId,
@@ -722,7 +707,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -779,7 +764,6 @@ pub mod pallet {
         }
 
         // TODO: ZERO CHECK, CONSIDER MAX AND MIN
-        #[allow(unused_variables)]
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(

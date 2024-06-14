@@ -46,7 +46,7 @@ pub mod v2 {
         fn on_runtime_upgrade() -> Weight {
             let period =
                 <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
-            if StorageVersion::get::<Pallet<T>>() < StorageVersion::new(2) {
+            if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
                 <UpdatePeriod<T>>::put(Some(period)); // 1 write
                 info!("Update period initialized as {:?}", period);
@@ -59,7 +59,7 @@ pub mod v2 {
         #[cfg(feature = "try-runtime")]
         fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
             frame_support::ensure!(
-                StorageVersion::get::<Pallet<T>>() < StorageVersion::new(2),
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version before upgrade"
             );
             Ok(Vec::new())

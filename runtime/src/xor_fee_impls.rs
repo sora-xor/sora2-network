@@ -29,8 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::*;
-#[cfg(feature = "wip")] // Dynamic fee
-use _feps::sp_arithmetic::FixedU128;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 #[cfg(feature = "wip")] // Dynamic fee
@@ -41,6 +39,8 @@ use common::LiquidityProxyTrait;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
+#[cfg(feature = "wip")] // Dynamic fee
+use sp_runtime::FixedU128;
 
 #[cfg(feature = "wip")] // Dynamic fee
 pub type PriceTool = price_tools::Pallet<Runtime>;
@@ -422,20 +422,14 @@ pub struct DynamicMultiplier;
 
 #[cfg(feature = "wip")] // Dynamic fee
 impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
-    fn fetch_price_to_reference_asset(
-        input_asset: &AssetId,
-        ref_asset: &AssetId,
-    ) -> Result<Balance, DispatchError> {
-        PriceTool::get_average_price(input_asset, ref_asset, common::PriceVariant::Sell)
-    }
-
     fn calculate_multiplier(
         input_asset: &AssetId,
         ref_asset: &AssetId,
     ) -> Result<FixedU128, DispatchError> {
-        let price: FixedWrapper = FixedWrapper::from(Self::fetch_price_to_reference_asset(
+        let price: FixedWrapper = FixedWrapper::from(PriceTool::get_average_price(
             input_asset,
             ref_asset,
+            common::PriceVariant::Sell,
         )?);
         let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
             .try_into_balance()
