@@ -45,6 +45,7 @@ pub trait WeightInfo {
 	fn liquidate() -> Weight;
 	fn remove_pool() -> Weight;
 	fn edit_pool_info() -> Weight;
+	fn add_collateral() -> Weight;
 }
 
 /// Weight functions for `apollo_platform`.
@@ -289,6 +290,21 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
+	/// Storage: ApolloPlatform PoolData (r:2 w:1)
+	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform UserLendingInfo (r:1 w:1)
+	/// Proof Skipped: ApolloPlatform UserLendingInfo (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform UserBorrowingInfo (r:1 w:1)
+	/// Proof Skipped: ApolloPlatform UserBorrowingInfo (max_values: None, max_size: None, mode: Measured)
+	fn add_collateral() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1210`
+		//  Estimated: `13530`
+		// Minimum execution time: 21_791 nanoseconds.
+		Weight::from_parts(22_489_000, 13530)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(3))
+	}
 }
 
 // For backwards compatibility and tests
@@ -531,5 +547,20 @@ impl WeightInfo for () {
 		Weight::from_parts(10_127_000, 3932)
 			.saturating_add(RocksDbWeight::get().reads(2))
 			.saturating_add(RocksDbWeight::get().writes(1))
+	}
+	/// Storage: ApolloPlatform PoolData (r:2 w:1)
+	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform UserLendingInfo (r:1 w:1)
+	/// Proof Skipped: ApolloPlatform UserLendingInfo (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform UserBorrowingInfo (r:1 w:1)
+	/// Proof Skipped: ApolloPlatform UserBorrowingInfo (max_values: None, max_size: None, mode: Measured)
+	fn add_collateral() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1210`
+		//  Estimated: `13530`
+		// Minimum execution time: 21_791 nanoseconds.
+		Weight::from_parts(22_489_000, 13530)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(3))
 	}
 }
