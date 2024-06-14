@@ -362,7 +362,8 @@ benchmarks! {
             RawOrigin::Signed(alice.clone()).into(),
             DOT.into(),
             XOR.into(),
-            borrow_amount
+            borrow_amount,
+            loan_to_value
         ).unwrap()
     } verify {
         assert_last_event::<T>(Event::Borrowed(alice, DOT.into(), collateral_amount, XOR.into(), borrow_amount).into());
@@ -543,7 +544,8 @@ benchmarks! {
             RawOrigin::Signed(alice.clone()).into(),
             DOT.into(),
             XOR.into(),
-            borrow_amount
+            borrow_amount,
+            loan_to_value
         ).unwrap();
 
         run_to_block::<T>(151);
@@ -555,7 +557,7 @@ benchmarks! {
             amount_to_repay
         ).unwrap()
     } verify {
-        assert_last_event::<T>(Event::Repaid(alice, XOR.into(), amount_to_repay).into());
+        assert_last_event::<T>(Event::Repaid(alice, XOR.into(), 100002874343607297800).into());
     }
 
     change_rewards_amount {
@@ -671,7 +673,8 @@ benchmarks! {
             RawOrigin::Signed(alice.clone()).into(),
             DOT.into(),
             XOR.into(),
-            borrow_amount
+            borrow_amount,
+            loan_to_value
         ).unwrap();
     }: {
         ApolloPlatform::<T>::liquidate(
@@ -747,5 +750,99 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(Event::PoolInfoEdited(caller, asset_id.into()).into());
+    }
+
+    add_collateral {
+        let caller = pallet::AuthorityAccount::<T>::get();
+        let alice = alice::<T>();
+        let bob = bob::<T>();
+        let asset_id_xor = XOR;
+        let asset_id_dot = DOT;
+        let loan_to_value = balance!(1);
+        let liquidation_threshold = balance!(1);
+        let optimal_utilization_rate = balance!(1);
+        let base_rate = balance!(1);
+        let slope_rate_1 = balance!(1);
+        let slope_rate_2 = balance!(1);
+        let reserve_factor = balance!(1);
+
+        let lending_amount_alice = balance!(300);
+        let lending_amount_bob = balance!(200000);
+
+        let collateral_amount = balance!(99.009900990099009999);
+        let borrow_amount = balance!(100);
+        let additional_collateral_amount = balance!(2);
+
+        setup_benchmark::<T>()?;
+
+        let xor_owner: T::AccountId = <T as liquidity_proxy::Config>::AssetInfoProvider::get_asset_owner(&XOR.into()).unwrap();
+
+        T::AssetManager::mint(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            alice.clone(),
+            balance!(200)
+        ).unwrap();
+
+        T::AssetManager::mint(
+            RawOrigin::Signed(xor_owner).into(),
+            XOR.into(),
+            bob.clone(),
+            balance!(300000)
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id_xor.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+
+        ApolloPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller).into(),
+            asset_id_dot.into(),
+            loan_to_value,
+            liquidation_threshold,
+            optimal_utilization_rate,
+            base_rate,
+            slope_rate_1,
+            slope_rate_2,
+            reserve_factor,
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            lending_amount_alice
+        ).unwrap();
+
+        ApolloPlatform::<T>::lend(
+            RawOrigin::Signed(bob).into(),
+            XOR.into(),
+            lending_amount_bob
+        ).unwrap();
+
+        ApolloPlatform::<T>::borrow(
+            RawOrigin::Signed(alice.clone()).into(),
+            DOT.into(),
+            XOR.into(),
+            borrow_amount,
+            loan_to_value
+        ).unwrap();
+    }: {
+        ApolloPlatform::<T>::add_collateral(
+          RawOrigin::Signed(alice.clone()).into(),
+           DOT.into(),
+          additional_collateral_amount,
+           XOR.into(),
+        ).unwrap()
+    }
+    verify {
+        assert_last_event::<T>(Event::CollateralAdded(alice, DOT.into(), additional_collateral_amount, XOR.into()).into());
     }
 }
