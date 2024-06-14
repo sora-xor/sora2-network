@@ -1,6 +1,6 @@
-# Runtime Upgrade Script
+# Open HRMP Channels script
 
-Upgrade Runtime of a Substrate node
+Open HRMP channels between parachains
 
 ## Requirements
 
@@ -31,13 +31,13 @@ python main.py --node-url ws://127.0.0.1:9944 --uri //Alice --first-para-id 2011
 #### Build Docker Image
 
 ```bash
-docker build -t runtime-upgrade .
+docker build -t open-hrmp-channels .
 ```
 
 #### Run Docker Image
 
 ```bash
-docker run --rm -v /host/path/to/wasm-file:/container/path/to/wasm-file runtime-upgrade --node-url ws://127.0.0.1:9944 --uri //Alice --first-para-id 2011 --second-para-id 1000
+docker run --rm open-hrmp-channels --node-url ws://127.0.0.1:9944 --uri //Alice --first-para-id 2011 --second-para-id 1000
 ```
 
 ## Arguments
