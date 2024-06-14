@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 86,
+    spec_version: 87,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 86,
+    transaction_version: 87,
     state_version: 0,
 };
 
@@ -1011,12 +1011,8 @@ parameter_type_with_key! {
 
 parameter_type_with_key! {
     pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
-        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
-            if base_asset_id == &common::XOR {
-                Some(common::KXOR)
-            } else {
-                None
-            }
+        if base_asset_id == &common::XOR {
+            Some(common::KXOR)
         } else {
             None
         }
@@ -1025,11 +1021,7 @@ parameter_type_with_key! {
 
 parameter_type_with_key! {
     pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
-        if cfg!(feature = "ready-to-test") { // tokenomics-upgrade
-            tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
-        } else {
-            false
-        }
+        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
     };
 }
 
