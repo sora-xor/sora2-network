@@ -219,20 +219,16 @@ pub fn charlie() -> AccountId32 {
 macro_rules! mock_assets_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const GetBaseAssetId: AssetId = XOR;
-            pub const GetBuyBackAssetId: AssetId = XST;
+            pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
             pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
             pub const GetBuyBackPercentage: u8 = 0;
-            pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-                    "0000000000000000000000000000000000000000000000000000000000000023"
-            ));
-            pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+            pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
         }
         impl assets::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
             type ExtraAccountId = [u8; 32];
             type ExtraAssetRecordArg =
-                common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
+                common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
             type AssetId = AssetId;
             type GetBaseAssetId = GetBaseAssetId;
             type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -374,7 +370,7 @@ macro_rules! mock_tokens_config {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
             type Amount = Amount;
-            type CurrencyId = <TestRuntime as assets::Config>::AssetId;
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();

@@ -44,9 +44,9 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId,
-    LiquiditySourceType, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -94,8 +94,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use {crate as eth_bridge, frame_system};
 
-pub const PSWAP: PredefinedAssetId = PredefinedAssetId::PSWAP;
-
 /// An index to a block.
 pub type BlockNumber = u64;
 
@@ -103,12 +101,13 @@ pub type Signature = MultiSignature;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+pub type AccountId = AccountId32;
+pub type AssetId = AssetId32<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
@@ -279,6 +278,8 @@ mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
@@ -326,47 +327,8 @@ where
     type OverarchingCall = RuntimeCall;
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
 parameter_types! {
-    pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
-    pub GetBuyBackSupplyAssets: Vec<common::AssetId32<PredefinedAssetId>> = vec![VAL, PSWAP.into()];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
-    type AssetId = common::AssetId32<PredefinedAssetId>;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
+    pub const GetBuyBackAssetId: AssetId = XST;
 }
 
 impl permissions::Config for Runtime {
@@ -718,11 +680,7 @@ impl ExtBuilder {
         }
     }
 
-    pub fn add_currency(
-        &mut self,
-        network_id: u32,
-        currency: AssetConfig<AssetId32<PredefinedAssetId>>,
-    ) {
+    pub fn add_currency(&mut self, network_id: u32, currency: AssetConfig<AssetId>) {
         self.networks
             .get_mut(&network_id)
             .unwrap()
@@ -733,8 +691,8 @@ impl ExtBuilder {
 
     pub fn add_network(
         &mut self,
-        assets: Vec<AssetConfig<AssetId32<PredefinedAssetId>>>,
-        reserves: Option<Vec<(AssetId32<PredefinedAssetId>, Balance)>>,
+        assets: Vec<AssetConfig<AssetId>>,
+        reserves: Option<Vec<(AssetId, Balance)>>,
         peers_num: Option<usize>,
         contract_address: H160,
     ) -> u32 {
@@ -770,7 +728,7 @@ impl ExtBuilder {
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
-        let mut endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
+        let mut endowed_accounts: Vec<(_, AssetId, _)> = Vec::new();
         let network_ids: Vec<_> = self.networks.iter().map(|(id, _)| *id).collect();
         let mut networks: Vec<_> = self.networks.clone().into_iter().collect();
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
@@ -834,7 +792,7 @@ impl ExtBuilder {
             .unwrap();
 
         // pallet_balances and orml_tokens no longer accept duplicate elements.
-        let mut unique_endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
+        let mut unique_endowed_accounts: Vec<(_, AssetId, _)> = Vec::new();
         for acc in endowed_accounts {
             if let Some(unique_acc) = unique_endowed_accounts.iter_mut().find(|a| a.1 == acc.1) {
                 unique_acc.2 += acc.2;
