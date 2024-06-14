@@ -33,14 +33,14 @@
 
 use crate::extension::ChargeTransactionPayment;
 use crate::{mock::*, LiquidityInfo, XorToVal};
-#[cfg(feature = "ready-to-test")] // Dynamic fee
-use crate::{CalculateMultiplier, Multiplier, NextUpdateBlock};
+#[cfg(feature = "wip")] // Dynamic fee
+use crate::{CalculateMultiplier, Multiplier, UpdatePeriod};
 use common::balance;
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use frame_support::traits::Hooks;
 
 use common::mock::{alice, bob};
@@ -506,7 +506,7 @@ fn it_works_referrer_refund() {
     });
 }
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 #[test]
 fn calculate_multiplier_using_ref_amount_works() {
     ExtBuilder::build().execute_with(|| {
@@ -531,40 +531,40 @@ fn calculate_multiplier_using_ref_amount_works() {
     });
 }
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 #[test]
-fn update_multiplier_on_idle() {
+fn update_multiplier_on_initialize() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
-        NextUpdateBlock::<Runtime>::put(Some(10));
-        XorFee::on_idle(9, Weight::default());
+        UpdatePeriod::<Runtime>::put(Some(10));
+        XorFee::on_initialize(9);
         assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
 
-        XorFee::on_idle(10, Weight::default());
+        XorFee::on_initialize(20);
         assert_eq!(
             Multiplier::<Runtime>::get().into_inner(),
             3571428571428571428571428
         );
-        assert_eq!(NextUpdateBlock::<Runtime>::get(), Some(3610));
+        assert_eq!(UpdatePeriod::<Runtime>::get(), Some(10));
     });
 }
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 #[test]
-fn not_update_multiplier_on_idle() {
+fn not_update_multiplier_on_initialize() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
-        NextUpdateBlock::<Runtime>::put(None::<BlockNumber>);
-        XorFee::on_idle(BlockNumber::MAX, Weight::default());
+        UpdatePeriod::<Runtime>::put(None::<BlockNumber>);
+        XorFee::on_initialize(BlockNumber::MAX);
         assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
     });
 }
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 #[test]
-fn test_update_next_update_block() {
+fn test_update_period() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
@@ -572,13 +572,13 @@ fn test_update_next_update_block() {
             RuntimeOrigin::root(),
             Some(BlockNumber::MAX)
         ));
-        assert_eq!(NextUpdateBlock::<Runtime>::get(), Some(BlockNumber::MAX));
+        assert_eq!(UpdatePeriod::<Runtime>::get(), Some(BlockNumber::MAX));
     });
 }
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 #[test]
-fn non_root_update_block_fails() {
+fn non_root_set_period_fails() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
             XorFee::set_fee_update_period(RuntimeOrigin::signed(alice()), Some(BlockNumber::MAX)),

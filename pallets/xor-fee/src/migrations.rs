@@ -28,14 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 pub mod v2 {
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::{log::info, traits::StorageVersion};
 
-    use crate::pallet::NextUpdateBlock;
     use crate::*;
 
     pub struct Migrate<T>(PhantomData<T>);
@@ -45,11 +44,12 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
+            let period =
+                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
             if StorageVersion::get::<Pallet<T>>() < StorageVersion::new(2) {
                 // 1 read
-                let next_update_block = <frame_system::Pallet<T>>::block_number();
-                <NextUpdateBlock<T>>::put(Some(next_update_block)); // 1 write
-                info!("NextUpdateBlock initialized to {:?}", next_update_block);
+                <UpdatePeriod<T>>::put(Some(period)); // 1 write
+                info!("Update period initialized as {:?}", period);
                 StorageVersion::new(2).put::<Pallet<T>>();
                 return T::DbWeight::get().reads_writes(1, 1);
             }
@@ -67,12 +67,14 @@ pub mod v2 {
 
         #[cfg(feature = "try-runtime")]
         fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+            let period =
+                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
                 "Wrong storage version after upgrade"
             );
             frame_support::ensure!(
-                <NextUpdateBlock<T>>::get() == Some(<frame_system::Pallet<T>>::block_number()),
+                <UpdatePeriod<T>>::get() == Some(period),
                 "Did not set right next update block"
             );
             Ok(())

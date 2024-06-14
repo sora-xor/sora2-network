@@ -1299,14 +1299,16 @@ where
 
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
-    pub const BlocksToUpdate: BlockNumber = (MILLISECS_PER_MULTIPLIER_UPDATE / MILLISECS_PER_BLOCK) as BlockNumber;
 }
 
 impl xor_fee::Config for Runtime {
-    type BlocksToUpdate = BlocksToUpdate;
-    #[cfg(not(feature = "ready-to-test"))] // Dynamic fee
+    type PermittedSetPeriod = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
+        EnsureRoot<AccountId>,
+    >;
+    #[cfg(not(feature = "wip"))] // Dynamic fee
     type DynamicMultiplier = ();
-    #[cfg(feature = "ready-to-test")] // Dynamic fee
+    #[cfg(feature = "wip")] // Dynamic fee
     type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.

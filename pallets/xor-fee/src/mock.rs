@@ -33,9 +33,9 @@
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use common::DAI;
 use common::{
     self, balance, mock_common_config, mock_currencies_config, mock_frame_system_config,
@@ -43,7 +43,7 @@ use common::{
     LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
     VAL, XOR,
 };
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
@@ -54,6 +54,7 @@ use frame_support::traits::{
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
+use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -137,7 +138,6 @@ parameter_types! {
     pub const GetBuyBackPercentage: u8 = 10;
     pub GetBuyBackAccountId: AccountId = account_from_str("buy-back");
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-    pub const BlocksToUpdate: BlockNumber = 3600;
 }
 
 impl assets::Config for Runtime {
@@ -279,20 +279,17 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
-    #[cfg(not(feature = "ready-to-test"))] // Dynamic fee
+    #[cfg(not(feature = "wip"))] // Dynamic fee
     type DynamicMultiplier = ();
-    #[cfg(not(feature = "ready-to-test"))] // Dynamic fee
-    type BlocksToUpdate = ();
-    #[cfg(feature = "ready-to-test")] // Dynamic fee
+    #[cfg(feature = "wip")] // Dynamic fee
     type DynamicMultiplier = DynamicMultiplier;
-    #[cfg(feature = "ready-to-test")] // Dynamic fee
-    type BlocksToUpdate = BlocksToUpdate;
+    type PermittedSetPeriod = EnsureRoot<AccountId>;
 }
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 pub struct DynamicMultiplier;
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
     fn fetch_price_to_reference_asset(
         input_asset: &AssetId,

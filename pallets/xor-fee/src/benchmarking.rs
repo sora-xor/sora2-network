@@ -36,7 +36,7 @@ use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
 
-#[cfg(feature = "ready-to-test")] // Dynamic fee
+#[cfg(feature = "wip")] // Dynamic fee
 use crate::pallet::NextUpdateBlock;
 use crate::{Config, Pallet};
 
@@ -52,7 +52,7 @@ benchmarks! {
         let new_block_number = <T as frame_system::Config>::BlockNumber::default();
     }: _(RawOrigin::Root, Some(new_block_number))
     verify {
-        #[cfg(feature = "ready-to-test")] // Dynamic fee
+        #[cfg(feature = "wip")] // Dynamic fee
         assert_eq!(<NextUpdateBlock<T>>::get(), Some(new_block_number));
     }
 

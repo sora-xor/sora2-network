@@ -56,7 +56,6 @@ pub mod time {
     pub const SECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK / 1000;
 
     pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
-    pub const MILLISECS_PER_MULTIPLIER_UPDATE: Moment = 21_600_000; // 6 hours
 
     // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
     pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
