@@ -251,14 +251,6 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AlignReason {
-    NotAligned,
-    Min,
-    Max,
-    Precision,
-}
-
 /// Limitations that could have a liquidity source for the amount of swap
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SwapLimits<AmountType> {
@@ -425,27 +417,23 @@ impl SwapLimits<Balance> {
     pub fn align_chunk<AssetId: Ord + Clone>(
         &self,
         chunk: SwapChunk<AssetId, Balance>,
-    ) -> Option<(
-        SwapChunk<AssetId, Balance>,
-        SwapChunk<AssetId, Balance>,
-        AlignReason,
-    )> {
+    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
         let (chunk, remainder) = self.align_chunk_min(chunk);
         if !remainder.is_zero() {
-            return Some((chunk, remainder, AlignReason::Min));
+            return Some((chunk, remainder));
         }
 
         let (chunk, remainder) = self.align_chunk_max(chunk)?;
         if !remainder.is_zero() {
-            return Some((chunk, remainder, AlignReason::Max));
+            return Some((chunk, remainder));
         }
 
         let (chunk, remainder) = self.align_chunk_precision(chunk)?;
         if !remainder.is_zero() {
-            return Some((chunk, remainder, AlignReason::Precision));
+            return Some((chunk, remainder));
         }
 
-        Some((chunk, Zero::zero(), AlignReason::NotAligned))
+        Some((chunk, Zero::zero()))
     }
 }
 
@@ -984,15 +972,15 @@ mod tests {
 
         assert_eq!(
             input_limit.align_chunk(chunk_min.clone()).unwrap(),
-            (Zero::zero(), chunk_min.clone(), AlignReason::Min)
+            (Zero::zero(), chunk_min.clone())
         );
         assert_eq!(
             output_limit.align_chunk(chunk_min.clone()).unwrap(),
-            (Zero::zero(), chunk_min.clone(), AlignReason::Min)
+            (Zero::zero(), chunk_min.clone())
         );
         assert_eq!(
             empty_limit.align_chunk(chunk_min.clone()).unwrap(),
-            (chunk_min, Zero::zero(), AlignReason::NotAligned)
+            (chunk_min, Zero::zero())
         );
 
         assert_eq!(
@@ -1007,8 +995,7 @@ mod tests {
                     balance!(60),
                     balance!(93.75),
                     OutcomeFee::from_asset(1, balance!(0.375))
-                ),
-                AlignReason::Max
+                )
             )
         );
         assert_eq!(
@@ -1023,13 +1010,12 @@ mod tests {
                     balance!(96),
                     balance!(150),
                     OutcomeFee::from_asset(1, balance!(0.6))
-                ),
-                AlignReason::Max
+                )
             )
         );
         assert_eq!(
             empty_limit.align_chunk(chunk_max.clone()).unwrap(),
-            (chunk_max, Zero::zero(), AlignReason::NotAligned)
+            (chunk_max, Zero::zero())
         );
 
         assert_eq!(
@@ -1044,8 +1030,7 @@ mod tests {
                     balance!(0.5),
                     balance!(0.32),
                     OutcomeFee::from_asset(1, balance!(0.2))
-                ),
-                AlignReason::Precision
+                )
             )
         );
         assert_eq!(
@@ -1060,26 +1045,25 @@ mod tests {
                     balance!(0.9375),
                     balance!(0.6),
                     OutcomeFee::from_asset(1, balance!(0.375))
-                ),
-                AlignReason::Precision
+                )
             )
         );
         assert_eq!(
             empty_limit.align_chunk(chunk_precision.clone()).unwrap(),
-            (chunk_precision, Zero::zero(), AlignReason::NotAligned)
+            (chunk_precision, Zero::zero())
         );
 
         assert_eq!(
             input_limit.align_chunk(chunk_ok.clone()).unwrap(),
-            (chunk_ok.clone(), Zero::zero(), AlignReason::NotAligned)
+            (chunk_ok.clone(), Zero::zero())
         );
         assert_eq!(
             output_limit.align_chunk(chunk_ok.clone()).unwrap(),
-            (chunk_ok.clone(), Zero::zero(), AlignReason::NotAligned)
+            (chunk_ok.clone(), Zero::zero())
         );
         assert_eq!(
             empty_limit.align_chunk(chunk_ok.clone()).unwrap(),
-            (chunk_ok, Zero::zero(), AlignReason::NotAligned)
+            (chunk_ok, Zero::zero())
         );
     }
 }
