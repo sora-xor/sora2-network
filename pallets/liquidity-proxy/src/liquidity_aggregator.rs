@@ -37,7 +37,7 @@ use sp_std::vec::Vec;
 use {
     crate::{Config, Error},
     common::alt::SwapLimits,
-    common::alt::{AlignReason, DiscreteQuotation, SideAmount, SwapChunk},
+    common::alt::{DiscreteQuotation, SideAmount, SwapChunk},
     common::prelude::SwapVariant,
     common::AssetIdOf,
     common::{fixed, Balance},
@@ -48,7 +48,6 @@ use {
     sp_std::collections::btree_map::BTreeMap,
     sp_std::collections::btree_set::BTreeSet,
     sp_std::collections::vec_deque::VecDeque,
-    sp_std::vec,
 };
 
 #[cfg(feature = "wip")] // ALT
@@ -138,8 +137,9 @@ impl<AssetId: Ord, LiquiditySourceType, AmountType>
     }
 }
 
+/// Selector is intended to store undistributed liquidity from all sources and provide the best next liquidity chunk.
 #[cfg(feature = "wip")] // ALT
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Selector<T: Config, LiquiditySourceType> {
     variant: SwapVariant,
     liquidity_quotations: BTreeMap<LiquiditySourceType, DiscreteQuotation<AssetIdOf<T>, Balance>>,
@@ -195,30 +195,33 @@ where
     ) -> Result<(), DispatchError> {
         let quotation = self
             .liquidity_quotations
-            .get_mut(&source)
+            .get_mut(source)
             .ok_or(Error::<T>::AggregationError)?;
         quotation.chunks.push_front(chunk);
         Ok(())
     }
 
-    pub fn payback(
+    /// Takes chunks from `cluster` and puts them back into the selector until it reaches `amount`.
+    pub fn return_liquidity(
         &mut self,
         mut amount: SideAmount<Balance>,
         source: &LiquiditySourceType,
-        chunks: &mut VecDeque<SwapChunk<AssetIdOf<T>, Balance>>,
-    ) -> Result<bool, DispatchError> {
+        cluster: &mut Cluster<T>,
+    ) -> Result<(SwapChunk<AssetIdOf<T>, Balance>, bool), DispatchError> {
         let mut delete = false;
+        let mut taken = SwapChunk::default();
         while *amount.amount() > Balance::zero() {
             // it is necessary to return chunks back till `remainder` volume is filled
-            let Some(chunk) = chunks.pop_back() else {
+            let Some(chunk) = cluster.pop_back() else {
                 break;
             };
             if chunk <= amount {
                 let value = amount
                     .amount()
-                    .checked_sub(*chunk.get_associated_field(self.variant).amount())
+                    .checked_sub(*chunk.get_same_type_amount(&amount).amount())
                     .ok_or(Error::<T>::CalculationError)?;
                 amount.set_amount(value);
+                taken = taken.saturating_add(chunk.clone());
                 self.push_chunk(source, chunk)?;
             } else {
                 let remainder_chunk = chunk
@@ -226,26 +229,30 @@ where
                     .rescale_by_side_amount(amount)
                     .ok_or(Error::<T>::CalculationError)?;
                 let chunk = chunk.saturating_sub(remainder_chunk.clone());
-                chunks.push_back(chunk);
+                cluster.push_back(chunk);
+                taken = taken.saturating_add(remainder_chunk.clone());
                 self.push_chunk(source, remainder_chunk)?;
                 amount.set_amount(Balance::zero());
             }
         }
 
-        if chunks.is_empty() {
+        if cluster.is_empty() {
             // chunks are over, already returned all chunks
             delete = true;
         }
-        Ok(delete)
+        Ok((taken, delete))
     }
 
     /// Selects the chunk with best price.
     /// If there are several best chunks, we select the source that already was selected before.
+    /// If the source has the precision limit and `amount` is less than precision - this source is used only if there are no other candidates even if it has the best price.
     pub fn select_chunk(
         &mut self,
-        aggregation: &BTreeMap<LiquiditySourceType, VecDeque<SwapChunk<AssetIdOf<T>, Balance>>>,
+        amount: Balance,
+        aggregation: &Aggregation<T, LiquiditySourceType>,
     ) -> Result<(LiquiditySourceType, SwapChunk<AssetIdOf<T>, Balance>), DispatchError> {
         let mut candidates = Vec::new();
+        let mut delayed = None;
         let mut max = fixed!(0);
 
         for (source, discrete_quotation) in self.liquidity_quotations.iter() {
@@ -261,164 +268,38 @@ where
 
             let price = front.price().ok_or(Error::<T>::CalculationError)?;
 
-            if price == max {
-                candidates.push(source.clone())
+            let step = discrete_quotation
+                .limits
+                .get_precision_step(&front, self.variant)
+                .ok_or(Error::<T>::CalculationError)?;
+
+            if price == max && amount >= step {
+                candidates.push(source.clone());
             }
 
             if price > max {
-                candidates.clear();
-                max = price;
-                candidates.push(source.clone());
-            }
-        }
-
-        let mut source = candidates
-            .first()
-            .ok_or(Error::<T>::InsufficientLiquidity)?;
-
-        // if there are several candidates with the same best price,
-        // then we need to select the source that already been selected
-        for candidate in candidates.iter() {
-            if aggregation.keys().contains(&candidate) {
-                source = candidate;
-                break;
-            }
-        }
-
-        let chunk = self
-            .liquidity_quotations
-            .get_mut(&source)
-            .ok_or(Error::<T>::AggregationError)?
-            .chunks
-            .pop_front()
-            .ok_or(Error::<T>::AggregationError)?;
-
-        Ok((source.clone(), chunk))
-    }
-
-    /// Similar with `select_chunk` with considering the `remaining_amount` and precision limit.
-    /// If `remaining_amount` < source precision and there are no other availabe sources, then we take this source and calculate the new remaining amount.
-    pub fn select_remaining_chunk(
-        &mut self,
-        aggregation: &BTreeMap<LiquiditySourceType, VecDeque<SwapChunk<AssetIdOf<T>, Balance>>>,
-        remaining_amount: Balance,
-    ) -> Result<
-        (
-            LiquiditySourceType,
-            SwapChunk<AssetIdOf<T>, Balance>,
-            Option<Balance>,
-        ),
-        DispatchError,
-    > {
-        let mut candidates = Vec::new();
-        let mut max = fixed!(0);
-
-        // Special list for sources with precision limit.
-        // If `candidates` is empty we will take the chunk from the `wait_list`
-        let mut wait_list = Vec::new();
-
-        for (source, discrete_quotation) in self.liquidity_quotations.iter() {
-            // skip the locked source
-            if self.locked_sources.contains(source) {
-                continue;
-            }
-
-            // skip the empty source
-            let Some(front) = discrete_quotation.chunks.front() else {
-                continue;
-            };
-
-            let price = front.price().ok_or(Error::<T>::CalculationError)?;
-
-            if let Some(precision) = discrete_quotation.limits.amount_precision {
-                let new_remaining_amount = match (self.variant, precision) {
-                    (SwapVariant::WithDesiredInput, SideAmount::Input(value)) => {
-                        if remaining_amount < value {
-                            // round down
-                            Some(Balance::zero())
-                        } else {
-                            None
-                        }
-                    }
-                    (SwapVariant::WithDesiredOutput, SideAmount::Output(value)) => {
-                        if remaining_amount < value {
-                            // round up
-                            Some(value)
-                        } else {
-                            None
-                        }
-                    }
-                    (SwapVariant::WithDesiredInput, SideAmount::Output(value)) => {
-                        let remaining_output = front
-                            .proportional_output(remaining_amount)
-                            .ok_or(Error::<T>::CalculationError)?;
-                        if remaining_output < value {
-                            // round down
-                            Some(Balance::zero())
-                        } else {
-                            None
-                        }
-                    }
-                    (SwapVariant::WithDesiredOutput, SideAmount::Input(value)) => {
-                        let remaining_input = front
-                            .proportional_input(remaining_amount)
-                            .ok_or(Error::<T>::CalculationError)?;
-                        if remaining_input < value {
-                            // round up
-                            Some(
-                                front
-                                    .proportional_output(value)
-                                    .ok_or(Error::<T>::CalculationError)?,
-                            )
-                        } else {
-                            None
-                        }
-                    }
-                };
-
-                if new_remaining_amount.is_some() {
-                    wait_list.push((source.clone(), price, new_remaining_amount));
-                    continue;
+                if amount < step {
+                    delayed = Some(source.clone());
+                } else {
+                    candidates.clear();
+                    max = price;
+                    candidates.push(source.clone());
                 }
             }
-
-            if price == max {
-                candidates.push(source.clone())
-            }
-
-            if price > max {
-                candidates.clear();
-                max = price;
-                candidates.push(source.clone());
-            }
         }
 
-        let (source, new_remaining_amount) = if let Some(mut source) = candidates.first().cloned() {
+        let source = if let Some(mut source) = candidates.first().cloned() {
             // if there are several candidates with the same best price,
             // then we need to select the source that already been selected
-            for candidate in candidates.into_iter() {
-                if aggregation.keys().contains(&candidate) {
+            for candidate in candidates {
+                if aggregation.0.keys().contains(&candidate) {
                     source = candidate;
                     break;
                 }
             }
-            (source, None)
+            source
         } else {
-            let (source, _, new_remaining_amount) = wait_list
-                .into_iter()
-                .fold(None, |max, (source, price, new_remaining_amount)| {
-                    if let Some((max_source, max_price, max_new_remaining_amount)) = max {
-                        if price > max_price {
-                            Some((source, price, new_remaining_amount))
-                        } else {
-                            Some((max_source, max_price, max_new_remaining_amount))
-                        }
-                    } else {
-                        Some((source, price, new_remaining_amount))
-                    }
-                })
-                .ok_or(Error::<T>::InsufficientLiquidity)?;
-            (source, new_remaining_amount)
+            delayed.ok_or(Error::<T>::InsufficientLiquidity)?
         };
 
         let chunk = self
@@ -429,15 +310,116 @@ where
             .pop_front()
             .ok_or(Error::<T>::AggregationError)?;
 
-        Ok((source.clone(), chunk, new_remaining_amount))
+        Ok((source, chunk))
     }
 }
 
+/// Cluster of liquidity that stores the aggregated liquidity chunks from one source.
 #[cfg(feature = "wip")] // ALT
+#[derive(Debug, Clone, Default)]
+struct Cluster<T: Config> {
+    total: SwapChunk<AssetIdOf<T>, Balance>,
+    chunks: VecDeque<SwapChunk<AssetIdOf<T>, Balance>>,
+}
+
+#[cfg(feature = "wip")] // ALT
+impl<T: Config> Cluster<T> {
+    pub fn new() -> Self {
+        Self {
+            total: Default::default(),
+            chunks: VecDeque::new(),
+        }
+    }
+
+    pub fn get_total(&self) -> &SwapChunk<AssetIdOf<T>, Balance> {
+        &self.total
+    }
+
+    pub fn push_back(&mut self, chunk: SwapChunk<AssetIdOf<T>, Balance>) {
+        self.chunks.push_back(chunk.clone());
+        self.total = self.total.clone().saturating_add(chunk);
+    }
+
+    pub fn pop_back(&mut self) -> Option<SwapChunk<AssetIdOf<T>, Balance>> {
+        let Some(chunk) = self.chunks.pop_back() else {
+            return None;
+        };
+        self.total = self.total.clone().saturating_sub(chunk.clone());
+        Some(chunk)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.chunks.is_empty()
+    }
+}
+
+/// Aggregation of liquidity from all sources.
+#[cfg(feature = "wip")] // ALT
+#[derive(Clone)]
+struct Aggregation<T: Config, LiquiditySourceType>(pub BTreeMap<LiquiditySourceType, Cluster<T>>);
+
+#[cfg(feature = "wip")] // ALT
+impl<T, LiquiditySourceType> Aggregation<T, LiquiditySourceType>
+where
+    T: Config,
+    LiquiditySourceType: Ord + Clone,
+{
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    pub fn get_total(&self, source: &LiquiditySourceType) -> SwapChunk<AssetIdOf<T>, Balance> {
+        self.0
+            .get(source)
+            .map(|cluster| cluster.get_total())
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn get_mut_cluster(
+        &mut self,
+        source: &LiquiditySourceType,
+    ) -> Result<&mut Cluster<T>, DispatchError> {
+        self.0
+            .get_mut(source)
+            .ok_or(Error::<T>::AggregationError.into())
+    }
+
+    pub fn push_chunk(
+        &mut self,
+        source: LiquiditySourceType,
+        chunk: SwapChunk<AssetIdOf<T>, Balance>,
+    ) {
+        self.0
+            .entry(source)
+            .and_modify(|cluster| cluster.push_back(chunk.clone()))
+            .or_insert_with(|| {
+                let mut cluster = Cluster::new();
+                cluster.push_back(chunk);
+                cluster
+            });
+    }
+
+    /// Returns the queue with sources in ascending order
+    pub fn get_price_ascending_queue(&self) -> Vec<LiquiditySourceType> {
+        let mut queue: Vec<_> = self
+            .0
+            .iter()
+            .filter_map(|(source, cluster)| Some(source.clone()).zip(cluster.get_total().price()))
+            .collect();
+        queue.sort_by(|(_, price_left), (_, price_right)| price_left.cmp(price_right));
+        queue.into_iter().map(|(source, _)| source).collect()
+    }
+}
+
+/// Liquidity Aggregator selects and align the best chunks of liquidity from different sources to gain the best exchange result.
+#[cfg(feature = "wip")] // ALT
+#[derive(Clone)]
 pub struct LiquidityAggregator<T: Config, LiquiditySourceType> {
     variant: SwapVariant,
     selector: Selector<T, LiquiditySourceType>,
-    aggregation: BTreeMap<LiquiditySourceType, VecDeque<SwapChunk<AssetIdOf<T>, Balance>>>,
+    aggregation: Aggregation<T, LiquiditySourceType>,
+    origin_amount: Balance,
 }
 
 #[cfg(feature = "wip")] // ALT
@@ -450,7 +432,8 @@ where
         Self {
             variant,
             selector: Selector::new(variant),
-            aggregation: BTreeMap::new(),
+            aggregation: Aggregation::new(),
+            origin_amount: Balance::zero(),
         }
     }
 
@@ -468,25 +451,44 @@ where
         mut self,
         amount: Balance,
     ) -> Result<AggregationResult<AssetIdOf<T>, LiquiditySourceType, Balance>, DispatchError> {
+        self.origin_amount = amount;
+
         if self.selector.is_empty() {
             return Err(Error::<T>::InsufficientLiquidity.into());
         }
 
-        self.aggregate_main_amount(amount)?;
-        let remaining_amount = self.align_aggregation()?;
-        if !remaining_amount.is_zero() {
-            self.aggregate_remaining_amount(remaining_amount, amount)?;
-        }
+        self.aggregate_amount(amount)?;
+
+        // max & precision limits are taken into account during the main aggregation
+        // min limit requires the separate process
+        self.align_min()?;
 
         self.calculate_result()
     }
 
-    /// Aggregates the main liquidity amount.
-    fn aggregate_main_amount(&mut self, mut amount: Balance) -> Result<(), DispatchError> {
+    /// Aggregates the liquidity until it reaches the target `amount`.
+    fn aggregate_amount(&mut self, mut amount: Balance) -> Result<(), DispatchError> {
         while amount > Balance::zero() {
-            let (source, chunk) = self.selector.select_chunk(&self.aggregation)?;
+            let (source, chunk) = self.selector.select_chunk(amount, &self.aggregation)?;
 
-            let chunk = self.fit_chunk(chunk, &source, amount)?;
+            let (chunk, new_amount) = self.fit_chunk(chunk, &source, amount)?;
+
+            // there is a case when `fit_chunk` can edit the target amount
+            // this change should not exceed the allowed slippage
+            if new_amount != amount {
+                let diff = amount.abs_diff(new_amount);
+
+                if diff > T::InternalSlippageTolerance::get() * self.origin_amount {
+                    // diff exceeds the allowed slippage
+                    return Err(Error::<T>::InsufficientLiquidity.into());
+                }
+
+                if new_amount.is_zero() {
+                    break;
+                }
+
+                amount = new_amount
+            }
 
             if chunk.is_zero() {
                 continue;
@@ -494,12 +496,7 @@ where
 
             let delta = *chunk.get_associated_field(self.variant).amount();
 
-            self.aggregation
-                .entry(source.clone())
-                .and_modify(|chunks: &mut VecDeque<SwapChunk<AssetIdOf<T>, Balance>>| {
-                    chunks.push_back(chunk.clone())
-                })
-                .or_insert(vec![chunk].into());
+            self.aggregation.push_chunk(source.clone(), chunk);
             amount = amount
                 .checked_sub(delta)
                 .ok_or(Error::<T>::CalculationError)?;
@@ -507,143 +504,143 @@ where
         Ok(())
     }
 
-    /// Aggregates the remaining liquidity after the alignment of selected aggregation.
-    fn aggregate_remaining_amount(
-        &mut self,
-        mut remaining_amount: Balance,
-        origin_amount: Balance,
-    ) -> Result<(), DispatchError> {
-        while remaining_amount > Balance::zero() {
-            let (source, chunk, new_remaining_amount) = self
-                .selector
-                .select_remaining_chunk(&self.aggregation, remaining_amount)?;
-
-            if let Some(new_remaining_amount) = new_remaining_amount {
-                let diff = remaining_amount.abs_diff(new_remaining_amount);
-
-                if diff > T::InternalSlippageTolerance::get() * origin_amount {
-                    // diff exceeds the allowed slippage
-                    return Err(Error::<T>::InsufficientLiquidity.into());
-                }
-
-                if new_remaining_amount.is_zero() {
-                    break;
-                }
-
-                remaining_amount = new_remaining_amount
-            }
-
-            let chunk = self.fit_chunk(chunk, &source, remaining_amount)?;
-
-            if chunk.is_zero() {
-                continue;
-            }
-
-            let remaining_delta = *chunk.get_associated_field(self.variant).amount();
-
-            self.aggregation
-                .entry(source.clone())
-                .and_modify(|chunks: &mut VecDeque<SwapChunk<AssetIdOf<T>, Balance>>| {
-                    chunks.push_back(chunk.clone())
-                })
-                .or_insert(vec![chunk].into());
-            remaining_amount = remaining_amount
-                .checked_sub(remaining_delta)
-                .ok_or(Error::<T>::CalculationError)?;
-
-            if remaining_amount.is_zero() {
-                remaining_amount = self.align_aggregation()?;
-            }
-        }
-
-        Ok(())
-    }
-
     /// Change the `chunk` if it's necessary.
     /// Rescale the `chunk` if it exceeds the max amount for its source (if there is such limit for this source).
-    /// Rescale the `chunk` if adding this chunk will exceed the necessary `amount`
+    /// Rescale the `chunk` if adding this chunk will exceed the necessary `amount`.
+    /// Rescale the `chunk` if it doesn't match the precision limit.
+    /// Return another `amount` if it's necessary.
     fn fit_chunk(
         &mut self,
         mut chunk: SwapChunk<AssetIdOf<T>, Balance>,
         source: &LiquiditySourceType,
-        amount: Balance,
-    ) -> Result<SwapChunk<AssetIdOf<T>, Balance>, DispatchError> {
-        let limits = self.selector.get_limits(&source)?;
+        mut amount: Balance,
+    ) -> Result<(SwapChunk<AssetIdOf<T>, Balance>, Balance), DispatchError> {
+        let limits = self.selector.get_limits(&source).cloned()?;
 
-        let mut payback = SwapChunk::zero();
+        let mut refund = SwapChunk::zero();
 
-        let total = Self::sum_chunks(self.aggregation.entry(source.clone()).or_default());
+        let total = self.aggregation.get_total(source);
         let (aligned, remainder) = limits
-            .align_extra_chunk_max(total.clone(), chunk.clone())
+            .align_extra_chunk_max(total, chunk.clone())
             .ok_or(Error::<T>::CalculationError)?;
         if !remainder.is_zero() {
             // max amount (already selected + new chunk) exceeded
             chunk = aligned;
-            payback = remainder;
+            refund = remainder;
             self.selector.lock_source(source.clone());
         }
 
-        let side_amount = SideAmount::new(amount, self.variant);
-        if chunk > side_amount {
-            let rescaled = chunk
-                .clone()
-                .rescale_by_side_amount(side_amount)
-                .ok_or(Error::<T>::CalculationError)?;
-            payback = payback.saturating_add(chunk.clone().saturating_sub(rescaled.clone()));
-            chunk = rescaled;
-        }
-
-        if !payback.is_zero() {
-            // push remains of the chunk back
-            self.selector.push_chunk(&source, payback)?;
-        }
-
-        Ok(chunk)
-    }
-
-    /// Align the selected aggregation in according with source limits.
-    fn align_aggregation(&mut self) -> Result<Balance, DispatchError> {
-        let mut remaining_amount = Balance::zero();
-        let mut to_delete = Vec::new();
-        for (source, mut chunks) in self.aggregation.iter_mut() {
-            let total = Self::sum_chunks(chunks);
-
-            let limits = self.selector.get_limits(&source)?;
-
-            let (_, remainder, align_reason) = limits
-                .align_chunk(total)
+        if !chunk.is_zero() {
+            let step = limits
+                .get_precision_step(&chunk, self.variant)
                 .ok_or(Error::<T>::CalculationError)?;
 
-            match align_reason {
-                AlignReason::NotAligned => {} // do nothing
-                AlignReason::Min | AlignReason::Max => {
-                    remaining_amount = remaining_amount
-                        .checked_add(*remainder.get_associated_field(self.variant).amount())
-                        .ok_or(Error::<T>::CalculationError)?;
-
-                    self.selector.lock_source(source.clone());
-
-                    let remainder = remainder.get_associated_field(self.variant);
-                    if self.selector.payback(remainder, &source, &mut chunks)? {
-                        to_delete.push(source.clone());
+            if amount < step {
+                // This case means that this is the last available source,
+                // it has precision limitation and `amount` doesn't match the precision.
+                // We have to round the `amount`.
+                match self.variant {
+                    SwapVariant::WithDesiredInput => {
+                        // round down
+                        refund = refund.saturating_add(chunk);
+                        chunk = SwapChunk::zero();
+                        amount = Balance::zero();
+                    }
+                    SwapVariant::WithDesiredOutput => {
+                        // round up
+                        let precision = limits
+                            .amount_precision
+                            .ok_or(Error::<T>::AggregationError)?;
+                        let rescaled = chunk
+                            .clone()
+                            .rescale_by_side_amount(precision)
+                            .ok_or(Error::<T>::CalculationError)?;
+                        refund =
+                            refund.saturating_add(chunk.clone().saturating_sub(rescaled.clone()));
+                        chunk = rescaled;
+                        amount = step;
                     }
                 }
-                AlignReason::Precision => {
-                    remaining_amount = remaining_amount
-                        .checked_add(*remainder.get_associated_field(self.variant).amount())
-                        .ok_or(Error::<T>::CalculationError)?;
+            } else {
+                // if `step` is not 0, it means the source has a precision limit
+                // in this case the amount should be a multiple of the precision
+                let side_amount = if !step.is_zero() && amount % step != Balance::zero() {
+                    let count = amount.saturating_div(step);
+                    let aligned = count.saturating_mul(step);
+                    SideAmount::new(aligned, self.variant)
+                } else {
+                    SideAmount::new(amount, self.variant)
+                };
 
-                    let remainder = remainder.get_associated_field(self.variant);
-                    if self.selector.payback(remainder, &source, &mut chunks)? {
-                        to_delete.push(source.clone());
-                    }
+                // if chunk is bigger than remaining amount, it is necessary to rescale it and take only required part
+                if chunk > side_amount {
+                    let rescaled = chunk
+                        .clone()
+                        .rescale_by_side_amount(side_amount)
+                        .ok_or(Error::<T>::CalculationError)?;
+                    refund = refund.saturating_add(chunk.clone().saturating_sub(rescaled.clone()));
+                    chunk = rescaled;
+                }
+
+                let (aligned, reminder) = limits
+                    .align_chunk_precision(chunk.clone())
+                    .ok_or(Error::<T>::CalculationError)?;
+                if !reminder.is_zero() {
+                    chunk = aligned;
+                    refund = refund.saturating_add(reminder);
                 }
             }
+
+            if chunk.is_zero() && !amount.is_zero() {
+                // should never happen
+                return Err(Error::<T>::AggregationError.into());
+            }
         }
+
+        if !refund.is_zero() {
+            // push remains of the chunk back
+            self.selector.push_chunk(&source, refund)?;
+        }
+
+        Ok((chunk, amount))
+    }
+
+    /// Align the selected aggregation in according with source min amount limits.
+    fn align_min(&mut self) -> Result<(), DispatchError> {
+        let mut to_delete = Vec::new();
+
+        let queue = self.aggregation.get_price_ascending_queue();
+
+        for source in queue {
+            let mut cluster = self.aggregation.get_mut_cluster(&source)?;
+            let limits = self.selector.get_limits(&source)?;
+
+            let (_, remainder) = limits.align_chunk_min(cluster.get_total().clone());
+            if !remainder.is_zero() {
+                let min_amount = &limits.min_amount.ok_or(Error::<T>::AggregationError)?;
+                let remainder = remainder.get_same_type_amount(min_amount);
+
+                let (returned_liquidity, delete) =
+                    self.selector
+                        .return_liquidity(remainder, &source, &mut cluster)?;
+                if delete {
+                    to_delete.push(source.clone());
+                }
+
+                self.selector.lock_source(source.clone());
+
+                let remaining_amount = *returned_liquidity
+                    .get_associated_field(self.variant)
+                    .amount();
+                self.aggregate_amount(remaining_amount)?;
+            }
+        }
+
         self.aggregation
+            .0
             .retain(|source, _| !to_delete.contains(source));
 
-        Ok(remaining_amount)
+        Ok(())
     }
 
     fn calculate_result(
@@ -655,8 +652,8 @@ where
         let mut result_amount = Balance::zero();
         let mut fee = OutcomeFee::default();
 
-        for (source, chunks) in &self.aggregation {
-            let total = Self::sum_chunks(chunks);
+        for (source, cluster) in &self.aggregation.0 {
+            let total = cluster.get_total().clone();
 
             swap_info.insert(source.clone(), (total.input, total.output));
 
@@ -686,16 +683,6 @@ where
             fee,
         })
     }
-
-    fn sum_chunks(
-        chunks: &VecDeque<SwapChunk<AssetIdOf<T>, Balance>>,
-    ) -> SwapChunk<AssetIdOf<T>, Balance> {
-        chunks
-            .iter()
-            .fold(SwapChunk::<AssetIdOf<T>, Balance>::zero(), |acc, next| {
-                acc.saturating_add(next.clone())
-            })
-    }
 }
 
 #[cfg(feature = "wip")] // ALT
@@ -712,20 +699,6 @@ mod tests {
 
     #[test]
     fn check_select_chunk() {
-        let push_chunk = {
-            |aggregation: &mut BTreeMap<
-                LiquiditySourceType,
-                VecDeque<SwapChunk<AssetIdOf<Runtime>, Balance>>,
-            >,
-             source: LiquiditySourceType,
-             chunk: SwapChunk<AssetIdOf<Runtime>, Balance>| {
-                aggregation
-                    .entry(source)
-                    .and_modify(|chunks| chunks.push_back(chunk.clone()))
-                    .or_insert(vec![chunk].into());
-            }
-        };
-
         let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredInput);
         selector.add_source(
             LiquiditySourceType::XYKPool,
@@ -764,315 +737,81 @@ mod tests {
             },
         );
 
-        let mut aggregation = BTreeMap::new();
+        let mut aggregation = Aggregation::new();
 
         // select Order Book because it has the best price
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::OrderBook);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(120), Default::default())
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
         // select Order Book instead of XYK pool because it was already selected
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::OrderBook);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(100), Default::default())
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
         // just take the best price in all cases below
 
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::XYKPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1)))
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::XYKPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9)))
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::OrderBook);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(87), Default::default()),
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::XSTPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::XSTPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
-        let (source, chunk) = selector.select_chunk(&mut aggregation).unwrap();
+        let (source, chunk) = selector.select_chunk(balance!(1000), &aggregation).unwrap();
         assert_eq!(source, LiquiditySourceType::OrderBook);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(80), Default::default()),
         );
-        push_chunk(&mut aggregation, source, chunk);
+        aggregation.push_chunk(source, chunk);
 
         // liquidity is empty
         assert_err!(
-            selector.select_chunk(&mut aggregation),
+            selector.select_chunk(balance!(1000), &aggregation),
             Error::<Runtime>::InsufficientLiquidity
         );
-    }
-
-    #[test]
-    fn check_select_remaining_chunk() {
-        let push_chunk = {
-            |aggregation: &mut BTreeMap<
-                LiquiditySourceType,
-                VecDeque<SwapChunk<AssetIdOf<Runtime>, Balance>>,
-            >,
-             source: LiquiditySourceType,
-             chunk: SwapChunk<AssetIdOf<Runtime>, Balance>| {
-                aggregation
-                    .entry(source)
-                    .and_modify(|chunks| chunks.push_back(chunk.clone()))
-                    .or_insert(vec![chunk].into());
-            }
-        };
-
-        let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredInput);
-        selector.add_source(
-            LiquiditySourceType::XYKPool,
-            DiscreteQuotation {
-                chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9))),
-                ]),
-                limits: Default::default(),
-            },
-        );
-        selector.add_source(
-            LiquiditySourceType::XSTPool,
-            DiscreteQuotation {
-                chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
-                    SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
-                ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
-            },
-        );
-        selector.add_source(
-            LiquiditySourceType::OrderBook,
-            DiscreteQuotation {
-                chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(120), Default::default()),
-                    SwapChunk::new(balance!(10), balance!(100), Default::default()),
-                    SwapChunk::new(balance!(10), balance!(87), Default::default()),
-                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
-                ]),
-                limits: SwapLimits::new(
-                    Some(SideAmount::Input(balance!(1))),
-                    Some(SideAmount::Input(balance!(1000))),
-                    Some(SideAmount::Input(balance!(0.1))),
-                ),
-            },
-        );
-
-        let mut aggregation = BTreeMap::new();
-
-        // select Order Book because it has the best price
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(10))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(120), Default::default())
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // select Order Book instead of XYK pool because it was already selected
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(10))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(100), Default::default())
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // just take the best price
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(10))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::XYKPool);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1)))
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // just take the best price
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(10))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::XYKPool);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9)))
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // take XST instead of Order Book because remaining amount < precision, but there are others candidates without precision limit
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(0.05))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::XSTPool);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // just take the best price
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(10))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(87), Default::default()),
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // just take the best price
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(10))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::XSTPool);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
-        );
-        assert_eq!(amount, None);
-        push_chunk(&mut aggregation, source, chunk);
-
-        // take Order Book despite remaining amount < precision, because it is only one available source
-        let (source, chunk, amount) = selector
-            .select_remaining_chunk(&mut aggregation, balance!(0.05))
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(
-            chunk,
-            SwapChunk::new(balance!(10), balance!(80), Default::default()),
-        );
-        assert_eq!(amount.unwrap(), balance!(0));
-        push_chunk(&mut aggregation, source, chunk);
-
-        // liquidity is empty
-        assert_err!(
-            selector.select_remaining_chunk(&mut aggregation, balance!(10)),
-            Error::<Runtime>::InsufficientLiquidity
-        );
-    }
-
-    #[test]
-    fn check_new_remaining_amount_from_select_remaining_chunk() {
-        let amount = balance!(0.05); // less than precision
-        let mut aggregation = BTreeMap::new();
-        let origin_chunk = SwapChunk::new(balance!(10), balance!(120), Default::default());
-
-        // WithDesiredInput & Input precision
-        let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredInput);
-        selector.add_source(
-            LiquiditySourceType::OrderBook,
-            DiscreteQuotation {
-                chunks: VecDeque::from([origin_chunk.clone()]),
-                limits: SwapLimits::new(None, None, Some(SideAmount::Input(balance!(0.1)))),
-            },
-        );
-
-        let (source, chunk, new_remaining_amount) = selector
-            .select_remaining_chunk(&mut aggregation, amount)
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(chunk, origin_chunk);
-        assert_eq!(new_remaining_amount.unwrap(), balance!(0));
-
-        // WithDesiredOutput & Output precision
-        let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredOutput);
-        selector.add_source(
-            LiquiditySourceType::OrderBook,
-            DiscreteQuotation {
-                chunks: VecDeque::from([origin_chunk.clone()]),
-                limits: SwapLimits::new(None, None, Some(SideAmount::Output(balance!(0.1)))),
-            },
-        );
-
-        let (source, chunk, new_remaining_amount) = selector
-            .select_remaining_chunk(&mut aggregation, amount)
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(chunk, origin_chunk);
-        assert_eq!(new_remaining_amount.unwrap(), balance!(0.1));
-
-        // WithDesiredInput & Output precision
-        let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredInput);
-        selector.add_source(
-            LiquiditySourceType::OrderBook,
-            DiscreteQuotation {
-                chunks: VecDeque::from([origin_chunk.clone()]),
-                limits: SwapLimits::new(None, None, Some(SideAmount::Output(balance!(10)))),
-            },
-        );
-
-        let (source, chunk, new_remaining_amount) = selector
-            .select_remaining_chunk(&mut aggregation, amount)
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(chunk, origin_chunk);
-        assert_eq!(new_remaining_amount.unwrap(), balance!(0));
-
-        // WithDesiredOutput & Input precision
-        let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredOutput);
-        selector.add_source(
-            LiquiditySourceType::OrderBook,
-            DiscreteQuotation {
-                chunks: VecDeque::from([origin_chunk.clone()]),
-                limits: SwapLimits::new(None, None, Some(SideAmount::Input(balance!(0.1)))),
-            },
-        );
-
-        let (source, chunk, new_remaining_amount) = selector
-            .select_remaining_chunk(&mut aggregation, amount)
-            .unwrap();
-        assert_eq!(source, LiquiditySourceType::OrderBook);
-        assert_eq!(chunk, origin_chunk);
-        assert_eq!(new_remaining_amount.unwrap(), balance!(1.2));
     }
 
     fn get_liquidity_aggregator_with_desired_input_and_equal_chunks(
@@ -1447,10 +1186,10 @@ mod tests {
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(11), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(12), balance!(100), OutcomeFee::xor(balance!(1))),
                     SwapChunk::new(balance!(13), balance!(100), OutcomeFee::xor(balance!(1))),
                     SwapChunk::new(balance!(14), balance!(100), OutcomeFee::xor(balance!(1))),
+                    SwapChunk::new(balance!(15), balance!(100), OutcomeFee::xor(balance!(1))),
+                    SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -1460,11 +1199,11 @@ mod tests {
             LiquiditySourceType::XSTPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
+                    SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xst(balance!(1))),
+                    SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xst(balance!(1))),
+                    SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xst(balance!(1))),
+                    SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xst(balance!(1))),
+                    SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xst(balance!(1))),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
@@ -1476,7 +1215,7 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(8), balance!(100), Default::default()),
                     SwapChunk::new(balance!(9), balance!(90), Default::default()),
-                    SwapChunk::new(balance!(10.5), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Output(balance!(200))),
@@ -1489,7 +1228,7 @@ mod tests {
         aggregator
     }
 
-    fn get_liquidity_aggregator_with_desired_input_and_precision_limits(
+    fn get_liquidity_aggregator_with_desired_input_and_precision_limits_for_input(
     ) -> LiquidityAggregator<Runtime, LiquiditySourceType> {
         let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
 
@@ -1499,9 +1238,6 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
                     SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9))),
-                    SwapChunk::new(balance!(10), balance!(80), OutcomeFee::xor(balance!(0.8))),
-                    SwapChunk::new(balance!(10), balance!(70), OutcomeFee::xor(balance!(0.7))),
-                    SwapChunk::new(balance!(10), balance!(60), OutcomeFee::xor(balance!(0.6))),
                 ]),
                 limits: Default::default(),
             },
@@ -1513,7 +1249,49 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
                     SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
-                    SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
+                ]),
+                limits: SwapLimits::new(None, Some(SideAmount::Input(balance!(1000000))), None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(11), balance!(137.5), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
+                    SwapChunk::new(balance!(14), balance!(70), Default::default()),
+                ]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.1))),
+                ),
+            },
+        );
+
+        aggregator
+    }
+
+    fn get_liquidity_aggregator_with_desired_input_and_precision_limits_for_output(
+    ) -> LiquidityAggregator<Runtime, LiquiditySourceType> {
+        let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
+
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
+                    SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9))),
+                ]),
+                limits: Default::default(),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::XSTPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
                     SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
                 ]),
@@ -1525,14 +1303,14 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(11), balance!(132), Default::default()),
-                    SwapChunk::new(balance!(10), balance!(90), Default::default()),
-                    SwapChunk::new(balance!(14), balance!(112), Default::default()),
+                    SwapChunk::new(balance!(11), balance!(137.5), Default::default()),
+                    SwapChunk::new(balance!(14), balance!(70), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(40), Default::default()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
                     Some(SideAmount::Input(balance!(1000))),
-                    Some(SideAmount::Input(balance!(0.1))),
+                    Some(SideAmount::Output(balance!(0.1))),
                 ),
             },
         );
@@ -1550,9 +1328,6 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
                     SwapChunk::new(balance!(11), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(12), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(13), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(14), balance!(100), OutcomeFee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -1564,11 +1339,8 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
                     SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
         );
 
@@ -1576,9 +1348,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(120), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(125), Default::default()),
                     SwapChunk::new(balance!(9), balance!(90), Default::default()),
-                    SwapChunk::new(balance!(13), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(50), Default::default()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -1601,9 +1373,6 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
                     SwapChunk::new(balance!(11), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(12), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(13), balance!(100), OutcomeFee::xor(balance!(1))),
-                    SwapChunk::new(balance!(14), balance!(100), OutcomeFee::xor(balance!(1))),
                 ]),
                 limits: Default::default(),
             },
@@ -1615,11 +1384,8 @@ mod tests {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
                     SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
-                    SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(150))), None),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(1000000))), None),
             },
         );
 
@@ -1627,9 +1393,9 @@ mod tests {
             LiquiditySourceType::OrderBook,
             DiscreteQuotation {
                 chunks: VecDeque::from([
-                    SwapChunk::new(balance!(10), balance!(120), Default::default()),
-                    SwapChunk::new(balance!(9), balance!(90), Default::default()),
-                    SwapChunk::new(balance!(13), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(125), Default::default()),
+                    SwapChunk::new(balance!(14), balance!(70), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(40), Default::default()),
                 ]),
                 limits: SwapLimits::new(
                     Some(SideAmount::Input(balance!(1))),
@@ -2775,13 +2541,13 @@ mod tests {
         assert_eq!(
             aggregator.aggregate_liquidity(balance!(200)).unwrap(),
             AggregationResult::new(
-                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(21), balance!(200)))]),
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(23), balance!(200)))]),
                 vec![(
                     LiquiditySourceType::XYKPool,
-                    SwapAmount::with_desired_output(balance!(200), balance!(21))
+                    SwapAmount::with_desired_output(balance!(200), balance!(23))
                 )],
                 balance!(200),
-                balance!(21),
+                balance!(23),
                 SwapVariant::WithDesiredOutput,
                 OutcomeFee::xor(balance!(2))
             )
@@ -2796,7 +2562,7 @@ mod tests {
                     (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
                     (
                         LiquiditySourceType::OrderBook,
-                        (balance!(18.05), balance!(200))
+                        (balance!(18.25), balance!(200))
                     )
                 ]),
                 vec![
@@ -2806,11 +2572,11 @@ mod tests {
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(200), balance!(18.05))
+                        SwapAmount::with_desired_output(balance!(200), balance!(18.25))
                     )
                 ],
                 balance!(300),
-                balance!(28.05),
+                balance!(28.25),
                 SwapVariant::WithDesiredOutput,
                 OutcomeFee::xor(balance!(1))
             )
@@ -2819,7 +2585,8 @@ mod tests {
 
     #[test]
     fn check_aggregate_liquidity_with_desired_input_and_precision_limits() {
-        let aggregator = get_liquidity_aggregator_with_desired_input_and_precision_limits();
+        let aggregator =
+            get_liquidity_aggregator_with_desired_input_and_precision_limits_for_input();
         assert_eq!(
             aggregator.aggregate_liquidity(balance!(10.65)).unwrap(),
             AggregationResult::new(
@@ -2830,7 +2597,7 @@ mod tests {
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        (balance!(10.6), balance!(127.2))
+                        (balance!(10.6), balance!(132.5))
                     )
                 ]),
                 vec![
@@ -2840,11 +2607,11 @@ mod tests {
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_input(balance!(10.6), balance!(127.2))
+                        SwapAmount::with_desired_input(balance!(10.6), balance!(132.5))
                     )
                 ],
                 balance!(10.65),
-                balance!(127.7),
+                balance!(133),
                 SwapVariant::WithDesiredInput,
                 OutcomeFee::xor(balance!(0.005))
             )
@@ -2865,7 +2632,7 @@ mod tests {
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        (balance!(8.465), balance!(101.58))
+                        (balance!(8.1264), balance!(101.58))
                     )
                 ]),
                 vec![
@@ -2875,11 +2642,11 @@ mod tests {
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(balance!(101.58), balance!(8.465))
+                        SwapAmount::with_desired_output(balance!(101.58), balance!(8.1264))
                     )
                 ],
                 balance!(101.585),
-                balance!(8.4655),
+                balance!(8.1269),
                 SwapVariant::WithDesiredOutput,
                 OutcomeFee::xor(balance!(0.00005))
             )
@@ -2893,36 +2660,27 @@ mod tests {
                 SwapInfo::from([
                     (
                         LiquiditySourceType::XYKPool,
-                        (
-                            balance!(0.006499999999999999),
-                            balance!(0.064999999999999993)
-                        )
+                        (balance!(0.0085), balance!(0.085))
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        (balance!(8.46), balance!(101.520000000000000007))
+                        (balance!(8.12), balance!(101.5))
                     )
                 ]),
                 vec![
                     (
                         LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_output(
-                            balance!(0.064999999999999993),
-                            balance!(0.006499999999999999)
-                        )
+                        SwapAmount::with_desired_output(balance!(0.085), balance!(0.0085))
                     ),
                     (
                         LiquiditySourceType::OrderBook,
-                        SwapAmount::with_desired_output(
-                            balance!(101.520000000000000007),
-                            balance!(8.46)
-                        )
+                        SwapAmount::with_desired_output(balance!(101.5), balance!(8.12))
                     )
                 ],
                 balance!(101.585),
-                balance!(8.466499999999999999),
+                balance!(8.1285),
                 SwapVariant::WithDesiredOutput,
-                OutcomeFee::xor(balance!(0.000649999999999999))
+                OutcomeFee::xor(balance!(0.00085))
             )
         );
     }
@@ -2936,7 +2694,11 @@ mod tests {
             DiscreteQuotation {
                 chunks: vec![SwapChunk::new(balance!(0.1), balance!(1), Default::default()); 100]
                     .into(),
-                limits: SwapLimits::new(None, None, Some(SideAmount::Input(balance!(1)))),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(balance!(2))),
+                    Some(SideAmount::Input(balance!(3))),
+                    None,
+                ),
             },
         );
         aggregator.add_source(
@@ -2949,24 +2711,319 @@ mod tests {
         );
 
         assert_eq!(
-            aggregator.aggregate_liquidity(balance!(1.5)).unwrap(),
+            aggregator
+                .clone()
+                .aggregate_liquidity(balance!(1.5))
+                .unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(1.5), balance!(12))),]),
+                vec![(
+                    LiquiditySourceType::XYKPool,
+                    SwapAmount::with_desired_input(balance!(1.5), balance!(12))
+                ),],
+                balance!(1.5),
+                balance!(12),
+                SwapVariant::WithDesiredInput,
+                Default::default()
+            )
+        );
+
+        assert_eq!(
+            aggregator.aggregate_liquidity(balance!(4)).unwrap(),
             AggregationResult::new(
                 SwapInfo::from([
-                    (LiquiditySourceType::XYKPool, (balance!(0.5), balance!(4))),
-                    (LiquiditySourceType::XSTPool, (balance!(1), balance!(10)))
+                    (LiquiditySourceType::XYKPool, (balance!(1), balance!(8))),
+                    (LiquiditySourceType::XSTPool, (balance!(3), balance!(30)))
                 ]),
                 vec![
                     (
                         LiquiditySourceType::XYKPool,
-                        SwapAmount::with_desired_input(balance!(0.5), balance!(4))
+                        SwapAmount::with_desired_input(balance!(1), balance!(8))
                     ),
                     (
                         LiquiditySourceType::XSTPool,
-                        SwapAmount::with_desired_input(balance!(1), balance!(10))
+                        SwapAmount::with_desired_input(balance!(3), balance!(30))
                     )
                 ],
-                balance!(1.5),
-                balance!(14),
+                balance!(4),
+                balance!(38),
+                SwapVariant::WithDesiredInput,
+                Default::default()
+            )
+        );
+    }
+
+    #[test]
+    fn check_rounding_with_desired_input_amount_and_input_precision() {
+        let aggregator =
+            get_liquidity_aggregator_with_desired_input_and_precision_limits_for_input();
+
+        assert_eq!(
+            aggregator.aggregate_liquidity(balance!(52.05)).unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(12), balance!(145.5))
+                    )
+                ]),
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(170))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(12), balance!(145.5))
+                    )
+                ],
+                balance!(52), // rounded down
+                balance!(505.5),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(1.9)), (XST, balance!(1.7))]))
+            )
+        );
+    }
+
+    #[test]
+    fn check_rounding_with_desired_output_amount_and_output_precision() {
+        let aggregator =
+            get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output();
+
+        assert_eq!(
+            aggregator.aggregate_liquidity(balance!(525.123)).unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
+                    (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(10.026), balance!(125.13))
+                    )
+                ]),
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(200), balance!(21))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(200), balance!(25))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(125.13), balance!(10.026))
+                    )
+                ],
+                balance!(525.13), // rounded up
+                balance!(56.026),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(2)), (XST, balance!(2))]))
+            )
+        );
+    }
+
+    #[test]
+    fn check_rounding_with_desired_input_amount_and_output_precision() {
+        let aggregator =
+            get_liquidity_aggregator_with_desired_input_and_precision_limits_for_output();
+
+        assert_eq!(
+            aggregator.aggregate_liquidity(balance!(52.05)).unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                    (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(12.04), balance!(142.7))
+                    )
+                ]),
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(190))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_input(balance!(20), balance!(170))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(12.04), balance!(142.7))
+                    )
+                ],
+                balance!(52.04), // rounded down
+                balance!(502.7),
+                SwapVariant::WithDesiredInput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(1.9)), (XST, balance!(1.7))]))
+            )
+        );
+    }
+
+    #[test]
+    fn check_rounding_with_desired_output_amount_and_input_precision() {
+        let aggregator =
+            get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input();
+
+        assert_eq!(
+            aggregator.aggregate_liquidity(balance!(625.615)).unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([
+                    (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
+                    (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(21.13), balance!(225.65))
+                    )
+                ]),
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_output(balance!(200), balance!(21))
+                    ),
+                    (
+                        LiquiditySourceType::XSTPool,
+                        SwapAmount::with_desired_output(balance!(200), balance!(25))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_output(balance!(225.65), balance!(21.13))
+                    )
+                ],
+                balance!(625.65), // rounded up
+                balance!(67.13),
+                SwapVariant::WithDesiredOutput,
+                OutcomeFee(BTreeMap::from([(XOR, balance!(2)), (XST, balance!(2))]))
+            )
+        );
+    }
+
+    #[test]
+    fn check_sources_with_min_amount() {
+        let mut aggregator = LiquidityAggregator::<Runtime, _>::new(SwapVariant::WithDesiredInput);
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(90), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(70), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(60), Default::default()),
+                ]),
+                limits: SwapLimits::new(Some(SideAmount::Input(balance!(30))), None, None),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(125), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(50), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(40), Default::default()),
+                ]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(balance!(30))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.00001))),
+                ),
+            },
+        );
+
+        // liquidity were taken from both sources, but it didn't match the min amount requirements,
+        // but the total amount is enough to exceed the min amount in one of sources.
+        // Liquidity was redistributed to one source.
+        assert_eq!(
+            aggregator.aggregate_liquidity(balance!(40)).unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([(
+                    LiquiditySourceType::OrderBook,
+                    (balance!(40), balance!(355))
+                )]),
+                vec![(
+                    LiquiditySourceType::OrderBook,
+                    SwapAmount::with_desired_input(balance!(40), balance!(355))
+                )],
+                balance!(40),
+                balance!(355),
+                SwapVariant::WithDesiredInput,
+                Default::default()
+            )
+        );
+    }
+
+    #[test]
+    fn check_sources_with_precision() {
+        let mut aggregator = LiquidityAggregator::<Runtime, _>::new(SwapVariant::WithDesiredInput);
+        aggregator.add_source(
+            LiquiditySourceType::XYKPool,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(90), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(70), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(60), Default::default()),
+                ]),
+                limits: SwapLimits::new(None, None, Some(SideAmount::Output(balance!(0.01)))),
+            },
+        );
+
+        aggregator.add_source(
+            LiquiditySourceType::OrderBook,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(balance!(10), balance!(125), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(100), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(80), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(50), Default::default()),
+                    SwapChunk::new(balance!(10), balance!(40), Default::default()),
+                ]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(balance!(1))),
+                    Some(SideAmount::Input(balance!(1000))),
+                    Some(SideAmount::Input(balance!(0.1))),
+                ),
+            },
+        );
+
+        assert_eq!(
+            aggregator
+                .aggregate_liquidity(balance!(19.9999999))
+                .unwrap(),
+            AggregationResult::new(
+                SwapInfo::from([
+                    (
+                        LiquiditySourceType::XYKPool,
+                        (balance!(0.099), balance!(0.99))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        (balance!(19.9), balance!(224))
+                    )
+                ]),
+                vec![
+                    (
+                        LiquiditySourceType::XYKPool,
+                        SwapAmount::with_desired_input(balance!(0.099), balance!(0.99))
+                    ),
+                    (
+                        LiquiditySourceType::OrderBook,
+                        SwapAmount::with_desired_input(balance!(19.9), balance!(224))
+                    )
+                ],
+                balance!(19.999),
+                balance!(224.99),
                 SwapVariant::WithDesiredInput,
                 Default::default()
             )

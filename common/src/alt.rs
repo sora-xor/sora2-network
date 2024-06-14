@@ -91,6 +91,16 @@ impl<AssetId: Ord + Clone, AmountType: Copy> SwapChunk<AssetId, AmountType> {
             SwapVariant::WithDesiredOutput => SideAmount::Output(self.output),
         }
     }
+
+    pub fn get_same_type_amount(
+        &self,
+        reference: &SideAmount<AmountType>,
+    ) -> SideAmount<AmountType> {
+        match reference {
+            SideAmount::Input(..) => SideAmount::Input(self.input),
+            SideAmount::Output(..) => SideAmount::Output(self.output),
+        }
+    }
 }
 
 impl<AssetId: Ord + Clone, AmountType: PartialEq> PartialEq<SideAmount<AmountType>>
@@ -277,6 +287,28 @@ impl<AmountType> SwapLimits<AmountType> {
 }
 
 impl SwapLimits<Balance> {
+    pub fn get_precision_step<AssetId: Ord + Clone>(
+        &self,
+        chunk: &SwapChunk<AssetId, Balance>,
+        variant: SwapVariant,
+    ) -> Option<Balance> {
+        let step = if let Some(precision) = self.amount_precision {
+            match (variant, precision) {
+                (SwapVariant::WithDesiredInput, SideAmount::Input(value)) => value,
+                (SwapVariant::WithDesiredOutput, SideAmount::Output(value)) => value,
+                (SwapVariant::WithDesiredInput, SideAmount::Output(value)) => {
+                    chunk.proportional_input(value)?
+                }
+                (SwapVariant::WithDesiredOutput, SideAmount::Input(value)) => {
+                    chunk.proportional_output(value)?
+                }
+            }
+        } else {
+            Balance::zero()
+        };
+        Some(step)
+    }
+
     /// Aligns the `chunk` regarding to the `min_amount` limit.
     /// Returns the aligned chunk and the remainder
     pub fn align_chunk_min<AssetId: Ord + Clone>(
