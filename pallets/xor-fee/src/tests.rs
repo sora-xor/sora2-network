@@ -516,10 +516,7 @@ fn calculate_multiplier_using_ref_amount_works() {
         let multiplier = DynamicMultiplier::calculate_multiplier(&input_asset, &ref_asset)
             .unwrap()
             .into_inner();
-        let price = match (input_asset, ref_asset) {
-            (input_asset, ref_asset) => balance!(0.00008),
-            _ => balance!(0.000000000000000001),
-        };
+        let price = balance!(0.00008);
         let ref_amount = FixedWrapper::from(price) * SMALL_FEE * multiplier;
         assert_eq!(
             ref_amount.into_balance(),
