@@ -453,6 +453,40 @@ impl<AssetId: Ord + Clone, AmountType> DiscreteQuotation<AssetId, AmountType> {
     }
 }
 
+impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
+    pub fn verify(&self) -> bool {
+        for chunk in &self.chunks {
+            // chunk should not contain zeros
+            if chunk.input.is_zero() || chunk.output.is_zero() {
+                return false;
+            }
+
+            // if source provides the precision limit - all chunks must match this requirement.
+            if let Some(precision) = self.limits.amount_precision {
+                let (input_precision, output_precision) = match precision {
+                    SideAmount::Input(input_precision) => {
+                        let Some(output_precision) = self.limits.get_precision_step(&chunk, SwapVariant::WithDesiredOutput) else {
+                            return false;
+                        };
+                        (input_precision, output_precision)
+                    }
+                    SideAmount::Output(output_precision) => {
+                        let Some(input_precision) = self.limits.get_precision_step(&chunk, SwapVariant::WithDesiredInput) else {
+                            return false;
+                        };
+                        (input_precision, output_precision)
+                    }
+                };
+
+                if chunk.input % input_precision != 0 || chunk.output % output_precision != 0 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1065,5 +1099,150 @@ mod tests {
             empty_limit.align_chunk(chunk_ok.clone()).unwrap(),
             (chunk_ok, Zero::zero())
         );
+    }
+
+    #[test]
+    fn check_discrete_quotation_verification() {
+        // check zero case
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(0),
+                balance!(0),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(0),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(0),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
+
+        // check precision case
+
+        // wrong input
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.11),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Input(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        // wrong output
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(1.11),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Output(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        // input is ok, but output doesn't match with proportional precision
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.1),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Input(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        // output is ok, but input doesn't match with proportional precision
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(1.1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Output(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.1),
+                balance!(1.1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Input(balance!(0.1))),
+            },
+        };
+        assert!(correct.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.1),
+                balance!(1.1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Output(balance!(0.1))),
+            },
+        };
+        assert!(correct.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.11),
+                balance!(1.11),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
     }
 }

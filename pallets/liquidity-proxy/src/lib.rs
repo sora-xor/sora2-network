@@ -1612,7 +1612,7 @@ impl<T: Config> Pallet<T> {
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation);
+                aggregator.add_source(source.clone(), discrete_quotation)?;
                 total_weight = total_weight.saturating_add(weight);
             } else {
                 // skip the source if it returns an error
@@ -2916,16 +2916,18 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
-        // Information about swap batch receivers is invalid
+        /// Information about swap batch receivers is invalid
         InvalidReceiversInfo,
-        // Failure while transferring commission to ADAR account
+        /// Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
-        // ADAR commission ratio exceeds 1
+        /// ADAR commission ratio exceeds 1
         InvalidADARCommissionRatio,
-        // Sender don't have enough asset balance
+        /// Sender don't have enough asset balance
         InsufficientBalance,
-        // Sender and receiver should not be the same
+        /// Sender and receiver should not be the same
         TheSameSenderAndReceiver,
+        /// Internal error. Liquidity source returned wrong liquidity.
+        BadLiquidity,
     }
 
     #[pallet::type_value]
