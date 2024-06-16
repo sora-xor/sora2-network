@@ -101,7 +101,7 @@ impl assets::Config for TestRuntime {
 impl regulated_assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<TestRuntime>;
-    type MaxAllowedTokensPerSBT = ConstU32<10000>;
+    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
     type MaxSBTsPerAsset = ConstU32<10000>;
     type WeightInfo = ();
 }

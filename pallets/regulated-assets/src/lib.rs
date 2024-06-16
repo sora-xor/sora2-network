@@ -70,8 +70,6 @@ pub use pallet::*;
 pub struct SoulboundTokenMetadata<AccountId, AssetId, MaxAllowedTokensPerSBT: Get<u32>, Moment> {
     /// Owner of the token
     owner: AccountId,
-    /// Token ID uniquely identifies the token (uuid)
-    token_id: ContentSource,
     /// Name of the token
     name: AssetName,
     /// Description of the token
@@ -105,7 +103,7 @@ pub mod pallet {
 
         /// Max number of allowed tokens per one Soulbound Token
         #[pallet::constant]
-        type MaxAllowedTokensPerSBT: Get<u32>;
+        type MaxAllowedAssetsPerSBT: Get<u32>;
 
         /// Max number of SBTs per one Asset
         #[pallet::constant]
@@ -170,7 +168,6 @@ pub mod pallet {
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `token_id`: The unique identifier for the SBT.
         /// - `symbol`: The symbol of the SBT which should represent a string with only uppercase Latin characters with a maximum length of 7.
         /// - `name`: The name of the SBT which should represent a string with only uppercase or lowercase Latin characters, numbers, or spaces, with a maximum length of 33.
         /// - `description`: The description of the SBT. (Optional)
@@ -182,14 +179,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
         pub fn issue_sbt(
             origin: OriginFor<T>,
-            token_id: ContentSource,
             symbol: AssetSymbol,
             name: AssetName,
             description: Option<Description>,
             image: Option<ContentSource>,
             external_url: Option<ContentSource>,
             expires_at: Option<T::Moment>,
-            allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
+            allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedAssetsPerSBT>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -216,7 +212,6 @@ pub mod pallet {
 
             let metadata = SoulboundTokenMetadata {
                 owner: who.clone(),
-                token_id,
                 name,
                 description,
                 image,
@@ -294,7 +289,7 @@ pub mod pallet {
         _,
         Identity,
         AssetIdOf<T>,
-        SoulboundTokenMetadata<T::AccountId, AssetIdOf<T>, T::MaxAllowedTokensPerSBT, T::Moment>,
+        SoulboundTokenMetadata<T::AccountId, AssetIdOf<T>, T::MaxAllowedAssetsPerSBT, T::Moment>,
         OptionQuery,
     >;
 
@@ -312,7 +307,7 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
     pub fn check_allowed_assets_for_sbt_issuance(
-        allowed_assets: &BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
+        allowed_assets: &BoundedVec<AssetIdOf<T>, T::MaxAllowedAssetsPerSBT>,
         sbt_issuer: &T::AccountId,
     ) -> Result<(), Error<T>> {
         for allowed_asset_id in allowed_assets.iter() {

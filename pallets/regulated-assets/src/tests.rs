@@ -169,12 +169,10 @@ fn test_issue_sbt_succeeds() {
             asset_id
         ));
 
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
         // Owner can issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner),
-            token_id,
             asset_symbol,
             asset_name,
             None,
@@ -193,12 +191,11 @@ fn test_issue_sbt_fails_due_to_invalid_expires_at() {
         let owner = bob();
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
+
         let now_timestamp = Timestamp::now();
 
         let result_invalid_expires_at = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id.clone(),
             asset_symbol.clone(),
             asset_name.clone(),
             None,
@@ -221,12 +218,11 @@ fn test_issue_sbt_fails_due_to_invalid_allowed_assets() {
         let owner = bob();
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
+
         let now_timestamp = Timestamp::now();
 
         let result_invalid_allowed_asset_not_onwer = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id.clone(),
             asset_symbol.clone(),
             asset_name.clone(),
             None,
@@ -245,7 +241,6 @@ fn test_issue_sbt_fails_due_to_invalid_allowed_assets() {
 
         let result_invalid_allowed_asset_unregulated = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id.clone(),
             asset_symbol.clone(),
             asset_name.clone(),
             None,
@@ -270,8 +265,6 @@ fn test_sbt_only_operationable_by_its_owner() {
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
 
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
-
         let asset_id = add_asset::<TestRuntime>(&owner);
         let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
         assert_ok!(RegulatedAssets::regulate_asset(
@@ -283,7 +276,6 @@ fn test_sbt_only_operationable_by_its_owner() {
         // Issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id,
             asset_symbol,
             asset_name,
             None,
@@ -330,7 +322,6 @@ fn test_sbt_cannot_be_transferred() {
         let asset_name = AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
 
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let asset_id = add_asset::<TestRuntime>(&owner);
         let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
         assert_ok!(RegulatedAssets::regulate_asset(
@@ -342,7 +333,6 @@ fn test_sbt_cannot_be_transferred() {
         // Owner can issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id,
             asset_symbol,
             asset_name,
             None,
@@ -388,13 +378,11 @@ fn test_check_permission_pass_only_if_all_invloved_accounts_have_valid_sbt() {
             asset_id
         ));
 
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
 
         // Issue SBT
         let result = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id,
             asset_symbol,
             asset_name,
             None,
@@ -469,13 +457,11 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
             asset_id
         ));
 
-        let token_id = ContentSource(b"1234-5678-9012-3456".to_vec());
         let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
 
         // Issue SBT
         let result_sbt_soon_expires = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id.clone(),
             asset_symbol.clone(),
             asset_name.clone(),
             None,
@@ -501,7 +487,6 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
         // Issue SBT
         let result_sbt_expires_later = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            token_id.clone(),
             asset_symbol.clone(),
             asset_name.clone(),
             None,
