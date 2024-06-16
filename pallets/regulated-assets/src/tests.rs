@@ -64,6 +64,21 @@ pub fn add_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
     .expect("Failed to register asset")
 }
 
+fn get_sbt_id_from_events<T: Config>() -> AssetIdOf<T> {
+    // Extract the issued SBT asset ID
+    let event = frame_system::Pallet::<TestRuntime>::events()
+        .pop()
+        .expect("Expected at least one event")
+        .event;
+    let sbt_asset_id = match event {
+        RuntimeEvent::RegulatedAssets(crate::Event::SoulboundTokenIssued { asset_id, .. }) => {
+            asset_id
+        }
+        _ => panic!("Unexpected event: {:?}", event),
+    };
+    sbt_asset_id.into()
+}
+
 #[test]
 fn test_default_value_asset_regulated() {
     new_test_ext().execute_with(|| {
@@ -284,18 +299,7 @@ fn test_sbt_only_operationable_by_its_owner() {
             None,
             bounded_vec_assets,
         ));
-
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<TestRuntime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(crate::Event::SoulboundTokenIssued {
-                asset_id, ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
+        let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
 
         // SBT operations by non-owner should fail
         assert_err!(
@@ -342,17 +346,7 @@ fn test_sbt_cannot_be_transferred() {
             bounded_vec_assets,
         ));
 
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<TestRuntime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(crate::Event::SoulboundTokenIssued {
-                asset_id, ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
+        let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
 
         assert_err!(
             Assets::transfer(RuntimeOrigin::signed(owner), sbt_asset_id, non_owner, 1),
@@ -393,17 +387,7 @@ fn test_check_permission_pass_only_if_all_invloved_accounts_have_valid_sbt() {
         );
         assert_ok!(result);
 
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<TestRuntime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(crate::Event::SoulboundTokenIssued {
-                asset_id, ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
+        let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
 
         // Give SBT to another_account
         assert_ok!(Assets::mint_to(&sbt_asset_id, &owner, &another_account, 1));
@@ -472,17 +456,7 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
         );
         assert_ok!(result_sbt_soon_expires);
 
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<TestRuntime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let soon_expires_sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(crate::Event::SoulboundTokenIssued {
-                asset_id, ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
+        let soon_expires_sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
 
         // Issue SBT
         let result_sbt_expires_later = RegulatedAssets::issue_sbt(
@@ -497,17 +471,7 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
         );
         assert_ok!(result_sbt_expires_later);
 
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<TestRuntime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let expires_later_sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(crate::Event::SoulboundTokenIssued {
-                asset_id, ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
+        let expires_later_sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
 
         // Give SBT to another_account
         assert_ok!(Assets::mint_to(
@@ -540,4 +504,150 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
             Error::<TestRuntime>::AllInvolvedUsersShouldHoldValidSBT
         );
     })
+}
+
+#[test]
+fn test_update_sbt_expiration_succeeds() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = bob();
+        let asset_name = AssetName(b"Soulbound Token".to_vec());
+        let asset_symbol = AssetSymbol(b"SBT".to_vec());
+        let expiration_timestamp = Timestamp::now().saturating_add(100);
+        let new_expiration_timestamp = expiration_timestamp.saturating_add(100);
+
+        let asset_id = add_asset::<TestRuntime>(&owner);
+        assert_ok!(RegulatedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id
+        ));
+
+        let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
+
+        // Issue SBT
+        assert_ok!(RegulatedAssets::issue_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_symbol,
+            asset_name,
+            None,
+            None,
+            None,
+            Some(expiration_timestamp),
+            bounded_vec_assets,
+        ));
+
+        let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
+        // Update expiration date
+        assert_ok!(RegulatedAssets::update_sbt_expiration(
+            RuntimeOrigin::signed(owner.clone()),
+            sbt_asset_id.clone(),
+            Some(new_expiration_timestamp)
+        ));
+
+        let metadata = RegulatedAssets::soulbound_asset(sbt_asset_id).unwrap();
+        assert_eq!(metadata.expires_at, Some(new_expiration_timestamp));
+    });
+}
+
+#[test]
+fn test_update_sbt_expiration_fails_for_non_owner() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = bob();
+        let non_owner = alice();
+        let asset_name = AssetName(b"Soulbound Token".to_vec());
+        let asset_symbol = AssetSymbol(b"SBT".to_vec());
+        let expiration_timestamp = Timestamp::now().saturating_add(100);
+        let new_expiration_timestamp = expiration_timestamp.saturating_add(100);
+
+        let asset_id = add_asset::<TestRuntime>(&owner);
+        assert_ok!(RegulatedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id
+        ));
+
+        let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
+
+        // Issue SBT
+        assert_ok!(RegulatedAssets::issue_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_symbol,
+            asset_name,
+            None,
+            None,
+            None,
+            Some(expiration_timestamp),
+            bounded_vec_assets,
+        ));
+
+        // Attempt to update expiration date by non-owner
+        assert_err!(
+            RegulatedAssets::update_sbt_expiration(
+                RuntimeOrigin::signed(non_owner),
+                get_sbt_id_from_events::<TestRuntime>(),
+                Some(new_expiration_timestamp)
+            ),
+            Error::<TestRuntime>::NotSBTOwner
+        );
+    });
+}
+
+#[test]
+fn test_update_sbt_expiration_fails_for_past_timestamp() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = bob();
+        let asset_name = AssetName(b"Soulbound Token".to_vec());
+        let asset_symbol = AssetSymbol(b"SBT".to_vec());
+        let expiration_timestamp = Timestamp::now().saturating_add(100);
+        let new_expiration_timestamp = Timestamp::now().saturating_sub(1);
+
+        let asset_id = add_asset::<TestRuntime>(&owner);
+        assert_ok!(RegulatedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id
+        ));
+
+        let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
+
+        // Issue SBT
+        assert_ok!(RegulatedAssets::issue_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_symbol,
+            asset_name,
+            None,
+            None,
+            None,
+            Some(expiration_timestamp),
+            bounded_vec_assets,
+        ));
+
+        // Attempt to update expiration date with a past timestamp
+        assert_err!(
+            RegulatedAssets::update_sbt_expiration(
+                RuntimeOrigin::signed(owner),
+                get_sbt_id_from_events::<TestRuntime>(),
+                Some(new_expiration_timestamp)
+            ),
+            Error::<TestRuntime>::SBTExpirationDateCannotBeInThePast
+        );
+    });
+}
+
+#[test]
+fn test_update_sbt_expiration_fails_for_non_existent_sbt() {
+    new_test_ext().execute_with(|| {
+        let owner = bob();
+        let non_existent_sbt_id = XOR;
+
+        // Attempt to update expiration date for a non-existent SBT
+        assert_err!(
+            RegulatedAssets::update_sbt_expiration(
+                RuntimeOrigin::signed(owner),
+                non_existent_sbt_id,
+                None
+            ),
+            Error::<TestRuntime>::SBTNotFound
+        );
+    });
 }
