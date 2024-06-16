@@ -201,6 +201,8 @@ pub mod pallet {
                 );
             }
 
+            Self::check_allowed_assets_for_sbt_issuance(&allowed_assets, &who)?;
+
             let sbt_asset_id = T::AssetManager::register_from(
                 &who,
                 symbol,
@@ -264,10 +266,14 @@ pub mod pallet {
         OnlyAssetOwnerCanRegulate,
         /// Asset is already regulated
         AssetAlreadyRegulated,
-        /// All involved users of a regulated asset operation should hold SBT
-        AllInvolvedUsersShouldHoldSBT,
+        /// All involved users of a regulated asset operation should hold valid SBT
+        AllInvolvedUsersShouldHoldValidSBT,
         /// SBT Expiration Date cannot be in the past
         SBTExpirationDateCannotBeInThePast,
+        /// All Allowed assets must be owned by SBT issuer
+        AllowedAssetsMustBeOwnedBySBTIssuer,
+        /// All Allowed assets must be regulated
+        AllowedAssetsMustBeRegulated,
     }
 
     #[pallet::type_value]
@@ -302,6 +308,29 @@ pub mod pallet {
         BoundedBTreeSet<AssetIdOf<T>, T::MaxSBTsPerAsset>,
         ValueQuery,
     >;
+}
+
+impl<T: Config> Pallet<T> {
+    pub fn check_allowed_assets_for_sbt_issuance(
+        allowed_assets: &BoundedVec<AssetIdOf<T>, T::MaxAllowedTokensPerSBT>,
+        sbt_issuer: &T::AccountId,
+    ) -> Result<(), Error<T>> {
+        for allowed_asset_id in allowed_assets.iter() {
+            let is_asset_owner =
+                <T as Config>::AssetInfoProvider::is_asset_owner(allowed_asset_id, &sbt_issuer);
+
+            if !is_asset_owner {
+                return Err(Error::<T>::AllowedAssetsMustBeOwnedBySBTIssuer);
+            }
+
+            let is_asset_regulated = Self::regulated_asset(allowed_asset_id);
+            if !is_asset_regulated {
+                return Err(Error::<T>::AllowedAssetsMustBeRegulated);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
@@ -373,7 +402,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         });
 
         if !issuer_has_sbt || !affected_account_has_sbt {
-            return Err(Error::<T>::AllInvolvedUsersShouldHoldSBT.into());
+            return Err(Error::<T>::AllInvolvedUsersShouldHoldValidSBT.into());
         }
 
         Ok(())
