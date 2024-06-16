@@ -65,12 +65,13 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
     fn regulate_asset() -> Weight;
 	fn issue_sbt() -> Weight;
+	fn update_sbt_expiration() -> Weight;
 }
 
 /// Weight functions for `regulated_assets`.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	//// Storage: Assets AssetOwners (r:1 w:0)
+	/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: RegulatedAssets RegulatedAsset (r:1 w:1)
 	/// Proof: RegulatedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
@@ -78,12 +79,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `761`
 		//  Estimated: `5744`
-		// Minimum execution time: 17_000 nanoseconds.
+		// Minimum execution time: 16_000 nanoseconds.
 		Weight::from_parts(17_000_000, 5744)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
-
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
 	/// Storage: Assets AssetOwners (r:2 w:1)
@@ -99,7 +99,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: RegulatedAssets SBTsByAsset (r:1 w:1)
 	/// Proof: RegulatedAssets SBTsByAsset (max_values: None, max_size: Some(320034), added: 322509, mode: MaxEncodedLen)
 	/// Storage: RegulatedAssets SoulboundAsset (r:0 w:1)
-	/// Proof: RegulatedAssets SoulboundAsset (max_values: None, max_size: Some(326775), added: 329250, mode: MaxEncodedLen)
+	/// Proof: RegulatedAssets SoulboundAsset (max_values: None, max_size: Some(324727), added: 327202, mode: MaxEncodedLen)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	fn issue_sbt() -> Weight {
@@ -107,9 +107,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `2575`
 		//  Estimated: `355748`
 		// Minimum execution time: 97_000 nanoseconds.
-		Weight::from_parts(100_000_000, 355748)
+		Weight::from_parts(99_000_000, 355748)
 			.saturating_add(T::DbWeight::get().reads(11))
 			.saturating_add(T::DbWeight::get().writes(8))
+	}
+	/// Storage: RegulatedAssets SoulboundAsset (r:1 w:1)
+	/// Proof: RegulatedAssets SoulboundAsset (max_values: None, max_size: Some(324727), added: 327202, mode: MaxEncodedLen)
+	/// Storage: Timestamp Now (r:1 w:0)
+	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+	fn update_sbt_expiration() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `541`
+		//  Estimated: `327705`
+		// Minimum execution time: 15_000 nanoseconds.
+		Weight::from_parts(16_000_000, 327705)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }
 
@@ -123,9 +136,15 @@ impl WeightInfo for () {
     }
 	
 	fn issue_sbt() -> Weight {
-		Weight::from_parts(101_000_000, 355748)
+		Weight::from_parts(99_000_000, 355748)
 			.saturating_add(RocksDbWeight::get().reads(11))
 			.saturating_add(RocksDbWeight::get().writes(8))
+	}
+	
+	fn update_sbt_expiration() -> Weight {
+		Weight::from_parts(16_000_000, 327705)
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().writes(1))
 	}
 }
 

@@ -214,8 +214,8 @@ pub mod pallet {
                 owner: who.clone(),
                 name,
                 description,
-                image,
-                external_url,
+                image: image.clone(),
+                external_url: external_url.clone(),
                 issued_at: now_timestamp,
                 expires_at,
                 allowed_assets: allowed_assets.clone(),
@@ -231,7 +231,56 @@ pub mod pallet {
             Self::deposit_event(Event::SoulboundTokenIssued {
                 asset_id: sbt_asset_id,
                 owner: who,
+                image,
+                external_url,
+                issued_at: now_timestamp,
+                expires_at,
                 allowed_assets: allowed_assets.clone().into(),
+            });
+
+            Ok(())
+        }
+
+        /// Updates the expiration date of a Soulbound Token (SBT).
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `asset_id`: The ID of the SBT to update.
+        /// - `new_expires_at`: The new expiration timestamp for the SBT.
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_sbt_expiration())]
+        pub fn update_sbt_expiration(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            new_expires_at: Option<T::Moment>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            // Ensure the asset exists and is an SBT
+            let mut metadata = Self::soulbound_asset(&asset_id).ok_or(Error::<T>::SBTNotFound)?;
+
+            if let Some(new_expires_at) = new_expires_at {
+                // Ensure the new expiration is in the future
+                ensure!(
+                    new_expires_at > Timestamp::<T>::now(),
+                    Error::<T>::SBTExpirationDateCannotBeInThePast
+                );
+            }
+
+            // Ensure the caller is the owner of the SBT
+            ensure!(metadata.owner == who, Error::<T>::NotSBTOwner);
+
+            let old_expires_at = metadata.expires_at.clone();
+
+            // Update the expiration date
+            metadata.expires_at = new_expires_at;
+            <SoulboundAsset<T>>::insert(asset_id, &metadata);
+
+            Self::deposit_event(Event::SBTExpirationUpdated {
+                asset_id,
+                old_expires_at,
+                new_expires_at,
             });
 
             Ok(())
@@ -247,7 +296,17 @@ pub mod pallet {
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
             owner: AccountIdOf<T>,
+            image: Option<ContentSource>,
+            external_url: Option<ContentSource>,
+            issued_at: T::Moment,
+            expires_at: Option<T::Moment>,
             allowed_assets: Vec<AssetIdOf<T>>,
+        },
+        /// Emits When the expiration date of an SBT is updated
+        SBTExpirationUpdated {
+            asset_id: AssetIdOf<T>,
+            old_expires_at: Option<T::Moment>,
+            new_expires_at: Option<T::Moment>,
         },
     }
 
@@ -269,6 +328,10 @@ pub mod pallet {
         AllowedAssetsMustBeOwnedBySBTIssuer,
         /// All Allowed assets must be regulated
         AllowedAssetsMustBeRegulated,
+        /// SBT not found
+        SBTNotFound,
+        /// Caller is not the owner of the SBT
+        NotSBTOwner,
     }
 
     #[pallet::type_value]
