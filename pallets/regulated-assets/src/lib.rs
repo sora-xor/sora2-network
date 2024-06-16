@@ -101,7 +101,7 @@ pub mod pallet {
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        /// Max number of allowed tokens per one Soulbound Token
+        /// Max number of allowed assets per one Soulbound Token
         #[pallet::constant]
         type MaxAllowedAssetsPerSBT: Get<u32>;
 
