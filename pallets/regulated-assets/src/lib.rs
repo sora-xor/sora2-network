@@ -258,7 +258,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
 
             // Ensure the asset exists and is an SBT
-            let mut metadata = Self::soulbound_asset(&asset_id).ok_or(Error::<T>::SBTNotFound)?;
+            let mut metadata = Self::soulbound_asset(asset_id).ok_or(Error::<T>::SBTNotFound)?;
 
             if let Some(new_expires_at) = new_expires_at {
                 // Ensure the new expiration is in the future
@@ -271,7 +271,7 @@ pub mod pallet {
             // Ensure the caller is the owner of the SBT
             ensure!(metadata.owner == who, Error::<T>::NotSBTOwner);
 
-            let old_expires_at = metadata.expires_at.clone();
+            let old_expires_at = metadata.expires_at;
 
             // Update the expiration date
             metadata.expires_at = new_expires_at;
@@ -375,7 +375,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         for allowed_asset_id in allowed_assets.iter() {
             let is_asset_owner =
-                <T as Config>::AssetInfoProvider::is_asset_owner(allowed_asset_id, &sbt_issuer);
+                <T as Config>::AssetInfoProvider::is_asset_owner(allowed_asset_id, sbt_issuer);
 
             if !is_asset_owner {
                 return Err(Error::<T>::AllowedAssetsMustBeOwnedBySBTIssuer);

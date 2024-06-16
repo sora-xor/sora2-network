@@ -210,9 +210,9 @@ fn test_issue_sbt_fails_due_to_invalid_expires_at() {
         let now_timestamp = Timestamp::now();
 
         let result_invalid_expires_at = RegulatedAssets::issue_sbt(
-            RuntimeOrigin::signed(owner.clone()),
-            asset_symbol.clone(),
-            asset_name.clone(),
+            RuntimeOrigin::signed(owner),
+            asset_symbol,
+            asset_name,
             None,
             None,
             None,
@@ -255,9 +255,9 @@ fn test_issue_sbt_fails_due_to_invalid_allowed_assets() {
         let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
 
         let result_invalid_allowed_asset_unregulated = RegulatedAssets::issue_sbt(
-            RuntimeOrigin::signed(owner.clone()),
-            asset_symbol.clone(),
-            asset_name.clone(),
+            RuntimeOrigin::signed(owner),
+            asset_symbol,
+            asset_name,
             None,
             None,
             None,
@@ -461,8 +461,8 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
         // Issue SBT
         let result_sbt_expires_later = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            asset_symbol.clone(),
-            asset_name.clone(),
+            asset_symbol,
+            asset_name,
             None,
             None,
             None,
@@ -539,8 +539,8 @@ fn test_update_sbt_expiration_succeeds() {
         let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
         // Update expiration date
         assert_ok!(RegulatedAssets::update_sbt_expiration(
-            RuntimeOrigin::signed(owner.clone()),
-            sbt_asset_id.clone(),
+            RuntimeOrigin::signed(owner),
+            sbt_asset_id,
             Some(new_expiration_timestamp)
         ));
 
@@ -570,7 +570,7 @@ fn test_update_sbt_expiration_fails_for_non_owner() {
 
         // Issue SBT
         assert_ok!(RegulatedAssets::issue_sbt(
-            RuntimeOrigin::signed(owner.clone()),
+            RuntimeOrigin::signed(owner),
             asset_symbol,
             asset_name,
             None,

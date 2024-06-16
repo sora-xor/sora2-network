@@ -136,18 +136,18 @@ benchmarks! {
         Pallet::<T>::issue_sbt(
             owner_origin.clone(),
             asset_symbol,
-            asset_name.clone(),
+            asset_name,
             None,
             None,
             None,
             None,
-            bounded_vec_assets.clone(),
+            bounded_vec_assets,
         ).unwrap();
         let sbts = Pallet::<T>::sbts_by_asset(asset_id);
 
     }: {
         let sbt_asset_id = sbts.first().ok_or("No SBT asset found").unwrap();
-        Pallet::<T>::update_sbt_expiration(owner_origin.clone(), sbt_asset_id.clone(), Some(T::Moment::from(100_u32)))?;
+        Pallet::<T>::update_sbt_expiration(owner_origin.clone(), *sbt_asset_id, Some(T::Moment::from(100_u32)))?;
 
     }
     verify{
