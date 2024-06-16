@@ -56,6 +56,7 @@ type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type Moment = u64;
+type BlockNumber = u64;
 
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);

@@ -148,7 +148,7 @@ fn chameleon_pool_swaps() {
                 vec![],
                 common::FilterMode::Disabled
             ),
-            tokens::Error::<Runtime>::BalanceTooLow
+            pool_xyk::Error::<Runtime>::NotEnoughOutputReserves
         );
 
         assert_ok!(LiquidityProxy::swap(

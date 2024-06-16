@@ -33,9 +33,10 @@ use common::alt::DiscreteQuotation;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
+    mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed,
+    LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
@@ -58,7 +59,6 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
-type DEXId = u32;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 
 pub fn alice() -> AccountId {
@@ -71,8 +71,16 @@ pub fn bob() -> AccountId {
     AccountId32::from([2u8; 32])
 }
 
-pub const DEX_A_ID: DEXId = 1;
-pub const DEX_B_ID: DEXId = 2;
+pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
+
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -88,7 +96,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
@@ -121,8 +129,6 @@ construct_runtime! {
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>}
     }
 }
-
-mock_frame_system_config!(Runtime);
 
 // We need non-zero weight for testing weight calculation
 pub struct WeightedEmptyLiquiditySource;
@@ -263,68 +269,13 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = 0;
 }
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
@@ -353,8 +304,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl dex_manager::Config for Runtime {}
 
