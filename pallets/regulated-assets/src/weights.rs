@@ -123,7 +123,7 @@ impl WeightInfo for () {
     }
 	
 	fn issue_sbt() -> Weight {
-		Weight::from_parts(100_000_000, 355748)
+		Weight::from_parts(101_000_000, 355748)
 			.saturating_add(RocksDbWeight::get().reads(11))
 			.saturating_add(RocksDbWeight::get().writes(8))
 	}
