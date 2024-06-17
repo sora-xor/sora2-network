@@ -1306,6 +1306,10 @@ impl xor_fee::Config for Runtime {
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
+    type PermittedSetSmallReferenceAmount = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
+        EnsureRoot<AccountId>,
+    >;
     #[cfg(not(feature = "wip"))] // Dynamic fee
     type DynamicMultiplier = ();
     #[cfg(feature = "wip")] // Dynamic fee

@@ -32,8 +32,6 @@ use crate::*;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 #[cfg(feature = "wip")] // Dynamic fee
-use common::prelude::constants::SMALL_REFERENCE_AMOUNT;
-#[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
 use common::LiquidityProxyTrait;
 use frame_support::dispatch::DispatchResult;
@@ -431,7 +429,7 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
             ref_asset,
             common::PriceVariant::Sell,
         )?);
-        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
+        let new_multiplier: Balance = (Self::new_reference_amount() / (SMALL_FEE * price))
             .try_into_balance()
             .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
         Ok(FixedU128::from_inner(new_multiplier))

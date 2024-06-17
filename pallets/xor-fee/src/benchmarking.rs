@@ -56,5 +56,13 @@ benchmarks! {
         assert_eq!(<UpdatePeriod<T>>::get(), new_block_number);
     }
 
+    set_small_reference_amount {
+        let new_reference_amount = Balance::default();
+    }: _(RawOrigin::Root, new_reference_amount)
+    verify {
+        #[cfg(feature = "wip")] // Dynamic fee
+        assert_eq!(<SmallReferenceAmount<T>>::get(), new_reference_amount);
+    }
+
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
 }

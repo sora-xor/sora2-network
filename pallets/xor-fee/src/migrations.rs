@@ -30,6 +30,7 @@
 
 #[cfg(feature = "wip")] // Dynamic fee
 pub mod v2 {
+    use common::balance;
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
@@ -46,12 +47,18 @@ pub mod v2 {
         fn on_runtime_upgrade() -> Weight {
             let period =
                 <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+            let small_reference_amount = balance!(0.2);
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
                 <UpdatePeriod<T>>::put(period); // 1 write
                 info!("Update period initialized as {:?}", period);
+                <SmallReferenceAmount<T>>::put(small_reference_amount); // 1 write
+                info!(
+                    "Small reference amount initialized as {:?}",
+                    small_reference_amount
+                );
                 StorageVersion::new(2).put::<Pallet<T>>();
-                return T::DbWeight::get().reads_writes(1, 1);
+                return T::DbWeight::get().reads_writes(1, 2);
             }
             Weight::default()
         }
@@ -69,6 +76,7 @@ pub mod v2 {
         fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
             let period =
                 <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+            let small_reference_amount = balance!(0.2);
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
                 "Wrong storage version after upgrade"
@@ -76,6 +84,10 @@ pub mod v2 {
             frame_support::ensure!(
                 <UpdatePeriod<T>>::get() == period,
                 "Did not set right next update block"
+            );
+            frame_support::ensure!(
+                <SmallReferenceAmount<T>>::get() == small_reference_amount,
+                "Did not set right small reference amount"
             );
             Ok(())
         }

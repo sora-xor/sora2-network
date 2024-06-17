@@ -34,7 +34,7 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 #[cfg(feature = "wip")] // Dynamic fee
-use common::weights::constants::{SMALL_FEE, SMALL_REFERENCE_AMOUNT};
+use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Dynamic fee
 use common::DAI;
 use common::{
@@ -250,6 +250,7 @@ impl Config for Runtime {
     #[cfg(feature = "wip")] // Dynamic fee
     type DynamicMultiplier = DynamicMultiplier;
     type PermittedSetPeriod = EnsureRoot<AccountId>;
+    type PermittedSetSmallReferenceAmount = EnsureRoot<AccountId>;
 }
 
 #[cfg(feature = "wip")] // Dynamic fee
@@ -265,7 +266,7 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
             (&XOR, &DAI) => balance!(0.00008),
             _ => balance!(0.000000000000000001),
         });
-        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
+        let new_multiplier: Balance = (balance!(0.2) / (SMALL_FEE * price))
             .try_into_balance()
             .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
         Ok(FixedU128::from_inner(new_multiplier))

@@ -678,6 +678,7 @@ pub mod pallet {
         frame_system::Config + pallet_transaction_payment::Config + common::Config
     {
         type PermittedSetPeriod: EnsureOrigin<Self::RuntimeOrigin>;
+        type PermittedSetSmallReferenceAmount: EnsureOrigin<Self::RuntimeOrigin>;
         type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
@@ -772,6 +773,21 @@ pub mod pallet {
             }
             Ok(().into())
         }
+
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_small_reference_amount())]
+        pub fn set_small_reference_amount(
+            origin: OriginFor<T>,
+            new_reference_amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            T::PermittedSetSmallReferenceAmount::ensure_origin(origin)?;
+            #[cfg(feature = "wip")] // Dynamic fee
+            {
+                <crate::pallet::SmallReferenceAmount<T>>::put(new_reference_amount);
+                Self::deposit_event(Event::SmallReferenceAmountUpdated(new_reference_amount));
+            }
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -787,6 +803,9 @@ pub mod pallet {
         #[cfg(feature = "wip")] // Dynamic fee
         /// New block number to update multiplier is set. [New value]
         PeriodUpdated(<T as frame_system::Config>::BlockNumber),
+        #[cfg(feature = "wip")] // Dynamic fee
+        /// New small reference amount set. [New value]
+        SmallReferenceAmountUpdated(Balance),
     }
     #[pallet::error]
     pub enum Error<T> {
@@ -795,9 +814,15 @@ pub mod pallet {
     }
 
     #[cfg(feature = "wip")] // Dynamic fee
+    /// Small fee value should be `SmallReferenceAmount` in reference asset id
+    #[pallet::storage]
+    #[pallet::getter(fn small_reference_amount)]
+    pub type SmallReferenceAmount<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+    #[cfg(feature = "wip")] // Dynamic fee
     /// Next block number to update multiplier
     /// If it is necessary to stop updating the multiplier,
-    /// set BlockNumber::MAX or another large value
+    /// set 0 value
     #[pallet::storage]
     #[pallet::getter(fn update_period)]
     pub type UpdatePeriod<T> =
