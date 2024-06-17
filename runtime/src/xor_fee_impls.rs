@@ -40,9 +40,6 @@ use sp_runtime::traits::Zero;
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_runtime::FixedU128;
 
-#[cfg(feature = "wip")] // Dynamic fee
-pub type PriceTool = price_tools::Pallet<Runtime>;
-
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
     pub fn withdraw_evm_fee(&self, who: &AccountId) -> DispatchResult {
@@ -424,12 +421,12 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
         input_asset: &AssetId,
         ref_asset: &AssetId,
     ) -> Result<FixedU128, DispatchError> {
-        let price: FixedWrapper = FixedWrapper::from(PriceTool::get_average_price(
+        let price: FixedWrapper = FixedWrapper::from(PriceTools::get_average_price(
             input_asset,
             ref_asset,
             common::PriceVariant::Sell,
         )?);
-        let new_multiplier: Balance = (Self::new_reference_amount() / (SMALL_FEE * price))
+        let new_multiplier: Balance = (XorFee::small_reference_amount() / (SMALL_FEE * price))
             .try_into_balance()
             .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
         Ok(FixedU128::from_inner(new_multiplier))
