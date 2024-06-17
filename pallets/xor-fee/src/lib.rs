@@ -722,7 +722,9 @@ pub mod pallet {
         fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
             let update_period = Self::update_period(); // 1 read
             let mut weight: Weight = T::DbWeight::get().reads(1);
-            if update_period != 0_u32.into() && current_block % update_period == 0_u32.into() {
+            if !update_period.is_zero()
+                && current_block % update_period == BlockNumberFor::<T>::zero()
+            {
                 match T::DynamicMultiplier::calculate_multiplier(
                     &common::XOR.into(),
                     &common::DAI.into(),
@@ -759,6 +761,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Set new update period for `xor_fee::Multiplier` updating
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
@@ -774,16 +777,22 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Set new small reference amount `xor_fee::SmallReferenceAmount`
+        /// Small fee should tend to the amount value
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::set_small_reference_amount())]
         pub fn set_small_reference_amount(
             origin: OriginFor<T>,
             new_reference_amount: Balance,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !new_reference_amount.is_zero(),
+                Error::<T>::InvalidSmallReferenceAmount
+            );
             T::PermittedSetSmallReferenceAmount::ensure_origin(origin)?;
             #[cfg(feature = "wip")] // Dynamic fee
             {
-                <crate::pallet::SmallReferenceAmount<T>>::put(new_reference_amount);
+                <SmallReferenceAmount<T>>::put(new_reference_amount);
                 Self::deposit_event(Event::SmallReferenceAmountUpdated(new_reference_amount));
             }
             Ok(().into())
@@ -811,6 +820,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// Failed to calculate new multiplier.
         MultiplierCalculationFailed,
+        /// `SmallReferenceAmount` is unsupported
+        InvalidSmallReferenceAmount,
     }
 
     #[cfg(feature = "wip")] // Dynamic fee

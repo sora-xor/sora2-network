@@ -32,7 +32,7 @@
 #![allow(clippy::all)]
 
 use crate::extension::ChargeTransactionPayment;
-use crate::{mock::*, LiquidityInfo, XorToVal};
+use crate::{mock::*, Error, LiquidityInfo, XorToVal};
 #[cfg(feature = "wip")] // Dynamic fee
 use crate::{CalculateMultiplier, Multiplier, UpdatePeriod};
 use common::balance;
@@ -44,6 +44,7 @@ use common::weights::constants::SMALL_FEE;
 use frame_support::traits::Hooks;
 
 use common::mock::{alice, bob};
+use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
 use frame_support::error::BadOrigin;
 use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
@@ -602,6 +603,14 @@ fn test_set_small_reference_amount() {
             balance!(0.2)
         ));
         assert_eq!(XorFee::small_reference_amount(), balance!(0.2));
+        let expected_error = DispatchErrorWithPostInfo {
+            post_info: Pays::Yes.into(),
+            error: Error::<Runtime>::InvalidSmallReferenceAmount.into(),
+        };
+        assert_noop!(
+            XorFee::set_small_reference_amount(RuntimeOrigin::root(), balance!(0)),
+            expected_error
+        );
     });
 }
 
