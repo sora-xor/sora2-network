@@ -47,13 +47,6 @@ pub type Migrations = (
     >,
     assets::migration::register_asset::RegisterAsset<
         Runtime,
-        SBAssetId,
-        SBAssetName,
-        SBAssetSymbol,
-        PredefinedAssetOwnerAccountId,
-    >,
-    assets::migration::register_asset::RegisterAsset<
-        Runtime,
         KARMAAssetId,
         KARMAAssetName,
         KARMAAssetSymbol,
@@ -70,9 +63,6 @@ parameter_types! {
     pub KXORAssetId: AssetId = common::KXOR;
     pub KXORAssetSymbol: AssetSymbol = AssetSymbol(b"KXOR".to_vec());
     pub KXORAssetName: AssetName = AssetName(b"Kensetsu XOR".to_vec());
-    pub SBAssetId: AssetId = common::SB;
-    pub SBAssetSymbol: AssetSymbol = AssetSymbol(b"SB".to_vec());
-    pub SBAssetName: AssetName = AssetName(b"SORA Builders".to_vec());
     pub KARMAAssetId: AssetId = common::KARMA;
     pub KARMAAssetSymbol: AssetSymbol = AssetSymbol(b"KARMA".to_vec());
     pub KARMAAssetName: AssetName = AssetName(b"Chameleon".to_vec());
