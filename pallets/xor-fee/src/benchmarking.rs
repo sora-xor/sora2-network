@@ -50,10 +50,10 @@ benchmarks! {
 
     set_fee_update_period {
         let new_block_number = <T as frame_system::Config>::BlockNumber::default();
-    }: _(RawOrigin::Root, Some(new_block_number))
+    }: _(RawOrigin::Root, new_block_number)
     verify {
         #[cfg(feature = "wip")] // Dynamic fee
-        assert_eq!(<UpdatePeriod<T>>::get(), Some(new_block_number));
+        assert_eq!(<UpdatePeriod<T>>::get(), new_block_number);
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);

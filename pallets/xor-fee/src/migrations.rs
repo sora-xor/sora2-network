@@ -48,7 +48,7 @@ pub mod v2 {
                 <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
-                <UpdatePeriod<T>>::put(Some(period)); // 1 write
+                <UpdatePeriod<T>>::put(period); // 1 write
                 info!("Update period initialized as {:?}", period);
                 StorageVersion::new(2).put::<Pallet<T>>();
                 return T::DbWeight::get().reads_writes(1, 1);
@@ -74,7 +74,7 @@ pub mod v2 {
                 "Wrong storage version after upgrade"
             );
             frame_support::ensure!(
-                <UpdatePeriod<T>>::get() == Some(period),
+                <UpdatePeriod<T>>::get() == period,
                 "Did not set right next update block"
             );
             Ok(())

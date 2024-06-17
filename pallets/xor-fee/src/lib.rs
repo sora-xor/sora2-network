@@ -719,25 +719,20 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         #[cfg(feature = "wip")] // Dynamic fee
         fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
-            let mut weight: Weight = Weight::default();
-            if let Some(update_period) = Self::update_period() {
-                // 1 read
-                weight += T::DbWeight::get().reads(1);
-                if current_block % update_period == 0_u32.into() {
-                    match T::DynamicMultiplier::calculate_multiplier(
-                        &common::XOR.into(),
-                        &common::DAI.into(),
-                    ) {
-                        Ok(new_multiplier) => {
-                            <crate::pallet::Multiplier<T>>::put(new_multiplier); // 1 write
-                            Self::deposit_event(
-                                crate::pallet::Event::WeightToFeeMultiplierUpdated(new_multiplier),
-                            );
-                            weight += T::DbWeight::get().writes(1);
-                        }
-                        Err(e) => {
-                            frame_support::log::error!("Could not update Multiplier due to: {e:?}");
-                        }
+            let update_period = Self::update_period(); // 1 read
+            let mut weight: Weight = T::DbWeight::get().reads(1);
+            if update_period != 0_u32.into() && current_block % update_period == 0_u32.into() {
+                match T::DynamicMultiplier::calculate_multiplier(
+                    &common::XOR.into(),
+                    &common::DAI.into(),
+                ) {
+                    Ok(new_multiplier) => {
+                        <Multiplier<T>>::put(new_multiplier); // 1 write
+                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
+                        weight += T::DbWeight::get().writes(1);
+                    }
+                    Err(e) => {
+                        frame_support::log::error!("Could not update Multiplier due to: {e:?}");
                     }
                 }
             }
@@ -763,12 +758,11 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // TODO: ZERO CHECK, CONSIDER MAX AND MIN
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
             origin: OriginFor<T>,
-            new_period: Option<<T as frame_system::Config>::BlockNumber>,
+            new_period: <T as frame_system::Config>::BlockNumber,
         ) -> DispatchResultWithPostInfo {
             T::PermittedSetPeriod::ensure_origin(origin)?;
             #[cfg(feature = "wip")] // Dynamic fee
@@ -792,7 +786,7 @@ pub mod pallet {
         WeightToFeeMultiplierUpdated(FixedU128),
         #[cfg(feature = "wip")] // Dynamic fee
         /// New block number to update multiplier is set. [New value]
-        PeriodUpdated(Option<<T as frame_system::Config>::BlockNumber>),
+        PeriodUpdated(<T as frame_system::Config>::BlockNumber),
     }
     #[pallet::error]
     pub enum Error<T> {
@@ -807,7 +801,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn update_period)]
     pub type UpdatePeriod<T> =
-        StorageValue<_, Option<<T as frame_system::Config>::BlockNumber>, ValueQuery>;
+        StorageValue<_, <T as frame_system::Config>::BlockNumber, ValueQuery>;
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]

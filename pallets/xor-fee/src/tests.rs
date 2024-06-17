@@ -536,7 +536,7 @@ fn update_multiplier_on_initialize() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
-        UpdatePeriod::<Runtime>::put(Some(10));
+        UpdatePeriod::<Runtime>::put(10);
         XorFee::on_initialize(9);
         assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
 
@@ -545,7 +545,7 @@ fn update_multiplier_on_initialize() {
             Multiplier::<Runtime>::get().into_inner(),
             3571428571428571428571428
         );
-        assert_eq!(UpdatePeriod::<Runtime>::get(), Some(10));
+        assert_eq!(UpdatePeriod::<Runtime>::get(), 10);
     });
 }
 
@@ -555,8 +555,8 @@ fn not_update_multiplier_on_initialize() {
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(0);
 
-        UpdatePeriod::<Runtime>::put(None::<BlockNumber>);
-        XorFee::on_initialize(BlockNumber::MAX);
+        UpdatePeriod::<Runtime>::put(0);
+        XorFee::on_initialize(0);
         assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
     });
 }
@@ -569,9 +569,9 @@ fn test_update_period() {
 
         assert_ok!(XorFee::set_fee_update_period(
             RuntimeOrigin::root(),
-            Some(BlockNumber::MAX)
+            BlockNumber::MAX
         ));
-        assert_eq!(UpdatePeriod::<Runtime>::get(), Some(BlockNumber::MAX));
+        assert_eq!(UpdatePeriod::<Runtime>::get(), BlockNumber::MAX);
     });
 }
 
@@ -580,12 +580,12 @@ fn test_update_period() {
 fn non_root_set_period_fails() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
-            XorFee::set_fee_update_period(RuntimeOrigin::signed(alice()), Some(BlockNumber::MAX)),
+            XorFee::set_fee_update_period(RuntimeOrigin::signed(alice()), BlockNumber::MAX),
             BadOrigin
         );
 
         assert_noop!(
-            XorFee::set_fee_update_period(RuntimeOrigin::none(), Some(BlockNumber::MAX)),
+            XorFee::set_fee_update_period(RuntimeOrigin::none(), BlockNumber::MAX),
             BadOrigin
         );
     });
