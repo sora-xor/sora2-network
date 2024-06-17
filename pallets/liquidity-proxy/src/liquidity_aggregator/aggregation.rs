@@ -37,6 +37,7 @@ use common::Balance;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::vec_deque::VecDeque;
+use sp_std::vec::Vec;
 
 /// Cluster of liquidity that stores the aggregated liquidity chunks from one source.
 #[derive(Debug, Clone, Default)]

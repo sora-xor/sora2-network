@@ -35,6 +35,7 @@ use crate::outcome_fee::OutcomeFee;
 use crate::swap_amount::SwapVariant;
 use crate::{Balance, Fixed, Price};
 use fixnum::ops::Bounded;
+use fixnum::ArithmeticError;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::ops::Add;
@@ -184,10 +185,21 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
             return Some(Balance::zero());
         }
 
-        ((FixedWrapper::from(output) * FixedWrapper::from(self.input))
+        let result = ((FixedWrapper::from(output) * FixedWrapper::from(self.input))
             / (FixedWrapper::from(self.output)))
-        .try_into_balance()
-        .ok()
+        .try_into_balance();
+
+        if let Err(error) = result {
+            if error == ArithmeticError::Overflow {
+                // try to use another approach with the same result to avoid overflow
+                let price = self.price()?;
+                (FixedWrapper::from(output) / price).try_into_balance().ok()
+            } else {
+                None
+            }
+        } else {
+            result.ok()
+        }
     }
 
     /// Calculates a linearly proportional output amount depending on the price and an input amount.
@@ -197,10 +209,21 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
             return Some(Balance::zero());
         }
 
-        (FixedWrapper::from(input) * FixedWrapper::from(self.output)
+        let result = (FixedWrapper::from(input) * FixedWrapper::from(self.output)
             / FixedWrapper::from(self.input))
-        .try_into_balance()
-        .ok()
+        .try_into_balance();
+
+        if let Err(error) = result {
+            if error == ArithmeticError::Overflow {
+                // try to use another approach with the same result to avoid overflow
+                let price = self.price()?;
+                (FixedWrapper::from(input) * price).try_into_balance().ok()
+            } else {
+                None
+            }
+        } else {
+            result.ok()
+        }
     }
 
     pub fn rescale_by_input(self, input: Balance) -> Option<Self> {
@@ -468,13 +491,13 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
             if let Some(precision) = self.limits.amount_precision {
                 let (input_precision, output_precision) = match precision {
                     SideAmount::Input(input_precision) => {
-                        let Some(output_precision) = self.limits.get_precision_step(&chunk, SwapVariant::WithDesiredOutput) else {
+                        let Some(output_precision) = self.limits.get_precision_step(chunk, SwapVariant::WithDesiredOutput) else {
                             return false;
                         };
                         (input_precision, output_precision)
                     }
                     SideAmount::Output(output_precision) => {
-                        let Some(input_precision) = self.limits.get_precision_step(&chunk, SwapVariant::WithDesiredInput) else {
+                        let Some(input_precision) = self.limits.get_precision_step(chunk, SwapVariant::WithDesiredInput) else {
                             return false;
                         };
                         (input_precision, output_precision)
