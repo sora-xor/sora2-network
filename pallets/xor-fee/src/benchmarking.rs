@@ -32,6 +32,7 @@
 
 use super::*;
 
+use common::balance;
 use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
@@ -49,15 +50,15 @@ benchmarks! {
     }
 
     set_fee_update_period {
-        let new_block_number = <T as frame_system::Config>::BlockNumber::default();
-    }: _(RawOrigin::Root, new_block_number)
+        let new_block_number = 3600_u32;
+    }: _(RawOrigin::Root, new_block_number.into())
     verify {
         #[cfg(feature = "wip")] // Dynamic fee
-        assert_eq!(<UpdatePeriod<T>>::get(), new_block_number);
+        assert_eq!(<UpdatePeriod<T>>::get(), new_block_number.into());
     }
 
     set_small_reference_amount {
-        let new_reference_amount = Balance::default();
+        let new_reference_amount = balance!(0.2);
     }: _(RawOrigin::Root, new_reference_amount)
     verify {
         #[cfg(feature = "wip")] // Dynamic fee

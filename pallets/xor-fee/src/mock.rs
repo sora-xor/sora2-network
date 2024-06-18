@@ -48,7 +48,7 @@ use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
-use frame_support::pallet_prelude::ValueQuery;
+use frame_support::pallet_prelude::{Hooks, ValueQuery};
 use frame_support::traits::{
     ConstU128, Currency, Everything, ExistenceRequirement, GenesisBuild, WithdrawReasons,
 };
@@ -75,6 +75,8 @@ type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.7);
+pub const PRICE_XOR_DAI: Balance = balance!(800);
 pub fn account_from_str(s: &str) -> AccountId {
     sp_core::blake2_256(s.as_bytes()).into()
 }
@@ -263,10 +265,10 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
         ref_asset: &AssetId,
     ) -> Result<FixedU128, DispatchError> {
         let price: FixedWrapper = FixedWrapper::from(match (input_asset, ref_asset) {
-            (&XOR, &DAI) => balance!(0.00008),
+            (&XOR, &DAI) => PRICE_XOR_DAI,
             _ => balance!(0.000000000000000001),
         });
-        let new_multiplier: Balance = (balance!(0.2) / (SMALL_FEE * price))
+        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
             .try_into_balance()
             .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
         Ok(FixedU128::from_inner(new_multiplier))
@@ -517,5 +519,14 @@ pub fn post_info_pays_no() -> PostDispatchInfo {
     PostDispatchInfo {
         actual_weight: None,
         pays_fee: Pays::No,
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_initialize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_finalize(System::block_number());
+        XorFee::on_initialize(System::block_number());
     }
 }

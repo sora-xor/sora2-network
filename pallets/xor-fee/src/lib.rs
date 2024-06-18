@@ -762,6 +762,7 @@ pub mod pallet {
         }
 
         /// Set new update period for `xor_fee::Multiplier` updating
+        /// Set 0 to stop updating
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
