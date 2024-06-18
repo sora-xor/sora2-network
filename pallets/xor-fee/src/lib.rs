@@ -678,7 +678,6 @@ pub mod pallet {
         frame_system::Config + pallet_transaction_payment::Config + common::Config
     {
         type PermittedSetPeriod: EnsureOrigin<Self::RuntimeOrigin>;
-        type PermittedSetSmallReferenceAmount: EnsureOrigin<Self::RuntimeOrigin>;
         type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
@@ -790,7 +789,7 @@ pub mod pallet {
                 !new_reference_amount.is_zero(),
                 Error::<T>::InvalidSmallReferenceAmount
             );
-            T::PermittedSetSmallReferenceAmount::ensure_origin(origin)?;
+            ensure_root(origin)?;
             #[cfg(feature = "wip")] // Dynamic fee
             {
                 <SmallReferenceAmount<T>>::put(new_reference_amount);

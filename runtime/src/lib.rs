@@ -1303,10 +1303,6 @@ parameter_types! {
 
 impl xor_fee::Config for Runtime {
     type PermittedSetPeriod = EitherOfDiverse<
-        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
-        EnsureRoot<AccountId>,
-    >;
-    type PermittedSetSmallReferenceAmount = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
     >;

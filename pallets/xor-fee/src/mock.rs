@@ -252,7 +252,6 @@ impl Config for Runtime {
     #[cfg(feature = "wip")] // Dynamic fee
     type DynamicMultiplier = DynamicMultiplier;
     type PermittedSetPeriod = EnsureRoot<AccountId>;
-    type PermittedSetSmallReferenceAmount = EnsureRoot<AccountId>;
 }
 
 #[cfg(feature = "wip")] // Dynamic fee
