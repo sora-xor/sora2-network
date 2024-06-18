@@ -356,23 +356,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ark-scale"
-version = "0.0.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f69c00b3b529be29528a6f2fd5fa7b1790f8bed81b9cdca17e326538545a179"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "parity-scale-codec",
- "scale-info",
-]
-
-[[package]]
 name = "ark-secret-scalar"
 version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf?rev=3119f51#3119f51b54b69308abfb0671f6176cb125ae1bf1"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -420,7 +405,6 @@ dependencies = [
 [[package]]
 name = "ark-transcript"
 version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf?rev=3119f51#3119f51b54b69308abfb0671f6176cb125ae1bf1"
 dependencies = [
  "ark-ff",
  "ark-serialize",
@@ -860,13 +844,12 @@ dependencies = [
 [[package]]
 name = "bandersnatch_vrfs"
 version = "0.0.1"
-source = "git+https://github.com/w3f/ring-vrf?rev=3119f51#3119f51b54b69308abfb0671f6176cb125ae1bf1"
 dependencies = [
  "ark-bls12-381",
  "ark-ec",
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ff",
- "ark-scale 0.0.12",
+ "ark-scale",
  "ark-serialize",
  "ark-std",
  "dleq_vrf",
@@ -2672,11 +2655,10 @@ dependencies = [
 [[package]]
 name = "dleq_vrf"
 version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf?rev=3119f51#3119f51b54b69308abfb0671f6176cb125ae1bf1"
 dependencies = [
  "ark-ec",
  "ark-ff",
- "ark-scale 0.0.10",
+ "ark-scale",
  "ark-secret-scalar",
  "ark-serialize",
  "ark-std",
@@ -3832,8 +3814,10 @@ dependencies = [
  "sc-consensus",
  "sc-consensus-aura",
  "sc-consensus-babe",
+ "sc-consensus-babe-rpc",
  "sc-consensus-beefy",
  "sc-consensus-beefy-rpc",
+ "sc-consensus-epochs",
  "sc-consensus-grandpa",
  "sc-consensus-slots",
  "sc-executor",
@@ -3853,13 +3837,14 @@ dependencies = [
  "sp-arithmetic",
  "sp-block-builder",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-consensus-beefy",
  "sp-core",
  "sp-inherents",
  "sp-io",
+ "sp-keystore",
  "sp-mmr-primitives",
  "sp-runtime",
  "sp-timestamp",
@@ -6224,7 +6209,7 @@ dependencies = [
  "sc-offchain",
  "sp-api",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus",
  "sp-consensus-beefy",
  "sp-core",
  "sp-mmr-primitives",
@@ -9028,7 +9013,7 @@ dependencies = [
  "sc-transaction-pool-api",
  "sp-api",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-core",
  "sp-inherents",
  "sp-runtime",
@@ -9144,7 +9129,7 @@ dependencies = [
  "sc-utils 4.0.0-dev",
  "sp-api",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-core",
  "sp-database",
  "sp-externalities",
@@ -9247,7 +9232,7 @@ dependencies = [
  "serde",
  "sp-api",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-core",
  "sp-runtime",
  "sp-state-machine",
@@ -9272,7 +9257,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-slots",
  "sp-core",
@@ -9307,7 +9292,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-babe",
  "sp-consensus-slots",
  "sp-core",
@@ -9315,6 +9300,27 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "substrate-prometheus-endpoint",
+ "thiserror",
+]
+
+[[package]]
+name = "sc-consensus-babe-rpc"
+version = "0.10.0-dev"
+dependencies = [
+ "futures 0.3.30",
+ "jsonrpsee",
+ "sc-consensus-babe",
+ "sc-consensus-epochs",
+ "sc-rpc-api",
+ "serde",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-keystore",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -9340,7 +9346,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-arithmetic",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-beefy",
  "sp-core",
  "sp-keystore",
@@ -9413,7 +9419,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-arithmetic",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-grandpa 4.0.0-dev",
  "sp-core",
  "sp-keystore",
@@ -9436,7 +9442,7 @@ dependencies = [
  "sc-telemetry",
  "sp-arithmetic",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-slots",
  "sp-core",
  "sp-inherents",
@@ -9590,7 +9596,7 @@ dependencies = [
  "parity-scale-codec",
  "prost-build",
  "sc-consensus",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-grandpa 4.0.0-dev",
  "sp-runtime",
 ]
@@ -9607,7 +9613,7 @@ dependencies = [
  "parity-scale-codec",
  "prost-build",
  "sc-consensus",
- "sp-consensus 0.10.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
+ "sp-consensus",
  "sp-consensus-grandpa 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "sp-runtime",
 ]
@@ -9674,7 +9680,7 @@ dependencies = [
  "smallvec",
  "sp-arithmetic",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-consensus-grandpa 4.0.0-dev",
  "sp-core",
  "sp-runtime",
@@ -9694,7 +9700,7 @@ dependencies = [
  "sc-network",
  "sc-network-common 0.10.0-dev",
  "sc-utils 4.0.0-dev",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-runtime",
  "substrate-prometheus-endpoint",
 ]
@@ -9872,7 +9878,7 @@ dependencies = [
  "serde_json",
  "sp-api",
  "sp-blockchain",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-core",
  "sp-externalities",
  "sp-keystore",
@@ -10608,7 +10614,7 @@ dependencies = [
  "parking_lot 0.12.2",
  "schnellru",
  "sp-api",
- "sp-consensus 0.10.0-dev",
+ "sp-consensus",
  "sp-database",
  "sp-runtime",
  "sp-state-machine",
@@ -10618,21 +10624,6 @@ dependencies = [
 [[package]]
 name = "sp-consensus"
 version = "0.10.0-dev"
-dependencies = [
- "async-trait",
- "futures 0.3.30",
- "log",
- "sp-core",
- "sp-inherents",
- "sp-runtime",
- "sp-state-machine",
- "thiserror",
-]
-
-[[package]]
-name = "sp-consensus"
-version = "0.10.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0#39482e78cc1580c9f16a8f8d8261baf914ab5559"
 dependencies = [
  "async-trait",
  "futures 0.3.30",

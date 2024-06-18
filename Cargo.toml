@@ -177,7 +177,7 @@ sp-application-crypto = { path = "../sora-polkadot-sdk/substrate/primitives/appl
 sp-arithmetic = { path = "../sora-polkadot-sdk/substrate/primitives/arithmetic"}
 sp-block-builder = { path = "../sora-polkadot-sdk/substrate/primitives/block-builder"}
 sp-blockchain = { path = "../sora-polkadot-sdk/substrate/primitives/blockchain"}
-# sp-consensus = { path = "../sora-polkadot-sdk/substrate/primitives/consensus"}
+sp-consensus = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/common"}
 sp-consensus-aura = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/aura"}
 sp-consensus-babe = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/babe"}
 sp-core = { path = "../sora-polkadot-sdk/substrate/primitives/core"}
@@ -211,6 +211,8 @@ substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/fram
 substrate-prometheus-endpoint = { path = "../sora-polkadot-sdk/substrate/utils/prometheus" }
 sp-consensus-beefy = { path = "../sora-polkadot-sdk/substrate/primitives/consensus/beefy" }
 pallet-beefy = { path = "../sora-polkadot-sdk/substrate/frame/beefy" }
+sc-consensus-babe-rpc = { path = "../sora-polkadot-sdk/substrate/client/consensus/babe/rpc" }
+sc-consensus-epochs = { path = "../sora-polkadot-sdk/substrate/client/consensus/epochs" }
 # sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
 # pallet-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
