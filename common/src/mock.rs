@@ -77,7 +77,6 @@ pub enum ComicAssetId {
     CrackedBrassBell,
     Tomato,
     Potato,
-    Mouse,
     Table,
 }
 
@@ -115,7 +114,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KUSD => CrackedBrassBell,
             PredefinedAssetId::KGOLD => Tomato,
             PredefinedAssetId::KXOR => Potato,
-            PredefinedAssetId::SB => Mouse,
             PredefinedAssetId::KARMA => Table,
         }
     }
