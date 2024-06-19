@@ -137,7 +137,7 @@ pub fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64, consume_we
         // `n` was obtained as integer division `left/w`, so multiplying `n*w` will not exceed `left`;
         // it means it will fit into u64
         let to_consume = w.saturating_mul(n);
-        meter.defensive_saturating_accrue(to_consume);
+        meter.consume(to_consume);
     }
     n
 }

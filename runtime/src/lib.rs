@@ -2428,11 +2428,7 @@ impl multisig_verifier::Config for Runtime {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = opaque::Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
+    pub enum Runtime {
         System: frame_system = 0,
 
         Babe: pallet_babe = 14,

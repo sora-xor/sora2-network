@@ -54,11 +54,11 @@ use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, ImOnlineId, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature,
     StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
@@ -87,7 +87,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<RuntimeGenesisConfig>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -903,7 +903,7 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
     use common::XSTUSD;
 
     // Initial balances
@@ -1241,7 +1241,7 @@ fn testnet_genesis(
         XST.into(),
         TBCD.into(),
     ];
-    GenesisConfig {
+    RuntimeGenesisConfig {
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),

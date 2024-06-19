@@ -45,9 +45,9 @@ use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_keystore::{Keystore, LocalKeystore};
+use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
-use sc_rpc::SubscriptionTaskExecutor;
 use sc_service::WarpSyncParams;
 use sc_service::{Configuration, TaskManager};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
@@ -406,8 +406,6 @@ pub fn new_partial(
         move |deny_unsafe,
               subscription_executor: SubscriptionTaskExecutor|
               -> Result<crate::rpc::RpcExtension, sc_service::Error> {
-
-                
             let deps = crate::rpc::FullDeps {
                 client: client.clone(),
                 pool: pool.clone(),
@@ -415,9 +413,9 @@ pub fn new_partial(
                 deny_unsafe,
                 chain_spec: chain_spec.cloned_box(),
                 babe: crate::rpc::BabeDeps {
-					keystore: keystore.clone(),
-					babe_worker_handle: babe_worker_handle.clone(),
-				},
+                    keystore: keystore.clone(),
+                    babe_worker_handle: babe_worker_handle.clone(),
+                },
                 beefy: crate::rpc::BeefyDeps {
                     beefy_finality_proof_stream: beefy_rpc_links.from_voter_justif_stream.clone(),
                     beefy_best_block_stream: beefy_rpc_links.from_voter_best_beefy_stream.clone(),
