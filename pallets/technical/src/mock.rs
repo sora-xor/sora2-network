@@ -31,14 +31,16 @@
 use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{mock_pallet_balances_config, PSWAP, VAL, XST};
+use common::{
+    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, DEXId, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
-use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -57,7 +59,6 @@ pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
 pub type Amount = i128;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type DEXId = u32;
 type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 type TechAmount = Amount;
@@ -90,95 +91,19 @@ construct_runtime! {
     }
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = tokens::Pallet<Runtime>;
-    type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub GetBuyBackAssetId: AssetId = XST.into();
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = 0;
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl Config for Runtime {

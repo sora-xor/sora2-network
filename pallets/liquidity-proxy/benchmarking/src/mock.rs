@@ -36,11 +36,12 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_pallet_balances_config,
-    mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider, PriceVariant, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
+    mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed, FromGenericPair,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider,
+    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -57,7 +58,6 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent};
 
-pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
@@ -134,32 +134,13 @@ construct_runtime! {
     }
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 impl liquidity_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -178,68 +159,15 @@ impl liquidity_proxy::Config for Runtime {
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
     type MaxAdditionalDataLengthSwapTransferBatch = ConstU32<2000>;
+    type GetChameleonPool = common::mock::GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = GetBaseAssetId;
-    type WeightInfo = ();
 }
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = 0;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -270,8 +198,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -326,6 +252,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = common::mock::GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
@@ -376,35 +304,35 @@ fn bonding_curve_distribution_accounts() -> DistributionAccounts<
 
     let xor_allocation = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            0u32,
+            DEXId::Polkaswap,
             TechPurpose::Identifier(b"xor_allocation".to_vec()),
         )),
         val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            0u32,
+            DEXId::Polkaswap,
             TechPurpose::Identifier(b"sora_citizens".to_vec()),
         )),
         projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            0u32,
+            DEXId::Polkaswap,
             TechPurpose::Identifier(b"stores_and_shops".to_vec()),
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            0u32,
+            DEXId::Polkaswap,
             TechPurpose::Identifier(b"projects".to_vec()),
         )),
         projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            0u32,
+            DEXId::Polkaswap,
             TechPurpose::Identifier(b"val_holders".to_vec()),
         )),
         val_holders_buy_back_coefficient.get().unwrap(),
@@ -464,17 +392,24 @@ parameter_types! {
 pub struct MockPriceTools;
 
 impl PriceToolsProvider<AssetId> for MockPriceTools {
+    fn is_asset_registered(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
-            0,
+            DEXId::PolkaswapXSTUSD,
             input_asset_id,
             output_asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
-            LiquiditySourceFilter::with_allowed(0u32, [LiquiditySourceType::XYKPool].to_vec()),
+            LiquiditySourceFilter::with_allowed(
+                DEXId::Polkaswap,
+                [LiquiditySourceType::XYKPool].to_vec(),
+            ),
             true,
         );
         Ok(res?.amount)
@@ -519,6 +454,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -554,7 +490,7 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             dex_list: vec![(
-                0_u32,
+                DEXId::Polkaswap,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
                     synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
@@ -731,14 +667,14 @@ impl ExtBuilder {
         trading_pair::GenesisConfig::<Runtime> {
             trading_pairs: vec![
                 (
-                    0,
+                    DEXId::Polkaswap,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: VAL,
                     },
                 ),
                 (
-                    0,
+                    DEXId::Polkaswap,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: PSWAP,

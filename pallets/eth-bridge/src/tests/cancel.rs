@@ -47,7 +47,8 @@ use crate::tests::{
 };
 use crate::{AssetConfig, EthAddress};
 use common::{
-    AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL, XOR,
+    AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, USDT,
+    VAL, XOR,
 };
 use frame_support::assert_ok;
 use frame_support::sp_runtime::{DispatchResult, TransactionOutcome};

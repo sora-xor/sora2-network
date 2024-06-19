@@ -36,7 +36,7 @@ use common::{
     mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType, PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{ConstU16, ConstU64, Everything};
+use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::{ConstU32, H256};
@@ -54,6 +54,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type BlockNumber = u64;
 
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);

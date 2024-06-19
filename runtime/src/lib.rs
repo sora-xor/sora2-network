@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 86,
+    spec_version: 87,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 86,
+    transaction_version: 87,
     state_version: 0,
 };
 
@@ -1009,6 +1009,22 @@ parameter_type_with_key! {
     };
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if base_asset_id == &common::XOR {
+            Some(common::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
+    };
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -1028,6 +1044,8 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = PriceTools;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
@@ -1090,6 +1108,8 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -1274,6 +1294,14 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type PermittedSetPeriod = EitherOfDiverse<
+        pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
+        EnsureRoot<AccountId>,
+    >;
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
@@ -1630,6 +1658,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -1966,9 +1995,10 @@ parameter_types! {
     };
 
     pub const KenAssetId: AssetId = common::KEN;
-    pub const KusdAssetId: AssetId = common::KUSD;
+    pub const KarmaAssetId: AssetId = common::KARMA;
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 Kensetsu dollar of uncollected stability fee triggers accrue
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
@@ -1984,12 +2014,16 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type Oracle = OracleProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = GetTbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
@@ -2468,7 +2502,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

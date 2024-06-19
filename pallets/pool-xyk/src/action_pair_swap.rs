@@ -108,15 +108,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 &source_opt.unwrap(),
             )?)
         };
-        // Source balance of technical account.
-        let balance_st = <T as Config>::AssetInfoProvider::free_balance(
+        let (balance_st, balance_tt, _max_output_available) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
             &self.source.asset,
-            &pool_account_repr_sys,
-        )?;
-        // Destination balance of technical account.
-        let balance_tt = <T as Config>::AssetInfoProvider::free_balance(
             &self.destination.asset,
-            &pool_account_repr_sys,
         )?;
         if !abstract_checking {
             ensure!(balance_ss.unwrap() > 0, Error::<T>::AccountBalanceIsInvalid);
@@ -401,13 +397,11 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
 
             let pool_account_repr_sys =
                 technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-            let balance_a = <T as Config>::AssetInfoProvider::free_balance(
+            let (balance_a, balance_b, _max_output_available) = Pallet::<T>::get_actual_reserves(
+                &pool_account_repr_sys,
+                &base_asset_id,
                 &self.source.asset,
-                &pool_account_repr_sys,
-            )?;
-            let balance_b = <T as Config>::AssetInfoProvider::free_balance(
                 &self.destination.asset,
-                &pool_account_repr_sys,
             )?;
             Pallet::<T>::update_reserves(
                 base_asset_id,
