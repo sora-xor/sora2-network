@@ -51,7 +51,7 @@ EOF
 eval "$getopt_code"
 
 #export RUST_LOG="beefy=info,ethereum_light_client=debug,bridge_channel=debug,dispatch=debug,eth_app=debug"
-export RUST_LOG="info,runtime=debug,babe=trace,tokio_runtime_worker=trace"
+export RUST_LOG="info,runtime=debug"
 
 localid=$(mktemp)
 tmpdir=$(dirname "$localid")
