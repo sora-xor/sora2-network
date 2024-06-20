@@ -901,8 +901,8 @@ use sp_runtime::traits::Zero;
 pub mod pallet {
     use super::*;
     use common::{
-        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-        EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
+        AccountIdOf, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
+        Description, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
@@ -965,6 +965,11 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+
+        /// Regulator of asset operations
+        #[cfg(feature = "wip")] // DEFI-R
+        type AssetRegulator: AssetRegulator<Self::AccountId, AssetIdOf<Self>>;
+
         /// Percent of reserve which is not involved in swap
         #[pallet::constant]
         type IrreducibleReserve: Get<Percent>;
@@ -1021,6 +1026,19 @@ pub mod pallet {
                 input_a_desired >= input_a_min && input_b_desired >= input_b_min,
                 Error::<T>::InvalidMinimumBoundValueOfBalance
             );
+
+            #[cfg(feature = "wip")] // DEFI-R
+            ensure!(
+                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &input_asset_a),
+                Error::<T>::AssetRegulationsCheckFailed
+            );
+
+            #[cfg(feature = "wip")] // DEFI-R
+            ensure!(
+                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &input_asset_b),
+                Error::<T>::AssetRegulationsCheckFailed
+            );
+
             Pallet::<T>::deposit_liquidity_unchecked(
                 source,
                 dex_id,
@@ -1060,6 +1078,19 @@ pub mod pallet {
                 output_b_min > 0,
                 Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
             );
+
+            #[cfg(feature = "wip")] // DEFI-R
+            ensure!(
+                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &output_asset_a),
+                Error::<T>::AssetRegulationsCheckFailed
+            );
+
+            #[cfg(feature = "wip")] // DEFI-R
+            ensure!(
+                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &output_asset_b),
+                Error::<T>::AssetRegulationsCheckFailed
+            );
+
             Pallet::<T>::withdraw_liquidity_unchecked(
                 source,
                 dex_id,
@@ -1266,6 +1297,8 @@ pub mod pallet {
         RestrictedChameleonPool,
         /// Output asset reserves is not enough
         NotEnoughOutputReserves,
+        /// Asset Regulations Check failed
+        AssetRegulationsCheckFailed,
     }
 
     /// Updated after last liquidity change operation.

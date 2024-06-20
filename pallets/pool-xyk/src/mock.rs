@@ -31,9 +31,8 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
-    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, DEXInfo,
-    GetMarketInfo, TBCD,
+    balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -44,7 +43,7 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
@@ -111,6 +110,7 @@ construct_runtime! {
         XSTPools: xst::{Pallet, Call, Storage, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
+        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -119,7 +119,32 @@ mock_currencies_config!(Runtime);
 mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
-mock_assets_config!(Runtime);
+
+parameter_types! {
+    pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
+    pub const GetBuyBackPercentage: u8 = 0;
+    pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
+}
+
+impl assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type ExtraAccountId = [u8; 32];
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
+    type GetTotalBalance = ();
+    type WeightInfo = ();
+    type AssetRegulator = permissions::Pallet<Runtime>;
+}
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -245,6 +270,14 @@ impl xst::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
+impl regulated_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
+    type MaxSBTsPerAsset = ConstU32<10000>;
+    type WeightInfo = ();
+}
+
 parameter_type_with_key! {
     pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
         let common::TradingPair {
@@ -295,6 +328,8 @@ impl Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = regulated_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }
