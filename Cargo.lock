@@ -5746,6 +5746,7 @@ dependencies = [
  "pool-xyk",
  "price-tools",
  "pswap-distribution",
+ "regulated-assets",
  "scale-info",
  "serde",
  "sp-core",
