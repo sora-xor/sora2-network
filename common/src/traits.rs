@@ -1508,3 +1508,26 @@ where
             && B::check_asset_regulations_for_pool_xyk(source, asset_id)
     }
 }
+
+impl<AccountId, AssetId> AssetRegulator<AccountId, AssetId> for () {
+    fn assign_permission(
+        _owner: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn check_permission(
+        _issuer: &AccountId,
+        _affected_account: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn check_asset_regulations_for_pool_xyk(_source: &AccountId, _asset_id: &AssetId) -> bool {
+        true
+    }
+}

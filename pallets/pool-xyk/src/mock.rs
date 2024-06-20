@@ -110,6 +110,7 @@ construct_runtime! {
         XSTPools: xst::{Pallet, Call, Storage, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
+        #[cfg(feature = "wip")] // DEFI-R
         RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
@@ -270,6 +271,7 @@ impl xst::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -328,6 +330,8 @@ impl Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
+    type AssetRegulator = ();
     #[cfg(feature = "wip")] // DEFI-R
     type AssetRegulator = regulated_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
