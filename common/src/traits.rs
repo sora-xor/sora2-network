@@ -1472,6 +1472,9 @@ pub trait AssetRegulator<AccountId, AssetId> {
         asset_id: &AssetId,
         permission_id: &PermissionId,
     ) -> Result<(), DispatchError>;
+
+    /// Checks for permissioned pool (PoolXYK)
+    fn check_asset_regulations_for_pool_xyk(source: &AccountId, asset_id: &AssetId) -> bool;
 }
 
 impl<AccountId, AssetId, A, B> AssetRegulator<AccountId, AssetId> for (A, B)
@@ -1498,5 +1501,10 @@ where
         A::check_permission(issuer, affected_account, asset_id, permission_id)?;
         B::check_permission(issuer, affected_account, asset_id, permission_id)?;
         Ok(())
+    }
+
+    fn check_asset_regulations_for_pool_xyk(source: &AccountId, asset_id: &AssetId) -> bool {
+        A::check_asset_regulations_for_pool_xyk(source, asset_id)
+            && B::check_asset_regulations_for_pool_xyk(source, asset_id)
     }
 }
