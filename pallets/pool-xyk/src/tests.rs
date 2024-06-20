@@ -4070,7 +4070,7 @@ fn check_quote_chameleon_limits() {
 
 #[test]
 #[cfg(feature = "wip")] // DEFI-R
-fn test_pool_works_with_regulated_asset() {
+fn test_pool_fails_with_regulated_asset() {
     ExtBuilder::default().build().execute_with(|| {
         assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
@@ -4106,6 +4106,20 @@ fn test_pool_works_with_regulated_asset() {
             &Apple.into(),
             &ALICE(),
             &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &BOB(),
             balance!(900000)
         ));
 
@@ -4154,5 +4168,175 @@ fn test_pool_works_with_regulated_asset() {
             ),
             crate::Error::<Runtime>::AssetRegulationsCheckFailed
         );
+
+        assert_err!(
+            PoolXYK::deposit_liquidity(
+                RuntimeOrigin::signed(BOB()),
+                DEX_A_ID,
+                GoldenTicket.into(),
+                Apple.into(),
+                balance!(144000),
+                balance!(360000),
+                balance!(144000),
+                balance!(227683.9915321233119024),
+            ),
+            crate::Error::<Runtime>::AssetRegulationsCheckFailed
+        );
+
+        assert_err!(
+            PoolXYK::withdraw_liquidity(
+                RuntimeOrigin::signed(BOB()),
+                DEX_A_ID,
+                Apple.into(),
+                GoldenTicket.into(),
+                balance!(144000),
+                balance!(36000),
+                balance!(14400),
+            ),
+            crate::Error::<Runtime>::AssetRegulationsCheckFailed
+        );
+    });
+}
+
+#[test]
+#[cfg(feature = "wip")] // DEFI-R
+fn test_pool_works_with_regulated_asset() {
+    use common::AssetId32;
+    use sp_core::bounded_vec;
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            GoldenTicket.into(),
+            AssetSymbol(b"GT".to_vec()),
+            AssetName(b"Golden Ticket".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            None,
+            None,
+        ));
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            Apple.into(),
+            AssetSymbol(b"AP".to_vec()),
+            AssetName(b"Apple".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            None,
+            None,
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(regulated_assets::Pallet::<Runtime>::regulate_asset(
+            RuntimeOrigin::signed(ALICE()),
+            Apple.into(),
+        ));
+
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+        ));
+
+        assert_ok!(PoolXYK::initialize_pool(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+        ));
+
+        let sbt_asset_name = AssetName(b"Soulbound Token".to_vec());
+        let sbt_asset_symbol = AssetSymbol(b"SBT".to_vec());
+        // Good Scenarios
+        RegulatedAssets::issue_sbt(
+            RuntimeOrigin::signed(ALICE()),
+            sbt_asset_symbol,
+            sbt_asset_name,
+            None,
+            None,
+            None,
+            None,
+            bounded_vec!(Apple.into()),
+        )
+        .expect("Issue SBT failed");
+
+        let apple_asset_id = AssetId32::from(Apple);
+        let sbts = RegulatedAssets::sbts_by_asset(apple_asset_id);
+        let sbt_asset_id = sbts.first().unwrap();
+
+        assert_ok!(Assets::mint_to(sbt_asset_id, &ALICE(), &ALICE(), 1));
+        assert_ok!(Assets::mint_to(sbt_asset_id, &ALICE(), &BOB(), 1));
+
+        assert_ok!(PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+            balance!(227683.9915321233119024),
+        ));
+
+        assert_ok!(PoolXYK::withdraw_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            Apple.into(),
+            GoldenTicket.into(),
+            balance!(144000),
+            balance!(36000),
+            balance!(14400),
+        ));
+
+        assert_ok!(PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+            balance!(227683.9915321233119024),
+        ));
+
+        assert_ok!(PoolXYK::withdraw_liquidity(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            Apple.into(),
+            GoldenTicket.into(),
+            balance!(144000),
+            balance!(36000),
+            balance!(14400),
+        ));
     });
 }
