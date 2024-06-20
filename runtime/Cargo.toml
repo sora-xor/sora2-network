@@ -302,6 +302,8 @@ private-net = [
 
 wip = [
     "framenode-chain-spec/wip",
+    "dex-manager/wip",
+    "order-book/wip",
     "liquidity-proxy/wip",
     "liquidity-proxy-runtime-api/wip",
     "liquidity-proxy-benchmarking/wip",

@@ -30,6 +30,34 @@
 
 use crate::*;
 
+#[cfg(feature = "wip")] // dex-kusd
+pub type Migrations = (
+    assets::migration::register_asset::RegisterAsset<
+        Runtime,
+        KGOLDAssetId,
+        KGOLDAssetName,
+        KGOLDAssetSymbol,
+        PredefinedAssetOwnerAccountId,
+    >,
+    assets::migration::register_asset::RegisterAsset<
+        Runtime,
+        KXORAssetId,
+        KXORAssetName,
+        KXORAssetSymbol,
+        PredefinedAssetOwnerAccountId,
+    >,
+    assets::migration::register_asset::RegisterAsset<
+        Runtime,
+        KARMAAssetId,
+        KARMAAssetName,
+        KARMAAssetSymbol,
+        PredefinedAssetOwnerAccountId,
+    >,
+    kensetsu::migrations::v1_to_v2::UpgradeToV2<Runtime>,
+    dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,
+);
+
+#[cfg(not(feature = "wip"))] // dex-kusd
 pub type Migrations = (
     assets::migration::register_asset::RegisterAsset<
         Runtime,
