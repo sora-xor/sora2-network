@@ -384,6 +384,7 @@ pub struct ExtBuilder {
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    pub is_permissioned_xyk_pool: bool,
 }
 
 impl Default for ExtBuilder {
@@ -529,6 +530,7 @@ impl Default for ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
+            is_permissioned_xyk_pool: false,
         }
     }
 }
@@ -939,6 +941,40 @@ impl ExtBuilder {
         self
     }
 
+    #[cfg(feature = "wip")] // DEFI-R
+    pub fn with_permissioned_xyk_pool(mut self) -> Self {
+        self = self.with_xyk_pool();
+        self.is_permissioned_xyk_pool = true;
+        self
+    }
+
+    #[cfg(feature = "wip")] // DEFI-R
+    fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
+        use sp_core::bounded_vec;
+
+        let owner_origin = RuntimeOrigin::signed(owner.clone());
+        if !RegulatedAssets::regulated_asset(asset_id) {
+            RegulatedAssets::regulate_asset(owner_origin.clone(), *asset_id)
+                .expect("Failed to regulate Asset");
+        }
+
+        RegulatedAssets::issue_sbt(
+            owner_origin,
+            AssetSymbol(b"SBT".to_vec()),
+            AssetName(b"SBT".to_vec()),
+            None,
+            None,
+            None,
+            None,
+            bounded_vec!(*asset_id),
+        )
+        .expect("Failed to issue SBT");
+
+        let sbts = RegulatedAssets::sbts_by_asset(asset_id);
+        let sbt_asset_id = sbts.first().unwrap();
+        Assets::mint_to(sbt_asset_id, &owner, &owner, 1).expect("Failed to mint SBT");
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -1038,6 +1074,10 @@ impl ExtBuilder {
                     asset.into(),
                 )
                 .unwrap();
+                if self.is_permissioned_xyk_pool {
+                    #[cfg(feature = "wip")] // DEFI-R
+                    Self::prepare_asset_for_permissioned_pool(&owner, &asset.into());
+                }
                 assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
                     .unwrap();
                 pool_xyk::Pallet::<Runtime>::initialize_pool(
