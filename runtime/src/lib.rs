@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 87,
+    spec_version: 88,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 87,
+    transaction_version: 88,
     state_version: 0,
 };
 
@@ -1294,6 +1294,14 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type PermittedSetPeriod = EitherOfDiverse<
+        pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
+        EnsureRoot<AccountId>,
+    >;
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
