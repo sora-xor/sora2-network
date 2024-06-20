@@ -3475,6 +3475,14 @@
 <a href="#3460" id="3460">3460</a>
 <a href="#3461" id="3461">3461</a>
 <a href="#3462" id="3462">3462</a>
+<a href="#3463" id="3463">3463</a>
+<a href="#3464" id="3464">3464</a>
+<a href="#3465" id="3465">3465</a>
+<a href="#3466" id="3466">3466</a>
+<a href="#3467" id="3467">3467</a>
+<a href="#3468" id="3468">3468</a>
+<a href="#3469" id="3469">3469</a>
+<a href="#3470" id="3470">3470</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3730,10 +3738,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">87</span>,
+    spec_version: <span class="number">88</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">87</span>,
+    transaction_version: <span class="number">88</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4771,6 +4779,14 @@
 }
 
 <span class="kw">impl </span>xor_fee::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>PermittedSetPeriod = EitherOfDiverse&lt;
+        pallet_collective::EnsureProportionAtLeast&lt;AccountId, TechnicalCollective, <span class="number">3</span>, <span class="number">4</span>&gt;,
+        EnsureRoot&lt;AccountId&gt;,
+    &gt;;
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Dynamic fee
+    </span><span class="kw">type </span>DynamicMultiplier = ();
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Dynamic fee
+    </span><span class="kw">type </span>DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="comment">// Pass native currency.
     </span><span class="kw">type </span>XorCurrency = Balances;

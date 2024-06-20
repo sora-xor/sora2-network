@@ -73,7 +73,7 @@ var sourcesIndex = JSON.parse('{\
 "vested_rewards":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "vested_rewards_rpc":["",[],["lib.rs"]],\
 "vested_rewards_runtime_api":["",[],["lib.rs"]],\
-"xor_fee":["",[],["extension.rs","lib.rs","weights.rs"]],\
+"xor_fee":["",[],["extension.rs","lib.rs","migrations.rs","weights.rs"]],\
 "xst":["",[["migrations",[],["mod.rs"]]],["lib.rs","weights.rs"]],\
 "xst_benchmarking":["",[],["lib.rs"]]\
 }');

@@ -33,5 +33,6 @@
 "technical":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"technical/pallet/enum.Error.html\" title=\"enum technical::pallet::Error\">Error</a>&lt;T&gt;"]],
 "trading_pair":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"trading_pair/pallet/enum.Error.html\" title=\"enum trading_pair::pallet::Error\">Error</a>&lt;T&gt;"]],
 "vested_rewards":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"vested_rewards/pallet/enum.Error.html\" title=\"enum vested_rewards::pallet::Error\">Error</a>&lt;T&gt;"]],
+"xor_fee":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"xor_fee/pallet/enum.Error.html\" title=\"enum xor_fee::pallet::Error\">Error</a>&lt;T&gt;"]],
 "xst":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"xst/pallet/enum.Error.html\" title=\"enum xst::pallet::Error\">Error</a>&lt;T&gt;"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
