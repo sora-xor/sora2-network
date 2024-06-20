@@ -101,6 +101,8 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        #[cfg(feature = "wip")] // DEFI-R
+        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -152,6 +154,15 @@ impl demeter_farming_platform::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
+impl regulated_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
+    type MaxSBTsPerAsset = ConstU32<10000>;
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
@@ -174,6 +185,10 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
+    type AssetRegulator = ();
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = regulated_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }

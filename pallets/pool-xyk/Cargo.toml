@@ -49,6 +49,7 @@ xst = { path = "../xst" }
 oracle-proxy = { path = "../oracle-proxy" }
 band = { path = "../band" }
 assets = { path = "../assets" }
+regulated-assets = { path = "../regulated-assets" }
 
 [features]
 default = ['std']
@@ -64,3 +65,7 @@ std = [
 ]
 
 try-runtime = ["frame-support/try-runtime"]
+
+wip = [
+    
+]

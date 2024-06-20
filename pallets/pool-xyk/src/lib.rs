@@ -967,7 +967,6 @@ pub mod pallet {
         >;
 
         /// Regulator of asset operations
-        #[cfg(feature = "wip")] // DEFI-R
         type AssetRegulator: AssetRegulator<Self::AccountId, AssetIdOf<Self>>;
 
         /// Percent of reserve which is not involved in swap

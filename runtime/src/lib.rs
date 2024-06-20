@@ -1047,6 +1047,10 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
+    type AssetRegulator = ();
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = regulated_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
