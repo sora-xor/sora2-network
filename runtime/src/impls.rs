@@ -511,6 +511,40 @@ impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     }
 }
 
+#[cfg(feature = "wip")] // Contracts pallet
+pub struct ContractsCallFilter;
+
+#[cfg(feature = "wip")] // Contracts pallet
+impl Contains<crate::RuntimeCall> for ContractsCallFilter {
+    fn contains(call: &crate::RuntimeCall) -> bool {
+        match call {
+            crate::RuntimeCall::Assets(assets::Call::burn { .. }) => true,
+            crate::RuntimeCall::Assets(assets::Call::register { .. }) => true,
+            crate::RuntimeCall::Assets(assets::Call::transfer { .. }) => true,
+            crate::RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. }) => true,
+            crate::RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap { .. }) => true,
+            crate::RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer { .. }) => true,
+            crate::RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
+                ..
+            }) => true,
+            crate::RuntimeCall::LiquidityProxy(liquidity_proxy::Call::xorless_transfer {
+                ..
+            }) => true,
+            crate::RuntimeCall::OrderBook(order_book::Call::cancel_limit_order { .. }) => true,
+            crate::RuntimeCall::OrderBook(order_book::Call::cancel_limit_orders_batch {
+                ..
+            }) => true,
+            crate::RuntimeCall::OrderBook(order_book::Call::execute_market_order { .. }) => true,
+            // TODO: Differs name of extrinsic
+            crate::RuntimeCall::OrderBook(order_book::Call::place_limit_order { .. }) => true,
+            crate::RuntimeCall::PoolXYK(pool_xyk::Call::deposit_liquidity { .. }) => true,
+            crate::RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. }) => true,
+            crate::RuntimeCall::SubstrateBridgeApp(substrate_bridge_app::Call::burn { .. }) => true,
+            _ => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

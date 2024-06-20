@@ -2462,9 +2462,7 @@ impl pallet_contracts::Config for Runtime {
     type Currency = Balances;
     type RuntimeEvent = RuntimeEvent;
     type RuntimeCall = RuntimeCall;
-    // TODO callable filters
-    type CallFilter = ();
-    //
+    type CallFilter = impls::ContractsCallFilter;
     type WeightPrice = pallet_transaction_payment::Pallet<Self>;
     type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
     type ChainExtension = ();
