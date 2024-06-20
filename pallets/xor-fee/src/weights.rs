@@ -61,6 +61,8 @@ use core::marker::PhantomData;
 /// Weight functions needed for xor_fee.
 pub trait WeightInfo {
 	fn update_multiplier() -> Weight;
+	fn set_fee_update_period() -> Weight;
+	fn set_small_reference_amount() -> Weight;
 }
 
 /// Weights for xor_fee using the Substrate node and recommended hardware.
@@ -76,6 +78,27 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(11_025_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	/// Locally generated
+	/// Storage: XorFee NextUpdateBlock (r:0 w:1)
+	fn set_fee_update_period() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 4_567 nanoseconds.
+		Weight::from_ref_time(4_793_000)
+	}
+
+	/// Locally generated
+	/// Storage: XorFee SmallReferenceAmount (r:0 w:1)
+	fn set_small_reference_amount() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 4_248 nanoseconds.
+		Weight::from_ref_time(4_486_000)
+	}
+
 }
 
 // For backwards compatibility and tests
@@ -89,5 +112,25 @@ impl WeightInfo for () {
 		// Minimum execution time: 10_528_000 picoseconds.
 		Weight::from_parts(11_025_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	/// Locally generated
+	/// Storage: XorFee NextUpdateBlock (r:0 w:1)
+	fn set_fee_update_period() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 4_567 nanoseconds.
+		Weight::from_ref_time(4_793_000)
+	}
+
+	/// Locally generated
+	/// Storage: XorFee SmallReferenceAmount (r:0 w:1)
+	fn set_small_reference_amount() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 4_248 nanoseconds.
+		Weight::from_ref_time(4_486_000)
 	}
 }
