@@ -1027,16 +1027,22 @@ pub mod pallet {
             );
 
             #[cfg(feature = "wip")] // DEFI-R
-            ensure!(
-                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &input_asset_a),
-                Error::<T>::AssetRegulationsCheckFailed
-            );
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &input_asset_a,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
             #[cfg(feature = "wip")] // DEFI-R
-            ensure!(
-                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &input_asset_b),
-                Error::<T>::AssetRegulationsCheckFailed
-            );
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &input_asset_b,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
             Pallet::<T>::deposit_liquidity_unchecked(
                 source,
@@ -1079,16 +1085,22 @@ pub mod pallet {
             );
 
             #[cfg(feature = "wip")] // DEFI-R
-            ensure!(
-                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &output_asset_a),
-                Error::<T>::AssetRegulationsCheckFailed
-            );
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &output_asset_a,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
             #[cfg(feature = "wip")] // DEFI-R
-            ensure!(
-                T::AssetRegulator::check_asset_regulations_for_pool_xyk(&source, &output_asset_b),
-                Error::<T>::AssetRegulationsCheckFailed
-            );
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &output_asset_b,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
             Pallet::<T>::withdraw_liquidity_unchecked(
                 source,

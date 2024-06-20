@@ -396,8 +396,4 @@ impl<T: Config, AssetId: Encode> AssetRegulator<AccountIdOf<T>, AssetId> for Pal
         })?;
         Ok(())
     }
-
-    fn check_asset_regulations_for_pool_xyk(_source: &AccountIdOf<T>, _asset_id: &AssetId) -> bool {
-        unimplemented!()
-    }
 }
