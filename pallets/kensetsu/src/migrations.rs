@@ -195,41 +195,43 @@ pub mod v1_to_v2 {
             if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             ) {
-                let scope = Scope::Limited(common::hash(&KXOR));
-                for permission in &[MINT, BURN] {
-                    match permissions::Pallet::<T>::assign_permission(
-                        technical_account_id.clone(),
-                        &technical_account_id,
-                        *permission,
-                        scope,
-                    ) {
-                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
-                        Err(err) => {
-                            error!(
+                for token in &[KXOR, KGOLD, KARMA] {
+                    let scope = Scope::Limited(common::hash(token));
+                    for permission in &[MINT, BURN] {
+                        match permissions::Pallet::<T>::assign_permission(
+                            technical_account_id.clone(),
+                            &technical_account_id,
+                            *permission,
+                            scope,
+                        ) {
+                            Ok(()) => {
+                                weight += <T as frame_system::Config>::DbWeight::get().writes(1)
+                            }
+                            Err(err) => {
+                                error!(
                                 "Failed to grant permission to technical account id: {:?}, error: {:?}",
                                 technical_account_id, err
                             );
-                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                                weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                            }
                         }
                     }
                 }
 
-                for token in &[KARMA, TBCD] {
-                    let scope = Scope::Limited(common::hash(token));
-                    match permissions::Pallet::<T>::assign_permission(
-                        technical_account_id.clone(),
-                        &technical_account_id,
-                        BURN,
-                        scope,
-                    ) {
-                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
-                        Err(err) => {
-                            error!(
-                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
-                                technical_account_id, err
-                            );
-                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
-                        }
+                let scope = Scope::Limited(common::hash(&TBCD));
+                match permissions::Pallet::<T>::assign_permission(
+                    technical_account_id.clone(),
+                    &technical_account_id,
+                    BURN,
+                    scope,
+                ) {
+                    Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
+                    Err(err) => {
+                        error!(
+                            "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                            technical_account_id, err
+                        );
+                        weight += <T as frame_system::Config>::DbWeight::get().reads(1);
                     }
                 }
             }
