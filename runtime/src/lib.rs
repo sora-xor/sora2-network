@@ -93,6 +93,8 @@ pub use sp_beefy::crypto::AuthorityId as BeefyId;
 #[cfg(feature = "wip")] // Trustless bridges
 use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
+#[cfg(feature = "wip")] // Contracts pallet
+use sp_core::ConstBool;
 use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
@@ -2435,6 +2437,60 @@ impl extended_assets::Config for Runtime {
     type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "wip")] // Contracts pallet
+parameter_types! {
+    // TODO do we need customize?
+    pub const DepositPerItem: Balance = deposit(1, 0);
+    // TODO do we need customize?
+    pub const DepositPerByte: Balance = deposit(0, 1);
+    // TODO do we need customize?
+    // some limits removed in the next versions
+    pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
+    pub const DeletionQueueDepth: u32 = 128;
+    // The lazy deletion runs inside on_initialize.
+    pub DeletionWeightLimit: Weight = BlockWeights::get()
+        .per_class
+        .get(DispatchClass::Normal)
+        .max_total
+        .unwrap_or(BlockWeights::get().max_block);
+}
+
+#[cfg(feature = "wip")] // Contracts pallet
+impl pallet_contracts::Config for Runtime {
+    type Time = Timestamp;
+    type Randomness = RandomnessCollectiveFlip;
+    type Currency = Balances;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
+    // TODO callable filters
+    type CallFilter = ();
+    //
+    type WeightPrice = pallet_transaction_payment::Pallet<Self>;
+    type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+    type ChainExtension = ();
+    type Schedule = Schedule;
+    // TODO do we need customize?
+    type CallStack = [pallet_contracts::Frame<Self>; 5];
+    type DeletionQueueDepth = DeletionQueueDepth; // Removed in next versions
+    type DeletionWeightLimit = DeletionWeightLimit; // Removed in next versions
+    type DepositPerByte = DepositPerByte;
+    type DepositPerItem = DepositPerItem;
+    type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+
+    // TODO do we need customize?
+    // Got from `pallet_contracts::integrity_test`
+    // For every contract executed in runtime, at least `MaxCodeLen*18*4` memory should be available
+    // `(MaxCodeLen * 18 * 4 + MAX_STACK_SIZE + max_heap_size) * max_call_depth <
+    // MAX_RUNTIME_MEM/2`
+    // `(MaxCodeLen * 72 + 1MB + 1MB) * 6 = 64MB`
+    // `MaxCodeLen = (64MB/6 - 2) / 72 = 26/216 = 13/108 MB ≈ 123 * 1024 < 13/108 MB`
+    type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+    // TODO do we need customize?
+    type MaxStorageKeyLen = ConstU32<128>;
+    type UnsafeUnstableInterface = ConstBool<false>;
+    // TODO do we need customize?
+    type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+}
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2561,6 +2617,9 @@ construct_runtime! {
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         #[cfg(feature = "ready-to-test")] // DeFi-R
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
+        // Ink! contracts
+        #[cfg(feature = "wip")] // Contracts pallet
+        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 116
     }
 }
 
