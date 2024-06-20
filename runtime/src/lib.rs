@@ -1298,6 +1298,14 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type PermittedSetPeriod = EitherOfDiverse<
+        pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
+        EnsureRoot<AccountId>,
+    >;
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
