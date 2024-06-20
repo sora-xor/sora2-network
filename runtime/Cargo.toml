@@ -315,6 +315,7 @@ wip = [
     "pallet-beefy",
     "pallet-beefy-mmr",
     "regulated-assets/wip",
+    "xor-fee/wip",
 ]
 
 ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]

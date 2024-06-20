@@ -33,22 +33,28 @@
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+#[cfg(feature = "wip")] // Dynamic fee
+use common::weights::constants::SMALL_FEE;
+#[cfg(feature = "wip")] // Dynamic fee
+use common::DAI;
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32,
     AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
     OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
+#[cfg(feature = "wip")] // Dynamic fee
+use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
-use frame_support::pallet_prelude::ValueQuery;
+use frame_support::pallet_prelude::{Hooks, ValueQuery};
 use frame_support::traits::{
     ConstU128, Currency, Everything, ExistenceRequirement, GenesisBuild, WithdrawReasons,
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
-
+use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -69,6 +75,8 @@ type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.7);
+pub const PRICE_XOR_DAI: Balance = balance!(800);
 pub fn account_from_str(s: &str) -> AccountId {
     sp_core::blake2_256(s.as_bytes()).into()
 }
@@ -239,6 +247,31 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = DynamicMultiplier;
+    type PermittedSetPeriod = EnsureRoot<AccountId>;
+}
+
+#[cfg(feature = "wip")] // Dynamic fee
+pub struct DynamicMultiplier;
+
+#[cfg(feature = "wip")] // Dynamic fee
+impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<FixedU128, DispatchError> {
+        let price: FixedWrapper = FixedWrapper::from(match (input_asset, ref_asset) {
+            (&XOR, &DAI) => PRICE_XOR_DAI,
+            _ => balance!(0.000000000000000001),
+        });
+        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
+            .try_into_balance()
+            .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
+        Ok(FixedU128::from_inner(new_multiplier))
+    }
 }
 
 pub struct MockReferrerAccountProvider;
@@ -485,5 +518,14 @@ pub fn post_info_pays_no() -> PostDispatchInfo {
     PostDispatchInfo {
         actual_weight: None,
         pays_fee: Pays::No,
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_initialize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_finalize(System::block_number());
+        XorFee::on_initialize(System::block_number());
     }
 }
