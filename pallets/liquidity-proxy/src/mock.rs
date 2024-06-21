@@ -1027,6 +1027,15 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        technical::GenesisConfig::<Runtime> {
+            register_tech_accounts: vec![(
+                GetLiquidityProxyAccountId::get().into(),
+                GetLiquidityProxyTechAccountId::get(),
+            )],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
             &dex_api::GenesisConfig {
                 source_types: self.source_types,

@@ -46,10 +46,10 @@ use common::prelude::{
     SwapVariant,
 };
 use common::{
-    fixed_wrapper, AssetIdOf, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
-    XykPool,
+    fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
+    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
+    OnPoolReservesChanged, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, XykPool,
 };
 
 mod aliases;
@@ -688,6 +688,22 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
+        T::AssetRegulator::check_permission(
+            &sender,
+            &receiver,
+            &input_asset_id,
+            &common::permissions::TRANSFER,
+        )
+        .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
+        T::AssetRegulator::check_permission(
+            &sender,
+            &receiver,
+            &output_asset_id,
+            &common::permissions::TRANSFER,
+        )
+        .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -1026,7 +1042,6 @@ pub mod pallet {
                 Error::<T>::InvalidMinimumBoundValueOfBalance
             );
 
-            #[cfg(feature = "wip")] // DEFI-R
             T::AssetRegulator::check_permission(
                 &source,
                 &source,
@@ -1035,7 +1050,6 @@ pub mod pallet {
             )
             .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-            #[cfg(feature = "wip")] // DEFI-R
             T::AssetRegulator::check_permission(
                 &source,
                 &source,
@@ -1084,7 +1098,6 @@ pub mod pallet {
                 Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
             );
 
-            #[cfg(feature = "wip")] // DEFI-R
             T::AssetRegulator::check_permission(
                 &source,
                 &source,
@@ -1093,7 +1106,6 @@ pub mod pallet {
             )
             .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-            #[cfg(feature = "wip")] // DEFI-R
             T::AssetRegulator::check_permission(
                 &source,
                 &source,
