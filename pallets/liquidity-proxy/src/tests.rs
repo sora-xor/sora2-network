@@ -673,6 +673,35 @@ fn test_swap_with_multi_steps_desired_input_return_precise_amount() {
     });
 }
 
+#[cfg(feature = "wip")] // DEFI-R
+#[test]
+fn test_swap_for_permissioned_pool_with_multi_steps_desired_input_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&KSM, &alice()).unwrap();
+        let desired_amount_in = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            KSM,
+            USDT,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out: balance!(0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            initial_balance - desired_amount_in
+        );
+    });
+}
+
 #[test]
 fn test_quote_single_source_should_pass() {
     let mut ext = ExtBuilder::default().build();
