@@ -111,7 +111,6 @@ fn test_cannot_regulate_already_regulated_asset() {
 fn test_tech_account_can_pass_check_permission() {
     new_test_ext().execute_with(|| {
         let owner = bob();
-        let non_owner = alice();
 
         let tech_account = TechAccountId::Generic("tech".into(), "account".into());
 
@@ -124,12 +123,13 @@ fn test_tech_account_can_pass_check_permission() {
         ));
 
         mock::Technical::register_tech_account_id(tech_account.clone()).unwrap();
-        let account_id = mock::Technical::tech_account_id_to_account_id(&tech_account).unwrap();
+        let tech_account_id =
+            mock::Technical::tech_account_id_to_account_id(&tech_account).unwrap();
 
         // Tech account can pass permission check for unregulated asset
         assert_ok!(RegulatedAssets::check_permission(
-            &account_id,
-            &non_owner,
+            &tech_account_id,
+            &tech_account_id,
             &asset_id,
             &TRANSFER
         ));
