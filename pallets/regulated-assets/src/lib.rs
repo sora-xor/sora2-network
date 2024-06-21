@@ -90,7 +90,6 @@ pub struct SoulboundTokenMetadata<AccountId, AssetId, MaxAllowedTokensPerSBT: Ge
 pub mod pallet {
 
     use super::*;
-    use common::DEFAULT_BALANCE_PRECISION;
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -203,7 +202,7 @@ pub mod pallet {
                 &who,
                 symbol,
                 name.clone(),
-                DEFAULT_BALANCE_PRECISION,
+                0,
                 0,
                 true,
                 image.clone(),
