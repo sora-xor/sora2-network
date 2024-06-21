@@ -535,7 +535,6 @@ impl Contains<crate::RuntimeCall> for ContractsCallFilter {
                 ..
             }) => true,
             crate::RuntimeCall::OrderBook(order_book::Call::execute_market_order { .. }) => true,
-            // TODO: Differs name of extrinsic
             crate::RuntimeCall::OrderBook(order_book::Call::place_limit_order { .. }) => true,
             crate::RuntimeCall::PoolXYK(pool_xyk::Call::deposit_liquidity { .. }) => true,
             crate::RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. }) => true,

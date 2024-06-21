@@ -2439,22 +2439,15 @@ impl extended_assets::Config for Runtime {
 
 #[cfg(feature = "wip")] // Contracts pallet
 parameter_types! {
-    // TODO do we need customize?
     pub const DepositPerItem: Balance = deposit(1, 0);
-    // TODO do we need customize?
     pub const DepositPerByte: Balance = deposit(0, 1);
-    // TODO do we need customize?
     // some limits removed in the next versions
     pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
-    pub const DeletionQueueDepth: u32 = 128;
-    // The lazy deletion runs inside on_initialize.
-    pub DeletionWeightLimit: Weight = BlockWeights::get()
-        .per_class
-        .get(DispatchClass::Normal)
-        .max_total
-        .unwrap_or(BlockWeights::get().max_block);
+    pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
+    pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
 }
 
+// TODO do we need customize?
 #[cfg(feature = "wip")] // Contracts pallet
 impl pallet_contracts::Config for Runtime {
     type Time = Timestamp;
@@ -2467,15 +2460,11 @@ impl pallet_contracts::Config for Runtime {
     type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
     type ChainExtension = ();
     type Schedule = Schedule;
-    // TODO do we need customize?
     type CallStack = [pallet_contracts::Frame<Self>; 5];
-    type DeletionQueueDepth = DeletionQueueDepth; // Removed in next versions
-    type DeletionWeightLimit = DeletionWeightLimit; // Removed in next versions
     type DepositPerByte = DepositPerByte;
     type DepositPerItem = DepositPerItem;
+    type DefaultDepositLimit = DefaultDepositLimit;
     type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-
-    // TODO do we need customize?
     // Got from `pallet_contracts::integrity_test`
     // For every contract executed in runtime, at least `MaxCodeLen*18*4` memory should be available
     // `(MaxCodeLen * 18 * 4 + MAX_STACK_SIZE + max_heap_size) * max_call_depth <
@@ -2483,11 +2472,18 @@ impl pallet_contracts::Config for Runtime {
     // `(MaxCodeLen * 72 + 1MB + 1MB) * 6 = 64MB`
     // `MaxCodeLen = (64MB/6 - 2) / 72 = 26/216 = 13/108 MB ≈ 123 * 1024 < 13/108 MB`
     type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
-    // TODO do we need customize?
     type MaxStorageKeyLen = ConstU32<128>;
     type UnsafeUnstableInterface = ConstBool<false>;
-    // TODO do we need customize?
     type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+    type RuntimeHoldReason = RuntimeHoldReason;
+    #[cfg(not(feature = "runtime-benchmarks"))]
+    type Migrations = ();
+    #[cfg(feature = "runtime-benchmarks")]
+    type Migrations = pallet_contracts::migration::codegen::BenchMigrations;
+    type MaxDelegateDependencies = ConstU32<32>;
+    type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+    type Debug = ();
+    type Environment = ();
 }
 construct_runtime! {
     pub enum Runtime where
