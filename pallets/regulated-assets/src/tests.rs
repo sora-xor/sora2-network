@@ -356,6 +356,43 @@ fn test_sbt_cannot_be_transferred() {
 }
 
 #[test]
+fn test_not_allowed_to_regulate_sbt() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = bob();
+        let asset_name = AssetName(b"Soulbound Token".to_vec());
+        let asset_symbol = AssetSymbol(b"SBT".to_vec());
+
+        let asset_id = add_asset::<TestRuntime>(&owner);
+        let bounded_vec_assets = BoundedVec::try_from(vec![asset_id]).unwrap();
+        assert_ok!(RegulatedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id
+        ));
+
+        frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
+        // Owner can issue SBT
+        assert_ok!(RegulatedAssets::issue_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_symbol,
+            asset_name,
+            None,
+            None,
+            None,
+            None,
+            bounded_vec_assets,
+        ));
+
+        let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
+
+        assert_err!(
+            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(owner.clone()), sbt_asset_id),
+            Error::<TestRuntime>::NotAllowedToRegulateSoulboundAsset
+        );
+    });
+}
+
+#[test]
 fn test_check_permission_pass_only_if_all_invloved_accounts_have_valid_sbt() {
     new_test_ext().execute_with(|| {
         System::set_block_number(1);

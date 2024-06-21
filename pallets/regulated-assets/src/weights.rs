@@ -75,13 +75,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: RegulatedAssets RegulatedAsset (r:1 w:1)
 	/// Proof: RegulatedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
+	/// Storage: RegulatedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: RegulatedAssets SoulboundAsset (max_values: None, max_size: Some(324727), added: 327202, mode: MaxEncodedLen)
 	fn regulate_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `761`
-		//  Estimated: `5744`
-		// Minimum execution time: 16_000 nanoseconds.
-		Weight::from_parts(17_000_000, 5744)
-			.saturating_add(T::DbWeight::get().reads(2))
+		//  Estimated: `332946`
+		// Minimum execution time: 19_000 nanoseconds.
+		Weight::from_parts(19_000_000, 332946)
+			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: Timestamp Now (r:1 w:0)
@@ -130,8 +132,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 impl WeightInfo for () {
     fn regulate_asset() -> Weight {
-        Weight::from_parts(17_000_000, 5744)
-            .saturating_add(RocksDbWeight::get().reads(2_u64))
+        Weight::from_parts(19_000_000, 332946)
+            .saturating_add(RocksDbWeight::get().reads(3_u64))
             .saturating_add(RocksDbWeight::get().writes(1_u64))
     }
 	

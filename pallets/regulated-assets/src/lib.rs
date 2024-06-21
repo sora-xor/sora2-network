@@ -155,6 +155,10 @@ pub mod pallet {
                 !Self::regulated_asset(asset_id),
                 <Error<T>>::AssetAlreadyRegulated
             );
+            ensure!(
+                Self::soulbound_asset(&asset_id).is_none(),
+                <Error<T>>::NotAllowedToRegulateSoulboundAsset
+            );
 
             <RegulatedAsset<T>>::set(asset_id, true);
             Self::deposit_event(Event::AssetRegulated { asset_id });
@@ -331,6 +335,8 @@ pub mod pallet {
         SBTNotFound,
         /// Caller is not the owner of the SBT
         NotSBTOwner,
+        /// Not allowed to regulate SBT
+        NotAllowedToRegulateSoulboundAsset,
     }
 
     #[pallet::type_value]
