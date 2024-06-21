@@ -359,7 +359,7 @@ benchmarks! {
     update_collateral_risk_parameters {
         set_xor_as_collateral_type::<T>();
     }: {
-        kensetsu::Pallet::<T>::update_collateral_risk_parameters(
+        kensetsu::Pallet::<T>::create_collateral_risk_parameters(
             RawOrigin::Root.into(),
             XOR.into(),
             KUSD.into(),
@@ -497,6 +497,8 @@ benchmarks! {
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::HardCapUpdated {
+                    collateral_asset_id: XOR.into(),
+                    stablecoin_asset_id: KUSD.into(),
                     old_hard_cap: Balance::MAX,
                     new_hard_cap: balance!(42000),
                 }
@@ -525,6 +527,8 @@ benchmarks! {
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::LiquidationRatioUpdated {
+                    collateral_asset_id: XOR.into(),
+                    stablecoin_asset_id: KUSD.into(),
                     old_liquidation_ratio: Perbill::from_percent(50),
                     new_liquidation_ratio: Perbill::from_percent(42),
                 }
@@ -553,6 +557,8 @@ benchmarks! {
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::MaxLiquidationLotUpdated {
+                    collateral_asset_id: XOR.into(),
+                    stablecoin_asset_id: KUSD.into(),
                     old_max_liquidation_lot: balance!(100),
                     new_max_liquidation_lot: balance!(42),
                 }
@@ -581,6 +587,8 @@ benchmarks! {
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::StabilityFeeRateUpdated {
+                    collateral_asset_id: XOR.into(),
+                    stablecoin_asset_id: KUSD.into(),
                     old_stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
                     new_stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(42)),
                 }
@@ -609,6 +617,8 @@ benchmarks! {
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::MinimalCollateralDepositUpdated {
+                    collateral_asset_id: XOR.into(),
+                    stablecoin_asset_id: KUSD.into(),
                     old_minimal_collateral_deposit: balance!(0),
                     new_minimal_collateral_deposit: balance!(42),
                 }

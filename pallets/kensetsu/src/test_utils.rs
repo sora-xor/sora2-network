@@ -146,7 +146,7 @@ pub fn configure_kensetsu_dollar_for_xor(
     minimal_collateral_deposit: Balance,
 ) {
     set_kensetsu_dollar_stablecoin();
-    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+    assert_ok!(KensetsuPallet::create_collateral_risk_parameters(
         RuntimeOrigin::root(),
         XOR,
         KUSD,
@@ -171,7 +171,7 @@ pub fn configure_kxor_for_xor(
     minimal_collateral_deposit: Balance,
 ) {
     set_kensetsu_xor_stablecoin();
-    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+    assert_ok!(KensetsuPallet::create_collateral_risk_parameters(
         RuntimeOrigin::root(),
         XOR,
         KXOR,

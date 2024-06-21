@@ -264,7 +264,7 @@ fn test_create_cdp_gold_sunny_day() {
             AssetId32::<PredefinedAssetId>::from_kensetsu_oracle_peg_symbol(&vec_symbol);
         let collateral = balance!(5000);
         set_kensetsu_gold_stablecoin();
-        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        assert_ok!(KensetsuPallet::create_collateral_risk_parameters(
             RuntimeOrigin::root(),
             XOR,
             stable_asset_id,
@@ -1939,7 +1939,7 @@ fn test_liquidate_zero_lot() {
             stability_fee_rate: FixedU128::from_float(0.1),
             minimal_collateral_deposit: balance!(0),
         };
-        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        assert_ok!(KensetsuPallet::create_collateral_risk_parameters(
             RuntimeOrigin::root(),
             XOR,
             KUSD,
@@ -2241,7 +2241,7 @@ fn test_update_collateral_risk_parameters_only_root() {
         let parameters = CollateralRiskParameters::default();
 
         assert_noop!(
-            KensetsuPallet::update_collateral_risk_parameters(
+            KensetsuPallet::create_collateral_risk_parameters(
                 RuntimeOrigin::none(),
                 XOR,
                 KUSD,
@@ -2250,7 +2250,7 @@ fn test_update_collateral_risk_parameters_only_root() {
             BadOrigin
         );
         assert_noop!(
-            KensetsuPallet::update_collateral_risk_parameters(alice(), XOR, KUSD, parameters),
+            KensetsuPallet::create_collateral_risk_parameters(alice(), XOR, KUSD, parameters),
             BadOrigin
         );
     });
@@ -2266,7 +2266,7 @@ fn test_update_collateral_risk_parameters_wrong_asset_id() {
         ));
 
         assert_noop!(
-            KensetsuPallet::update_collateral_risk_parameters(
+            KensetsuPallet::create_collateral_risk_parameters(
                 RuntimeOrigin::root(),
                 wrong_asset_id,
                 KUSD,
@@ -2276,7 +2276,7 @@ fn test_update_collateral_risk_parameters_wrong_asset_id() {
         );
 
         assert_noop!(
-            KensetsuPallet::update_collateral_risk_parameters(
+            KensetsuPallet::create_collateral_risk_parameters(
                 RuntimeOrigin::root(),
                 XOR,
                 wrong_asset_id,
@@ -2295,7 +2295,7 @@ fn test_update_collateral_risk_parameters_kusd_wrong_asset_id() {
 
         for wrong_asset_id in [KUSD, KEN] {
             assert_noop!(
-                KensetsuPallet::update_collateral_risk_parameters(
+                KensetsuPallet::create_collateral_risk_parameters(
                     RuntimeOrigin::root(),
                     wrong_asset_id,
                     KUSD,
@@ -2314,12 +2314,11 @@ fn test_update_collateral_risk_parameters_kusd_wrong_asset_id() {
 fn test_update_collateral_risk_parameters_no_rate_change() {
     new_test_ext().execute_with(|| {
         set_kensetsu_dollar_stablecoin();
-        let asset_id = XOR;
         // stability fee is 10%
         let stability_fee_rate = FixedU128::from_float(0.1);
 
         // parameters with stability fee 10%
-        let old_parameters = CollateralRiskParameters {
+        let parameters = CollateralRiskParameters {
             hard_cap: balance!(100),
             liquidation_ratio: Perbill::from_percent(10),
             max_liquidation_lot: balance!(100),
@@ -2327,49 +2326,50 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             minimal_collateral_deposit: balance!(0),
         };
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
-        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        assert_ok!(KensetsuPallet::create_collateral_risk_parameters(
             RuntimeOrigin::root(),
-            asset_id,
+            XOR,
             KUSD,
-            old_parameters
+            parameters,
         ));
         let old_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
-            collateral_asset_id: asset_id,
+            collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
         })
         .expect("Must succeed");
-        assert_eq!(old_info.risk_parameters, old_parameters);
+        assert_eq!(
+            old_info.risk_parameters.stability_fee_rate,
+            stability_fee_rate
+        );
         assert_eq!(old_info.last_fee_update_time, 1);
         assert_eq!(old_info.interest_coefficient, FixedU128::one());
 
-        let new_parameters = CollateralRiskParameters {
-            hard_cap: balance!(200),
-            liquidation_ratio: Perbill::from_percent(10),
-            max_liquidation_lot: balance!(200),
-            stability_fee_rate: FixedU128::from_float(0.2),
-            minimal_collateral_deposit: balance!(0),
-        };
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2);
-        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        assert_ok!(KensetsuPallet::update_stability_fee_rate(
             RuntimeOrigin::root(),
-            asset_id,
+            XOR,
             KUSD,
-            new_parameters
+            stability_fee_rate,
         ));
 
         System::assert_has_event(
-            Event::CollateralRiskParametersUpdated {
+            Event::StabilityFeeRateUpdated {
                 collateral_asset_id: XOR,
-                risk_parameters: new_parameters,
+                stablecoin_asset_id: KUSD,
+                old_stability_fee_rate: stability_fee_rate,
+                new_stability_fee_rate: stability_fee_rate,
             }
             .into(),
         );
         let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
-            collateral_asset_id: asset_id,
+            collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
         })
         .expect("Must succeed");
-        assert_eq!(new_info.risk_parameters, new_parameters);
+        assert_eq!(
+            new_info.risk_parameters.stability_fee_rate,
+            stability_fee_rate
+        );
         // interest coefficient is not changed
         assert_eq!(new_info.last_fee_update_time, 2);
         assert_eq!(

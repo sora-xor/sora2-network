@@ -586,22 +586,32 @@ pub mod pallet {
             new_stablecoin_parameters: StablecoinParameters<AssetIdOf<T>>,
         },
         HardCapUpdated {
+            collateral_asset_id: AssetIdOf<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
             old_hard_cap: Balance,
             new_hard_cap: Balance,
         },
         LiquidationRatioUpdated {
+            collateral_asset_id: AssetIdOf<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
             old_liquidation_ratio: Perbill,
             new_liquidation_ratio: Perbill,
         },
         MaxLiquidationLotUpdated {
+            collateral_asset_id: AssetIdOf<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
             old_max_liquidation_lot: Balance,
             new_max_liquidation_lot: Balance,
         },
         StabilityFeeRateUpdated {
+            collateral_asset_id: AssetIdOf<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
             old_stability_fee_rate: FixedU128,
             new_stability_fee_rate: FixedU128,
         },
         MinimalCollateralDepositUpdated {
+            collateral_asset_id: AssetIdOf<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
             old_minimal_collateral_deposit: Balance,
             new_minimal_collateral_deposit: Balance,
         },
@@ -634,6 +644,7 @@ pub mod pallet {
 
         /// Collateral must be registered in PriceTools.
         CollateralNotRegisteredInPriceTools,
+        CollateralInfoAlreadyExists,
     }
 
     #[pallet::call]
@@ -836,7 +847,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO do not update, just create
         /// Updates the risk parameters for a specific collateral asset.
         ///
         /// ## Parameters
@@ -847,7 +857,7 @@ pub mod pallet {
         /// - `new_risk_parameters`: The new risk parameters to be set for the collateral asset.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::update_collateral_risk_parameters())]
-        pub fn update_collateral_risk_parameters(
+        pub fn create_collateral_risk_parameters(
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
             stablecoin_asset_id: AssetIdOf<T>,
@@ -859,7 +869,7 @@ pub mod pallet {
             {
                 T::PriceTools::register_asset(&collateral_asset_id)?;
             }
-            Self::upsert_collateral_info(
+            Self::insert_collateral_info(
                 &collateral_asset_id,
                 &stablecoin_asset_id,
                 new_risk_parameters,
@@ -1045,6 +1055,8 @@ pub mod pallet {
                     collateral_info.risk_parameters.hard_cap = hard_cap;
 
                     Self::deposit_event(Event::HardCapUpdated {
+                        collateral_asset_id,
+                        stablecoin_asset_id,
                         old_hard_cap,
                         new_hard_cap: hard_cap,
                     });
@@ -1084,6 +1096,8 @@ pub mod pallet {
                     collateral_info.risk_parameters.liquidation_ratio = liquidation_ratio;
 
                     Self::deposit_event(Event::LiquidationRatioUpdated {
+                        collateral_asset_id,
+                        stablecoin_asset_id,
                         old_liquidation_ratio,
                         new_liquidation_ratio: liquidation_ratio,
                     });
@@ -1124,6 +1138,8 @@ pub mod pallet {
                     collateral_info.risk_parameters.max_liquidation_lot = max_liquidation_lot;
 
                     Self::deposit_event(Event::MaxLiquidationLotUpdated {
+                        collateral_asset_id,
+                        stablecoin_asset_id,
                         old_max_liquidation_lot,
                         new_max_liquidation_lot: max_liquidation_lot,
                     });
@@ -1151,7 +1167,7 @@ pub mod pallet {
             ensure_root(origin)?;
 
             CollateralInfos::<T>::try_mutate(
-                crate::StablecoinCollateralIdentifier {
+                StablecoinCollateralIdentifier {
                     collateral_asset_id,
                     stablecoin_asset_id,
                 },
@@ -1170,6 +1186,8 @@ pub mod pallet {
                     *collateral_info = new_info;
 
                     Self::deposit_event(Event::StabilityFeeRateUpdated {
+                        collateral_asset_id,
+                        stablecoin_asset_id,
                         old_stability_fee_rate,
                         new_stability_fee_rate: stability_fee_rate,
                     });
@@ -1211,6 +1229,8 @@ pub mod pallet {
                         minimal_collateral_deposit;
 
                     Self::deposit_event(Event::MinimalCollateralDepositUpdated {
+                        collateral_asset_id,
+                        stablecoin_asset_id,
                         old_minimal_collateral_deposit,
                         new_minimal_collateral_deposit: minimal_collateral_deposit,
                     });
@@ -2277,10 +2297,12 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Inserts or updates `CollateralRiskParameters` for collateral asset id.
-        /// If `CollateralRiskParameters` exists for asset id, then updates them.
-        /// Else if `CollateralRiskParameters` does not exist, inserts a new value.
-        fn upsert_collateral_info(
+        /// Creates `CollateralRiskParameters` for collateral asset id.
+        ///
+        /// If `CollateralRiskParameters` exists for asset id, then error
+        /// `CollateralInfoAlreadyExists` is returned. Else if `CollateralRiskParameters` does not
+        /// exist, inserts a new value.
+        fn insert_collateral_info(
             collateral_asset_id: &AssetIdOf<T>,
             stablecoin_asset_id: &AssetIdOf<T>,
             new_risk_parameters: CollateralRiskParameters,
@@ -2293,10 +2315,13 @@ pub mod pallet {
                 collateral_asset_id != stablecoin_asset_id,
                 Error::<T>::WrongAssetId
             );
+            // Incentive tokens cannot be used as collateral
             ensure!(
-                *collateral_asset_id != T::KenAssetId::get(),
+                *collateral_asset_id != T::KenAssetId::get()
+                    && *collateral_asset_id != T::KarmaAssetId::get(),
                 Error::<T>::WrongAssetId
             );
+            // Kensetsu Stablecoins cannot be used as collateral
             ensure!(
                 StablecoinInfos::<T>::contains_key(stablecoin_asset_id),
                 Error::<T>::StablecoinInfoNotFound
@@ -2307,27 +2332,18 @@ pub mod pallet {
                     collateral_asset_id: *collateral_asset_id,
                     stablecoin_asset_id: *stablecoin_asset_id,
                 },
-                |option_collateral_info| {
-                    match option_collateral_info {
-                        Some(collateral_info) => {
-                            let mut new_info = Self::calculate_collateral_interest_coefficient(
-                                collateral_asset_id,
-                                stablecoin_asset_id,
-                            )?;
-                            new_info.risk_parameters = new_risk_parameters;
-                            *collateral_info = new_info;
-                        }
-                        None => {
-                            let _ = option_collateral_info.insert(CollateralInfo {
-                                risk_parameters: new_risk_parameters,
-                                total_collateral: Balance::zero(),
-                                stablecoin_supply: balance!(0),
-                                last_fee_update_time: Timestamp::<T>::get(),
-                                interest_coefficient: FixedU128::one(),
-                            });
-                        }
+                |option_collateral_info| match option_collateral_info {
+                    Some(_) => Err(Error::<T>::CollateralInfoAlreadyExists.into()),
+                    None => {
+                        let _ = option_collateral_info.insert(CollateralInfo {
+                            risk_parameters: new_risk_parameters,
+                            total_collateral: Balance::zero(),
+                            stablecoin_supply: balance!(0),
+                            last_fee_update_time: Timestamp::<T>::get(),
+                            interest_coefficient: FixedU128::one(),
+                        });
+                        Ok(())
                     }
-                    Ok(())
                 },
             )
         }
