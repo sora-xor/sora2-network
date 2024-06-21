@@ -109,13 +109,13 @@ where
     }
 
     /// Takes chunks from `cluster` and puts them back into the selector until it reaches `amount`.
+    /// Returns the returned amount of liquidity and the flag true if `cluster` became empty.
     pub fn return_liquidity(
         &mut self,
         mut amount: SideAmount<Balance>,
         source: &LiquiditySourceType,
         cluster: &mut Cluster<T>,
     ) -> Result<(SwapChunk<AssetIdOf<T>, Balance>, bool), DispatchError> {
-        let mut delete = false;
         let mut taken = SwapChunk::default();
         while *amount.amount() > Balance::zero() {
             // it is necessary to return chunks back till `remainder` volume is filled
@@ -142,12 +142,7 @@ where
                 amount.set_amount(Balance::zero());
             }
         }
-
-        if cluster.is_empty() {
-            // chunks are over, already returned all chunks
-            delete = true;
-        }
-        Ok((taken, delete))
+        Ok((taken, cluster.is_empty()))
     }
 
     /// Selects the chunk with best price.
