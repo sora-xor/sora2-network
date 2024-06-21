@@ -41,7 +41,7 @@ use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KEN, KGOLD, KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -896,8 +896,6 @@ fn testnet_genesis(
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
 ) -> GenesisConfig {
-    use common::{KARMA, KXOR, XSTUSD};
-
     // Initial balances
     let initial_staking = balance!(1000000000);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -1003,9 +1001,7 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
-    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     let mut tech_accounts = vec![
@@ -1063,7 +1059,6 @@ fn testnet_genesis(
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
-        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
@@ -1092,7 +1087,6 @@ fn testnet_genesis(
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
         (xst_pool_permissioned_account_id.clone(), 0),
-        #[cfg(feature = "ready-to-test")] // kensetsu
         (kensetsu_treasury_account_id.clone(), 0),
     ]
     .into_iter()
@@ -1378,7 +1372,6 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     KEN.into(),
                     assets_and_permissions_account_id.clone(),
@@ -1390,7 +1383,6 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     KUSD.into(),
                     assets_and_permissions_account_id.clone(),
@@ -1554,7 +1546,6 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
@@ -1577,6 +1568,14 @@ fn testnet_genesis(
                     1,
                     DEXInfo {
                         base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    2,
+                    DEXInfo {
+                        base_asset_id: KUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
@@ -1932,9 +1931,7 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
-    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    #[cfg(feature = "ready-to-test")] // kensetsu
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     let mut tech_accounts = vec![
@@ -1992,7 +1989,6 @@ fn mainnet_genesis(
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
         ),
-        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
@@ -2105,7 +2101,6 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             KEN.into(),
             assets_and_permissions_account_id.clone(),
@@ -2117,7 +2112,6 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "ready-to-test")] // kensetsu
         (
             KUSD.into(),
             assets_and_permissions_account_id.clone(),
@@ -2360,7 +2354,6 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "ready-to-test")] // kensetsu
                 (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
@@ -2383,7 +2376,6 @@ fn mainnet_genesis(
                 (mbc_pool_free_reserves_account_id.clone(), 0),
                 (market_maker_rewards_account_id.clone(), 0),
                 (xst_pool_permissioned_account_id.clone(), 0),
-                #[cfg(feature = "ready-to-test")] // kensetsu
                 (kensetsu_treasury_account_id.clone(), 0),
             ]
             .into_iter()
@@ -2421,6 +2413,14 @@ fn mainnet_genesis(
                     1,
                     DEXInfo {
                         base_asset_id: XSTUSD.into(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    2,
+                    DEXInfo {
+                        base_asset_id: KUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
@@ -2513,9 +2513,12 @@ fn mainnet_genesis(
             account_id: Some(iroha_migration_account_id),
         },
         kensetsu: KensetsuConfig {
-            predefined_stablecoin_infos: vec![
+            predefined_stablecoin_sora_peg: vec![
                 (KUSD, DAI, balance!(1)),
-                (KXOR, XOR, balance!(100000)),
+                (KXOR, XOR, balance!(100000))
+            ],
+            predefined_stablecoin_oracle_peg: vec![
+                (KGOLD, SymbolName::xau(), balance!(0.001)),
             ],
         },
         rewards: rewards_config,
