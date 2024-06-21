@@ -426,11 +426,6 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
             return Ok(());
         }
 
-        // If the account is a technical account, then it can do all operations
-        if Technical::<T>::lookup_tech_account_id(issuer).is_ok() {
-            return Ok(());
-        }
-
         let sbts = Self::sbts_by_asset(asset_id);
         let now_timestamp = Timestamp::<T>::now();
         let issuer_has_sbt = sbts.iter().any(|sbt| {
@@ -464,7 +459,12 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
             })
         };
 
-        if !issuer_has_sbt || !affected_account_has_sbt {
+        let issuer_pass_sbt_check =
+            Technical::<T>::lookup_tech_account_id(issuer).is_ok() || issuer_has_sbt;
+        let affected_account_pass_sbt_check =
+            Technical::<T>::lookup_tech_account_id(affected_account).is_ok()
+                || affected_account_has_sbt;
+        if !issuer_pass_sbt_check || !affected_account_pass_sbt_check {
             return Err(Error::<T>::AllInvolvedUsersShouldHoldValidSBT.into());
         }
 
