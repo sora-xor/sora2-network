@@ -2766,3 +2766,305 @@ fn test_withdraw_profit_zero_amount() {
         );
     });
 }
+
+/// Only root can update risk parameters
+#[test]
+fn test_update_hard_cap_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_hard_cap = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_hard_cap(RuntimeOrigin::none(), XOR, KUSD, new_hard_cap,),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_hard_cap(alice(), XOR, KUSD, new_hard_cap,),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn test_update_hard_cap_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_hard_cap = balance!(100);
+        let new_hard_cap = balance!(42);
+        configure_kensetsu_dollar_for_xor(
+            old_hard_cap,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+
+        assert_ok!(KensetsuPallet::update_hard_cap(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_hard_cap,
+        ));
+
+        let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+        assert_eq!(new_info.risk_parameters.hard_cap, new_hard_cap);
+        System::assert_has_event(
+            Event::HardCapUpdated {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+                old_hard_cap,
+                new_hard_cap,
+            }
+            .into(),
+        );
+    });
+}
+
+/// Only root can update risk parameters
+#[test]
+fn test_update_liquidation_ratio_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_liquidation_ratio = Perbill::from_percent(42);
+
+        assert_noop!(
+            KensetsuPallet::update_liquidation_ratio(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_liquidation_ratio,
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_liquidation_ratio(alice(), XOR, KUSD, new_liquidation_ratio),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn test_update_liquidation_ratio_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_liquidation_ratio = Perbill::from_percent(50);
+        let new_liquidation_ratio = Perbill::from_percent(42);
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            old_liquidation_ratio,
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+
+        assert_ok!(KensetsuPallet::update_liquidation_ratio(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_liquidation_ratio,
+        ));
+
+        let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+        assert_eq!(
+            new_info.risk_parameters.liquidation_ratio,
+            new_liquidation_ratio
+        );
+        System::assert_has_event(
+            Event::LiquidationRatioUpdated {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+                old_liquidation_ratio,
+                new_liquidation_ratio,
+            }
+            .into(),
+        );
+    });
+}
+
+/// Only root can update risk parameters
+#[test]
+fn test_update_max_liquidation_lot_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_max_liquidation_lot = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_max_liquidation_lot(RuntimeOrigin::none(), XOR, KUSD, new_max_liquidation_lot,),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_max_liquidation_lot(alice(), XOR, KUSD, new_max_liquidation_lot,),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn test_update_max_liquidation_lot_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_max_liquidation_lot = balance!(1000);
+        let new_max_liquidation_lot = balance!(42);
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+
+        assert_ok!(KensetsuPallet::update_max_liquidation_lot(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_max_liquidation_lot,
+        ));
+
+        let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+        assert_eq!(
+            new_info.risk_parameters.max_liquidation_lot,
+            new_max_liquidation_lot
+        );
+        System::assert_has_event(
+            Event::MaxLiquidationLotUpdated {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+                old_max_liquidation_lot,
+                new_max_liquidation_lot,
+            }
+            .into(),
+        );
+    });
+}
+
+/// Only root can update risk parameters
+#[test]
+fn test_stability_fee_rate_lot_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_stability_fee_rate = FixedU128::from_inner(42);
+
+        assert_noop!(
+            KensetsuPallet::update_stability_fee_rate(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_stability_fee_rate,
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_stability_fee_rate(alice(), XOR, KUSD, new_stability_fee_rate,),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn test_update_stability_fee_rate_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_stability_fee_rate = FixedU128::from_inner(100);
+        let new_stability_fee_rate = FixedU128::from_inner(42);
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            old_stability_fee_rate,
+            balance!(0),
+        );
+
+        assert_ok!(KensetsuPallet::update_stability_fee_rate(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_stability_fee_rate,
+        ));
+
+        let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+        assert_eq!(
+            new_info.risk_parameters.stability_fee_rate,
+            new_stability_fee_rate
+        );
+        System::assert_has_event(
+            Event::StabilityFeeRateUpdated {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+                old_stability_fee_rate,
+                new_stability_fee_rate,
+            }
+            .into(),
+        );
+    });
+}
+
+/// Only root can update risk parameters
+#[test]
+fn test_update_minimal_collateral_deposit_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_minimal_collateral_deposit = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_minimal_collateral_deposit(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_minimal_collateral_deposit,
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_minimal_collateral_deposit(
+                alice(),
+                XOR,
+                KUSD,
+                new_minimal_collateral_deposit,
+            ),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn test_update_minimal_collateral_deposit_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_minimal_collateral_deposit = balance!(1000);
+        let new_minimal_collateral_deposit = balance!(42);
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            old_minimal_collateral_deposit,
+        );
+
+        assert_ok!(KensetsuPallet::update_minimal_collateral_deposit(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_minimal_collateral_deposit,
+        ));
+
+        let new_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+        assert_eq!(
+            new_info.risk_parameters.minimal_collateral_deposit,
+            new_minimal_collateral_deposit
+        );
+        System::assert_has_event(
+            Event::MinimalCollateralDepositUpdated {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+                old_minimal_collateral_deposit,
+                new_minimal_collateral_deposit,
+            }
+            .into(),
+        );
+    });
+}
