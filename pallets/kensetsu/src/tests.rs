@@ -38,6 +38,7 @@ use crate::test_utils::{
     set_borrow_tax, set_kensetsu_dollar_stablecoin, set_kensetsu_gold_stablecoin, tech_account_id,
 };
 
+use crate::PegAsset::SoraAssetId;
 use common::{balance, AssetId32, Balance, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
@@ -2379,6 +2380,43 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
     });
 }
 
+#[test]
+fn test_create_collateral_risk_parameters_already_exist() {
+    new_test_ext().execute_with(|| {
+        set_kensetsu_dollar_stablecoin();
+
+        let new_risk_parameters = CollateralRiskParameters {
+            hard_cap: balance!(100),
+            liquidation_ratio: Perbill::from_percent(10),
+            max_liquidation_lot: balance!(100),
+            stability_fee_rate: FixedU128::from_float(0.1),
+            minimal_collateral_deposit: balance!(0),
+        };
+        assert_ok!(KensetsuPallet::create_collateral_risk_parameters(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_risk_parameters,
+        ));
+        let old_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+        assert_eq!(old_info.risk_parameters, new_risk_parameters);
+
+        assert_noop!(
+            KensetsuPallet::create_collateral_risk_parameters(
+                RuntimeOrigin::root(),
+                XOR,
+                KUSD,
+                new_risk_parameters,
+            ),
+            KensetsuError::CollateralInfoAlreadyExists
+        );
+    });
+}
+
 /// Only root can update borrow tax
 #[test]
 fn test_update_borrow_tax_only_root() {
@@ -2740,6 +2778,36 @@ fn test_withdraw_profit_sunny_day() {
             initial_protocol_profit - to_withdraw,
         );
         assert_balance(&alice_account_id(), &KUSD, to_withdraw);
+    });
+}
+
+#[test]
+fn test_register_stablecoin() {
+    new_test_ext().execute_with(|| {
+        let minimal_stability_fee_accrue = 42;
+
+        assert_ok!(KensetsuPallet::register_stablecoin(
+            RuntimeOrigin::root(),
+            StablecoinParameters {
+                peg_asset: SoraAssetId(XOR),
+                minimal_stability_fee_accrue,
+            }
+        ));
+
+        let symbol = "KXOR";
+        let new_asset_id = AssetId32::<PredefinedAssetId>::from_kensetsu_sora_peg_symbol(&symbol);
+        let new_stable_info = StablecoinInfos::<TestRuntime>::get(new_asset_id).unwrap();
+        assert_eq!(new_stable_info.bad_debt, balance!(0));
+        assert_eq!(
+            new_stable_info.stablecoin_parameters.peg_asset,
+            SoraAssetId(XOR)
+        );
+        assert_eq!(
+            new_stable_info
+                .stablecoin_parameters
+                .minimal_stability_fee_accrue,
+            minimal_stability_fee_accrue
+        );
     });
 }
 
