@@ -386,7 +386,7 @@ fn test_not_allowed_to_regulate_sbt() {
         let sbt_asset_id = get_sbt_id_from_events::<TestRuntime>();
 
         assert_err!(
-            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(owner.clone()), sbt_asset_id),
+            RegulatedAssets::regulate_asset(RuntimeOrigin::signed(owner), sbt_asset_id),
             Error::<TestRuntime>::NotAllowedToRegulateSoulboundAsset
         );
     });

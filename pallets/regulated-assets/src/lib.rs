@@ -156,7 +156,7 @@ pub mod pallet {
                 <Error<T>>::AssetAlreadyRegulated
             );
             ensure!(
-                Self::soulbound_asset(&asset_id).is_none(),
+                Self::soulbound_asset(asset_id).is_none(),
                 <Error<T>>::NotAllowedToRegulateSoulboundAsset
             );
 
