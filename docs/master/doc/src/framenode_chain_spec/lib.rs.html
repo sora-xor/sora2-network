@@ -2616,6 +2616,9 @@
 <a href="#2601" id="2601">2601</a>
 <a href="#2602" id="2602">2602</a>
 <a href="#2603" id="2603">2603</a>
+<a href="#2604" id="2604">2604</a>
+<a href="#2605" id="2605">2605</a>
+<a href="#2606" id="2606">2606</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2659,7 +2662,7 @@
 <span class="kw">use </span>common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KEN, KGOLD, KUSD, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_support::sp_runtime::Percent;
 <span class="kw">use </span>framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -3514,8 +3517,6 @@
     technical_committee_accounts: Vec&lt;AccountId&gt;,
     validator_count: u32,
 ) -&gt; GenesisConfig {
-    <span class="kw">use </span>common::{KARMA, KXOR, XSTUSD};
-
     <span class="comment">// Initial balances
     </span><span class="kw">let </span>initial_staking = <span class="macro">balance!</span>(<span class="number">1000000000</span>);
     <span class="kw">let </span>initial_eth_bridge_xor_amount = <span class="macro">balance!</span>(<span class="number">350000</span>);
@@ -3621,10 +3622,8 @@
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>dex_root_tech_account_id)
             .unwrap();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-    </span><span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-    </span><span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+    <span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    <span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     <span class="kw">let </span><span class="kw-2">mut </span>tech_accounts = <span class="macro">vec!</span>[
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
@@ -3681,8 +3680,7 @@
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-        </span>(
+        (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
         ),
@@ -3710,8 +3708,7 @@
         (mbc_pool_rewards_account_id.clone(), <span class="number">0</span>),
         (mbc_pool_free_reserves_account_id.clone(), <span class="number">0</span>),
         (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-        </span>(kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
+        (kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
     ]
     .into_iter()
     .chain(
@@ -3996,8 +3993,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-                </span>(
+                (
                     KEN.into(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(<span class="string">b&quot;KEN&quot;</span>.to_vec()),
@@ -4008,8 +4004,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-                </span>(
+                (
                     KUSD.into(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(<span class="string">b&quot;KUSD&quot;</span>.to_vec()),
@@ -4172,8 +4167,7 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-                </span>(
+                (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
@@ -4195,6 +4189,14 @@
                     <span class="number">1</span>,
                     DEXInfo {
                         base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: <span class="bool-val">true</span>,
+                    },
+                ),
+                (
+                    <span class="number">2</span>,
+                    DEXInfo {
+                        base_asset_id: KUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: <span class="bool-val">true</span>,
                     },
@@ -4550,10 +4552,8 @@
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>dex_root_tech_account_id)
             .unwrap();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-    </span><span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-    </span><span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
+    <span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
+    <span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
     <span class="kw">let </span><span class="kw-2">mut </span>tech_accounts = <span class="macro">vec!</span>[
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
@@ -4610,8 +4610,7 @@
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-        </span>(
+        (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
         ),
@@ -4723,8 +4722,7 @@
             <span class="prelude-val">None</span>,
             <span class="prelude-val">None</span>,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-        </span>(
+        (
             KEN.into(),
             assets_and_permissions_account_id.clone(),
             AssetSymbol(<span class="string">b&quot;KEN&quot;</span>.to_vec()),
@@ -4735,8 +4733,7 @@
             <span class="prelude-val">None</span>,
             <span class="prelude-val">None</span>,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-        </span>(
+        (
             KUSD.into(),
             assets_and_permissions_account_id.clone(),
             AssetSymbol(<span class="string">b&quot;KUSD&quot;</span>.to_vec()),
@@ -4978,8 +4975,7 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-                </span>(
+                (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
@@ -5001,8 +4997,7 @@
                 (mbc_pool_free_reserves_account_id.clone(), <span class="number">0</span>),
                 (market_maker_rewards_account_id.clone(), <span class="number">0</span>),
                 (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)] </span><span class="comment">// kensetsu
-                </span>(kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
+                (kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
             ]
             .into_iter()
             .chain(
@@ -5039,6 +5034,14 @@
                     <span class="number">1</span>,
                     DEXInfo {
                         base_asset_id: XSTUSD.into(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: <span class="bool-val">true</span>,
+                    },
+                ),
+                (
+                    <span class="number">2</span>,
+                    DEXInfo {
+                        base_asset_id: KUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: <span class="bool-val">true</span>,
                     },
@@ -5131,9 +5134,12 @@
             account_id: <span class="prelude-val">Some</span>(iroha_migration_account_id),
         },
         kensetsu: KensetsuConfig {
-            predefined_stablecoin_infos: <span class="macro">vec!</span>[
+            predefined_stablecoin_sora_peg: <span class="macro">vec!</span>[
                 (KUSD, DAI, <span class="macro">balance!</span>(<span class="number">1</span>)),
-                (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>)),
+                (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>))
+            ],
+            predefined_stablecoin_oracle_peg: <span class="macro">vec!</span>[
+                (KGOLD, SymbolName::xau(), <span class="macro">balance!</span>(<span class="number">0.001</span>)),
             ],
         },
         rewards: rewards_config,
