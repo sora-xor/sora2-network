@@ -26,7 +26,7 @@ use {
     sp_runtime::{
         testing::{Header, TestXt},
         traits::{BlakeTwo256, IdentityLookup, Zero},
-        AccountId32, Perbill, Percent,
+        AccountId32, Perbill, Percent, Permill,
     },
 };
 
@@ -143,6 +143,7 @@ parameter_types! {
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -150,7 +151,6 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
     type PrimaryMarketTBC = ();
     type PrimaryMarketXST = ();
     type SecondaryMarket = ();
@@ -165,6 +165,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {

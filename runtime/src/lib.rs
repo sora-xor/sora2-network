@@ -105,7 +105,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -1086,6 +1086,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -1096,7 +1097,6 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type PrimaryMarketXST = xst::Pallet<Runtime>;
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
-    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
@@ -1111,6 +1111,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
