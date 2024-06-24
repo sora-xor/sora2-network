@@ -35,7 +35,7 @@ use common::{
     assert_approx_eq, balance, AccountIdOf, AssetInfoProvider, Balance, DEXId, LiquiditySource,
     PriceVariant, CERES_ASSET_ID, ETH, TBCD, VAL, XOR,
 };
-use frame_support::dispatch::{DispatchError, RawOrigin};
+use frame_support::dispatch::RawOrigin;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
@@ -44,6 +44,7 @@ use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::initialize_mcbc;
 use qa_tools::pallet_tools::mcbc as mcbc_tools;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
 use sp_arithmetic::traits::One;
+use sp_runtime::DispatchError;
 
 #[test]
 fn should_init_mcbc_base_supply() {
