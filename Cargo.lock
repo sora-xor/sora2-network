@@ -358,6 +358,7 @@ dependencies = [
 [[package]]
 name = "ark-secret-scalar"
 version = "0.0.2"
+source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -405,6 +406,7 @@ dependencies = [
 [[package]]
 name = "ark-transcript"
 version = "0.0.2"
+source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
 dependencies = [
  "ark-ff",
  "ark-serialize",
@@ -844,12 +846,12 @@ dependencies = [
 [[package]]
 name = "bandersnatch_vrfs"
 version = "0.0.1"
+source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
 dependencies = [
  "ark-bls12-381",
  "ark-ec",
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ff",
- "ark-scale",
  "ark-serialize",
  "ark-std",
  "dleq_vrf",
@@ -2655,6 +2657,7 @@ dependencies = [
 [[package]]
 name = "dleq_vrf"
 version = "0.0.2"
+source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -5860,10 +5863,13 @@ dependencies = [
  "fallible-iterator 0.2.0",
  "frame-support",
  "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
  "hex-literal",
  "itertools",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -6754,6 +6760,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
  "hex-literal",
  "orml-tokens",
  "pallet-balances",
@@ -6766,6 +6774,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "sp-tracing 10.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?branch=release-polkadot-v1.1.0)",
  "technical",
  "trading-pair",
 ]
@@ -8271,6 +8280,8 @@ dependencies = [
  "common 0.1.0",
  "frame-support",
  "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
  "multicollateral-bonding-curve-pool",
  "oracle-proxy",
  "order-book",
