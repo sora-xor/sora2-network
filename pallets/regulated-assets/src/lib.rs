@@ -179,6 +179,7 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                common::AssetType::Soulbound,
                 None,
                 description.clone(),
             )?;

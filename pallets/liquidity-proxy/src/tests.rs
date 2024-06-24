@@ -414,6 +414,7 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
             0,
             Balance::from(10u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -427,6 +428,7 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
             0,
             Balance::from(10u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));

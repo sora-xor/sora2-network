@@ -34,6 +34,7 @@ use crate::Event;
 use common::balance;
 use common::prelude::{AssetName, AssetSymbol, Balance};
 use common::AssetInfo;
+use common::AssetType;
 use common::DAI;
 use common::PSWAP;
 use common::XST;
@@ -88,6 +89,7 @@ fn should_register_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -107,6 +109,7 @@ fn should_not_register_duplicated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -119,6 +122,7 @@ fn should_not_register_duplicated_asset() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -140,6 +144,7 @@ fn should_not_register_invalid_asset_name() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -155,6 +160,7 @@ fn should_not_register_invalid_asset_name() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -170,6 +176,7 @@ fn should_not_register_invalid_asset_name() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -185,6 +192,7 @@ fn should_not_register_invalid_asset_name() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -206,6 +214,7 @@ fn should_not_register_invalid_asset_symbol() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -221,6 +230,7 @@ fn should_not_register_invalid_asset_symbol() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -236,6 +246,7 @@ fn should_not_register_invalid_asset_symbol() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -251,6 +262,7 @@ fn should_not_register_invalid_asset_symbol() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -271,6 +283,7 @@ fn should_allow_operation() {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -292,6 +305,7 @@ fn should_not_allow_operation() {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -359,6 +373,7 @@ fn should_mint_initial_supply_for_owner() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(123u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -374,6 +389,7 @@ fn should_mint_initial_supply_for_owner() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(321u32),
             false,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -397,6 +413,7 @@ fn should_not_allow_dead_asset() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 false,
+                AssetType::Regular,
                 None,
                 None,
             ),
@@ -417,6 +434,7 @@ fn should_fail_with_non_mintable_asset_supply() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             false,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -449,6 +467,7 @@ fn should_mint_for_mintable_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -493,6 +512,7 @@ fn should_not_allow_duplicate_set_non_mintable() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -516,6 +536,7 @@ fn should_burn_from() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -548,6 +569,7 @@ fn should_not_allow_burn_from_due_to_permissions() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -570,6 +592,7 @@ fn should_allow_burn_from_self_without_a_permissions() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -598,6 +621,7 @@ fn should_update_balance_correctly() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -666,6 +690,7 @@ fn should_associate_content_source() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             Some(content_src.clone()),
             None,
         ));
@@ -688,6 +713,7 @@ fn should_fail_content_source() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                AssetType::Regular,
                 Some(content_src.clone()),
                 None,
             ),
@@ -709,6 +735,7 @@ fn should_associate_desciption() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(10u32),
             true,
+            AssetType::Regular,
             None,
             Some(desc.clone()),
         ));
@@ -731,6 +758,7 @@ fn should_fail_description() {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                AssetType::Regular,
                 None,
                 Some(desc.clone()),
             ),
@@ -752,6 +780,7 @@ fn buy_back_and_burn_should_be_performed() {
             DEFAULT_BALANCE_PRECISION,
             xst_balance,
             true,
+            AssetType::Regular,
             None,
             None,
         )
@@ -770,6 +799,7 @@ fn buy_back_and_burn_should_be_performed() {
             DEFAULT_BALANCE_PRECISION,
             pswap_balance,
             true,
+            AssetType::Regular,
             None,
             None,
         )
@@ -810,6 +840,7 @@ fn test_update_asset_info() {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ));
@@ -832,6 +863,7 @@ fn test_update_asset_info() {
                 name: val_name,
                 precision: DEFAULT_BALANCE_PRECISION,
                 is_mintable: true,
+                asset_type: AssetType::Regular,
                 description: None,
                 content_source: None
             }
@@ -855,6 +887,7 @@ fn test_update_asset_info() {
                 name: pswap_name.clone(),
                 precision: DEFAULT_BALANCE_PRECISION,
                 is_mintable: true,
+                asset_type: AssetType::Regular,
                 description: None,
                 content_source: None
             }
@@ -876,6 +909,7 @@ fn test_update_asset_info() {
                 name: pswap_name,
                 precision: DEFAULT_BALANCE_PRECISION,
                 is_mintable: true,
+                asset_type: AssetType::Regular,
                 description: None,
                 content_source: None
             }
@@ -924,6 +958,7 @@ fn test_update_asset_info() {
                 name: AssetName(b"Polkaswap".to_vec()),
                 precision: DEFAULT_BALANCE_PRECISION,
                 is_mintable: true,
+                asset_type: AssetType::Regular,
                 description: None,
                 content_source: None
             }

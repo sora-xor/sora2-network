@@ -117,6 +117,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             1000_u32.into(),
             true,
+            AssetType::Regular,
             None,
             None,
         );
@@ -142,6 +143,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ).unwrap();
@@ -167,6 +169,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ).unwrap();
@@ -193,6 +196,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ).unwrap();
@@ -223,6 +227,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ).unwrap();
@@ -249,6 +254,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ).unwrap();
@@ -272,6 +278,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            AssetType::Regular,
             None,
             None,
         ).unwrap();
@@ -289,6 +296,7 @@ benchmarks! {
                 name: AssetName(b"DAI stablecoin".to_vec()),
                 precision: DEFAULT_BALANCE_PRECISION,
                 is_mintable: true,
+                asset_type: AssetType::Regular,
                 description: None,
                 content_source: None
             }

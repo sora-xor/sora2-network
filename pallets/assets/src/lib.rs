@@ -59,7 +59,7 @@ use common::permissions::{BURN, MINT, TRANSFER};
 use common::prelude::{Balance, SwapAmount};
 use common::{
     Amount, AssetInfo, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
-    BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
+    AssetType, BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
     LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::DispatchResultWithPostInfo;
@@ -180,7 +180,7 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{AssetRegulator, ContentSource, Description};
+    use common::{AssetRegulator, AssetType, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
 
@@ -312,6 +312,7 @@ pub mod pallet {
                 precision,
                 initial_supply,
                 is_mintable,
+                AssetType::Regular,
                 opt_content_src,
                 opt_desc,
             )?;
@@ -598,6 +599,7 @@ pub mod pallet {
                         precision,
                         initial_supply,
                         is_mintable,
+                        AssetType::Regular,
                         content_source,
                         description,
                     )
@@ -658,6 +660,7 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult {
@@ -690,6 +693,7 @@ impl<T: Config> Pallet<T> {
                 name,
                 precision,
                 is_mintable,
+                asset_type,
                 content_source: opt_content_src,
                 description: opt_desc,
             },
@@ -717,6 +721,7 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<T::AssetId, DispatchError> {
@@ -730,6 +735,7 @@ impl<T: Config> Pallet<T> {
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )?;
@@ -1011,7 +1017,7 @@ impl<T: Config>
 }
 
 impl<T: Config>
-    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, AssetType, ContentSource, Description>
     for Pallet<T>
 {
     type AssetId = T::AssetId;
@@ -1037,6 +1043,7 @@ impl<T: Config>
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError> {
@@ -1047,6 +1054,7 @@ impl<T: Config>
             precision,
             initial_supply,
             is_mintable,
+            asset_type,
             opt_content_src,
             opt_desc,
         )
@@ -1060,6 +1068,7 @@ impl<T: Config>
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult {
@@ -1071,6 +1080,7 @@ impl<T: Config>
             precision,
             initial_supply,
             is_mintable,
+            asset_type,
             opt_content_src,
             opt_desc,
         )

@@ -32,7 +32,6 @@ use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
-use core::default;
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::TypeInfo;
 use frame_support::traits::ConstU32;
@@ -1313,6 +1312,7 @@ pub struct AssetInfo {
     pub name: AssetName,
     pub precision: BalancePrecision,
     pub is_mintable: bool,
+    pub asset_type: AssetType,
     pub content_source: Option<ContentSource>,
     pub description: Option<Description>,
 }
