@@ -58,7 +58,7 @@ use codec::{Decode, Encode};
 use common::permissions::{BURN, MINT, TRANSFER};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    Amount, AssetInfo, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
     BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
     LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
@@ -470,14 +470,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             Self::ensure_asset_exists(&asset_id)?;
-            AssetInfos::<T>::mutate(asset_id, |(ref mut symbol, ref mut name, ..)| {
+            AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
                 if let Some(new_name) = new_name.clone() {
                     ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
-                    *name = new_name;
+                    asset_info.name = new_name;
                 }
                 if let Some(new_symbol) = new_symbol.clone() {
                     ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
-                    *symbol = new_symbol;
+                    asset_info.symbol = new_symbol;
                 }
                 DispatchResult::Ok(())
             })?;
@@ -542,20 +542,7 @@ pub mod pallet {
     /// Asset Id -> (Symbol, Name, Precision, Is Mintable, Content Source, Description)
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
-    pub type AssetInfos<T: Config> = StorageMap<
-        _,
-        Twox64Concat,
-        T::AssetId,
-        (
-            AssetSymbol,
-            AssetName,
-            BalancePrecision,
-            bool,
-            Option<ContentSource>,
-            Option<Description>,
-        ),
-        ValueQuery,
-    >;
+    pub type AssetInfos<T: Config> = StorageMap<_, Twox64Concat, T::AssetId, AssetInfo, ValueQuery>;
 
     /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
@@ -698,14 +685,14 @@ impl<T: Config> Pallet<T> {
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         AssetInfos::<T>::insert(
             asset_id,
-            (
+            AssetInfo {
                 symbol,
                 name,
                 precision,
                 is_mintable,
-                opt_content_src,
-                opt_desc,
-            ),
+                content_source: opt_content_src,
+                description: opt_desc,
+            },
         );
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
@@ -752,8 +739,8 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub fn ensure_asset_is_mintable(asset_id: &T::AssetId) -> DispatchResult {
-        let (_, _, _, is_mintable, ..) = AssetInfos::<T>::get(asset_id);
-        ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+        let asset_info = AssetInfos::<T>::get(asset_id);
+        ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         Ok(())
     }
 
@@ -880,9 +867,9 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
-        AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable, ..)| {
-            ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
-            *is_mintable = false;
+        AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
+            ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+            asset_info.is_mintable = false;
             Ok(())
         })
     }
@@ -902,19 +889,17 @@ impl<T: Config> Pallet<T> {
         Option<Description>,
     )> {
         AssetInfos::<T>::iter()
-            .map(
-                |(key, (symbol, name, precision, is_mintable, content_source, description))| {
-                    (
-                        key,
-                        symbol,
-                        name,
-                        precision,
-                        is_mintable,
-                        content_source,
-                        description,
-                    )
-                },
-            )
+            .map(|(key, asset_info)| {
+                (
+                    key,
+                    asset_info.symbol,
+                    asset_info.name,
+                    asset_info.precision,
+                    asset_info.is_mintable,
+                    asset_info.content_source,
+                    asset_info.description,
+                )
+            })
             .collect()
     }
 }
@@ -960,28 +945,27 @@ impl<T: Config>
         Option<ContentSource>,
         Option<Description>,
     ) {
-        let (symbol, name, precision, is_mintable, content_source, description) =
-            AssetInfos::<T>::get(asset_id);
+        let asset_info = AssetInfos::<T>::get(asset_id);
         (
-            symbol,
-            name,
-            precision,
-            is_mintable,
-            content_source,
-            description,
+            asset_info.symbol,
+            asset_info.name,
+            asset_info.precision,
+            asset_info.is_mintable,
+            asset_info.content_source,
+            asset_info.description,
         )
     }
 
     fn is_non_divisible(asset_id: &T::AssetId) -> bool {
-        AssetInfos::<T>::get(asset_id).2 == 0
+        AssetInfos::<T>::get(asset_id).precision == 0
     }
 
     fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
-        AssetInfos::<T>::get(asset_id).4
+        AssetInfos::<T>::get(asset_id).content_source
     }
 
     fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
-        AssetInfos::<T>::get(asset_id).5
+        AssetInfos::<T>::get(asset_id).description
     }
 
     fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {

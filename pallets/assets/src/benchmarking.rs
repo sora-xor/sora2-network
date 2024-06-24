@@ -284,14 +284,14 @@ benchmarks! {
     verify {
         assert_eq!(
             crate::AssetInfos::<T>::get(T::AssetId::from(USDT)),
-            (
-                AssetSymbol(b"DAI".to_vec()),
-                AssetName(b"DAI stablecoin".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                true,
-                None,
-                None
-            )
+            AssetInfo {
+                symbol: AssetSymbol(b"DAI".to_vec()),
+                name: AssetName(b"DAI stablecoin".to_vec()),
+                precision: DEFAULT_BALANCE_PRECISION,
+                is_mintable: true,
+                description: None,
+                content_source: None
+            }
         );
     }
 }

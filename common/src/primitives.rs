@@ -32,6 +32,7 @@ use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
+use core::default;
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::TypeInfo;
 use frame_support::traits::ConstU32;
@@ -1281,4 +1282,37 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
     }
+}
+
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    Default,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
+pub enum AssetType {
+    #[default]
+    Regular,
+    NFT,
+    Soulbound,
+    Regulated,
+}
+
+#[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, Default, Debug)]
+pub struct AssetInfo {
+    pub symbol: AssetSymbol,
+    pub name: AssetName,
+    pub precision: BalancePrecision,
+    pub is_mintable: bool,
+    pub content_source: Option<ContentSource>,
+    pub description: Option<Description>,
 }

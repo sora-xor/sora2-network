@@ -33,6 +33,7 @@ use crate::Error;
 use crate::Event;
 use common::balance;
 use common::prelude::{AssetName, AssetSymbol, Balance};
+use common::AssetInfo;
 use common::DAI;
 use common::PSWAP;
 use common::XST;
@@ -647,8 +648,8 @@ fn should_register_indivisible() {
             None,
             None,
         ));
-        let (_, _, precision, ..) = Assets::asset_infos(next_asset_id);
-        assert_eq!(precision, 0u8);
+        let asset_info = Assets::asset_infos(next_asset_id);
+        assert_eq!(asset_info.precision, 0u8);
     })
 }
 
@@ -826,14 +827,14 @@ fn test_update_asset_info() {
         );
         assert_eq!(
             Assets::asset_infos(XOR),
-            (
-                val_symbol.clone(),
-                val_name,
-                DEFAULT_BALANCE_PRECISION,
-                true,
-                None,
-                None
-            )
+            AssetInfo {
+                symbol: val_symbol.clone(),
+                name: val_name,
+                precision: DEFAULT_BALANCE_PRECISION,
+                is_mintable: true,
+                description: None,
+                content_source: None
+            }
         );
 
         let pswap_symbol = AssetSymbol(b"PSWAP".to_vec());
@@ -849,14 +850,14 @@ fn test_update_asset_info() {
         );
         assert_eq!(
             Assets::asset_infos(XOR),
-            (
-                val_symbol,
-                pswap_name.clone(),
-                DEFAULT_BALANCE_PRECISION,
-                true,
-                None,
-                None
-            )
+            AssetInfo {
+                symbol: val_symbol,
+                name: pswap_name.clone(),
+                precision: DEFAULT_BALANCE_PRECISION,
+                is_mintable: true,
+                description: None,
+                content_source: None
+            }
         );
 
         assert_ok!(Assets::update_info(
@@ -870,14 +871,14 @@ fn test_update_asset_info() {
         );
         assert_eq!(
             Assets::asset_infos(XOR),
-            (
-                pswap_symbol,
-                pswap_name,
-                DEFAULT_BALANCE_PRECISION,
-                true,
-                None,
-                None
-            )
+            AssetInfo {
+                symbol: pswap_symbol,
+                name: pswap_name,
+                precision: DEFAULT_BALANCE_PRECISION,
+                is_mintable: true,
+                description: None,
+                content_source: None
+            }
         );
 
         assert_noop!(
@@ -918,14 +919,14 @@ fn test_update_asset_info() {
         );
         assert_eq!(
             Assets::asset_infos(XOR),
-            (
-                AssetSymbol(b"PSWAP".to_vec()),
-                AssetName(b"Polkaswap".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                true,
-                None,
-                None
-            )
+            AssetInfo {
+                symbol: AssetSymbol(b"PSWAP".to_vec()),
+                name: AssetName(b"Polkaswap".to_vec()),
+                precision: DEFAULT_BALANCE_PRECISION,
+                is_mintable: true,
+                description: None,
+                content_source: None
+            }
         );
         assert_noop!(
             Assets::update_info(
