@@ -2951,6 +2951,11 @@
 <a href="#2936" id="2936">2936</a>
 <a href="#2937" id="2937">2937</a>
 <a href="#2938" id="2938">2938</a>
+<a href="#2939" id="2939">2939</a>
+<a href="#2940" id="2940">2940</a>
+<a href="#2941" id="2941">2941</a>
+<a href="#2942" id="2942">2942</a>
+<a href="#2943" id="2943">2943</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4552,7 +4557,7 @@
             Error::&lt;T&gt;::UnavailableExchangePath
         );
 
-        <span class="kw">let </span><span class="kw-2">mut </span>aggregator = LiquidityAggregator::new(amount.variant());
+        <span class="kw">let </span><span class="kw-2">mut </span>aggregator: LiquidityAggregator&lt;T, <span class="kw">_</span>&gt; = LiquidityAggregator::new(amount.variant());
 
         <span class="kw">let </span><span class="kw-2">mut </span>total_weight = Weight::zero();
 
@@ -4565,7 +4570,7 @@
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation);
+                aggregator.add_source(source.clone(), discrete_quotation)<span class="question-mark">?</span>;
                 total_weight = total_weight.saturating_add(weight);
             } <span class="kw">else </span>{
                 <span class="comment">// skip the source if it returns an error
@@ -4573,19 +4578,18 @@
             }
         }
 
-        <span class="kw">let </span>(swap_info, aggregate_swap_outcome) =
-            aggregator.aggregate_swap_outcome::&lt;T&gt;(amount.amount())<span class="question-mark">?</span>;
+        <span class="kw">let </span>aggregation_result = aggregator.aggregate_liquidity(amount.amount())<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>rewards = Rewards::new();
 
         <span class="kw">if </span>!skip_info {
-            <span class="kw">for </span>(source, (input, output)) <span class="kw">in </span>swap_info {
+            <span class="kw">for </span>(source, (input, output)) <span class="kw">in </span><span class="kw-2">&amp;</span>aggregation_result.swap_info {
                 <span class="kw">let </span>(<span class="kw-2">mut </span>reward, weight) = T::LiquidityRegistry::check_rewards(
                     <span class="kw-2">&amp;</span>source,
                     input_asset_id,
                     output_asset_id,
-                    input,
-                    output,
+                    <span class="kw-2">*</span>input,
+                    <span class="kw-2">*</span>output,
                 )
                 .unwrap_or((Vec::new(), Weight::zero()));
 
@@ -4594,7 +4598,7 @@
             }
         }
 
-        <span class="prelude-val">Ok</span>((aggregate_swap_outcome, rewards, total_weight))
+        <span class="prelude-val">Ok</span>((aggregation_result.into(), rewards, total_weight))
     }
 
     <span class="doccomment">/// Implements the &quot;smart&quot; split algorithm.
@@ -5473,6 +5477,7 @@
     <span class="kw">use </span>common::prelude::OutcomeFee;
     <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span>frame_support::sp_runtime::Permill;
     <span class="kw">use </span>frame_support::traits::EnsureOrigin;
     <span class="kw">use </span>frame_support::{traits::StorageVersion, transactional};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
@@ -5503,8 +5508,6 @@
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="kw">type </span>GetChameleonPoolBaseAssetId: traits::GetByKey&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="kw">type </span>GetChameleonPool: traits::GetByKey&lt;TradingPair&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;, bool&gt;;
-        <span class="doccomment">/// Weight information for the extrinsics in this Pallet.
-        </span><span class="kw">type </span>WeightInfo: WeightInfo;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
             AssetIdOf&lt;<span class="self">Self</span>&gt;,
@@ -5515,6 +5518,11 @@
             ContentSource,
             Description,
         &gt;;
+        <span class="doccomment">/// Percent of internal slippage tolerance
+        </span><span class="attr">#[pallet::constant]
+        </span><span class="kw">type </span>InternalSlippageTolerance: Get&lt;Permill&gt;;
+        <span class="doccomment">/// Weight information for the extrinsics in this Pallet.
+        </span><span class="kw">type </span>WeightInfo: WeightInfo;
     }
 
     <span class="doccomment">/// The current storage version.
@@ -5846,7 +5854,7 @@
         </span>InvalidFeeValue,
         <span class="doccomment">/// None of the sources has enough reserves to execute a trade
         </span>InsufficientLiquidity,
-        <span class="doccomment">/// Path exists but it&#39;s not possible to perform exchange with currently available liquidity on pools.
+        <span class="doccomment">/// Unable to aggregate the liquidity from sources.
         </span>AggregationError,
         <span class="doccomment">/// Specified parameters lead to arithmetic error
         </span>CalculationError,
@@ -5866,16 +5874,18 @@
         </span>UnableToDisableLiquiditySource,
         <span class="doccomment">/// Liquidity source is already disabled
         </span>LiquiditySourceAlreadyDisabled,
-        <span class="comment">// Information about swap batch receivers is invalid
+        <span class="doccomment">/// Information about swap batch receivers is invalid
         </span>InvalidReceiversInfo,
-        <span class="comment">// Failure while transferring commission to ADAR account
+        <span class="doccomment">/// Failure while transferring commission to ADAR account
         </span>FailedToTransferAdarCommission,
-        <span class="comment">// ADAR commission ratio exceeds 1
+        <span class="doccomment">/// ADAR commission ratio exceeds 1
         </span>InvalidADARCommissionRatio,
-        <span class="comment">// Sender don&#39;t have enough asset balance
+        <span class="doccomment">/// Sender don&#39;t have enough asset balance
         </span>InsufficientBalance,
-        <span class="comment">// Sender and receiver should not be the same
+        <span class="doccomment">/// Sender and receiver should not be the same
         </span>TheSameSenderAndReceiver,
+        <span class="doccomment">/// Internal error. Liquidity source returned wrong liquidity.
+        </span>BadLiquidity,
     }
 
     <span class="attr">#[pallet::type_value]

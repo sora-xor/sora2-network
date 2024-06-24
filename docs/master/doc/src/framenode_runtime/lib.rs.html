@@ -3483,6 +3483,8 @@
 <a href="#3468" id="3468">3468</a>
 <a href="#3469" id="3469">3469</a>
 <a href="#3470" id="3470">3470</a>
+<a href="#3471" id="3471">3471</a>
+<a href="#3472" id="3472">3472</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3590,7 +3592,7 @@
 };
 <span class="kw">use </span>sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 <span class="kw">use </span>sp_std::cmp::Ordering;
 <span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
@@ -4571,7 +4573,8 @@
                 .expect(<span class="string">&quot;Failed to get ordinary account id for technical account id.&quot;</span>);
         account_id
     };
-}
+    <span class="kw">pub </span>GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(<span class="number">1u32</span>, <span class="number">1000</span>); <span class="comment">// 0.1%
+</span>}
 
 <span class="kw">impl </span>liquidity_proxy::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
@@ -4581,7 +4584,6 @@
     <span class="kw">type </span>PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>PrimaryMarketXST = xst::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>SecondaryMarket = pool_xyk::Pallet&lt;Runtime&gt;;
-    <span class="kw">type </span>WeightInfo = liquidity_proxy::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>VestedRewardsPallet = VestedRewards;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>LockedLiquiditySourcesManager = trading_pair::Pallet&lt;Runtime&gt;;
@@ -4596,6 +4598,8 @@
     <span class="kw">type </span>GetChameleonPool = GetChameleonPool;
     <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    <span class="kw">type </span>WeightInfo = liquidity_proxy::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="kw">impl </span>mock_liquidity_source::Config&lt;mock_liquidity_source::Instance1&gt; <span class="kw">for </span>Runtime {
