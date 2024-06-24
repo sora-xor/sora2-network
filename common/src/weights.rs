@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn test_check_accrue_n_works() {
         // Within limits
-        let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
+        let mut weight_counter = frame_support::weights::WeightMeter::with_limit(100.into());
         assert_eq!(
             check_accrue_n(&mut weight_counter, 10.into(), 10, false),
             10,
@@ -165,7 +165,7 @@ mod tests {
         assert_eq!(weight_counter.remaining(), 0.into());
 
         // Just above limit
-        let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
+        let mut weight_counter = frame_support::weights::WeightMeter::with_limit(100.into());
         assert_eq!(
             check_accrue_n(&mut weight_counter, 11.into(), 10, false),
             9,
@@ -181,7 +181,7 @@ mod tests {
         assert_eq!(weight_counter.remaining(), 1.into()); // 100-99
 
         // Can't accrue at all
-        let mut weight_counter = frame_support::weights::WeightMeter::from_limit(100.into());
+        let mut weight_counter = frame_support::weights::WeightMeter::with_limit(100.into());
         assert_eq!(
             check_accrue_n(&mut weight_counter, 101.into(), 1, false),
             0,
