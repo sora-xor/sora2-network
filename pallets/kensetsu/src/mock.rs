@@ -54,7 +54,7 @@ use sp_runtime::{
     testing::{Header, TestXt},
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
-use sp_runtime::{DispatchError, MultiSignature};
+use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
@@ -182,11 +182,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 }
 
 frame_support::construct_runtime!(
-    pub enum TestRuntime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum TestRuntime {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
@@ -264,8 +260,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         )
         .unwrap();
 
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
+    let mut storage = frame_system::GenesisConfig::<TestRuntime>::default()
+        .build_storage()
         .unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![

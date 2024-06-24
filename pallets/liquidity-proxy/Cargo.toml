@@ -40,10 +40,10 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "re
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 dex-api = { path = "../dex-api" }
 dex-manager = { path = "../dex-manager" }
-# framenode-chain-spec = { path = "../../node/chain_spec", features = ["test", "private-net"] }
-# framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "private-net", "test"] }
+framenode-chain-spec = { path = "../../node/chain_spec", features = ["test", "private-net"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "private-net", "test"] }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
-# order-book = { path = "../order-book", features = ["test"] }
+order-book = { path = "../order-book", features = ["test"] }
 qa-tools = { path = "../qa-tools" }
 technical = { path = "../technical" }
 permissions = { path = "../permissions" }
