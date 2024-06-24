@@ -171,8 +171,6 @@ pub fn new_partial(
     {
         let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..])
             .expect("should have correct size");
-        // let pk = eth_bridge::offchain::crypto::Public::from_slice(&[1, 2, 3])
-        // .expect("should have correct size");
         let sub_public = sp_core::ecdsa::Public::from(pk.clone());
         let public = secp256k1::PublicKey::parse_compressed(&sub_public.0).unwrap();
         let address = common::eth::public_key_to_eth_address(&public);
@@ -191,12 +189,6 @@ pub fn new_partial(
         } else {
             log::error!("Ethereum bridge peer key not found.")
         }
-    // if let Some(keystore) = keystore_container.local_keystore() {
-    //     if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
-    //         let seed = kep.to_raw_vec();
-    //         bridge_peer_secret_key = Some(seed);
-    //     }
-    // }
     } else {
         log::debug!("Ethereum bridge peer key not found.")
     }
@@ -364,26 +356,6 @@ pub fn new_partial(
     };
 
     let (import_queue, babe_worker_handle) = sc_consensus_babe::import_queue(import_queue_params)?;
-
-    // babe_link.clone(),
-    // babe_block_import.clone(),
-    // Some(Box::new(grandpa_block_import)),
-    // client.clone(),
-    // select_chain.clone(),
-    // move |_, ()| async move {
-    //     let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-
-    //     let slot =
-    //         sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-    //             *timestamp,
-    //             slot_duration,
-    //         );
-
-    //     Ok((slot, timestamp))
-    // },
-    // &task_manager.spawn_essential_handle(),
-    // config.prometheus_registry(),
-    // telemetry.as_ref().map(|x| x.handle()),
 
     let import_setup = (
         babe_block_import.clone(),

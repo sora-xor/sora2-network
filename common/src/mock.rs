@@ -243,6 +243,10 @@ macro_rules! mock_pallet_balances_config {
             type MaxLocks = MaxLocks;
             type MaxReserves = MaxReserves;
             type ReserveIdentifier = ();
+            type RuntimeHoldReason = ();
+            type FreezeIdentifier = ();
+            type MaxHolds = ();
+            type MaxFreezes = ();
         }
     };
 }
@@ -281,13 +285,12 @@ macro_rules! mock_frame_system_config {
             type BlockLength = ();
             type RuntimeOrigin = RuntimeOrigin;
             type RuntimeCall = RuntimeCall;
-            type Index = u64;
-            type BlockNumber = u64;
+            type Nonce = u64;
+            type Block = Block;
             type Hash = H256;
             type Hashing = BlakeTwo256;
             type AccountId = AccountId;
             type Lookup = IdentityLookup<Self::AccountId>;
-            type Header = Header;
             type RuntimeEvent = RuntimeEvent;
             type BlockHashCount = ConstU64<250>;
             type DbWeight = ();
