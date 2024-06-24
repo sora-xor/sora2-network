@@ -1283,6 +1283,7 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
     }
 }
 
+/// Enumeration of all supported asset types.
 #[derive(
     Encode,
     Decode,
@@ -1306,6 +1307,7 @@ pub enum AssetType {
     Regulated,
 }
 
+/// Presents information about an asset.
 #[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, Default, Debug)]
 pub struct AssetInfo {
     pub symbol: AssetSymbol,

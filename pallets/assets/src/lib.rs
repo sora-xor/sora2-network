@@ -268,7 +268,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -540,7 +540,7 @@ pub mod pallet {
     pub type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
-    /// Asset Id -> (Symbol, Name, Precision, Is Mintable, Content Source, Description)
+    /// Asset Id -> AssetInfo
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
     pub type AssetInfos<T: Config> = StorageMap<_, Twox64Concat, T::AssetId, AssetInfo, ValueQuery>;
