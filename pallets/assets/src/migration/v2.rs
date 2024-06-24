@@ -76,6 +76,9 @@ use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::Weight;
 use storages::*;
 
+#[cfg(feature = "try-runtime")]
+use sp_std::prelude::Vec;
+
 pub struct AssetsUpdateV2<T>(core::marker::PhantomData<T>);
 
 impl<T> OnRuntimeUpgrade for AssetsUpdateV2<T>

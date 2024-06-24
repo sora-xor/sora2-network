@@ -71,6 +71,7 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<AssetIdOf<T>>
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
