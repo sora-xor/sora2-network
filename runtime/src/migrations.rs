@@ -31,7 +31,11 @@
 use crate::*;
 
 #[cfg(feature = "wip")] // dex-kusd
-pub type Migrations = (dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,);
+pub type Migrations = (
+    dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,
+    // DEFI-R
+    assets::migration::v2::AssetsUpdateV2<Runtime>,
+);
 
 #[cfg(not(feature = "wip"))] // dex-kusd
 pub type Migrations = (
