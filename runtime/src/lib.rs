@@ -1498,8 +1498,6 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
-    #[cfg(test)]
-    type Mock = ();
 }
 
 #[cfg(feature = "private-net")]
