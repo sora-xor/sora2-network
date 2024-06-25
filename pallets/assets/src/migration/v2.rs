@@ -107,12 +107,17 @@ where
         >(
             |_, (symbol, name, precision, is_mintable, content_source, description)| {
                 weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
+                let asset_type = if precision == 0 {
+                    common::AssetType::NFT
+                } else {
+                    common::AssetType::Regular
+                };
                 let asset_info = common::AssetInfo {
                     symbol,
                     name,
                     precision,
                     is_mintable,
-                    asset_type: common::AssetType::Regular,
+                    asset_type,
                     content_source,
                     description,
                 };
@@ -169,18 +174,20 @@ mod tests {
                     XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"XOR".to_vec()),
+                    18,
                 ),
                 (
                     USDT,
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"USDT".to_vec()),
+                    0,
                 ),
             ];
 
             assets
                 .iter()
                 .cloned()
-                .for_each(|(asset_id, asset_symbol, asset_name)| {
+                .for_each(|(asset_id, asset_symbol, asset_name, precision)| {
                     AssetInfosV1::<Runtime>::insert::<
                         _,
                         (
@@ -192,24 +199,29 @@ mod tests {
                             Option<Description>,
                         ),
                     >(
-                        asset_id, (asset_symbol, asset_name, 18, true, None, None)
+                        asset_id,
+                        (asset_symbol, asset_name, precision, true, None, None),
                     );
                 });
 
             System::set_block_number(1);
             AssetsUpdateV2::<Runtime>::on_runtime_upgrade();
 
-            for (asset_id, asset_symbol, asset_name) in assets.into_iter() {
+            for (asset_id, asset_symbol, asset_name, precision) in assets.into_iter() {
                 let asset_info = AssetInfosV2::<Runtime>::get(asset_id);
-
+                let asset_type = if precision == 0 {
+                    common::AssetType::NFT
+                } else {
+                    common::AssetType::Regular
+                };
                 assert_eq!(
                     asset_info,
                     AssetInfo {
                         name: asset_name,
                         symbol: asset_symbol,
-                        precision: 18,
+                        precision,
                         is_mintable: true,
-                        asset_type: common::AssetType::Regular,
+                        asset_type,
                         content_source: None,
                         description: None,
                     }

@@ -305,6 +305,12 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION
             };
 
+            let asset_type = if is_indivisible {
+                AssetType::NFT
+            } else {
+                AssetType::Regular
+            };
+
             Self::register_from(
                 &author,
                 symbol,
@@ -312,7 +318,7 @@ pub mod pallet {
                 precision,
                 initial_supply,
                 is_mintable,
-                AssetType::Regular,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )?;
