@@ -67,15 +67,7 @@ pub use pallet::*;
 
 #[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
 #[scale_info(skip_type_params(MaxAllowedTokensPerSBT))]
-pub struct SoulboundTokenMetadata<AccountId, AssetId, MaxAllowedTokensPerSBT: Get<u32>, Moment> {
-    /// Owner of the token
-    owner: AccountId,
-    /// Name of the token
-    name: AssetName,
-    /// Description of the token
-    description: Option<Description>,
-    /// Image Link of the token
-    image: Option<ContentSource>,
+pub struct SoulboundTokenMetadata<AssetId, MaxAllowedTokensPerSBT: Get<u32>, Moment> {
     /// External link of issued place
     external_url: Option<ContentSource>,
     /// Issuance Timestamp
@@ -214,10 +206,6 @@ pub mod pallet {
             )?;
 
             let metadata = SoulboundTokenMetadata {
-                owner: who.clone(),
-                name,
-                description,
-                image: image.clone(),
                 external_url: external_url.clone(),
                 issued_at: now_timestamp,
                 expires_at,
@@ -272,7 +260,10 @@ pub mod pallet {
             }
 
             // Ensure the caller is the owner of the SBT
-            ensure!(metadata.owner == who, Error::<T>::NotSBTOwner);
+            ensure!(
+                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
+                Error::<T>::NotSBTOwner
+            );
 
             let old_expires_at = metadata.expires_at;
 
@@ -357,7 +348,7 @@ pub mod pallet {
         _,
         Identity,
         AssetIdOf<T>,
-        SoulboundTokenMetadata<T::AccountId, AssetIdOf<T>, T::MaxAllowedAssetsPerSBT, T::Moment>,
+        SoulboundTokenMetadata<AssetIdOf<T>, T::MaxAllowedAssetsPerSBT, T::Moment>,
         OptionQuery,
     >;
 
