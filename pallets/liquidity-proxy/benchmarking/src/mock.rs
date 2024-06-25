@@ -56,7 +56,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent};
+use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent, Permill};
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -104,6 +104,7 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 construct_runtime! {
@@ -147,7 +148,6 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
     type PrimaryMarketTBC = ();
     type PrimaryMarketXST = ();
     type SecondaryMarket = ();
@@ -162,6 +162,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = ();
 }
 
 parameter_types! {

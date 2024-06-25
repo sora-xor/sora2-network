@@ -1599,7 +1599,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
 
-        let mut aggregator = LiquidityAggregator::new(amount.variant());
+        let mut aggregator: LiquidityAggregator<T, _> = LiquidityAggregator::new(amount.variant());
 
         let mut total_weight = Weight::zero();
 
@@ -1612,7 +1612,7 @@ impl<T: Config> Pallet<T> {
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation);
+                aggregator.add_source(source.clone(), discrete_quotation)?;
                 total_weight = total_weight.saturating_add(weight);
             } else {
                 // skip the source if it returns an error
@@ -1620,19 +1620,18 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let (swap_info, aggregate_swap_outcome) =
-            aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
+        let aggregation_result = aggregator.aggregate_liquidity(amount.amount())?;
 
         let mut rewards = Rewards::new();
 
         if !skip_info {
-            for (source, (input, output)) in swap_info {
+            for (source, (input, output)) in &aggregation_result.swap_info {
                 let (mut reward, weight) = T::LiquidityRegistry::check_rewards(
                     &source,
                     input_asset_id,
                     output_asset_id,
-                    input,
-                    output,
+                    *input,
+                    *output,
                 )
                 .unwrap_or((Vec::new(), Weight::zero()));
 
@@ -1641,7 +1640,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        Ok((aggregate_swap_outcome, rewards, total_weight))
+        Ok((aggregation_result.into(), rewards, total_weight))
     }
 
     /// Implements the "smart" split algorithm.
@@ -2520,6 +2519,7 @@ pub mod pallet {
     use common::prelude::OutcomeFee;
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Permill;
     use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
@@ -2550,8 +2550,6 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
         type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
         type GetChameleonPool: traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
-        /// Weight information for the extrinsics in this Pallet.
-        type WeightInfo: WeightInfo;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
@@ -2562,6 +2560,11 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        /// Percent of internal slippage tolerance
+        #[pallet::constant]
+        type InternalSlippageTolerance: Get<Permill>;
+        /// Weight information for the extrinsics in this Pallet.
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
@@ -2893,7 +2896,7 @@ pub mod pallet {
         InvalidFeeValue,
         /// None of the sources has enough reserves to execute a trade
         InsufficientLiquidity,
-        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
+        /// Unable to aggregate the liquidity from sources.
         AggregationError,
         /// Specified parameters lead to arithmetic error
         CalculationError,
@@ -2913,16 +2916,18 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
-        // Information about swap batch receivers is invalid
+        /// Information about swap batch receivers is invalid
         InvalidReceiversInfo,
-        // Failure while transferring commission to ADAR account
+        /// Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
-        // ADAR commission ratio exceeds 1
+        /// ADAR commission ratio exceeds 1
         InvalidADARCommissionRatio,
-        // Sender don't have enough asset balance
+        /// Sender don't have enough asset balance
         InsufficientBalance,
-        // Sender and receiver should not be the same
+        /// Sender and receiver should not be the same
         TheSameSenderAndReceiver,
+        /// Internal error. Liquidity source returned wrong liquidity.
+        BadLiquidity,
     }
 
     #[pallet::type_value]
