@@ -332,6 +332,9 @@ pub mod pallet {
         /// - `asset_id`: Id of transferred Asset,
         /// - `to`: Id of Account, to which Asset amount is deposited,
         /// - `amount`: transferred Asset amount.
+        ///
+        /// # Stable:
+        /// Interface should not be changed, used in contracts.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::transfer())]
         pub fn transfer(

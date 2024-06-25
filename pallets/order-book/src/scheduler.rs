@@ -74,8 +74,12 @@ impl<T: Config> Pallet<T> {
             }
         };
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-            debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule; \
-                order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
+            debug_assert!(
+                false,
+                "apparently removal of order book did not cleanup expiration schedule; \
+                order {:?} is set to expire but corresponding order book {:?} is not found",
+                order_id, order_book_id
+            );
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: *order_book_id,
                 order_id,
@@ -220,7 +224,10 @@ impl<T: Config>
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
-            let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, order_id)) else {
+            let Some(remove_index) = block_expirations
+                .iter()
+                .position(|next| next == &(order_book_id, order_id))
+            else {
                 return Err(Error::<T>::ExpirationNotFound.into());
             };
             block_expirations.remove(remove_index);
@@ -248,7 +255,10 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
             }
 
             let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-                debug_assert!(false, "order-book {order_book_id:?} was not found during alignment");
+                debug_assert!(
+                    false,
+                    "order-book {order_book_id:?} was not found during alignment"
+                );
                 Self::deposit_event(Event::<T>::AlignmentFailure {
                     order_book_id,
                     error: Error::<T>::UnknownOrderBook.into(),

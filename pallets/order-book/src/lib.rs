@@ -839,6 +839,9 @@ pub mod pallet {
         /// - if the `price` crosses the spread (the opposite `side`):
         ///     - if [`OrderBook::status`] allows to trade - the limit order is converted into market order and the exchange occurs
         ///     - if [`OrderBook::status`] doesn't allow to trade - transaction fails
+        ///
+        /// # Stable:
+        /// Interface should not be changed, used in contracts.
         #[pallet::call_index(4)]
         // in the worst case the limit order is converted into market order and the exchange occurs
         #[pallet::weight(Pallet::<T>::exchange_weight())]
@@ -911,6 +914,9 @@ pub mod pallet {
         ///
         /// # Note:
         /// Network fee isn't charged if the order is successfully cancelled by the owner
+        ///
+        /// # Stable:
+        /// Interface should not be changed, used in contracts.
         #[pallet::call_index(5)]
         #[pallet::weight(
             <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
@@ -950,6 +956,9 @@ pub mod pallet {
         ///
         /// # Note:
         /// Network fee isn't charged if orders are successfully cancelled by the owner
+        ///
+        /// # Stable:
+        /// Interface should not be changed, used in contracts.
         #[pallet::call_index(6)]
         #[pallet::weight({
             let cancel_limit_order = <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
@@ -1001,6 +1010,9 @@ pub mod pallet {
         /// - `amount` >= [`OrderBook::min_lot_size`]
         /// - `amount` <= [`OrderBook::max_lot_size`]
         /// - `amount` must be a multiple of [`OrderBook::step_lot_size`]
+        ///
+        /// # Stable:
+        /// Interface should not be changed, used in contracts.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::execute_market_order())]
         pub fn execute_market_order(
@@ -1403,7 +1415,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return false;
         };
 
@@ -1421,7 +1435,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1462,7 +1478,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         recommended_samples_count: usize,
         _deduce_fee: bool,
     ) -> Result<(DiscreteQuotation<AssetIdOf<T>, Balance>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1636,7 +1654,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1726,7 +1746,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
