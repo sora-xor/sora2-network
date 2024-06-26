@@ -91,7 +91,7 @@ benchmarks! {
 
     issue_sbt{
         let owner = asset_owner::<T>();
-        let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
+        let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
         let asset_id = add_asset::<T>();
         let asset_name =  AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
@@ -109,7 +109,7 @@ benchmarks! {
         ).unwrap();
     }
     verify{
-        let sbt_asset_id = Pallet::<T>::regulated_asset_to_sbt(asset_id.clone());
+        let sbt_asset_id = Pallet::<T>::regulated_asset_to_sbt(asset_id);
 
         assert_last_event::<T>(Event::SoulboundTokenIssued {
              asset_id: sbt_asset_id,

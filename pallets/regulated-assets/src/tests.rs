@@ -446,12 +446,12 @@ fn test_check_permission_fails_if_one_invloved_account_has_not_valid_sbt_due_to_
         // Issue SBT
         let result_sbt_soon_expires = RegulatedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
-            asset_symbol.clone(),
-            asset_name.clone(),
+            asset_symbol,
+            asset_name,
             None,
             None,
             None,
-            bounded_vec_assets.clone(),
+            bounded_vec_assets,
         );
         assert_ok!(result_sbt_soon_expires);
 
