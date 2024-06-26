@@ -52,10 +52,10 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
     permissions::{PermissionId, TRANSFER},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
-    BalancePrecision, ContentSource, Description,
+    BalancePrecision, ContentSource, Description, IsValid,
 };
 use frame_support::sp_runtime::DispatchError;
-use frame_support::{BoundedBTreeSet, BoundedVec};
+use frame_support::BoundedVec;
 use sp_core::Get;
 use sp_std::vec::Vec;
 use weights::WeightInfo;
@@ -66,16 +66,11 @@ type Timestamp<T> = pallet_timestamp::Pallet<T>;
 pub use pallet::*;
 
 #[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
-#[scale_info(skip_type_params(MaxAllowedTokensPerSBT))]
-pub struct SoulboundTokenMetadata<AssetId, MaxAllowedTokensPerSBT: Get<u32>, Moment> {
+pub struct SoulboundTokenMetadata<Moment> {
     /// External link of issued place
     external_url: Option<ContentSource>,
     /// Issuance Timestamp
     issued_at: Moment,
-    /// Expiration Timestamp (None if not expirable)
-    expires_at: Option<Moment>,
-    /// List of assets allowed to be operationable by this Soulbound Token
-    allowed_assets: BoundedVec<AssetId, MaxAllowedTokensPerSBT>,
 }
 
 #[frame_support::pallet]
@@ -95,10 +90,6 @@ pub mod pallet {
         /// Max number of allowed assets per one Soulbound Token
         #[pallet::constant]
         type MaxAllowedAssetsPerSBT: Get<u32>;
-
-        /// Max number of SBTs per one Asset
-        #[pallet::constant]
-        type MaxSBTsPerAsset: Get<u32>;
 
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
@@ -168,7 +159,6 @@ pub mod pallet {
         /// - `description`: The description of the SBT. (Optional)
         /// - `image`: The URL or identifier for the image associated with the SBT. (Optional)
         /// - `external_url`: The URL pointing to an external resource related to the SBT. (Optional)
-        /// - `expires_at`: The timestamp indicating when the SBT expires. (Optional)
         /// - `allowed_assets`: The list of assets allowed to be operated with by holding the SBT.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::issue_sbt())]
@@ -179,20 +169,17 @@ pub mod pallet {
             description: Option<Description>,
             image: Option<ContentSource>,
             external_url: Option<ContentSource>,
-            expires_at: Option<T::Moment>,
             allowed_assets: BoundedVec<AssetIdOf<T>, T::MaxAllowedAssetsPerSBT>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let now_timestamp = Timestamp::<T>::now();
-            if let Some(expires_at) = expires_at {
-                ensure!(
-                    expires_at > now_timestamp,
-                    <Error<T>>::SBTExpirationDateCannotBeInThePast
-                );
-            }
 
             Self::check_allowed_assets_for_sbt_issuance(&allowed_assets, &who)?;
+
+            if let Some(ext_url) = &external_url {
+                ensure!(ext_url.is_valid(), Error::<T>::InvalidExternalUrl);
+            }
 
             let sbt_asset_id = T::AssetManager::register_from(
                 &who,
@@ -208,15 +195,15 @@ pub mod pallet {
             let metadata = SoulboundTokenMetadata {
                 external_url: external_url.clone(),
                 issued_at: now_timestamp,
-                expires_at,
-                allowed_assets: allowed_assets.clone(),
             };
+
             <SoulboundAsset<T>>::insert(sbt_asset_id, &metadata);
 
             for allowed_asset in allowed_assets.clone().into_iter() {
-                <SBTsByAsset<T>>::mutate(allowed_asset, |sbts| {
-                    sbts.try_insert(sbt_asset_id).ok();
-                });
+                if <RegulatedAssetToSoulboundAsset<T>>::contains_key(allowed_asset) {
+                    return Err(<Error<T>>::RegulatedAssetAlreadyMappedToSBT.into());
+                }
+                <RegulatedAssetToSoulboundAsset<T>>::set(allowed_asset, sbt_asset_id);
             }
 
             Self::deposit_event(Event::SoulboundTokenIssued {
@@ -225,31 +212,32 @@ pub mod pallet {
                 image,
                 external_url,
                 issued_at: now_timestamp,
-                expires_at,
                 allowed_assets: allowed_assets.clone().into(),
             });
 
             Ok(())
         }
 
-        /// Updates the expiration date of a Soulbound Token (SBT).
+        /// Sets the expiration date of a Soulbound Token (SBT) for the given account.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
         /// - `asset_id`: The ID of the SBT to update.
+        /// - `account_id`: The ID of the account to set the expiration for.
         /// - `new_expires_at`: The new expiration timestamp for the SBT.
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_sbt_expiration())]
-        pub fn update_sbt_expiration(
+        #[pallet::weight(<T as Config>::WeightInfo::set_sbt_expiration())]
+        pub fn set_sbt_expiration(
             origin: OriginFor<T>,
+            account_id: T::AccountId,
             asset_id: AssetIdOf<T>,
             new_expires_at: Option<T::Moment>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             // Ensure the asset exists and is an SBT
-            let mut metadata = Self::soulbound_asset(asset_id).ok_or(Error::<T>::SBTNotFound)?;
+            Self::soulbound_asset(asset_id).ok_or(Error::<T>::SBTNotFound)?;
 
             if let Some(new_expires_at) = new_expires_at {
                 // Ensure the new expiration is in the future
@@ -265,11 +253,13 @@ pub mod pallet {
                 Error::<T>::NotSBTOwner
             );
 
-            let old_expires_at = metadata.expires_at;
+            let old_expires_at = Self::sbt_asset_expiration(&account_id, asset_id);
+            if old_expires_at == new_expires_at {
+                return Ok(());
+            }
 
             // Update the expiration date
-            metadata.expires_at = new_expires_at;
-            <SoulboundAsset<T>>::insert(asset_id, &metadata);
+            SBTExpiration::<T>::set(account_id, asset_id, new_expires_at);
 
             Self::deposit_event(Event::SBTExpirationUpdated {
                 asset_id,
@@ -293,7 +283,6 @@ pub mod pallet {
             image: Option<ContentSource>,
             external_url: Option<ContentSource>,
             issued_at: T::Moment,
-            expires_at: Option<T::Moment>,
             allowed_assets: Vec<AssetIdOf<T>>,
         },
         /// Emits When the expiration date of an SBT is updated
@@ -328,6 +317,10 @@ pub mod pallet {
         NotSBTOwner,
         /// Not allowed to regulate SBT
         NotAllowedToRegulateSoulboundAsset,
+        /// Asset is already mapped to SBT
+        RegulatedAssetAlreadyMappedToSBT,
+        /// Invalid External URL
+        InvalidExternalUrl,
     }
 
     #[pallet::type_value]
@@ -344,24 +337,20 @@ pub mod pallet {
     /// Mapping from SBT (asset_id) to its metadata
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
-    pub type SoulboundAsset<T: Config> = StorageMap<
-        _,
-        Identity,
-        AssetIdOf<T>,
-        SoulboundTokenMetadata<AssetIdOf<T>, T::MaxAllowedAssetsPerSBT, T::Moment>,
-        OptionQuery,
-    >;
+    pub type SoulboundAsset<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, SoulboundTokenMetadata<T::Moment>, OptionQuery>;
 
-    /// Mapping from `asset_id` to its SBTs which grant permission to transfer, mint, and burn the `asset_id`
+    /// Mapping from Regulated asset id to SBT asset id
     #[pallet::storage]
-    #[pallet::getter(fn sbts_by_asset)]
-    pub type SBTsByAsset<T: Config> = StorageMap<
-        _,
-        Identity,
-        AssetIdOf<T>,
-        BoundedBTreeSet<AssetIdOf<T>, T::MaxSBTsPerAsset>,
-        ValueQuery,
-    >;
+    #[pallet::getter(fn regulated_asset_to_sbt)]
+    pub type RegulatedAssetToSoulboundAsset<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, AssetIdOf<T>, ValueQuery>;
+
+    /// Mapping from SBT asset id to its expiration per account
+    #[pallet::storage]
+    #[pallet::getter(fn sbt_asset_expiration)]
+    pub type SBTExpiration<T: Config> =
+        StorageDoubleMap<_, Identity, T::AccountId, Identity, AssetIdOf<T>, T::Moment, OptionQuery>;
 }
 
 impl<T: Config> Pallet<T> {
@@ -384,6 +373,25 @@ impl<T: Config> Pallet<T> {
         }
 
         Ok(())
+    }
+
+    pub fn check_account_has_valid_sbt_for_regulated_asset(
+        account_id: &T::AccountId,
+        regulated_asset_id: &AssetIdOf<T>,
+        now: &T::Moment,
+    ) -> bool {
+        if !<RegulatedAssetToSoulboundAsset<T>>::contains_key(regulated_asset_id) {
+            return false;
+        }
+
+        let sbt_id = Self::regulated_asset_to_sbt(regulated_asset_id);
+        let is_holding = <T as Config>::AssetInfoProvider::total_balance(&sbt_id, account_id)
+            .map_or(false, |balance| balance > 0);
+
+        let expires_at = Self::sbt_asset_expiration(account_id, sbt_id);
+        let is_expired = expires_at.map_or(false, |expiration_date| expiration_date < *now);
+
+        is_holding && !is_expired
     }
 }
 
@@ -422,40 +430,23 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
             return Ok(());
         }
 
-        // If the account is a technical account, then it can do all operations
-        if Technical::<T>::lookup_tech_account_id(issuer).is_ok() {
-            return Ok(());
-        }
-
-        let sbts = Self::sbts_by_asset(asset_id);
         let now_timestamp = Timestamp::<T>::now();
-        let issuer_has_sbt = sbts.iter().any(|sbt| {
-            if let Some(metadata) = Self::soulbound_asset(sbt) {
-                // Check if the asset has an expiration date and if it has expired
-                if let Some(expires_at) = metadata.expires_at {
-                    if expires_at < now_timestamp {
-                        return false;
-                    }
-                }
-            }
-            <T as Config>::AssetInfoProvider::total_balance(sbt, issuer)
-                .map_or(false, |balance| balance > 0)
-        });
 
-        let affected_account_has_sbt = sbts.iter().any(|sbt| {
-            if let Some(metadata) = Self::soulbound_asset(sbt) {
-                // Check if the asset has an expiration date and if it has expired
-                if let Some(expires_at) = metadata.expires_at {
-                    if expires_at < now_timestamp {
-                        return false;
-                    }
-                }
-            }
-            <T as Config>::AssetInfoProvider::total_balance(sbt, affected_account)
-                .map_or(false, |balance| balance > 0)
-        });
+        let issuer_pass_check =
+            Self::check_account_has_valid_sbt_for_regulated_asset(issuer, asset_id, &now_timestamp)
+                || Technical::<T>::lookup_tech_account_id(issuer).is_ok();
 
-        if !issuer_has_sbt || !affected_account_has_sbt {
+        let affected_account_pass_check = if affected_account == issuer {
+            issuer_pass_check
+        } else {
+            Self::check_account_has_valid_sbt_for_regulated_asset(
+                affected_account,
+                asset_id,
+                &now_timestamp,
+            ) || Technical::<T>::lookup_tech_account_id(affected_account).is_ok()
+        };
+
+        if !issuer_pass_check || !affected_account_pass_check {
             return Err(Error::<T>::AllInvolvedUsersShouldHoldValidSBT.into());
         }
 
