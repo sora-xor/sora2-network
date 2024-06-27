@@ -1,0 +1,24 @@
+[package]
+name = "contracts"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ink = { version = "4.2.1", default-features = false, features = ["call-runtime"] }
+
+common = { path = "../common", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+
+# sp-io = { version = "33.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale-info/std",
+    "sp-runtime/std",
+    "common/std",
+]
