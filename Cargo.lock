@@ -8470,6 +8470,7 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "permissions",
  "scale-info",
