@@ -632,6 +632,12 @@ impl IsValid for ContentSource {
     }
 }
 
+impl MaxEncodedLen for ContentSource {
+    fn max_encoded_len() -> usize {
+        ASSET_CONTENT_SOURCE_MAX_LENGTH
+    }
+}
+
 #[derive(
     Encode,
     Decode,
