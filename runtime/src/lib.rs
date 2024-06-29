@@ -93,6 +93,8 @@ pub use sp_beefy::crypto::AuthorityId as BeefyId;
 #[cfg(feature = "wip")] // Trustless bridges
 use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
+#[cfg(feature = "wip")] // Contracts pallet
+use sp_core::ConstBool;
 use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
@@ -2430,6 +2432,54 @@ impl regulated_assets::Config for Runtime {
     type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "wip")] // Contracts pallet
+parameter_types! {
+    pub const DepositPerItem: Balance = deposit(1, 0);
+    pub const DepositPerByte: Balance = deposit(0, 1);
+    // some limits removed in the next versions
+    pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
+    pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
+    pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
+}
+
+// TODO do we need customize?
+#[cfg(feature = "wip")] // Contracts pallet
+impl pallet_contracts::Config for Runtime {
+    type Time = Timestamp;
+    type Randomness = RandomnessCollectiveFlip;
+    type Currency = Balances;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
+    type CallFilter = impls::ContractsCallFilter;
+    type WeightPrice = pallet_transaction_payment::Pallet<Self>;
+    type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+    type ChainExtension = ();
+    type Schedule = Schedule;
+    type CallStack = [pallet_contracts::Frame<Self>; 5];
+    type DepositPerByte = DepositPerByte;
+    type DepositPerItem = DepositPerItem;
+    type DefaultDepositLimit = DefaultDepositLimit;
+    type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+    // Got from `pallet_contracts::integrity_test`
+    // For every contract executed in runtime, at least `MaxCodeLen*18*4` memory should be available
+    // `(MaxCodeLen * 18 * 4 + MAX_STACK_SIZE + max_heap_size) * max_call_depth <
+    // MAX_RUNTIME_MEM/2`
+    // `(MaxCodeLen * 72 + 1MB + 1MB) * 6 = 64MB`
+    // `MaxCodeLen = (64MB/6 - 2) / 72 = 26/216 = 13/108 MB ≈ 123 * 1024 < 13/108 MB`
+    type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+    type MaxStorageKeyLen = ConstU32<128>;
+    type UnsafeUnstableInterface = ConstBool<false>;
+    type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+    type RuntimeHoldReason = RuntimeHoldReason;
+    #[cfg(not(feature = "runtime-benchmarks"))]
+    type Migrations = ();
+    #[cfg(feature = "runtime-benchmarks")]
+    type Migrations = pallet_contracts::migration::codegen::BenchMigrations;
+    type MaxDelegateDependencies = ConstU32<32>;
+    type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+    type Debug = ();
+    type Environment = ();
+}
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2556,6 +2606,10 @@ construct_runtime! {
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         #[cfg(feature = "wip")] // DEFI-R
         RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
+
+        // Ink! contracts
+        #[cfg(feature = "wip")] // Contracts pallet
+        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 116
     }
 }
 
