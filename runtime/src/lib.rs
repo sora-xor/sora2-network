@@ -966,7 +966,7 @@ impl assets::Config for Runtime {
     #[cfg(feature = "wip")] // DEFI-R
     type AssetRegulator = (
         permissions::Pallet<Runtime>,
-        regulated_assets::Pallet<Runtime>,
+        extended_assets::Pallet<Runtime>,
     );
 }
 
@@ -2424,10 +2424,10 @@ impl multisig_verifier::Config for Runtime {
 }
 
 #[cfg(feature = "wip")] // DEFI-R
-impl regulated_assets::Config for Runtime {
+impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
-    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
+    type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
@@ -2555,7 +2555,7 @@ construct_runtime! {
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         #[cfg(feature = "wip")] // DEFI-R
-        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
 
@@ -3319,7 +3319,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             #[cfg(feature = "wip")] // DEFI-R
-            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
+            list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3416,7 +3416,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             #[cfg(feature = "wip")] // DEFI-R
-            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
+            add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

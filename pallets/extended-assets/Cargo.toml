@@ -4,7 +4,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 edition = "2021"
-name = "regulated-assets"
+name = "extended-assets"
 version = "1.0.0"
 
 [package.metadata.docs.rs]

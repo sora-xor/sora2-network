@@ -3086,6 +3086,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "extended-assets"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3734,6 +3758,7 @@ dependencies = [
  "eth-bridge",
  "eth-bridge-runtime-api",
  "evm-fungible-app",
+ "extended-assets",
  "farming",
  "farming-runtime-api",
  "faucet",
@@ -3808,7 +3833,6 @@ dependencies = [
  "pswap-distribution-runtime-api",
  "qa-tools",
  "referrals",
- "regulated-assets",
  "rewards",
  "rewards-runtime-api",
  "scale-info",
@@ -8456,30 +8480,6 @@ name = "regex-syntax"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
-
-[[package]]
-name = "regulated-assets"
-version = "1.0.0"
-dependencies = [
- "assets",
- "common",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-currencies",
- "orml-tokens",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec",
- "permissions",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical",
-]
 
 [[package]]
 name = "remote-ext"
