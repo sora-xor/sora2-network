@@ -4095,6 +4095,7 @@ fn test_pool_fails_with_regulated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -4106,6 +4107,7 @@ fn test_pool_fails_with_regulated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -4228,6 +4230,7 @@ fn test_pool_works_with_regulated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -4239,6 +4242,7 @@ fn test_pool_works_with_regulated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -4293,7 +4297,7 @@ fn test_pool_works_with_regulated_asset() {
         let sbt_asset_name = AssetName(b"Soulbound Token".to_vec());
         let sbt_asset_symbol = AssetSymbol(b"SBT".to_vec());
         // Good Scenarios
-        RegulatedAssets::issue_sbt(
+        ExtendedAssets::issue_sbt(
             RuntimeOrigin::signed(ALICE()),
             sbt_asset_symbol,
             sbt_asset_name,
@@ -4311,14 +4315,14 @@ fn test_pool_works_with_regulated_asset() {
             .expect("Expected at least one event")
             .event;
         let sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(extended_assets::Event::SoulboundTokenIssued {
+            RuntimeEvent::ExtendedAssets(extended_assets::Event::SoulboundTokenIssued {
                 asset_id,
                 ..
             }) => asset_id,
             _ => panic!("Unexpected event: {:?}", event),
         };
 
-        assert_ok!(RegulatedAssets::bind_regulated_asset_to_sbt(
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
             RuntimeOrigin::signed(ALICE()),
             sbt_asset_id,
             apple_asset_id
