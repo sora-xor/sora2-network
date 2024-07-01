@@ -279,7 +279,7 @@ members = [
     "pallets/kensetsu",
     "pallets/band",
     "pallets/qa-tools",
-    "pallets/regulated-assets",
+    "pallets/extended-assets",
     "node/",
     "utils/parse",
     "utils/generate-bags",
