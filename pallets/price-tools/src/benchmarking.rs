@@ -72,6 +72,7 @@ fn register_asset<T: Config>(owner: T::AccountId, asset: AssetIdOf<T>) {
         DEFAULT_BALANCE_PRECISION,
         balance!(1000000),
         true,
+        common::AssetType::Regular,
         None,
         None,
     )

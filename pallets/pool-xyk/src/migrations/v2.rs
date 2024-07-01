@@ -1,6 +1,6 @@
 use common::{
-    generate_storage_instance, AssetIdOf, AssetManager, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, Description,
+    generate_storage_instance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType,
+    BalancePrecision, ContentSource, Description,
 };
 use frame_support::dispatch::Weight;
 use frame_support::pallet_prelude::{StorageMap, StorageVersion, ValueQuery};
@@ -33,6 +33,7 @@ pub fn migrate<T: Config>() -> Weight {
                 AssetSymbol,
                 AssetName,
                 BalancePrecision,
+                AssetType,
                 ContentSource,
                 Description,
             >>::GetBaseAssetId::get(),

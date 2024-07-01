@@ -670,8 +670,17 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, AssetIdO
             &Self::bridge_fee_tech_account(network_id),
         )?;
         let owner = Self::bridge_account(network_id)?;
-        let asset_id =
-            T::AssetManager::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
+        let asset_id = T::AssetManager::register_from(
+            &owner,
+            symbol,
+            name,
+            18,
+            0,
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        )?;
         Ok(asset_id)
     }
 

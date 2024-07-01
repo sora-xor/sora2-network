@@ -540,6 +540,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )

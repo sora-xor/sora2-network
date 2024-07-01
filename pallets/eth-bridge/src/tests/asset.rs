@@ -233,6 +233,7 @@ fn should_add_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -620,9 +621,18 @@ fn should_convert_amount_for_indivisible_token() {
         let name = AssetName::from_str("NonFungTok").unwrap();
         let decimals = 0;
         let amount = 1;
-        let asset_id =
-            Assets::register_from(&alice, ticker, name, decimals, amount, false, None, None)
-                .unwrap();
+        let asset_id = Assets::register_from(
+            &alice,
+            ticker,
+            name,
+            decimals,
+            amount,
+            false,
+            common::AssetType::Regular,
+            None,
+            None,
+        )
+        .unwrap();
         assert_ok!(EthBridge::add_asset(
             RuntimeOrigin::root(),
             asset_id,
