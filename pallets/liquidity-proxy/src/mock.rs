@@ -294,7 +294,7 @@ impl demeter_farming_platform::Config for Runtime {
 }
 
 #[cfg(feature = "wip")] // DEFI-R
-impl regulated_assets::Config for Runtime {
+impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type WeightInfo = ();
@@ -325,7 +325,7 @@ impl pool_xyk::Config for Runtime {
     #[cfg(not(feature = "wip"))] // DEFI-R
     type AssetRegulator = ();
     #[cfg(feature = "wip")] // DEFI-R
-    type AssetRegulator = regulated_assets::Pallet<Runtime>;
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }
@@ -952,12 +952,12 @@ impl ExtBuilder {
         use frame_support::assert_ok;
         System::set_block_number(1);
         let owner_origin = RuntimeOrigin::signed(owner.clone());
-        if !RegulatedAssets::regulated_asset(asset_id) {
-            RegulatedAssets::regulate_asset(owner_origin.clone(), *asset_id)
+        if !ExtendedAssets::regulated_asset(asset_id) {
+            ExtendedAssets::regulate_asset(owner_origin.clone(), *asset_id)
                 .expect("Failed to regulate Asset");
         }
 
-        RegulatedAssets::issue_sbt(
+        ExtendedAssets::issue_sbt(
             owner_origin.clone(),
             AssetSymbol(b"SBT".to_vec()),
             AssetName(b"SBT".to_vec()),
@@ -973,14 +973,14 @@ impl ExtBuilder {
             .expect("Expected at least one event")
             .event;
         let sbt_asset_id = match event {
-            RuntimeEvent::RegulatedAssets(regulated_assets::Event::SoulboundTokenIssued {
+            RuntimeEvent::ExtendedAssets(extended_assets::Event::SoulboundTokenIssued {
                 asset_id,
                 ..
             }) => asset_id,
             _ => panic!("Unexpected event: {:?}", event),
         };
 
-        assert_ok!(RegulatedAssets::bind_regulated_asset_to_sbt(
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
             owner_origin,
             sbt_asset_id,
             *asset_id

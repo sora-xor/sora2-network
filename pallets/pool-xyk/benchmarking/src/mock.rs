@@ -155,7 +155,7 @@ impl demeter_farming_platform::Config for Runtime {
 }
 
 #[cfg(feature = "wip")] // DEFI-R
-impl regulated_assets::Config for Runtime {
+impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type WeightInfo = ();
@@ -186,7 +186,7 @@ impl pool_xyk::Config for Runtime {
     #[cfg(not(feature = "wip"))] // DEFI-R
     type AssetRegulator = ();
     #[cfg(feature = "wip")] // DEFI-R
-    type AssetRegulator = regulated_assets::Pallet<Runtime>;
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }

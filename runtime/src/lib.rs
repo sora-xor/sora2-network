@@ -1050,7 +1050,7 @@ impl pool_xyk::Config for Runtime {
     #[cfg(not(feature = "wip"))] // DEFI-R
     type AssetRegulator = ();
     #[cfg(feature = "wip")] // DEFI-R
-    type AssetRegulator = regulated_assets::Pallet<Runtime>;
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
