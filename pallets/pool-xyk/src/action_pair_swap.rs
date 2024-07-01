@@ -33,15 +33,14 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
-use common::prelude::{Balance, FixedWrapper};
+use crate::to_fixed_wrapper;
+use common::prelude::{AssetIdOf, Balance, FixedWrapper};
 use common::{balance, AssetInfoProvider, DexInfoProvider};
 use sp_runtime::traits::Zero;
 
-use crate::to_fixed_wrapper;
-
 use crate::bounds::*;
 
-use crate::aliases::{AccountIdOf, AssetIdOf, DEXIdOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, DEXIdOf, TechAccountIdOf};
 use crate::operations::*;
 use crate::{Config, Error, Pallet};
 
@@ -104,17 +103,17 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let balance_ss = if abstract_checking {
             None
         } else {
-            Some(<assets::Pallet<T>>::free_balance(
+            Some(<T as Config>::AssetInfoProvider::free_balance(
                 &self.source.asset,
                 &source_opt.unwrap(),
             )?)
         };
-        // Source balance of technical account.
-        let balance_st =
-            <assets::Pallet<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
-        // Destination balance of technical account.
-        let balance_tt =
-            <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+        let (balance_st, balance_tt, _max_output_available) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
+            &self.source.asset,
+            &self.destination.asset,
+        )?;
         if !abstract_checking {
             ensure!(balance_ss.unwrap() > 0, Error::<T>::AccountBalanceIsInvalid);
         }
@@ -398,10 +397,12 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
 
             let pool_account_repr_sys =
                 technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-            let balance_a =
-                <assets::Pallet<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
-            let balance_b =
-                <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+            let (balance_a, balance_b, _max_output_available) = Pallet::<T>::get_actual_reserves(
+                &pool_account_repr_sys,
+                &base_asset_id,
+                &self.source.asset,
+                &self.destination.asset,
+            )?;
             Pallet::<T>::update_reserves(
                 base_asset_id,
                 &self.source.asset,

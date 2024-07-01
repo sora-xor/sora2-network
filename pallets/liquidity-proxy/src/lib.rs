@@ -45,18 +45,17 @@ mod test_utils;
 mod tests;
 pub mod weights;
 
-use assets::AssetIdOf;
 use assets::WeightInfo as _;
 use codec::{Decode, Encode};
 use common::prelude::{
-    Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
+    AssetIdOf, Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 use common::{
-    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
-    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
-    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason, TradingPair,
-    TradingPairSourceManager, Vesting,
+    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, AssetManager, BuyBackHandler, DEXInfo,
+    DexIdOf, DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves,
+    LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, LockedLiquiditySourcesManager, RewardReason,
+    TradingPair, TradingPairSourceManager, Vesting,
 };
 use core::marker::PhantomData;
 use fallible_iterator::FallibleIterator as _;
@@ -102,7 +101,14 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
 /// Possible exchange paths for two assets.
-pub struct ExchangePath<T: Config>(Vec<T::AssetId>);
+#[derive(Clone)]
+pub struct ExchangePath<T: Config>(pub(crate) Vec<AssetIdOf<T>>);
+
+impl<T: Config> core::fmt::Debug for ExchangePath<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list().entries(self.0.iter()).finish()
+    }
+}
 
 #[derive(Debug, Eq, PartialEq)]
 enum AssetType {
@@ -110,20 +116,37 @@ enum AssetType {
     SyntheticBase,
     Basic,
     Synthetic,
+    ChameleonBase,
+    ChameleonPoolAsset,
 }
 
 impl AssetType {
     fn determine<T: Config>(
-        dex_info: &DEXInfo<T::AssetId>,
-        synthetic_assets: &BTreeSet<T::AssetId>,
-        asset_id: T::AssetId,
+        dex_info: &DEXInfo<AssetIdOf<T>>,
+        synthetic_assets: &BTreeSet<AssetIdOf<T>>,
+        asset_id: AssetIdOf<T>,
     ) -> Self {
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
+                &dex_info.base_asset_id,
+            );
         if asset_id == dex_info.base_asset_id {
             AssetType::Base
         } else if asset_id == dex_info.synthetic_base_asset_id {
             AssetType::SyntheticBase
         } else if synthetic_assets.contains(&asset_id) {
             AssetType::Synthetic
+        } else if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
+            if asset_id == base_chameleon_asset_id {
+                AssetType::ChameleonBase
+            } else if <T::GetChameleonPool as traits::GetByKey<_, _>>::get(&common::TradingPair {
+                base_asset_id: dex_info.base_asset_id,
+                target_asset_id: asset_id,
+            }) {
+                AssetType::ChameleonPoolAsset
+            } else {
+                AssetType::Basic
+            }
         } else {
             AssetType::Basic
         }
@@ -136,93 +159,229 @@ macro_rules! forward_or_backward {
     };
 }
 
+struct PathBuilder<T: Config> {
+    pub paths: Vec<ExchangePath<T>>,
+    pub input_asset_id: AssetIdOf<T>,
+    pub output_asset_id: AssetIdOf<T>,
+    pub base_asset_id: AssetIdOf<T>,
+    pub synthetic_base_asset_id: AssetIdOf<T>,
+    pub base_chameleon_asset_id: Option<AssetIdOf<T>>,
+}
+
+impl<T: Config> core::fmt::Debug for PathBuilder<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PathBuilder")
+            .field("paths", &self.paths)
+            .field("input_asset_id", &self.input_asset_id)
+            .field("output_asset_id", &self.output_asset_id)
+            .field("base_asset_id", &self.base_asset_id)
+            .field("synthetic_base_asset_id", &self.synthetic_base_asset_id)
+            .field("base_chameleon_asset_id", &self.base_chameleon_asset_id)
+            .finish()
+    }
+}
+
+impl<T: Config> PathBuilder<T> {
+    pub fn direct(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_synthetic_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.synthetic_base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+    pub fn via_base_and_synthetic_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.base_asset_id,
+            self.synthetic_base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_synthetic_base_and_base(&mut self) -> &mut Self {
+        self.paths.push(ExchangePath(vec![
+            self.input_asset_id,
+            self.synthetic_base_asset_id,
+            self.base_asset_id,
+            self.output_asset_id,
+        ]));
+        self
+    }
+
+    pub fn via_base_chameleon(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                base_chameleon_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_base_and_base_chameleon(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                self.base_asset_id,
+                base_chameleon_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_base_chameleon_and_base(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                base_chameleon_asset_id,
+                self.base_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_base_chameleon_and_base_and_synthetic_base(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                base_chameleon_asset_id,
+                self.base_asset_id,
+                self.synthetic_base_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+
+    pub fn via_synthetic_base_and_base_and_base_chameleon(&mut self) -> &mut Self {
+        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
+            self.paths.push(ExchangePath(vec![
+                self.input_asset_id,
+                self.synthetic_base_asset_id,
+                self.base_asset_id,
+                base_chameleon_asset_id,
+                self.output_asset_id,
+            ]));
+        }
+        self
+    }
+}
+
 impl<T: Config> ExchangePath<T> {
     pub fn new_trivial(
-        dex_info: &DEXInfo<T::AssetId>,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        dex_info: &DEXInfo<AssetIdOf<T>>,
+        input_asset_id: AssetIdOf<T>,
+        output_asset_id: AssetIdOf<T>,
     ) -> Option<Vec<Self>> {
         use AssetType::*;
+
+        if input_asset_id == output_asset_id {
+            return None;
+        }
 
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
+                &dex_info.base_asset_id,
+            );
+
+        let mut path_builder = PathBuilder::<T> {
+            input_asset_id,
+            output_asset_id,
+            paths: Vec::new(),
+            base_asset_id: dex_info.base_asset_id,
+            synthetic_base_asset_id: dex_info.synthetic_base_asset_id,
+            base_chameleon_asset_id,
+        };
 
         match (input_type, output_type) {
-            forward_or_backward!(Base, Basic) | forward_or_backward!(Base, SyntheticBase) => {
-                Some(vec![Self(vec![input_asset_id, output_asset_id])])
+            forward_or_backward!(Base, Basic)
+            | forward_or_backward!(Base, SyntheticBase)
+            | forward_or_backward!(Base, ChameleonBase) => path_builder.direct(),
+            forward_or_backward!(SyntheticBase, Synthetic) => path_builder.direct().via_base(),
+            (Basic, Basic)
+            | forward_or_backward!(SyntheticBase, Basic)
+            | forward_or_backward!(ChameleonBase, SyntheticBase)
+            | forward_or_backward!(Basic, ChameleonBase) => path_builder.via_base(),
+            (Synthetic, Synthetic) => path_builder.via_synthetic_base().via_base(),
+            forward_or_backward!(Base, Synthetic) => path_builder.direct().via_synthetic_base(),
+            (Basic, Synthetic) | (ChameleonBase, Synthetic) => {
+                path_builder.via_base().via_base_and_synthetic_base()
             }
-            forward_or_backward!(SyntheticBase, Synthetic) => Some(vec![
-                Self(vec![input_asset_id, output_asset_id]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Basic, Basic) | forward_or_backward!(SyntheticBase, Basic) => Some(vec![Self(vec![
-                input_asset_id,
-                dex_info.base_asset_id,
-                output_asset_id,
-            ])]),
-            (Synthetic, Synthetic) => Some(vec![
-                Self(vec![
-                    input_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    output_asset_id,
-                ]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            forward_or_backward!(Base, Synthetic) => Some(vec![
-                Self(vec![input_asset_id, output_asset_id]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Basic, Synthetic) => Some(vec![
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    output_asset_id,
-                ]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Synthetic, Basic) => Some(vec![
-                Self(vec![
-                    input_asset_id,
-                    dex_info.synthetic_base_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-                Self(vec![
-                    input_asset_id,
-                    dex_info.base_asset_id,
-                    output_asset_id,
-                ]),
-            ]),
-            (Base, Base) | (SyntheticBase, SyntheticBase) => None,
+            (Synthetic, Basic) | (Synthetic, ChameleonBase) => {
+                path_builder.via_base().via_synthetic_base_and_base()
+            }
+            forward_or_backward!(ChameleonPoolAsset, ChameleonBase) => {
+                path_builder.direct().via_base()
+            }
+            forward_or_backward!(Base, ChameleonPoolAsset) => {
+                path_builder.direct().via_base_chameleon()
+            }
+            (SyntheticBase, ChameleonPoolAsset) | (Basic, ChameleonPoolAsset) => {
+                path_builder.via_base().via_base_and_base_chameleon()
+            }
+            (ChameleonPoolAsset, SyntheticBase) | (ChameleonPoolAsset, Basic) => {
+                path_builder.via_base().via_base_chameleon_and_base()
+            }
+            (Synthetic, ChameleonPoolAsset) => path_builder
+                .via_base()
+                .via_synthetic_base_and_base()
+                .via_base_and_base_chameleon()
+                .via_synthetic_base_and_base_and_base_chameleon(),
+            (ChameleonPoolAsset, Synthetic) => path_builder
+                .via_base()
+                .via_base_and_synthetic_base()
+                .via_base_chameleon_and_base()
+                .via_base_chameleon_and_base_and_synthetic_base(),
+            (ChameleonPoolAsset, ChameleonPoolAsset) => path_builder
+                .via_base()
+                .via_base_chameleon_and_base()
+                .via_base_and_base_chameleon(),
+            (Base, Base) | (SyntheticBase, SyntheticBase) | (ChameleonBase, ChameleonBase) => {
+                &mut path_builder
+            }
+        };
+        frame_support::log::trace!("Found paths: {:?}", path_builder);
+        if path_builder.paths.is_empty() {
+            None
+        } else {
+            Some(path_builder.paths)
         }
     }
 }
 
-#[derive(Eq, PartialEq, Encode, Decode)]
+#[derive(Debug, Eq, PartialEq, Encode, Decode)]
 pub struct QuoteInfo<AssetId: Ord, LiquiditySource> {
     pub outcome: SwapOutcome<Balance, AssetId>,
     pub amount_without_impact: Option<Balance>,
     pub rewards: Rewards<AssetId>,
     pub liquidity_sources: Vec<LiquiditySource>,
     pub path: Vec<AssetId>,
+    pub route: ExchangeRoute<AssetId>,
 }
 
 fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
@@ -236,8 +395,8 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
 impl<T: Config> Pallet<T> {
     /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
     pub fn is_forbidden_filter(
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> bool {
@@ -264,14 +423,13 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     pub fn check_indivisible_assets(
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         ensure!(
-            !assets::Pallet::<T>::is_non_divisible(input_asset_id)
-                && !assets::Pallet::<T>::is_non_divisible(output_asset_id),
+            !T::AssetInfoProvider::is_non_divisible(input_asset_id)
+                && !T::AssetInfoProvider::is_non_divisible(output_asset_id),
             Error::<T>::UnableToSwapIndivisibleAssets
         );
         Ok(())
@@ -281,8 +439,8 @@ impl<T: Config> Pallet<T> {
         sender: T::AccountId,
         receiver: T::AccountId,
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf<T>,
+        output_asset_id: AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
@@ -342,13 +500,13 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<
         (
-            SwapOutcome<Balance, T::AssetId>,
+            SwapOutcome<Balance, AssetIdOf<T>>,
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
@@ -377,7 +535,7 @@ impl<T: Config> Pallet<T> {
     /// Exchange sequence of assets, where each pair is a direct exchange.
     /// The swaps path is selected via `select_best_path`
     fn exchange_sequence(
-        dex_info: &DEXInfo<T::AssetId>,
+        dex_info: &DEXInfo<AssetIdOf<T>>,
         sender: &T::AccountId,
         receiver: &T::AccountId,
         asset_paths: Vec<ExchangePath<T>>,
@@ -385,7 +543,7 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<
         (
-            SwapOutcome<Balance, T::AssetId>,
+            SwapOutcome<Balance, AssetIdOf<T>>,
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
@@ -400,7 +558,7 @@ impl<T: Config> Pallet<T> {
             true,
             true,
         )
-        .map(|(info, swaps, weight)| (info.path, swaps, weight))?;
+        .map(|(info, weight)| (info.path, info.route, weight))?;
 
         Self::exchange_sequence_with_desired_amount(dex_info, sender, receiver, &route, filter)
             .and_then(|(mut swap, sources, weight)| {
@@ -441,14 +599,14 @@ impl<T: Config> Pallet<T> {
     /// - `swaps` - exchange route with amounts
     /// - `filter` - filter for liquidity sources
     fn exchange_sequence_with_desired_amount(
-        dex_info: &DEXInfo<T::AssetId>,
+        dex_info: &DEXInfo<AssetIdOf<T>>,
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        route: &ExchangeRoute<T::AssetId>,
+        route: &ExchangeRoute<AssetIdOf<T>>,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<
         (
-            SwapOutcome<Balance, T::AssetId>,
+            SwapOutcome<Balance, AssetIdOf<T>>,
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
@@ -516,14 +674,14 @@ impl<T: Config> Pallet<T> {
     fn exchange_single(
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        base_asset_id: &T::AssetId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<
         (
-            SwapOutcome<Balance, T::AssetId>,
+            SwapOutcome<Balance, AssetIdOf<T>>,
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
@@ -560,7 +718,7 @@ impl<T: Config> Pallet<T> {
                         outcome
                     })
                 })
-                .collect::<Result<Vec<SwapOutcome<Balance, T::AssetId>>, DispatchError>>()?;
+                .collect::<Result<Vec<SwapOutcome<Balance, AssetIdOf<T>>>, DispatchError>>()?;
 
             let (amount, fee) = res.into_iter().fold(
                 (fixed_wrapper!(0), OutcomeFee::new()),
@@ -584,20 +742,13 @@ impl<T: Config> Pallet<T> {
     /// This a wrapper for `quote_single`.
     pub fn inner_quote(
         dex_id: T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>,
-            ExchangeRoute<T::AssetId>,
-            Weight,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<(QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
@@ -625,23 +776,15 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns Result containing a quote result and the selected path
     fn select_best_path(
-        dex_info: &DEXInfo<T::AssetId>,
+        dex_info: &DEXInfo<AssetIdOf<T>>,
         asset_paths: Vec<ExchangePath<T>>,
         swap_variant: SwapVariant,
         amount: Balance,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>,
-            ExchangeRoute<T::AssetId>,
-            Weight,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<(QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         let mut weight = Weight::zero();
-        let mut swaps = ExchangeRoute::<T::AssetId>::new();
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match swap_variant {
                 SwapVariant::WithDesiredInput => Self::quote_pairs_with_flexible_amount(
@@ -670,13 +813,13 @@ impl<T: Config> Pallet<T> {
                 ),
             };
             quote.map(|x| {
-                swaps = x.4;
                 weight = weight.saturating_add(x.5);
                 QuoteInfo {
                     outcome: x.0,
                     amount_without_impact: x.1,
                     rewards: x.2,
                     liquidity_sources: x.3,
+                    route: x.4,
                     path: atomic_path,
                 }
             })
@@ -703,15 +846,15 @@ impl<T: Config> Pallet<T> {
                 }
                 _ => acc,
             })
-            .map(|quote| (quote, swaps, weight))
+            .map(|quote| (quote, weight))
     }
 
     /// Quote given pairs of assets using `amount_ctr` to construct [`QuoteAmount`] for each pair.
     ///
     /// Performs [`Self::quote_single()`] for each pair and aggregates the results.
     fn quote_pairs_with_flexible_amount<'asset, F: Fn(Balance) -> QuoteAmount<Balance>>(
-        dex_info: &DEXInfo<T::AssetId>,
-        asset_pairs: impl Iterator<Item = (&'asset T::AssetId, &'asset T::AssetId)>,
+        dex_info: &DEXInfo<AssetIdOf<T>>,
+        asset_pairs: impl Iterator<Item = (&'asset AssetIdOf<T>, &'asset AssetIdOf<T>)>,
         amount_ctr: F,
         amount: Balance,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
@@ -720,11 +863,11 @@ impl<T: Config> Pallet<T> {
         swap_variant: SwapVariant,
     ) -> Result<
         (
-            SwapOutcome<Balance, T::AssetId>,
+            SwapOutcome<Balance, AssetIdOf<T>>,
             Option<Balance>,
-            Rewards<T::AssetId>,
+            Rewards<AssetIdOf<T>>,
             Vec<LiquiditySourceIdOf<T>>,
-            ExchangeRoute<T::AssetId>,
+            ExchangeRoute<AssetIdOf<T>>,
             Weight,
         ),
         DispatchError,
@@ -825,8 +968,8 @@ impl<T: Config> Pallet<T> {
     // because it uses i128 for fixed-point arithmetics.
     // TODO: switch to unsigned internal representation
     fn calculate_amount_without_impact(
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         distribution: &Vec<(
             LiquiditySourceId<T::DEXId, LiquiditySourceType>,
             SwapAmount<Balance>,
@@ -905,8 +1048,8 @@ impl<T: Config> Pallet<T> {
 
     /// Obtains only sources available for `quote`
     fn list_quote_liquidity_sources(
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
         let mut sources =
@@ -933,17 +1076,17 @@ impl<T: Config> Pallet<T> {
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
     fn quote_single(
-        base_asset_id: &T::AssetId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
     ) -> Result<
         (
-            AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>,
-            Rewards<T::AssetId>,
+            AggregatedSwapOutcome<AssetIdOf<T>, LiquiditySourceIdOf<T>, Balance>,
+            Rewards<AssetIdOf<T>>,
             Vec<LiquiditySourceIdOf<T>>,
             Weight,
         ),
@@ -1058,8 +1201,8 @@ impl<T: Config> Pallet<T> {
     /// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
     pub fn is_path_available(
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf<T>,
+        output_asset_id: AssetIdOf<T>,
     ) -> Result<bool, DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
@@ -1078,8 +1221,8 @@ impl<T: Config> Pallet<T> {
     /// available and if it is, then returns Ok(true)
     pub fn check_asset_path(
         dex_id: &T::DEXId,
-        dex_info: &DEXInfo<T::AssetId>,
-        path: &[T::AssetId],
+        dex_info: &DEXInfo<AssetIdOf<T>>,
+        path: &[AssetIdOf<T>],
     ) -> bool {
         path.iter()
             .tuple_windows()
@@ -1098,8 +1241,8 @@ impl<T: Config> Pallet<T> {
     /// Returns a BTreeSet with all LiquiditySourceTypes, which will be used for swap
     pub fn get_asset_path_sources(
         dex_id: &T::DEXId,
-        dex_info: &DEXInfo<T::AssetId>,
-        path: &[T::AssetId],
+        dex_info: &DEXInfo<AssetIdOf<T>>,
+        path: &[AssetIdOf<T>],
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
         let sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -> Result<_, DispatchError> {
@@ -1178,8 +1321,8 @@ impl<T: Config> Pallet<T> {
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
     pub fn inner_exchange_weight(
         dex_id: &T::DEXId,
-        input: &T::AssetId,
-        output: &T::AssetId,
+        input: &AssetIdOf<T>,
+        output: &AssetIdOf<T>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Weight {
         // Get DEX info or return weight that will be rejected
@@ -1258,8 +1401,8 @@ impl<T: Config> Pallet<T> {
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
     pub fn swap_weight(
         dex_id: &T::DEXId,
-        input: &T::AssetId,
-        output: &T::AssetId,
+        input: &AssetIdOf<T>,
+        output: &AssetIdOf<T>,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> Weight {
@@ -1296,8 +1439,8 @@ impl<T: Config> Pallet<T> {
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_transfer_batch_weight() and code map above.
     pub fn swap_transfer_batch_weight(
-        swap_batches: &Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
-        input: &T::AssetId,
+        swap_batches: &Vec<SwapBatchInfo<AssetIdOf<T>, T::DEXId, T::AccountId>>,
+        input: &AssetIdOf<T>,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> Weight {
@@ -1344,8 +1487,8 @@ impl<T: Config> Pallet<T> {
     /// If there are two possible swap paths, then returns a union of used liquidity sources
     pub fn list_enabled_sources_for_path(
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf<T>,
+        output_asset_id: AssetIdOf<T>,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
@@ -1380,8 +1523,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn list_enabled_sources_for_path_with_xyk_forbidden(
         dex_id: T::DEXId,
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: AssetIdOf<T>,
+        output_asset_id: AssetIdOf<T>,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
         let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
         let mut initial_result =
@@ -1396,10 +1539,10 @@ impl<T: Config> Pallet<T> {
 
     // Not full sort, just ensure that if there is base asset then it's sorted, otherwise order is unchanged.
     fn weak_sort_pair(
-        dex_info: &DEXInfo<T::AssetId>,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
-    ) -> TradingPair<T::AssetId> {
+        dex_info: &DEXInfo<AssetIdOf<T>>,
+        asset_a: AssetIdOf<T>,
+        asset_b: AssetIdOf<T>,
+    ) -> TradingPair<AssetIdOf<T>> {
         use AssetType::*;
 
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
@@ -1433,16 +1576,16 @@ impl<T: Config> Pallet<T> {
     #[cfg(feature = "wip")] // ALT
     fn new_smart_split(
         sources: &Vec<LiquiditySourceIdOf<T>>,
-        base_asset_id: &T::AssetId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         skip_info: bool,
         deduce_fee: bool,
     ) -> Result<
         (
-            AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>,
-            Rewards<T::AssetId>,
+            AggregatedSwapOutcome<AssetIdOf<T>, LiquiditySourceIdOf<T>, Balance>,
+            Rewards<AssetIdOf<T>>,
             Weight,
         ),
         DispatchError,
@@ -1457,7 +1600,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
 
-        let mut aggregator = LiquidityAggregator::new(amount.variant());
+        let mut aggregator: LiquidityAggregator<T, _> = LiquidityAggregator::new(amount.variant());
 
         let mut total_weight = Weight::zero();
 
@@ -1470,7 +1613,7 @@ impl<T: Config> Pallet<T> {
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation);
+                aggregator.add_source(source.clone(), discrete_quotation)?;
                 total_weight = total_weight.saturating_add(weight);
             } else {
                 // skip the source if it returns an error
@@ -1478,20 +1621,18 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let (swap_info, aggregate_swap_outcome) = aggregator
-            .aggregate_swap_outcome(amount.amount())
-            .ok_or(Error::<T>::UnavailableExchangePath)?;
+        let aggregation_result = aggregator.aggregate_liquidity(amount.amount())?;
 
         let mut rewards = Rewards::new();
 
         if !skip_info {
-            for (source, (input, output)) in swap_info {
+            for (source, (input, output)) in &aggregation_result.swap_info {
                 let (mut reward, weight) = T::LiquidityRegistry::check_rewards(
                     &source,
                     input_asset_id,
                     output_asset_id,
-                    input,
-                    output,
+                    *input,
+                    *output,
                 )
                 .unwrap_or((Vec::new(), Weight::zero()));
 
@@ -1500,7 +1641,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        Ok((aggregate_swap_outcome, rewards, total_weight))
+        Ok((aggregation_result.into(), rewards, total_weight))
     }
 
     /// Implements the "smart" split algorithm.
@@ -1516,16 +1657,16 @@ impl<T: Config> Pallet<T> {
     fn smart_split(
         primary_source_id: &LiquiditySourceIdOf<T>,
         secondary_source_id: &LiquiditySourceIdOf<T>,
-        base_asset_id: &T::AssetId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         skip_info: bool,
         deduce_fee: bool,
     ) -> Result<
         (
-            AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>,
-            Rewards<T::AssetId>,
+            AggregatedSwapOutcome<AssetIdOf<T>, LiquiditySourceIdOf<T>, Balance>,
+            Rewards<AssetIdOf<T>>,
             Weight,
         ),
         DispatchError,
@@ -1758,8 +1899,8 @@ impl<T: Config> Pallet<T> {
     ///
     #[cfg(not(feature = "wip"))] // ALT
     fn decide_primary_market_amount_buying_base_asset(
-        base_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        collateral_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         secondary_market_reserves: (Balance, Balance),
     ) -> Result<QuoteAmount<Balance>, DispatchError> {
@@ -1859,8 +2000,8 @@ impl<T: Config> Pallet<T> {
     ///
     #[cfg(not(feature = "wip"))] // ALT
     fn decide_primary_market_amount_selling_base_asset(
-        base_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        collateral_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         secondary_market_reserves: (Balance, Balance),
     ) -> Result<QuoteAmount<Balance>, DispatchError> {
@@ -1950,8 +2091,8 @@ impl<T: Config> Pallet<T> {
     fn exchange_batch_tokens(
         sender: &T::AccountId,
         num_of_receivers: u128,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         max_input_amount: Balance,
         selected_source_types: &Vec<LiquiditySourceType>,
         dex_id: T::DEXId,
@@ -2011,7 +2152,7 @@ impl<T: Config> Pallet<T> {
         ));
 
         let caller_output_asset_balance =
-            assets::Pallet::<T>::total_balance(&output_asset_id, &sender)?;
+            T::AssetInfoProvider::total_balance(&output_asset_id, &sender)?;
         let remainder_per_receiver: Balance = if caller_output_asset_balance < out_amount {
             let remainder = out_amount.saturating_sub(caller_output_asset_balance);
             remainder / num_of_receivers + remainder % num_of_receivers
@@ -2023,14 +2164,14 @@ impl<T: Config> Pallet<T> {
 
     fn transfer_batch_tokens_unchecked(
         sender: &T::AccountId,
-        output_asset_id: &T::AssetId,
+        output_asset_id: &AssetIdOf<T>,
         receivers: Vec<BatchReceiverInfo<T::AccountId>>,
         remainder_per_receiver: Balance,
     ) -> Result<Weight, DispatchError> {
         let len = receivers.len();
         fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
             |receiver| {
-                assets::Pallet::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &output_asset_id,
                     &sender,
                     &receiver.account_id,
@@ -2066,7 +2207,7 @@ impl<T: Config> Pallet<T> {
         );
 
         if adar_commission > 0 {
-            assets::Pallet::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &asset_id,
                 &who,
                 &T::GetADARAccountId::get(),
@@ -2083,13 +2224,13 @@ impl<T: Config> Pallet<T> {
 
     fn inner_swap_batch_transfer(
         sender: &T::AccountId,
-        input_asset_id: &T::AssetId,
-        swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
+        input_asset_id: &AssetIdOf<T>,
+        swap_batches: Vec<SwapBatchInfo<AssetIdOf<T>, T::DEXId, T::AccountId>>,
         mut max_input_amount: Balance,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> Result<(Balance, Balance, Weight), DispatchError> {
-        let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
+        let mut unique_asset_ids: BTreeSet<AssetIdOf<T>> = BTreeSet::new();
 
         let mut executed_batch_input_amount = balance!(0);
 
@@ -2106,7 +2247,7 @@ impl<T: Config> Pallet<T> {
                     outcome_asset_reuse,
                 } = swap_batch_info;
 
-                let balance = assets::Pallet::<T>::free_balance(&asset_id, &sender)?;
+                let balance = T::AssetInfoProvider::free_balance(&asset_id, &sender)?;
 
                 if balance < outcome_asset_reuse {
                     fail!(Error::<T>::InsufficientBalance);
@@ -2196,12 +2337,12 @@ impl<T: Config> Pallet<T> {
     #[cfg(feature = "test")]
     pub fn test_quote(
         dex_id: T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<AggregatedSwapOutcome<T::AssetId, LiquiditySourceIdOf<T>, Balance>, DispatchError>
+    ) -> Result<AggregatedSwapOutcome<AssetIdOf<T>, LiquiditySourceIdOf<T>, Balance>, DispatchError>
     {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         Pallet::<T>::quote_single(
@@ -2217,19 +2358,19 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, AssetIdOf<T>> for Pallet<T> {
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
     /// This is a wrapper for `quote_single`.
     fn quote(
         dex_id: T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         Pallet::<T>::inner_quote(
             dex_id,
             input_asset_id,
@@ -2239,7 +2380,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
             true,
             deduce_fee,
         )
-        .map(|(quote_info, _, _)| quote_info.outcome)
+        .map(|(quote_info, _)| quote_info.outcome)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
@@ -2250,11 +2391,11 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         dex_id: T::DEXId,
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         let (outcome, _, _) = Pallet::<T>::inner_exchange(
             dex_id,
             sender,
@@ -2305,26 +2446,25 @@ impl<AssetId, DEXId, AccountId> SwapBatchInfo<AssetId, DEXId, AccountId> {
 
 pub struct LiquidityProxyBuyBackHandler<T, GetDEXId>(PhantomData<(T, GetDEXId)>);
 
-impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId>
+impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, AssetIdOf<T>>
     for LiquidityProxyBuyBackHandler<T, GetDEXId>
 {
     fn mint_buy_back_and_burn(
-        mint_asset_id: &T::AssetId,
-        buy_back_asset_id: &T::AssetId,
+        mint_asset_id: &AssetIdOf<T>,
+        buy_back_asset_id: &AssetIdOf<T>,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let owner = assets::Pallet::<T>::asset_owner(&mint_asset_id)
-            .ok_or(assets::Error::<T>::AssetIdNotExists)?;
+        let owner = T::AssetInfoProvider::get_asset_owner(&mint_asset_id)?;
         let transit = T::GetTechnicalAccountId::get();
-        assets::Pallet::<T>::mint_to(mint_asset_id, &owner, &transit, amount)?;
+        T::AssetManager::mint_to(mint_asset_id, &owner, &transit, amount)?;
         let amount = Self::buy_back_and_burn(&transit, mint_asset_id, buy_back_asset_id, amount)?;
         Ok(amount)
     }
 
     fn buy_back_and_burn(
         account_id: &T::AccountId,
-        asset_id: &T::AssetId,
-        buy_back_asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
+        buy_back_asset_id: &AssetIdOf<T>,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let dex_id = GetDEXId::get();
@@ -2340,7 +2480,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId
                 vec![LiquiditySourceType::MulticollateralBondingCurvePool],
             ),
         )?;
-        assets::Pallet::<T>::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
+        T::AssetManager::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
         Ok(outcome.amount)
     }
 }
@@ -2349,11 +2489,11 @@ pub struct ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>(
     PhantomData<(T, GetDEXId, GetReferenceAssetId)>,
 );
 
-impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
-    common::ReferencePriceProvider<T::AssetId, Balance>
+impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<AssetIdOf<T>>>
+    common::ReferencePriceProvider<AssetIdOf<T>, Balance>
     for ReferencePriceProvider<T, GetDEXId, GetReferenceAssetId>
 {
-    fn get_reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+    fn get_reference_price(asset_id: &AssetIdOf<T>) -> Result<Balance, DispatchError> {
         let dex_id = GetDEXId::get();
         let reference_asset_id = GetReferenceAssetId::get();
         if asset_id == &reference_asset_id {
@@ -2378,36 +2518,52 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<T::AssetId>>
 pub mod pallet {
     use super::*;
     use common::prelude::OutcomeFee;
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Permill;
     use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityRegistry: LiquidityRegistry<
             Self::DEXId,
             Self::AccountId,
-            Self::AssetId,
+            AssetIdOf<Self>,
             LiquiditySourceType,
             Balance,
             DispatchError,
         >;
         type GetNumSamples: Get<usize>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
-        type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
-        type SecondaryMarket: GetPoolReserves<Self::AssetId>;
-        type VestedRewardsPallet: Vesting<Self::AccountId, Self::AssetId>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type PrimaryMarketTBC: GetMarketInfo<AssetIdOf<Self>>;
+        type PrimaryMarketXST: GetMarketInfo<AssetIdOf<Self>>;
+        type SecondaryMarket: GetPoolReserves<AssetIdOf<Self>>;
+        type VestedRewardsPallet: Vesting<Self::AccountId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type LockedLiquiditySourcesManager: LockedLiquiditySourcesManager<LiquiditySourceType>;
         type GetADARAccountId: Get<Self::AccountId>;
         type ADARCommissionRatioUpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
         type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
         type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
+        type GetChameleonPool: traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
+        /// Percent of internal slippage tolerance
+        #[pallet::constant]
+        type InternalSlippageTolerance: Get<Permill>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2439,8 +2595,8 @@ pub mod pallet {
         pub fn swap(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
+            input_asset_id: AssetIdOf<T>,
+            output_asset_id: AssetIdOf<T>,
             swap_amount: SwapAmount<Balance>,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
@@ -2478,8 +2634,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             receiver: T::AccountId,
             dex_id: T::DEXId,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
+            input_asset_id: AssetIdOf<T>,
+            output_asset_id: AssetIdOf<T>,
             swap_amount: SwapAmount<Balance>,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
@@ -2520,8 +2676,8 @@ pub mod pallet {
         #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id, selected_source_types, filter_mode))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
-            swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
-            input_asset_id: T::AssetId,
+            swap_batches: Vec<SwapBatchInfo<AssetIdOf<T>, T::DEXId, T::AccountId>>,
+            input_asset_id: AssetIdOf<T>,
             max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
@@ -2643,7 +2799,7 @@ pub mod pallet {
         pub fn xorless_transfer(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
             receiver: T::AccountId,
             amount: Balance,
             desired_xor_amount: Balance,
@@ -2672,7 +2828,7 @@ pub mod pallet {
                 )?);
             }
 
-            assets::Pallet::<T>::transfer_from(&asset_id, &sender, &receiver, amount)?;
+            T::AssetManager::transfer_from(&asset_id, &sender, &receiver, amount)?;
             weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
             Self::deposit_event(Event::<T>::XorlessTransfer(
@@ -2740,7 +2896,7 @@ pub mod pallet {
         InvalidFeeValue,
         /// None of the sources has enough reserves to execute a trade
         InsufficientLiquidity,
-        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
+        /// Unable to aggregate the liquidity from sources.
         AggregationError,
         /// Specified parameters lead to arithmetic error
         CalculationError,
@@ -2760,16 +2916,18 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
-        // Information about swap batch receivers is invalid
+        /// Information about swap batch receivers is invalid
         InvalidReceiversInfo,
-        // Failure while transferring commission to ADAR account
+        /// Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
-        // ADAR commission ratio exceeds 1
+        /// ADAR commission ratio exceeds 1
         InvalidADARCommissionRatio,
-        // Sender don't have enough asset balance
+        /// Sender don't have enough asset balance
         InsufficientBalance,
-        // Sender and receiver should not be the same
+        /// Sender and receiver should not be the same
         TheSameSenderAndReceiver,
+        /// Internal error. Liquidity source returned wrong liquidity.
+        BadLiquidity,
     }
 
     #[pallet::type_value]

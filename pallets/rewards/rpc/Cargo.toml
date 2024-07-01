@@ -18,5 +18,4 @@ sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "rel
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
-common = { path = "../../../common" }
 rewards-runtime-api = { path = "../runtime-api" }

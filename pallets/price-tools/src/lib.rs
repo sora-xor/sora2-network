@@ -51,7 +51,7 @@ pub mod migration;
 
 use codec::{Decode, Encode};
 use common::prelude::{
-    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
+    AssetIdOf, Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
     TradingPairSourceManager,
 };
 use common::{
@@ -137,15 +137,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + assets::Config
-        + common::Config
-        + technical::Config
-        + pool_xyk::Config
+        frame_system::Config + common::Config + technical::Config + pool_xyk::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type WeightInfo: WeightInfo;
     }
 
@@ -198,14 +194,14 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn price_infos)]
-    pub type PriceInfos<T: Config> = StorageMap<_, Identity, T::AssetId, AggregatedPriceInfo>;
+    pub type PriceInfos<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, AggregatedPriceInfo>;
 }
 
 impl<T: Config> Pallet<T> {
     /// Query averaged price from past data for supported paths, i.e. paths with enabled targets or XOR.
     pub fn get_average_price(
-        input_asset: &T::AssetId,
-        output_asset: &T::AssetId,
+        input_asset: &AssetIdOf<T>,
+        output_asset: &AssetIdOf<T>,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         if input_asset == output_asset {
@@ -241,7 +237,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn get_asset_average_price(
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let avg_count: usize = AVG_BLOCK_SPAN
@@ -264,7 +260,7 @@ impl<T: Config> Pallet<T> {
 
     /// Add new price to queue and recalculate average.
     pub fn incoming_spot_price(
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         price: Balance,
         price_variant: PriceVariant,
     ) -> DispatchResult {
@@ -322,7 +318,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Register spot price quote failure, continuous failure has to block average price quotation.
-    pub fn incoming_spot_price_failure(asset_id: &T::AssetId, price_variant: PriceVariant) {
+    pub fn incoming_spot_price_failure(asset_id: &AssetIdOf<T>, price_variant: PriceVariant) {
         PriceInfos::<T>::mutate(asset_id, |opt| {
             if let Some(agg_price_info) = opt.as_mut() {
                 let val = agg_price_info.price_mut_of(price_variant);
@@ -378,7 +374,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Get current spot price for
-    pub fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+    pub fn spot_price(asset_id: &AssetIdOf<T>) -> Result<Balance, DispatchError> {
         T::LiquidityProxy::quote(
             DEXId::Polkaswap.into(),
             &XOR.into(),
@@ -448,16 +444,20 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> PriceToolsProvider<T::AssetId> for Pallet<T> {
+impl<T: Config> PriceToolsProvider<AssetIdOf<T>> for Pallet<T> {
+    fn is_asset_registered(asset_id: &AssetIdOf<T>) -> bool {
+        PriceInfos::<T>::get(asset_id).is_some()
+    }
+
     fn get_average_price(
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         Pallet::<T>::get_average_price(input_asset_id, output_asset_id, price_variant)
     }
 
-    fn register_asset(asset_id: &T::AssetId) -> DispatchResult {
+    fn register_asset(asset_id: &AssetIdOf<T>) -> DispatchResult {
         if PriceInfos::<T>::get(asset_id).is_none() {
             PriceInfos::<T>::insert(asset_id.clone(), AggregatedPriceInfo::default());
             Ok(())
@@ -467,8 +467,8 @@ impl<T: Config> PriceToolsProvider<T::AssetId> for Pallet<T> {
     }
 }
 
-impl<T: Config> OnPoolReservesChanged<T::AssetId> for Pallet<T> {
-    fn reserves_changed(target_asset_id: &T::AssetId) {
+impl<T: Config> OnPoolReservesChanged<AssetIdOf<T>> for Pallet<T> {
+    fn reserves_changed(target_asset_id: &AssetIdOf<T>) {
         if let Some(agg_price_info) = PriceInfos::<T>::get(target_asset_id) {
             if !agg_price_info.buy.needs_update || !agg_price_info.sell.needs_update {
                 PriceInfos::<T>::mutate(target_asset_id, |opt| {

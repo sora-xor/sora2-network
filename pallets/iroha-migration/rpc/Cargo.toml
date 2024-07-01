@@ -15,5 +15,4 @@ sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk.git", branch
 sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
 # Path dependencies
-common = { path = "../../../common" }
 iroha-migration-runtime-api = { path = "../runtime-api" }

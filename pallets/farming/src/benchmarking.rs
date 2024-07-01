@@ -38,7 +38,10 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{AssetName, AssetSymbol, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, XOR};
+use common::{
+    AssetInfoProvider, AssetManager, AssetName, AssetSymbol, TradingPairSourceManager,
+    DEFAULT_BALANCE_PRECISION, XOR,
+};
 
 use crate::utils;
 
@@ -54,20 +57,21 @@ fn signed_origin<T: Config>(account_id: T::AccountId) -> OriginFor<T> {
     RawOrigin::Signed(account_id.clone()).into()
 }
 
-fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) {
+fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<AssetIdOf<T>>) {
     frame_system::Pallet::<T>::inc_providers(&asset_owner::<T>());
-    let xor_asset: T::AssetId = XOR.into();
+    let xor_asset: AssetIdOf<T> = XOR.into();
     let mut pools = Vec::new();
     let mut assets = Vec::new();
     for _i in 0..count {
         frame_system::Pallet::<T>::inc_account_nonce(&asset_owner::<T>());
-        let other_asset = assets::Pallet::<T>::register_from(
+        let other_asset = T::AssetManager::register_from(
             &asset_owner::<T>(),
             AssetSymbol(b"SYMBOL".to_vec()),
             AssetName(b"NAME".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -94,21 +98,22 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
     (pools, assets)
 }
 
-fn prepare_good_accounts<T: Config>(count: u32, assets: &[T::AssetId]) {
-    let xor_asset: T::AssetId = XOR.into();
-    let xor_owner = assets::Pallet::<T>::asset_owner(&xor_asset).unwrap();
+fn prepare_good_accounts<T: Config>(count: u32, assets: &[AssetIdOf<T>]) {
+    let xor_asset: AssetIdOf<T> = XOR.into();
+    let xor_owner =
+        <T as vested_rewards::Config>::AssetInfoProvider::get_asset_owner(&xor_asset).unwrap();
     for other_asset in assets {
         for j in 0..count {
             let account_id = utils::account::<T>(j);
-            assert_ok!(assets::Pallet::<T>::mint_to(
+            assert_ok!(T::AssetManager::mint_to(
                 &XOR.into(),
                 &xor_owner,
                 &account_id,
                 balance!(50000),
             ));
 
-            assert_ok!(assets::Pallet::<T>::mint_to(
-                &other_asset,
+            assert_ok!(T::AssetManager::mint_to(
+                other_asset,
                 &asset_owner::<T>(),
                 &account_id,
                 balance!(50000),

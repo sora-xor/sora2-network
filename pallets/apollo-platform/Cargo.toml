@@ -28,7 +28,6 @@ sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = 
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 permissions = { path = "../permissions", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.4.1"
 frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -68,7 +67,6 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "pallet-timestamp/std",
-    "serde",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",

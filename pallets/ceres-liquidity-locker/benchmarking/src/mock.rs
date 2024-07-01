@@ -3,7 +3,11 @@
 use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
-use common::{fixed, hash, Amount, DEXInfo, Fixed, PSWAP, TBCD, VAL, XST};
+use common::{
+    fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
+};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::{Everything, GenesisBuild};
@@ -18,7 +22,6 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, BuildStorage, Percent};
 
-pub type DEXId = u32;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
@@ -33,6 +36,14 @@ pub fn alice() -> AccountId {
     ))
 }
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetNumSamples: usize = 40;
@@ -42,7 +53,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
@@ -164,6 +175,11 @@ impl pallet_balances::Config for Runtime {
     type MaxFreezes = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+}
+
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
@@ -171,6 +187,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {
@@ -191,20 +208,12 @@ impl dex_api::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-}
-
 impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pool_xyk::Config for Runtime {
@@ -224,9 +233,13 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type WeightInfo = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = common::mock::GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -246,6 +259,8 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -278,7 +293,7 @@ impl Default for ExtBuilder {
         Self {
             // endowed_accounts: vec![(alice(), DOT.into(), 20_000_u128.into())],
             dex_list: vec![(
-                0_u32,
+                DEXId::Polkaswap,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
                     synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),

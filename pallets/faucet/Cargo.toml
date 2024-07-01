@@ -27,7 +27,6 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "re
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 
-assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 rewards = { path = "../rewards", default-features = false }
 technical = { path = "../technical", default-features = false }
@@ -49,12 +48,9 @@ default = ['std']
 
 std = [
     'codec/std',
-    "scale-info/std",
     'frame-support/std',
     'frame-system/std',
-    'pallet-timestamp/std',
     'rewards/std',
-    'serde',
     'sp-arithmetic/std',
     'sp-core/std',
     'sp-runtime/std',

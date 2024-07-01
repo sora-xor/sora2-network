@@ -325,7 +325,7 @@ fn test_list_dex_ids_empty_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        assert_eq!(DEXPallet::list_dex_ids(), Vec::<DEXId>::new());
+        assert_eq!(DEXPallet::list_dex_ids(), Vec::<common::DEXId>::new());
     })
 }
 

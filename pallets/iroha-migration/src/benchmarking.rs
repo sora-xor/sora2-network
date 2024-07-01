@@ -155,7 +155,7 @@ benchmarks! {
     verify {
         assert!(MigratedAccounts::<T>::contains_key(&iroha_address));
         assert!(!PendingMultiSigAccounts::<T>::contains_key(&iroha_address));
-        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &multi_account_of_2).unwrap(), 1000);
+        assert_eq!(<T as technical::Config>::AssetInfoProvider::free_balance(&VAL.into(), &multi_account_of_2).unwrap(), 1000);
     }
 }
 

@@ -34,15 +34,14 @@ use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
 use common::prelude::FixedWrapper;
-use common::AssetInfoProvider;
+use common::AssetIdOf;
 
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
-use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
-use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
-
+use crate::aliases::{AccountIdOf, TechAccountIdOf};
 use crate::bounds::*;
 use crate::operations::*;
+use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
@@ -54,7 +53,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     fn prepare_and_validate(
         &mut self,
         source_opt: Option<&AccountIdOf<T>>,
-        _base_asset_id: &AssetIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
         //TODO: replace unwrap.
         let source = source_opt.unwrap();
@@ -101,12 +100,12 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             Err(Error::<T>::AccountBalanceIsInvalid)?;
         }
 
-        // Balance of pool account for asset pair basic asset.
-        let balance_bp =
-            <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
-        // Balance of pool account for asset pair target asset.
-        let balance_tp =
-            <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
+        let (balance_bp, balance_tp, _max_output_available) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
+            &self.destination.0.asset,
+            &self.destination.1.asset,
+        )?;
 
         if balance_bp == 0 && balance_tp == 0 {
             Err(Error::<T>::PoolIsEmpty)?;
@@ -124,11 +123,17 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
         let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
 
+        let tpair = Pallet::<T>::get_trading_pair(
+            base_asset_id,
+            &self.destination.0.asset,
+            &self.destination.1.asset,
+        )?;
+
         let has_enough_unlocked_liquidity =
             ceres_liquidity_locker::Pallet::<T>::check_if_has_enough_unlocked_liquidity(
                 &source,
-                self.destination.0.asset,
-                self.destination.1.asset,
+                tpair.base_asset_id,
+                tpair.target_asset_id,
                 self.pool_tokens,
             );
         ensure!(
@@ -139,8 +144,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let has_enough_liquidity_out_of_farming =
             demeter_farming_platform::Pallet::<T>::check_if_has_enough_liquidity_out_of_farming(
                 source,
-                self.destination.0.asset,
-                self.destination.1.asset,
+                tpair.base_asset_id,
+                tpair.target_asset_id,
                 self.pool_tokens,
             );
         ensure!(
@@ -250,7 +255,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(
+            let pair = Pallet::<T>::get_trading_pair(
                 base_asset_id,
                 &self.destination.0.asset,
                 &self.destination.1.asset,
@@ -259,10 +264,12 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 set.remove(&pair.target_asset_id)
             });
         }
-        let balance_a =
-            <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
-        let balance_b =
-            <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
+        let (balance_a, balance_b, _max_output_available) = Pallet::<T>::get_actual_reserves(
+            &pool_account_repr_sys,
+            &base_asset_id,
+            &self.destination.0.asset,
+            &self.destination.1.asset,
+        )?;
         Pallet::<T>::update_reserves(
             base_asset_id,
             &self.destination.0.asset,

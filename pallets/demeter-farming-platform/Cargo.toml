@@ -64,7 +64,6 @@ std = [
     "frame-system/std",
     "multicollateral-bonding-curve-pool/std",
     "permissions/std",
-    "serde/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
@@ -73,12 +72,10 @@ std = [
     "trading-pair/std",
     "pswap-distribution/std",
     "common/std",
-    "assets/std",
     "ceres-liquidity-locker/std",
 ]
 
 runtime-benchmarks = [
-    "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]

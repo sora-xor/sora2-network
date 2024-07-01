@@ -47,17 +47,18 @@ use pool_xyk::PoolProviders;
 use pswap_distribution::DistributionWeightParams;
 use pswap_distribution::{Call, ClaimableShares, ShareholderAccounts};
 use sp_std::prelude::*;
-use traits::MultiCurrencyExtended;
 
 use common::fixnum::ops::One;
-use common::{balance, fixed, AssetInfoProvider, Fixed, FromGenericPair, PSWAP};
+use common::{
+    balance, fixed, AmountOf, AssetIdOf, AssetInfoProvider, AssetManager, CurrencyIdOf, Fixed,
+    FromGenericPair, PSWAP,
+};
+use traits::currency::MultiCurrencyExtended;
 
-use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pswap_distribution::Pallet as PSwap;
 use sp_std::convert::TryFrom;
 use technical::Pallet as Technical;
-use tokens::Pallet as Tokens;
 
 pub struct Pallet<T: Config>(pswap_distribution::Pallet<T>);
 
@@ -78,7 +79,7 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
 fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
     #[cfg(not(test))]
     {
-        use common::{XOR, XST};
+        use common::{TBCD, XOR, XST};
         let authority = alice::<T>();
         pool_xyk::Pallet::<T>::initialize_pool(
             RawOrigin::Signed(authority.clone()).into(),
@@ -94,9 +95,17 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
             XST.into(),
         )
         .unwrap();
-        Assets::<T>::mint_to(&XOR.into(), &authority, &authority, balance!(20000)).unwrap();
-        Assets::<T>::mint_to(&XST.into(), &authority, &authority, balance!(100000)).unwrap();
-        Assets::<T>::mint_to(&PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
+        pool_xyk::Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            TBCD.into(),
+        )
+        .unwrap();
+        T::AssetManager::mint_to(&XOR.into(), &authority, &authority, balance!(20000)).unwrap();
+        T::AssetManager::mint_to(&XST.into(), &authority, &authority, balance!(100000)).unwrap();
+        T::AssetManager::mint_to(&PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
+        T::AssetManager::mint_to(&TBCD.into(), &authority, &authority, balance!(1000000)).unwrap();
         pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
             authority.clone(),
             common::DEXId::Polkaswap.into(),
@@ -119,6 +128,17 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
             balance!(1000000),
         )
         .unwrap();
+        pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
+            authority.clone(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            TBCD.into(),
+            balance!(10000),
+            balance!(1000000),
+            balance!(10000),
+            balance!(1000000),
+        )
+        .unwrap();
     }
 }
 
@@ -128,7 +148,7 @@ fn add_subscribtion<T: Config + pool_xyk::Config>(pool_index: u128, shareholders
     frame_system::Pallet::<T>::inc_providers(&pool_fee_account);
     let pool_account = create_account::<T>(b"pool".to_vec(), pool_index);
     frame_system::Pallet::<T>::inc_providers(&pool_account);
-    Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
+    T::AssetManager::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
     PSwap::<T>::subscribe(
         pool_fee_account,
         common::DEXId::Polkaswap.into(),
@@ -197,7 +217,11 @@ fn validate_distribution<T: Config>(weight_params: DistributionWeightParams) {
                 balance!(100)
             );
             assert!(
-                Assets::<T>::free_balance(&PSWAP.into(), &liquidity_provider).unwrap()
+                <T as technical::Config>::AssetInfoProvider::free_balance(
+                    &PSWAP.into(),
+                    &liquidity_provider
+                )
+                .unwrap()
                     > balance!(0)
             );
         }
@@ -211,10 +235,10 @@ benchmarks! {
         ShareholderAccounts::<T>::insert(caller.clone(), Fixed::ONE);
         ClaimableShares::<T>::put(Fixed::ONE);
         let pswap_rewards_account = T::GetTechnicalAccountId::get();
-        let pswap_asset_id: T::AssetId = PSWAP.into();
-        let pswap_currency = <T::AssetId as Into<<T as tokens::Config>::CurrencyId>>::into(pswap_asset_id);
-        let pswap_amount = <T as tokens::Config>::Amount::try_from(balance!(500)).map_err(|_|()).unwrap();
-        Tokens::<T>::update_balance(pswap_currency, &pswap_rewards_account, pswap_amount).unwrap();
+        let pswap_asset_id: AssetIdOf<T> = PSWAP.into();
+        let pswap_currency: CurrencyIdOf<T> = pswap_asset_id.into();
+        let pswap_amount = AmountOf::<T>::try_from(balance!(500)).map_err(|_|()).unwrap();
+        T::MultiCurrency::update_balance(pswap_currency.into(), &pswap_rewards_account, pswap_amount).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone())
     )

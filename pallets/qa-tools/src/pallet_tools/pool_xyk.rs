@@ -29,12 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{
-    balance, AssetInfoProvider, Balance, DEXInfo, DexIdOf, DexInfoProvider, TradingPair,
-    TradingPairSourceManager, XOR,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, Balance, DEXInfo, DexIdOf,
+    DexInfoProvider, TradingPair, TradingPairSourceManager, XOR,
 };
 use frame_support::dispatch::RawOrigin;
 use sp_arithmetic::traits::CheckedMul;
@@ -49,17 +48,25 @@ pub struct AssetPairInput<DEXId, AssetId> {
     pub asset_b: AssetId,
     /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
     pub price: Balance,
+    /// Custom amount of `asset_a` reserves. If not defined, the default value is used. `asset_b` reserves are calculated with `asset_a` reserves and `price`.
+    pub maybe_asset_a_reserves: Option<Balance>,
 }
 
 impl<DEXId, AssetId> AssetPairInput<DEXId, AssetId> {
-    // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1
-    // `asset_a`)
-    pub fn new(dex_id: DEXId, asset_a: AssetId, asset_b: AssetId, price: Balance) -> Self {
+    // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
+    pub fn new(
+        dex_id: DEXId,
+        asset_a: AssetId,
+        asset_b: AssetId,
+        price: Balance,
+        maybe_asset_a_reserves: Option<Balance>,
+    ) -> Self {
         Self {
             dex_id,
             asset_a,
             asset_b,
             price,
+            maybe_asset_a_reserves,
         }
     }
 }
@@ -104,6 +111,7 @@ pub fn initialize<T: Config + pool_xyk::Config>(
             asset_a,
             asset_b,
             price: expected_price,
+            maybe_asset_a_reserves,
         },
         AssetPairInput {
             price: actual_price,
@@ -141,20 +149,25 @@ pub fn initialize<T: Config + pool_xyk::Config>(
         )
         .map_err(|e| e.error)?;
 
-        // Some magic numbers taken from existing init code
-        // https://github.com/soramitsu/sora2-api-tests/blob/f590995abbd3b191a57b988ba3c10607a89d6f89/tests/testAccount/mintTokensForPairs.test.ts#L136
-        let value_a: BalanceUnit = if asset_a == XOR.into() {
-            balance!(1000000).into()
+        let value_a: BalanceUnit = if let Some(asset_a_reserves) = maybe_asset_a_reserves {
+            asset_a_reserves.into()
         } else {
-            balance!(10000).into()
+            // Some magic numbers taken from existing init code
+            // https://github.com/soramitsu/sora2-api-tests/blob/f590995abbd3b191a57b988ba3c10607a89d6f89/tests/testAccount/mintTokensForPairs.test.ts#L136
+            if asset_a == XOR.into() {
+                balance!(1000000).into()
+            } else {
+                balance!(10000).into()
+            }
         };
+
         let price = BalanceUnit::divisible(expected_price);
         let value_b = value_a
             .checked_mul(&price)
             .ok_or(Error::<T>::ArithmeticError)?;
 
-        assets::Pallet::<T>::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
-        assets::Pallet::<T>::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
+        T::AssetManager::mint_unchecked(&asset_a, &caller, *value_a.balance())?;
+        T::AssetManager::mint_unchecked(&asset_b, &caller, *value_b.balance())?;
 
         *actual_price = *(value_b / value_a).balance();
         pool_xyk::Pallet::<T>::deposit_liquidity(

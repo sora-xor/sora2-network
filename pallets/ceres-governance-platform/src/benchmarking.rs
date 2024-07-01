@@ -4,7 +4,7 @@
 
 use super::*;
 
-use common::{balance, CERES_ASSET_ID};
+use common::{balance, AssetInfoProvider, AssetManager, CERES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use sp_core::H256;
@@ -12,7 +12,6 @@ use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresGovernancePlatform;
-use assets::Pallet as Assets;
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
@@ -44,8 +43,10 @@ benchmarks! {
 
         frame_system::Pallet::<T>::inc_providers(&caller);
 
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(asset_id.into()).unwrap();
-        Assets::<T>::mint(
+
+        let owner: T::AccountId = T::AssetInfoProvider::get_asset_owner(&asset_id.into()).unwrap();
+
+        T::AssetManager::mint(
             RawOrigin::Signed(owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
@@ -94,8 +95,8 @@ benchmarks! {
 
         frame_system::Pallet::<T>::inc_providers(&caller);
 
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(asset_id.into()).unwrap();
-        Assets::<T>::mint(
+        let owner: T::AccountId = T::AssetInfoProvider::get_asset_owner(&asset_id.into()).unwrap();
+        T::AssetManager::mint(
             RawOrigin::Signed(owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
@@ -137,8 +138,8 @@ benchmarks! {
 
     frame_system::Pallet::<T>::inc_providers(&caller);
 
-    let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(asset_id.into()).unwrap();
-    Assets::<T>::mint(
+    let owner: T::AccountId = T::AssetInfoProvider::get_asset_owner(&asset_id.into()).unwrap();
+    T::AssetManager::mint(
         RawOrigin::Signed(owner).into(),
         CERES_ASSET_ID.into(),
         caller.clone(),

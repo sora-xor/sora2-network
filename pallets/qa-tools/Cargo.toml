@@ -24,7 +24,6 @@ sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "rel
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
-assets = { path = "../assets", default-features = false }
 band = { path = "../band", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 oracle-proxy = { path = "../oracle-proxy", default-features = false }
@@ -43,11 +42,11 @@ pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", bran
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+assets = { path = "../assets" }
 
 [features]
 default = ["std"]
 std = [
-    "assets/std",
     "band/std",
     "codec/std",
     "common/std",

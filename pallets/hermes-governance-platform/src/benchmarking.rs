@@ -5,7 +5,7 @@
 use super::*;
 
 use codec::{Decode, Encode};
-use common::{balance, HERMES_ASSET_ID};
+use common::{balance, AssetInfoProvider, AssetManager, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_support::BoundedVec;
@@ -18,7 +18,6 @@ use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
 use crate::Pallet as HermesGovernancePlatform;
-use assets::Pallet as Assets;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -47,12 +46,12 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = <T as Config>::AssetInfoProvider::get_asset_owner(&HERMES_ASSET_ID.clone().into()).unwrap();
         let mut options = BoundedVec::default();
         options.try_push("Yes".try_into().unwrap()).unwrap();
         options.try_push("No".try_into().unwrap()).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(owner).into(),
             HERMES_ASSET_ID.into(),
             caller.clone(),
@@ -89,12 +88,12 @@ benchmarks! {
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let hermes_amount = balance!(100000);
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = <T as Config>::AssetInfoProvider::get_asset_owner(&HERMES_ASSET_ID.clone().into()).unwrap();
         let mut options = BoundedVec::default();
         options.try_push("Yes".try_into().unwrap()).unwrap();
         options.try_push("No".try_into().unwrap()).unwrap();
 
-        Assets::<T>::mint(
+        T::AssetManager::mint(
             RawOrigin::Signed(owner).into(),
             HERMES_ASSET_ID.into(),
             caller.clone(),
@@ -125,7 +124,7 @@ benchmarks! {
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
         let current_timestamp = Timestamp::<T>::get();
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = <T as Config>::AssetInfoProvider::get_asset_owner(&HERMES_ASSET_ID.clone().into()).unwrap();
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
@@ -133,7 +132,7 @@ benchmarks! {
         options.try_push("Yes".try_into().unwrap()).unwrap();
         options.try_push("No".try_into().unwrap()).unwrap();
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(owner.clone()).into(),
             HERMES_ASSET_ID.into(),
             caller.clone(),
@@ -180,7 +179,7 @@ benchmarks! {
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (14400*1000u32).into();
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = <T as Config>::AssetInfoProvider::get_asset_owner(&HERMES_ASSET_ID.clone().into()).unwrap();
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
@@ -188,7 +187,7 @@ benchmarks! {
         options.try_push("Yes".try_into().unwrap()).unwrap();
         options.try_push("No".try_into().unwrap()).unwrap();
 
-        let _ = Assets::<T>::mint(
+        let _ = T::AssetManager::mint(
             RawOrigin::Signed(owner).into(),
             HERMES_ASSET_ID.into(),
             caller.clone(),
@@ -209,7 +208,7 @@ benchmarks! {
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
 
         let pallet_account: AccountIdOf<T> = PalletId(*b"hermsgov").into_account_truncating();
-        assert_ok!(Assets::<T>::transfer_from(
+        assert_ok!(T::AssetManager::transfer_from(
             &HERMES_ASSET_ID.into(),
             &caller,
             &pallet_account,

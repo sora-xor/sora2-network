@@ -8,7 +8,6 @@ homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
-serde = { version = "1.0.101", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3" }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
@@ -18,5 +17,4 @@ sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "rel
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
-common = { path = "../../../common" }
 pswap-distribution-runtime-api = { path = "../runtime-api" }

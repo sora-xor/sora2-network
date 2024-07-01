@@ -30,8 +30,8 @@
 
 use super::order_book_imported;
 
-use assets::AssetIdOf;
 use common::prelude::FixedWrapper;
+use common::AssetIdOf;
 use common::PriceVariant;
 use frame_system::pallet_prelude::BlockNumberFor;
 use order_book_imported::{

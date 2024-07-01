@@ -30,7 +30,7 @@
 
 use super::*;
 
-use common::{AssetId32, PredefinedAssetId, XOR};
+use common::{AssetId32, AssetIdOf, PredefinedAssetId, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 
@@ -38,17 +38,17 @@ use frame_system::RawOrigin;
 use crate::Pallet as BridgeProxy;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>> }
+    where_clause {where AssetIdOf<T>: From<AssetId32<PredefinedAssetId>> }
 
     add_limited_asset {
-        let asset_id: T::AssetId = XOR.into();
+        let asset_id: AssetIdOf<T> = XOR.into();
     }: _(RawOrigin::Root, asset_id)
     verify {
         assert!(LimitedAssets::<T>::get(asset_id));
     }
 
     remove_limited_asset {
-        let asset_id: T::AssetId = XOR.into();
+        let asset_id: AssetIdOf<T> = XOR.into();
         BridgeProxy::<T>::add_limited_asset(RawOrigin::Root.into(), asset_id)?;
     }: _(RawOrigin::Root, asset_id)
     verify {

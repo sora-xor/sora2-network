@@ -31,8 +31,8 @@
 use super::{alice, QaToolsPallet};
 use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount, SwapVariant};
 use common::{
-    assert_approx_eq, balance, fixed, AssetId32, AssetName, AssetSymbol, DEXId, LiquiditySource,
-    PredefinedAssetId, PriceVariant, SymbolName, XOR,
+    assert_approx_eq, balance, fixed, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXId,
+    LiquiditySource, PredefinedAssetId, PriceVariant, SymbolName, XOR,
 };
 use core::str::FromStr;
 use frame_support::assert_ok;
@@ -237,7 +237,7 @@ fn should_reject_deduce_only_with_uninitialized_reference_asset() {
 
 fn euro_init_input<T: qa_tools::Config>(
     expected_quote: pallet_tools::xst::SyntheticQuote,
-) -> pallet_tools::xst::SyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol> {
+) -> pallet_tools::xst::SyntheticInput<AssetIdOf<T>, <T as qa_tools::Config>::Symbol> {
     let symbol_name =
         SymbolName::from_str("EURO").expect("Failed to parse `symbol_name` as a symbol name");
     let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&symbol_name);
@@ -258,10 +258,13 @@ fn euro_init_input<T: qa_tools::Config>(
 
 /// Returns results of initialization
 fn test_synthetic_price_set<T: qa_tools::Config>(
-    synthetic_input: pallet_tools::xst::SyntheticInput<T::AssetId, <T as qa_tools::Config>::Symbol>,
+    synthetic_input: pallet_tools::xst::SyntheticInput<
+        AssetIdOf<T>,
+        <T as qa_tools::Config>::Symbol,
+    >,
     base_input: Option<pallet_tools::xst::BaseInput>,
     relayer: T::AccountId,
-) -> Vec<pallet_tools::xst::SyntheticOutput<T::AssetId>> {
+) -> Vec<pallet_tools::xst::SyntheticOutput<AssetIdOf<T>>> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let init_result =
         initialize_xst::<T>(base_input, vec![synthetic_input.clone()], relayer).unwrap();

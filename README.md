@@ -162,7 +162,6 @@ subcommands:
 ## Useful utilities
 
 - `utils/parse` - parses extrinsic blobs
-- `utils/wasm-builder` - a tool for building only WASM blobs (improves build times)
 
 ## Logging
 

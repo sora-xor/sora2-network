@@ -30,7 +30,7 @@
 
 use crate::Config;
 use codec::{Decode, Encode};
-use common::{balance, Balance, PriceVariant, TradingPairSourceManager};
+use common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, TradingPairSourceManager};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
@@ -124,7 +124,7 @@ pub struct FillInput<Moment, BlockNumber> {
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
 pub fn create_empty_batch_unchecked<T: Config>(
-    order_book_settings: Vec<(OrderBookId<T::AssetId, T::DEXId>, OrderBookAttributes)>,
+    order_book_settings: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, OrderBookAttributes)>,
 ) -> Result<(), DispatchError> {
     let to_create_ids: Vec<_> = order_book_settings
         .into_iter()
@@ -168,7 +168,7 @@ pub fn fill_batch_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
     settings: Vec<(
-        OrderBookId<T::AssetId, T::DEXId>,
+        OrderBookId<AssetIdOf<T>, T::DEXId>,
         FillInput<MomentOf<T>, BlockNumberFor<T>>,
     )>,
 ) -> Result<(), DispatchError> {
@@ -252,7 +252,7 @@ fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
 /// Fill a single order book.
 fn fill_order_book<T: Config>(
     data: &mut impl DataLayer<T>,
-    book_id: OrderBookId<T::AssetId, T::DEXId>,
+    book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
     settings: FillInput<MomentOf<T>, BlockNumberFor<T>>,
@@ -311,7 +311,7 @@ fn fill_order_book<T: Config>(
             .map(|(quote, base)| *(*quote * (*base)).balance())
             .sum();
         // mint required amount to make this extrinsic self-sufficient
-        assets::Pallet::<T>::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
+        T::AssetManager::mint_unchecked(&book_id.quote, &bids_owner, buy_quote_locked)?;
 
         // place buy orders
         place_multiple_orders(
@@ -360,7 +360,7 @@ fn fill_order_book<T: Config>(
         // total amount of assets to be locked
         let sell_base_locked: Balance = sell_orders.iter().map(|(_, base)| *base.balance()).sum();
         // mint required amount to make this extrinsic self-sufficient
-        assets::Pallet::<T>::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
+        T::AssetManager::mint_unchecked(&book_id.base, &asks_owner, sell_base_locked)?;
 
         // place sell orders
         place_multiple_orders(

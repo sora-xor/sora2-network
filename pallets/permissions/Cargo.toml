@@ -15,14 +15,13 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
+common = { path = "../../common", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 serde = { version = "1.0.101", features = ["derive"], default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
-
-common = { path = "../../common", default-features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -33,8 +32,8 @@ pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", bran
 default = ["std"]
 std = [
     "codec/std",
-    "scale-info/std",
     "common/std",
+    "scale-info/std",
     "frame-support/std",
     "frame-system/std",
     "serde/std",

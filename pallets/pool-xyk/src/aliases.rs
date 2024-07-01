@@ -28,13 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::DexIdOf;
+use common::{AssetIdOf, DexIdOf};
 
 use crate::operations::*;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-
-pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
 pub type TechAssetIdOf<T> = <T as technical::Config>::TechAssetId;
 

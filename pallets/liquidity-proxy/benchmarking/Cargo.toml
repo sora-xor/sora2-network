@@ -56,7 +56,6 @@ default = ["std"]
 std = [
     "assets/std",
     "codec/std",
-    "scale-info/std",
     "common/std",
     "dex-api/std",
     "dex-manager/std",
@@ -70,6 +69,7 @@ std = [
     "pool-xyk/std",
     "price-tools/std",
     "pswap-distribution/std",
+    "scale-info/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",

@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.3.0"
+version = "3.5.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -10,13 +10,8 @@ name = "framenode"
 path = "src/main.rs"
 
 [dependencies]
-derive_more = "0.99.13"
-exit-future = "0.2.0"
-futures = { version = "0.3.1", features = ["compat"] }
 futures-timer = "3.0.2"
 log = "0.4.8"
-parking_lot = "0.12.0"
-trie-root = "0.16.0"
 codec = { package = "parity-scale-codec", version = "3", features = [
     "derive",
     "chain-error",
@@ -29,17 +24,12 @@ serde_json = "1.0.61"
 jsonrpsee = { version = "0.16.2", features = ["server"] }
 # bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
-hex-literal = "0.4.1"
 
 framenode-chain-spec = { path = "chain_spec" }
 common = { path = "../common" }
 dex-api-rpc = { path = "../pallets/dex-api/rpc" }
 dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
-technical = { path = "../pallets/technical" }
-xor-fee = { path = "../pallets/xor-fee" }
-rewards = { path = "../pallets/rewards" }
 rewards-rpc = { path = "../pallets/rewards/rpc" }
-iroha-migration = { path = "../pallets/iroha-migration" }
 iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
@@ -51,7 +41,6 @@ vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
 beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", optional = true }
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }
 
 bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
 

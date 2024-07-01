@@ -49,12 +49,13 @@ use sp_runtime::DispatchError;
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
-use assets::AssetIdOf;
+#[cfg(feature = "std")]
 use common::balance;
 use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
+use common::AssetIdOf;
 use common::{eth, AccountIdOf, Balance, OnValBurned, VAL};
 
 #[cfg(feature = "include-real-files")]
@@ -313,7 +314,7 @@ pub mod pallet {
     use super::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config: frame_system::Config + technical::Config {
         /// How often the rewards data are being updated
         const UPDATE_FREQUENCY: BlockNumberFor<Self>;
         /// Vested amount is updated every `BLOCKS_PER_DAY` blocks
@@ -551,7 +552,7 @@ pub mod pallet {
 
     /// The storage of available UMI NFTs.
     #[pallet::storage]
-    pub type UmiNfts<T: Config> = StorageValue<_, Vec<T::AssetId>, ValueQuery>;
+    pub type UmiNfts<T: Config> = StorageValue<_, Vec<AssetIdOf<T>>, ValueQuery>;
 
     /// Stores whether address already claimed UMI NFT rewards.
     #[pallet::storage]
@@ -563,7 +564,7 @@ pub mod pallet {
         pub val_owners: Vec<(EthAddress, RewardInfo)>,
         pub pswap_farm_owners: Vec<(EthAddress, Balance)>,
         pub pswap_waifu_owners: Vec<(EthAddress, Balance)>,
-        pub umi_nfts: Vec<T::AssetId>,
+        pub umi_nfts: Vec<AssetIdOf<T>>,
     }
 
     impl<T: Config> Default for GenesisConfig<T> {

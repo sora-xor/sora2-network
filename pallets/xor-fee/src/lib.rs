@@ -32,8 +32,8 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider,
+    AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::InvalidTransaction;
@@ -65,6 +65,7 @@ pub mod weights;
 #[cfg(test)]
 pub mod mock;
 
+pub mod migrations;
 #[cfg(test)]
 mod tests;
 
@@ -81,7 +82,6 @@ type BalanceOf<T> =
     <<T as Config>::XorCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
-type Assets<T> = assets::Pallet<T>;
 
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
@@ -428,6 +428,24 @@ pub trait WithdrawFee<T: Config> {
     ) -> Result<(T::AccountId, Option<NegativeImbalanceOf<T>>), DispatchError>;
 }
 
+/// Trait for dynamic fee update via multiplier
+pub trait CalculateMultiplier<AssetId, Error> {
+    /// Parameters:
+    /// `input_asset` is asset id which price should be fetched;
+    /// `ref_asset` is asset id in which price will be fetched
+    fn calculate_multiplier(input_asset: &AssetId, ref_asset: &AssetId)
+        -> Result<FixedU128, Error>;
+}
+
+impl<AssetId> CalculateMultiplier<AssetId, DispatchError> for () {
+    fn calculate_multiplier(
+        _input_asset: &AssetId,
+        _ref_asset: &AssetId,
+    ) -> Result<FixedU128, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
 impl<T: Config> Pallet<T>
 where
     CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
@@ -588,7 +606,7 @@ impl<T: Config> Pallet<T> {
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
-        Assets::<T>::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+        T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         match T::LiquidityProxy::exchange(
@@ -627,19 +645,14 @@ impl<T: Config> Pallet<T> {
                         error!("failed to exchange VAL to TBCD, burning VAL instead of buy back: {err:?}");
                     }
                 }
-                assets::Pallet::<T>::burn_from(
-                    &val,
-                    &tech_account_id,
-                    &tech_account_id,
-                    val_to_burn,
-                )?;
+                T::AssetManager::burn_from(&val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
                 error!(
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
                     xor_to_val, e
                 );
-                Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+                T::AssetManager::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
         }
 
@@ -654,27 +667,29 @@ pub use weights::WeightInfo;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_transaction_payment::Config + assets::Config
+        frame_system::Config + pallet_transaction_payment::Config + common::Config
     {
+        type PermittedSetPeriod: EnsureOrigin<Self::RuntimeOrigin>;
+        type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
-        type XorId: Get<Self::AssetId>;
-        type ValId: Get<Self::AssetId>;
-        type TbcdId: Get<Self::AssetId>;
+        type XorId: Get<AssetIdOf<Self>>;
+        type ValId: Get<AssetIdOf<Self>>;
+        type TbcdId: Get<AssetIdOf<Self>>;
         type ReferrerWeight: Get<u32>;
         type XorBurnedWeight: Get<u32>;
         type XorIntoValBurnedWeight: Get<u32>;
         type BuyBackTBCDPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>, Self::AccountId>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
@@ -684,14 +699,14 @@ pub mod pallet {
             Self::FullIdentification,
         >;
         type ReferrerAccountProvider: ReferrerAccountProvider<Self::AccountId>;
-        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -699,7 +714,31 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        #[cfg(feature = "wip")] // Dynamic fee
+        fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
+            let update_period = Self::update_period(); // 1 read
+            let mut weight: Weight = T::DbWeight::get().reads(1);
+            if !update_period.is_zero()
+                && current_block % update_period == BlockNumberFor::<T>::zero()
+            {
+                match T::DynamicMultiplier::calculate_multiplier(
+                    &common::XOR.into(),
+                    &common::DAI.into(),
+                ) {
+                    Ok(new_multiplier) => {
+                        <Multiplier<T>>::put(new_multiplier); // 1 write
+                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
+                        weight += T::DbWeight::get().writes(1);
+                    }
+                    Err(e) => {
+                        frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                    }
+                }
+            }
+            weight
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -718,6 +757,44 @@ pub mod pallet {
             Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
             Ok(().into())
         }
+
+        /// Set new update period for `xor_fee::Multiplier` updating
+        /// Set 0 to stop updating
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
+        pub fn set_fee_update_period(
+            origin: OriginFor<T>,
+            new_period: <T as frame_system::Config>::BlockNumber,
+        ) -> DispatchResultWithPostInfo {
+            T::PermittedSetPeriod::ensure_origin(origin)?;
+            #[cfg(feature = "wip")] // Dynamic fee
+            {
+                <UpdatePeriod<T>>::put(new_period);
+                Self::deposit_event(Event::PeriodUpdated(new_period));
+            }
+            Ok(().into())
+        }
+
+        /// Set new small reference amount `xor_fee::SmallReferenceAmount`
+        /// Small fee should tend to the amount value
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_small_reference_amount())]
+        pub fn set_small_reference_amount(
+            origin: OriginFor<T>,
+            new_reference_amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !new_reference_amount.is_zero(),
+                Error::<T>::InvalidSmallReferenceAmount
+            );
+            ensure_root(origin)?;
+            #[cfg(feature = "wip")] // Dynamic fee
+            {
+                <SmallReferenceAmount<T>>::put(new_reference_amount);
+                Self::deposit_event(Event::SmallReferenceAmountUpdated(new_reference_amount));
+            }
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -730,7 +807,35 @@ pub mod pallet {
         /// New multiplier for weight to fee conversion is set
         /// (*1_000_000_000_000_000_000). [New value]
         WeightToFeeMultiplierUpdated(FixedU128),
+        #[cfg(feature = "wip")] // Dynamic fee
+        /// New block number to update multiplier is set. [New value]
+        PeriodUpdated(<T as frame_system::Config>::BlockNumber),
+        #[cfg(feature = "wip")] // Dynamic fee
+        /// New small reference amount set. [New value]
+        SmallReferenceAmountUpdated(Balance),
     }
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Failed to calculate new multiplier.
+        MultiplierCalculationFailed,
+        /// `SmallReferenceAmount` is unsupported
+        InvalidSmallReferenceAmount,
+    }
+
+    #[cfg(feature = "wip")] // Dynamic fee
+    /// Small fee value should be `SmallReferenceAmount` in reference asset id
+    #[pallet::storage]
+    #[pallet::getter(fn small_reference_amount)]
+    pub type SmallReferenceAmount<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+    #[cfg(feature = "wip")] // Dynamic fee
+    /// Next block number to update multiplier
+    /// If it is necessary to stop updating the multiplier,
+    /// set 0 value
+    #[pallet::storage]
+    #[pallet::getter(fn update_period)]
+    pub type UpdatePeriod<T> =
+        StorageValue<_, <T as frame_system::Config>::BlockNumber, ValueQuery>;
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]

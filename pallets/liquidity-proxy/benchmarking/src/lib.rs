@@ -34,8 +34,8 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use common::{
-    balance, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry, LiquiditySourceFilter,
-    LiquiditySourceType, VAL, XOR, XSTUSD,
+    balance, AssetIdOf, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry,
+    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
@@ -107,8 +107,8 @@ benchmarks! {
         let to_asset: T::AssetId = VAL.into();
     }: {
         liquidity_proxy::Pallet::<T>::check_indivisible_assets(
-            &from_asset,
-            &to_asset
+            &from_asset.into(),
+            &to_asset.into()
         ).unwrap();
     }
     verify {
@@ -116,8 +116,8 @@ benchmarks! {
 
     new_trivial {
         let dex_info = <T as pool_xyk::Config>::DexInfoProvider::get_dex_info(&DEX.into())?;
-        let from_asset: T::AssetId = XSTUSD.into();
-        let to_asset: T::AssetId = VAL.into();
+        let from_asset: AssetIdOf<T> = XSTUSD.into();
+        let to_asset: AssetIdOf<T> = VAL.into();
     }: {
         ExchangePath::<T>::new_trivial(
             &dex_info,
@@ -134,7 +134,7 @@ benchmarks! {
         let sources = vec![LiquiditySourceType::XYKPool, LiquiditySourceType::MulticollateralBondingCurvePool, LiquiditySourceType::XSTPool];
         let filter = FilterMode::Disabled;
     }: {
-        liquidity_proxy::Pallet::<T>::is_forbidden_filter(&from_asset, &to_asset, &sources, &filter);
+        liquidity_proxy::Pallet::<T>::is_forbidden_filter(&from_asset.into(), &to_asset.into(), &sources, &filter);
     }
     verify {
     }
@@ -152,7 +152,7 @@ benchmarks! {
             .to_vec()
         );
     }: {
-        T::LiquidityRegistry::list_liquidity_sources(&from_asset, &to_asset, &filter).unwrap();
+        T::LiquidityRegistry::list_liquidity_sources(&from_asset.into(), &to_asset.into(), &filter).unwrap();
     }
     verify {
     }

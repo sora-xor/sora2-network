@@ -29,9 +29,7 @@ sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk.git", branch
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-dex-api = { path = "../dex-api", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 technical = { path = "../technical", default-features = false }
@@ -54,6 +52,7 @@ price-tools = { path = "../price-tools" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 vested-rewards = { path = "../vested-rewards" }
+assets = { path = "../assets" }
 
 [features]
 default = ['std']
@@ -71,9 +70,7 @@ std = [
     'sp-std/std',
     'tokens/std',
     'pool-xyk/std',
-    "assets/std",
     "common/std",
-    "dex-api/std",
     "permissions/std",
     "pswap-distribution/std",
     "technical/std",

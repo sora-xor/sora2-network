@@ -47,12 +47,12 @@ technical = { path = "../technical" }
 [features]
 default = ['std']
 std = [
+    'assets/std',
     'codec/std',
     "scale-info/std",
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
-    'serde/std',
     'sp-std/std',
     'tokens/std',
     'traits/std',

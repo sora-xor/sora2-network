@@ -32,8 +32,8 @@ use crate::{
     AggregatedAsks, AggregatedBids, Asks, Bids, Config, DataLayer, Error, LimitOrder, LimitOrders,
     MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
 };
-use assets::AssetIdOf;
 use common::storage::DecodeIsFullDoubleMap;
+use common::AssetIdOf;
 use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;

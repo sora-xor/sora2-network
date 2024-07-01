@@ -191,6 +191,7 @@ fn should_place_nft_limit_order() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -762,6 +763,7 @@ fn should_not_place_invalid_nft_limit_order() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )

@@ -23,13 +23,7 @@ frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", branch 
 assets = { path = "../../assets", default-features = false }
 common = { path = "../../../common", default-features = false }
 order-book = { path = "..", default-features = false }
-technical = { path = "../../technical", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-hex-literal = "0.4.1"
-serde = { version = "1.0", features = [
-    "derive",
-], optional = true, default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -47,16 +41,12 @@ default = ["std"]
 std = [
     "assets/std",
     "common/std",
-    "codec/std",
     "frame-support/std",
     "frame-system/std",
     "order-book/std",
     "pallet-timestamp/std",
-    "scale-info/std",
-    "serde",
     "sp-runtime/std",
     "sp-std/std",
-    "technical/std",
     "trading-pair/std",
 ]
 

@@ -45,8 +45,7 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use assets::AssetIdOf;
-use common::{AssetInfoProvider, PriceVariant, VAL, XOR};
+use common::{AssetIdOf, AssetInfoProvider, PriceVariant, VAL, XOR};
 use frame_system::RawOrigin;
 use order_book_benchmarking_imported::Config;
 use order_book_imported::Pallet as OrderBookPallet;

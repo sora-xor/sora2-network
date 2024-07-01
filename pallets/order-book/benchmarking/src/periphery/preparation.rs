@@ -42,9 +42,8 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, Scalar};
-use common::{balance, Balance, PriceVariant, ETH, VAL, XOR};
+use common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
@@ -215,8 +214,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
         quote: XOR.into(),
     };
 
-    assets::Pallet::<T>::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000))
-        .unwrap();
+    T::AssetManager::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000)).unwrap();
 
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Root.into(),
@@ -235,12 +233,8 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     // mint other base asset as well
     let mut users = users
         .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id_2.base,
-                user,
-                *order_amount_2.balance(),
-            )
-            .unwrap();
+            T::AssetManager::mint_unchecked(&order_book_id_2.base, user, *order_amount_2.balance())
+                .unwrap();
         })
         .peekable();
 
@@ -261,8 +255,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     debug!("Data committed!");
 
     let lifespan = to_fill.saturated_into::<MomentOf<T>>();
-    assets::Pallet::<T>::mint_unchecked(&order_book_id.base, &author, *order_amount.balance())
-        .unwrap();
+    T::AssetManager::mint_unchecked(&order_book_id.base, &author, *order_amount.balance()).unwrap();
 
     let expected_user_orders = sp_std::cmp::min(
         fill_settings.max_orders_per_user - 1,
@@ -364,7 +357,7 @@ pub fn cancel_limit_order<T: Config>(
     // we are going to fill this lifespan, so skipping it for possible future use of the iter
     let mut _lifespans = lifespans.skip_while(|b| *b == to_fill);
 
-    assets::Pallet::<T>::mint_unchecked(
+    T::AssetManager::mint_unchecked(
         &order_book.order_book_id.quote,
         &author,
         *target_price.checked_mul(&order_amount).unwrap().balance(),
@@ -401,8 +394,7 @@ pub fn cancel_limit_order<T: Config>(
         quote: XOR.into(),
     };
 
-    assets::Pallet::<T>::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000))
-        .unwrap();
+    T::AssetManager::mint_unchecked(&ETH.into(), &accounts::bob::<T>(), balance!(1000)).unwrap();
 
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Root.into(),
@@ -421,12 +413,8 @@ pub fn cancel_limit_order<T: Config>(
     // mint other base asset as well
     let mut users = users
         .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id_2.base,
-                user,
-                *order_amount_2.balance(),
-            )
-            .unwrap();
+            T::AssetManager::mint_unchecked(&order_book_id_2.base, user, *order_amount_2.balance())
+                .unwrap();
         })
         .peekable();
     fill_expiration_schedule(
@@ -454,19 +442,28 @@ pub fn cancel_limit_order<T: Config>(
 /// Prepare benchmark for `quote` extrinsic.
 pub fn quote<T: Config>(
     fill_settings: FillSettings<T>,
-) -> (T::DEXId, T::AssetId, T::AssetId, QuoteAmount<Balance>, bool) {
+) -> (
+    T::DEXId,
+    AssetIdOf<T>,
+    AssetIdOf<T>,
+    QuoteAmount<Balance>,
+    bool,
+) {
     let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
         dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
     };
+
+    let max_lot_size = balance!(1000);
+
     OrderBookPallet::<T>::create_orderbook(
         RawOrigin::Root.into(),
         order_book_id,
         balance!(0.00001),
         balance!(0.00001),
         balance!(1),
-        balance!(1000),
+        max_lot_size,
     )
     .expect("failed to create an order book");
     let mut order_book = <OrderBooks<T>>::get(order_book_id).unwrap();
@@ -481,19 +478,6 @@ pub fn quote<T: Config>(
         false,
     );
 
-    let (total_bids_amount, _) = order_book
-        .sum_market(
-            data_layer
-                .get_aggregated_bids(&order_book.order_book_id)
-                .iter()
-                .rev(),
-            None,
-            false,
-        )
-        .unwrap();
-    assert!(total_bids_amount.is_base());
-    let total_bids_base_amount = total_bids_amount.value();
-
     debug!("Committing data...");
     <OrderBooks<T>>::insert(order_book_id, order_book);
     data_layer.commit();
@@ -502,7 +486,7 @@ pub fn quote<T: Config>(
     let dex_id = order_book_id.dex_id;
     let input_asset_id = order_book_id.base;
     let output_asset_id = order_book_id.quote;
-    let amount = QuoteAmount::with_desired_input(*total_bids_base_amount.balance());
+    let amount = QuoteAmount::with_desired_input(max_lot_size);
     let deduce_fee = true;
     (dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
 }
@@ -549,13 +533,14 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         let creator = accounts::bob::<T>();
         frame_system::Pallet::<T>::inc_providers(&creator);
 
-        let nft = assets::Pallet::<T>::register_from(
+        let nft = T::AssetManager::register_from(
             &accounts::bob::<T>(),
             common::AssetSymbol(b"NFT".to_vec()),
             common::AssetName(b"Nft".to_vec()),
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -613,12 +598,8 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         .calculate_deal(input, output, quote_amount, &mut data_layer)
         .unwrap();
 
-    assets::Pallet::<T>::mint_unchecked(
-        &order_book_id.base,
-        &author,
-        *market_order_amount.balance(),
-    )
-    .unwrap();
+    T::AssetManager::mint_unchecked(&order_book_id.base, &author, *market_order_amount.balance())
+        .unwrap();
 
     debug!("Committing data...");
     data_layer.commit();

@@ -35,9 +35,9 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
-    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
+    fixed, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, BuyBackHandler,
+    DexInfoProvider, EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
@@ -63,8 +63,6 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 type DexIdOf<T> = <T as common::Config>::DEXId;
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 
 pub use weights::WeightInfo;
@@ -147,7 +145,7 @@ impl<T: Config> Pallet<T> {
             });
             let incentives_asset_id = T::GetIncentiveAssetId::get();
             let tech_account_id = T::GetTechnicalAccountId::get();
-            let _result = Assets::<T>::transfer_from(
+            let _result = T::AssetManager::transfer_from(
                 &incentives_asset_id,
                 &tech_account_id,
                 &account_id,
@@ -171,43 +169,67 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-        let base_total = Assets::<T>::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
-        if base_total == 0 {
+        let base_chameleon_asset_id =
+            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
+                &dex_info.base_asset_id,
+            );
+        let base_total = <T as Config>::AssetInfoProvider::free_balance(
+            &dex_info.base_asset_id,
+            &fees_account_id,
+        )?;
+        let chameleon_total = if let Some(asset_id) = base_chameleon_asset_id {
+            <T as Config>::AssetInfoProvider::free_balance(&asset_id, &fees_account_id)?
+        } else {
+            0
+        };
+        if base_total == 0 && chameleon_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
                 dex_id.clone(),
                 fees_account_id.clone(),
             ));
             return Ok(());
         }
-        let outcome = T::LiquidityProxy::exchange(
-            dex_id,
-            fees_account_id,
-            fees_account_id,
-            &dex_info.base_asset_id,
-            &T::GetIncentiveAssetId::get(),
-            SwapAmount::with_desired_input(base_total.clone(), Balance::zero()),
-            LiquiditySourceFilter::with_allowed(
-                dex_id.clone(),
-                [LiquiditySourceType::XYKPool].into(),
-            ),
-        );
-        match outcome {
-            Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
-                dex_id.clone(),
-                fees_account_id.clone(),
-                dex_info.base_asset_id,
-                base_total,
-                T::GetIncentiveAssetId::get(),
-                swap_outcome.amount,
-            )),
-            Err(error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
-                dex_id.clone(),
-                fees_account_id.clone(),
-                dex_info.base_asset_id,
-                base_total,
-                T::GetIncentiveAssetId::get(),
-                error,
-            )),
+        for (asset_id, balance) in Some((dex_info.base_asset_id, base_total))
+            .into_iter()
+            .chain(
+                base_chameleon_asset_id
+                    .map(|x| (x, chameleon_total))
+                    .into_iter(),
+            )
+        {
+            if balance == 0 {
+                return Ok(());
+            }
+            let outcome = T::LiquidityProxy::exchange(
+                dex_id,
+                fees_account_id,
+                fees_account_id,
+                &asset_id,
+                &T::GetIncentiveAssetId::get(),
+                SwapAmount::with_desired_input(balance.clone(), Balance::zero()),
+                LiquiditySourceFilter::with_allowed(
+                    dex_id.clone(),
+                    [LiquiditySourceType::XYKPool].into(),
+                ),
+            );
+            match outcome {
+                Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                    asset_id,
+                    balance,
+                    T::GetIncentiveAssetId::get(),
+                    swap_outcome.amount,
+                )),
+                Err(error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                    asset_id,
+                    balance,
+                    T::GetIncentiveAssetId::get(),
+                    error,
+                )),
+            }
         }
         Ok(())
     }
@@ -229,7 +251,10 @@ impl<T: Config> Pallet<T> {
             // Get state of incentive availability and corresponding definitions.
             let incentive_asset_id = T::GetIncentiveAssetId::get();
             let pool_tokens_total = T::PoolXykPallet::total_issuance(&pool_account)?;
-            let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
+            let incentive_total = <T as Config>::AssetInfoProvider::free_balance(
+                &incentive_asset_id,
+                &fees_account_id,
+            )?;
             if incentive_total == 0 || pool_tokens_total == 0 {
                 Self::deposit_event(Event::<T>::NothingToDistribute(
                     dex_id.clone(),
@@ -279,7 +304,7 @@ impl<T: Config> Pallet<T> {
                     .saturating_add(undistributed_lp_amount);
             }
 
-            assets::Pallet::<T>::mint_to(
+            T::AssetManager::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
@@ -314,12 +339,12 @@ impl<T: Config> Pallet<T> {
     fn calculate_and_burn_distribution(
         fees_account_id: &T::AccountId,
         tech_account_id: &T::AccountId,
-        incentive_asset_id: &T::AssetId,
+        incentive_asset_id: &AssetIdOf<T>,
         incentive_total: Balance,
     ) -> Result<PswapRemintInfo, DispatchError> {
         let distribution = Self::calculate_pswap_distribution(incentive_total)?;
-        assets::Pallet::<T>::burn_from(
-            &incentive_asset_id,
+        T::AssetManager::burn_from(
+            incentive_asset_id,
             tech_account_id,
             fees_account_id,
             incentive_total,
@@ -443,23 +468,26 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, DEXInfo, XykPool};
+    use common::AssetIdOf;
+    use common::{
+        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description,
+        XykPool,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime;
     use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config + common::Config + technical::Config + tokens::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type GetIncentiveAssetId: Get<Self::AssetId>;
-        type GetTBCDAssetId: Get<Self::AssetId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type GetIncentiveAssetId: Get<AssetIdOf<Self>>;
+        type GetTBCDAssetId: Get<AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
             + From<Balance>
@@ -472,9 +500,20 @@ pub mod pallet {
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
-        type PoolXykPallet: XykPool<Self::AccountId, Self::AssetId>;
-        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type PoolXykPallet: XykPool<Self::AccountId, AssetIdOf<Self>>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.

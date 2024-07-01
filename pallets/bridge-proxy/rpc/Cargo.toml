@@ -22,5 +22,4 @@ sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = 
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
 bridge-proxy-runtime-api = { path = "../runtime-api" }
-common = { path = "../../../common" }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git" }

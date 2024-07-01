@@ -9,7 +9,6 @@ repository = 'https://github.com/sora-xor/sora2-network'
 version = "0.1.0"
 
 [dependencies]
-serde = { version = "1.0.101", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3" }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
@@ -20,4 +19,3 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "re
 sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 eth-bridge = { path = "../" }
 eth-bridge-runtime-api = { path = "../runtime-api" }
-common = { path = "../../../common" }

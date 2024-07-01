@@ -53,12 +53,10 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
-    'serde/std',
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
     "common/std",
-    "assets/std",
     "technical/std",
 ]
 

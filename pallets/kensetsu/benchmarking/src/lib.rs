@@ -31,21 +31,25 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
 
-use assets::AssetIdOf;
 use codec::Decode;
 use common::{
-    balance, AssetId32, Balance, DEXId, PredefinedAssetId, PriceToolsProvider, PriceVariant, DAI,
-    KEN, KUSD, XOR,
+    balance, AssetId32, AssetIdOf, AssetManager, Balance, DEXId, PredefinedAssetId,
+    PriceToolsProvider, PriceVariant, SymbolName, DAI, KEN, KUSD, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use kensetsu::{BorrowTax, CdpId, CollateralInfos, CollateralRiskParameters, Event};
+use kensetsu::{
+    BorrowTax, BorrowTaxes, CdpId, CdpType, CollateralInfos, CollateralRiskParameters, Event,
+    KarmaBorrowTax, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
+    StablecoinParameters, TbcdBorrowTax,
+};
 use price_tools::AVG_BLOCK_SPAN;
 use sp_arithmetic::{Perbill, Percent};
 use sp_core::Get;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::FixedU128;
+use sp_std::vec;
 
 pub struct Pallet<T: Config>(kensetsu::Pallet<T>);
 pub trait Config:
@@ -63,16 +67,29 @@ fn caller<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-/// Risk manager account id
-fn risk_manager<T: Config>() -> T::AccountId {
-    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+/// Configures Kensetsu Dollar stablecoin pegged to DAI.
+pub fn set_kensetsu_dollar_stablecoin<T: Config>() {
+    StablecoinInfos::<T>::set::<AssetIdOf<T>>(
+        KUSD.into(),
+        Some(kensetsu::StablecoinInfo {
+            bad_debt: 0,
+            stablecoin_parameters: StablecoinParameters {
+                peg_asset: PegAsset::SoraAssetId(DAI.into()),
+                minimal_stability_fee_accrue: balance!(0),
+            },
+        }),
+    );
 }
 
 /// Sets XOR as collateral type with default risk parameters
 fn set_xor_as_collateral_type<T: Config>() {
-    CollateralInfos::<T>::set::<AssetIdOf<T>>(
-        XOR.into(),
+    set_kensetsu_dollar_stablecoin::<T>();
+
+    CollateralInfos::<T>::set(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        },
         Some(kensetsu::CollateralInfo {
             risk_parameters: CollateralRiskParameters {
                 hard_cap: Balance::MAX,
@@ -81,7 +98,8 @@ fn set_xor_as_collateral_type<T: Config>() {
                 stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
                 minimal_collateral_deposit: balance!(0),
             },
-            kusd_supply: balance!(0),
+            total_collateral: balance!(0),
+            stablecoin_supply: balance!(0),
             last_fee_update_time: Default::default(),
             interest_coefficient: FixedU128::one(),
         }),
@@ -94,8 +112,10 @@ fn create_cdp_with_xor<T: Config>() -> CdpId {
         RawOrigin::Signed(caller::<T>()).into(),
         XOR.into(),
         balance!(0),
+        KUSD.into(),
         balance!(0),
         balance!(0),
+        CdpType::Type2,
     )
     .expect("Shall create CDP");
     kensetsu::NextCDPId::<T>::get()
@@ -103,7 +123,7 @@ fn create_cdp_with_xor<T: Config>() -> CdpId {
 
 /// Mints XOR and deposited as collateral to CDP
 fn deposit_xor_collateral<T: Config>(cdp_id: CdpId, amount: Balance) {
-    assets::Pallet::<T>::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
         XOR.into(),
@@ -120,30 +140,36 @@ fn deposit_xor_collateral<T: Config>(cdp_id: CdpId, amount: Balance) {
 
 /// Sets liquidation ratio too low, making CDPs unsafe
 fn make_cdps_unsafe<T: Config>() {
-    CollateralInfos::<T>::mutate::<AssetIdOf<T>, _, _>(XOR.into(), |info| {
-        if let Some(info) = info.as_mut() {
-            info.risk_parameters = CollateralRiskParameters {
-                hard_cap: Balance::MAX,
-                max_liquidation_lot: balance!(100),
-                liquidation_ratio: Perbill::from_percent(1),
-                stability_fee_rate: FixedU128::zero(),
-                minimal_collateral_deposit: balance!(0),
+    CollateralInfos::<T>::mutate(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        },
+        |info| {
+            if let Some(info) = info.as_mut() {
+                info.risk_parameters = CollateralRiskParameters {
+                    hard_cap: Balance::MAX,
+                    max_liquidation_lot: balance!(100),
+                    liquidation_ratio: Perbill::from_percent(1),
+                    stability_fee_rate: FixedU128::zero(),
+                    minimal_collateral_deposit: balance!(0),
+                }
             }
-        }
-    });
+        },
+    );
 }
 
 /// Initializes and adds liquidity to XYK pool XOR/asset_id.
 fn initialize_xyk_pool<T: Config>(asset_id: AssetIdOf<T>) {
     let amount = balance!(1000000);
-    assets::Pallet::<T>::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
         XOR.into(),
         amount.try_into().unwrap(),
     )
     .expect("Shall mint XOR");
-    assets::Pallet::<T>::update_balance(
+    T::AssetManager::update_balance(
         RawOrigin::Root.into(),
         caller::<T>(),
         asset_id,
@@ -211,21 +237,17 @@ fn initialize_liquidity_sources<T: Config>() {
 
 benchmarks! {
     where_clause {
-        where T::AssetId: From<AssetId32<PredefinedAssetId>>
+        where
+            AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>,
+            T::Moment: From<u32>,
     }
 
     create_cdp {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         let collateral = balance!(10);
         let debt = balance!(1);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::<T>(),
             XOR.into(),
@@ -237,8 +259,10 @@ benchmarks! {
             RawOrigin::Signed(caller::<T>()).into(),
             XOR.into(),
             collateral,
+            KUSD.into(),
             debt,
-            debt
+            debt,
+            CdpType::Type2,
         ).unwrap();
     }
 
@@ -253,7 +277,7 @@ benchmarks! {
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
         let amount = balance!(10);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::<T>(),
             XOR.into(),
@@ -268,14 +292,8 @@ benchmarks! {
     }
 
     borrow {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         let cdp_id = create_cdp_with_xor::<T>();
         let amount = balance!(10);
         deposit_xor_collateral::<T>(cdp_id, amount);
@@ -290,18 +308,12 @@ benchmarks! {
     }
 
     repay_debt {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
         let amount = balance!(10);
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(1);
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt, debt)
             .expect("Shall borrow");
     }: {
@@ -313,18 +325,12 @@ benchmarks! {
     }
 
     liquidate {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
         let amount = balance!(100);
         deposit_xor_collateral::<T>(cdp_id, amount);
         let debt = balance!(50);
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
         kensetsu::Pallet::<T>::borrow(RawOrigin::Signed(caller::<T>()).into(), cdp_id, debt, debt)
             .expect("Shall borrow");
         make_cdps_unsafe::<T>();
@@ -333,35 +339,30 @@ benchmarks! {
     }
 
     accrue {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
         initialize_liquidity_sources::<T>();
         set_xor_as_collateral_type::<T>();
         let cdp_id = create_cdp_with_xor::<T>();
-        let amount = balance!(10);
+        let amount = balance!(1000);
         deposit_xor_collateral::<T>(cdp_id, amount);
-        let debt = balance!(1);
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            Balance::MAX,
-        ).expect("Shall update hard cap");
+        let debt = balance!(100);
         kensetsu::Pallet::<T>::borrow(
             RawOrigin::Signed(caller::<T>()).into(),
             cdp_id,
             debt,
             debt
         ).expect("Shall borrow");
+        pallet_timestamp::Pallet::<T>::set_timestamp(1.into());
     }: {
         kensetsu::Pallet::<T>::accrue(RawOrigin::Signed(caller::<T>()).into(), cdp_id).unwrap();
     }
 
     update_collateral_risk_parameters {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
+        set_xor_as_collateral_type::<T>();
     }: {
         kensetsu::Pallet::<T>::update_collateral_risk_parameters(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
+            RawOrigin::Root.into(),
             XOR.into(),
+            KUSD.into(),
             CollateralRiskParameters {
                 hard_cap: balance!(1000),
                 liquidation_ratio: Perbill::from_percent(50),
@@ -372,57 +373,47 @@ benchmarks! {
         ).unwrap();
     }
 
-    update_hard_cap_total_supply {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
-    }: {
-        kensetsu::Pallet::<T>::update_hard_cap_total_supply(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            balance!(1000)
-        ).unwrap();
-    }
-
     update_borrow_tax {
-        let new_borrow_tax = Percent::from_percent(1);
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
+        let new_borrow_taxes = BorrowTaxes{
+            ken_borrow_tax: Percent::from_percent(1),
+            karma_borrow_tax: Percent::from_percent(2),
+            tbcd_borrow_tax: Percent::from_percent(3),
+        };
     }:{
         kensetsu::Pallet::<T>::update_borrow_tax(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
-            new_borrow_tax
+            RawOrigin::Root.into(),
+            new_borrow_taxes.clone()
         ).unwrap();
     }
     verify {
-        let old_borrow_tax = Percent::default();
+        let old_borrow_taxes = BorrowTaxes::default();
         frame_system::Pallet::<T>::assert_has_event(
             <T as kensetsu::Config>::RuntimeEvent::from(
                 Event::<T>::BorrowTaxUpdated {
-                    new_borrow_tax,
-                    old_borrow_tax,
+                    old_borrow_taxes,
+                    new_borrow_taxes: new_borrow_taxes.clone(),
                 }
             ).into()
         );
-        assert_eq!(new_borrow_tax, BorrowTax::<T>::get());
+        assert_eq!(new_borrow_taxes.ken_borrow_tax, BorrowTax::<T>::get());
+        assert_eq!(new_borrow_taxes.karma_borrow_tax, KarmaBorrowTax::<T>::get());
+        assert_eq!(new_borrow_taxes.tbcd_borrow_tax, TbcdBorrowTax::<T>::get());
     }
 
-    update_liquidation_penalty {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
-    }:{
+    update_liquidation_penalty {}:{
         kensetsu::Pallet::<T>::update_liquidation_penalty(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
+            RawOrigin::Root.into(),
             Percent::from_percent(10)
         ).unwrap();
     }
 
     withdraw_profit {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), risk_manager::<T>())
-            .expect("Must set risk manager");
+        set_kensetsu_dollar_stablecoin::<T>();
         let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
             &T::TreasuryTechAccount::get(),
         ).expect("Shall resolve tech account id");
         let amount = balance!(10);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             technical_account_id,
             KUSD.into(),
@@ -431,30 +422,57 @@ benchmarks! {
         .expect("Shall mint KUSD");
     }:{
         kensetsu::Pallet::<T>::withdraw_profit(
-            RawOrigin::Signed(risk_manager::<T>()).into(),
+            RawOrigin::Root.into(),
+            caller::<T>(),
+            KUSD.into(),
             amount
         ).unwrap();
     }
 
     donate {
+        set_xor_as_collateral_type::<T>();
         let amount = balance!(10);
-        assets::Pallet::<T>::update_balance(
+        T::AssetManager::update_balance(
             RawOrigin::Root.into(),
             caller::<T>(),
             KUSD.into(),
             amount.try_into().unwrap(),
         )
         .expect("Shall mint KUSD");
-        kensetsu::BadDebt::<T>::set(balance!(5));
+        StablecoinInfos::<T>::mutate::<AssetIdOf<T>, _, _>(KUSD.into(), |stablecoin_info| {
+            stablecoin_info.as_mut().unwrap().bad_debt = balance!(5);
+        });
     }: {
-        kensetsu::Pallet::<T>::donate(RawOrigin::Signed(caller::<T>()).into(), amount).unwrap();
+        kensetsu::Pallet::<T>::donate(
+            RawOrigin::Signed(caller::<T>()).into(),
+            KUSD.into(),
+            amount
+        ).unwrap();
     }
 
-    add_risk_manager {}: {
-        kensetsu::Pallet::<T>::add_risk_manager(RawOrigin::Root.into(), caller::<T>()).unwrap();
+    register_stablecoin {
+        let vec_symbol = SymbolName(vec![b'K', b'D', b'A', b'I']);
+        let stablecoin_asset_id: AssetIdOf<T> =
+            AssetId32::<PredefinedAssetId>::from_kensetsu_sora_peg_symbol(&vec_symbol).into();
+        let stablecoin_parameters = StablecoinParameters::<AssetIdOf<T>> {
+            peg_asset: PegAsset::SoraAssetId(DAI.into()),
+            minimal_stability_fee_accrue: balance!(0.01),
+        };
+    }: {
+        kensetsu::Pallet::<T>::register_stablecoin(
+            RawOrigin::Root.into(),
+            stablecoin_parameters.clone(),
+        )
+        .unwrap()
     }
-
-    remove_risk_manager {}: {
-        kensetsu::Pallet::<T>::remove_risk_manager(RawOrigin::Root.into(), caller::<T>()).unwrap();
+    verify {
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::StablecoinRegistered {
+                    stablecoin_asset_id,
+                    new_stablecoin_parameters: stablecoin_parameters,
+                }
+            ).into()
+        );
     }
 }
