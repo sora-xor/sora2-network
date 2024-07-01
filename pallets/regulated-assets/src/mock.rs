@@ -40,7 +40,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
-use sp_core::{ConstU32, H256};
+use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
@@ -102,8 +102,6 @@ impl assets::Config for TestRuntime {
 impl regulated_assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<TestRuntime>;
-    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
     type WeightInfo = ();
 }
 
