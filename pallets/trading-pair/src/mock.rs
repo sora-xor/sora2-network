@@ -170,7 +170,7 @@ impl assets::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -349,7 +349,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(ALICE, 0)],
+            balances: vec![(ALICE, 1)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

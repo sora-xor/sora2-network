@@ -81,7 +81,7 @@ parameter_types! {
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;

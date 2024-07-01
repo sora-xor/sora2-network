@@ -89,7 +89,7 @@ parameter_types! {
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;

@@ -62,7 +62,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;

@@ -157,7 +157,7 @@ impl currencies::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -234,9 +234,9 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (ALICE, XOR, 0),
-                (BOB, XOR, 0),
-                (MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT, XOR, 0),
+                (ALICE, XOR, 1),
+                (BOB, XOR, 1),
+                (MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT, XOR, 1),
             ],
         }
     }

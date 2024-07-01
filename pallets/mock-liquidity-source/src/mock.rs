@@ -67,7 +67,7 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;

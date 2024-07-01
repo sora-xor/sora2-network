@@ -11,7 +11,7 @@ use {
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
-        construct_runtime,
+        construct_runtime, derive_impl,
         pallet_prelude::Weight,
         parameter_types,
         traits::{ConstU64, Everything, GenesisBuild, Hooks},
@@ -132,12 +132,13 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type DustRemoval = ();
@@ -148,10 +149,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
+    type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_types! {

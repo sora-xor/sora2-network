@@ -83,7 +83,7 @@ parameter_types! {
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
-    pub const ExistentialDeposit: u32 = 0;
+    pub const ExistentialDeposit: u32 = 1;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;

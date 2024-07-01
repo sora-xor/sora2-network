@@ -81,7 +81,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const DbWeight: RuntimeDbWeight = RuntimeDbWeight {
         read: 100,
         write: 1000,
@@ -246,7 +246,7 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(150)), (alice(), balance!(0))],
+            balances: vec![(account_id.clone(), balance!(150)), (alice(), balance!(1))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

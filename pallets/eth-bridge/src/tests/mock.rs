@@ -262,7 +262,7 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);

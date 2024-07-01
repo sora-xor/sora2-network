@@ -114,7 +114,7 @@ parameter_types! {
     pub const GetNumSamples: usize = 1000;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub GetFee0: Fixed = fixed_from_basis_points(0u16);
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
     pub GetFee20: Fixed = fixed_from_basis_points(20u16);

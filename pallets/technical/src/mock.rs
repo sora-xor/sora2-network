@@ -72,7 +72,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 construct_runtime! {
@@ -486,7 +486,7 @@ impl ExtBuilder {
         let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(get_alice(), 0), (get_bob(), 0)],
+            balances: vec![(get_alice(), 1), (get_bob(), 1)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

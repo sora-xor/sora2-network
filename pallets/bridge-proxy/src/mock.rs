@@ -125,7 +125,7 @@ impl permissions::Config for Test {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 impl pallet_balances::Config for Test {

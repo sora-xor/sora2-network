@@ -82,7 +82,7 @@ parameter_types! {
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -420,7 +420,7 @@ impl Default for ExtBuilder {
                 (
                     alice(),
                     USDT,
-                    0,
+                    balance!(1),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -428,7 +428,7 @@ impl Default for ExtBuilder {
                 (
                     alice(),
                     XOR,
-                    balance!(350000),
+                    balance!(350001),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -545,7 +545,7 @@ impl ExtBuilder {
                         None
                     }
                 })
-                .chain(vec![(bob(), 0), (assets_owner(), 0)])
+                .chain(vec![(bob(), 1), (assets_owner(), 1)])
                 .collect(),
         }
         .assimilate_storage(&mut t)
@@ -579,17 +579,9 @@ impl ExtBuilder {
                 .iter()
                 .cloned()
                 .chain(self.endowed_accounts_with_synthetics.iter().cloned())
-                .map(|(account_id, asset_id, _, symbol, name, precision)| {
+                .map(|(account_id, asset_id, balance, symbol, name, precision)| {
                     (
-                        asset_id,
-                        account_id,
-                        symbol,
-                        name,
-                        precision,
-                        Balance::zero(),
-                        true,
-                        None,
-                        None,
+                        asset_id, account_id, symbol, name, precision, balance, true, None, None,
                     )
                 })
                 .collect(),

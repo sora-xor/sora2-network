@@ -312,7 +312,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -452,10 +452,10 @@ impl ExtBuilder {
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
-                (alice(), 0),
-                (bob(), 0),
-                (eve(), 0),
-                (initial_assets_owner(), 0),
+                (alice(), 1),
+                (bob(), 1),
+                (eve(), 1),
+                (initial_assets_owner(), 1),
             ],
         }
         .assimilate_storage(&mut t)
