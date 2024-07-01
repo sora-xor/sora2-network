@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as regulated_assets};
+use crate::{self as extended_assets};
 use common::mock::ExistentialDeposits;
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
@@ -94,12 +94,12 @@ impl assets::Config for TestRuntime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = (
-        regulated_assets::Pallet<TestRuntime>,
+        extended_assets::Pallet<TestRuntime>,
         permissions::Pallet<TestRuntime>,
     );
 }
 
-impl regulated_assets::Config for TestRuntime {
+impl extended_assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<TestRuntime>;
     type WeightInfo = ();
@@ -117,7 +117,7 @@ construct_runtime! {
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RegulatedAssets: regulated_assets::{Pallet, Storage, Event<T>, Call},
+        ExtendedAssets: extended_assets::{Pallet, Storage, Event<T>, Call},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
     }
