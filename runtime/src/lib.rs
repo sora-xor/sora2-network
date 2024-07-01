@@ -2426,8 +2426,6 @@ impl multisig_verifier::Config for Runtime {
 #[cfg(feature = "wip")] // DEFI-R
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type MaxAllowedTokensPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
     type AssetInfoProvider = Assets;
     type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
 }
