@@ -1288,3 +1288,39 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
         self.0.cmp(&other.0)
     }
 }
+
+/// Enumeration of all supported asset types.
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    Default,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
+pub enum AssetType {
+    #[default]
+    Regular,
+    NFT,
+    Soulbound,
+    Regulated,
+}
+
+/// Presents information about an asset.
+#[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, Default, Debug)]
+pub struct AssetInfo {
+    pub symbol: AssetSymbol,
+    pub name: AssetName,
+    pub precision: BalancePrecision,
+    pub is_mintable: bool,
+    pub asset_type: AssetType,
+    pub content_source: Option<ContentSource>,
+    pub description: Option<Description>,
+}

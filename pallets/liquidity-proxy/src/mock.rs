@@ -164,7 +164,7 @@ construct_runtime! {
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         #[cfg(feature = "wip")] // DEFI-R
-        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>},
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 

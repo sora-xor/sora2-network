@@ -77,6 +77,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        common::AssetType::Regular,
         None,
         None,
     )

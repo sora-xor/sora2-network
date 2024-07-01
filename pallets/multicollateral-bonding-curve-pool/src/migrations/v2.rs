@@ -56,6 +56,7 @@ where
                 common::DEFAULT_BALANCE_PRECISION,
                 common::Balance::zero(),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ) {

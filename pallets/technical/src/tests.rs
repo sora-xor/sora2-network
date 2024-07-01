@@ -86,6 +86,7 @@ fn generic_pair_swap_simple() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -97,6 +98,7 @@ fn generic_pair_swap_simple() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));

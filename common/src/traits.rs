@@ -32,9 +32,9 @@ use crate::prelude::{
     permissions::PermissionId, ManagementMode, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use crate::{
-    Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
-    PriceVariant, PswapRemintInfo, RewardReason,
+    Amount, AssetId32, AssetName, AssetSymbol, AssetType, BalancePrecision, ContentSource,
+    Description, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle,
+    PredefinedAssetId, PriceVariant, PswapRemintInfo, RewardReason,
 };
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
@@ -537,6 +537,7 @@ pub type AssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
     AssetSymbol,
     AssetName,
     BalancePrecision,
+    AssetType,
     ContentSource,
     Description,
 >>::AssetId;
@@ -552,6 +553,7 @@ pub type GetBaseAssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
     AssetSymbol,
     AssetName,
     BalancePrecision,
+    AssetType,
     ContentSource,
     Description,
 >>::GetBaseAssetId;
@@ -588,6 +590,7 @@ pub trait Config: frame_system::Config {
         AssetSymbol,
         AssetName,
         BalancePrecision,
+        AssetType,
         ContentSource,
         Description,
     >;
@@ -1163,6 +1166,7 @@ pub trait AssetManager<
     AssetSymbol,
     AssetName,
     BalancePrecision,
+    AssetType,
     ContentSource,
     Description,
 >
@@ -1190,6 +1194,7 @@ pub trait AssetManager<
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError>;
@@ -1212,6 +1217,7 @@ pub trait AssetManager<
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult;
@@ -1269,8 +1275,17 @@ pub trait AssetManager<
     ) -> DispatchResultWithPostInfo;
 }
 
-impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
-    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> for ()
+impl<
+        T: Config,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        AssetType,
+        ContentSource,
+        Description,
+    >
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, AssetType, ContentSource, Description>
+    for ()
 {
     type AssetId = AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = ();
@@ -1282,6 +1297,7 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
         _precision: BalancePrecision,
         _initial_supply: Balance,
         _is_mintable: bool,
+        _asset_type: AssetType,
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError> {
@@ -1309,6 +1325,7 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
         _precision: BalancePrecision,
         _initial_supply: Balance,
         _is_mintable: bool,
+        _asset_type: AssetType,
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> DispatchResult {

@@ -151,6 +151,7 @@ fn check_xyk_pool_small_reserves() {
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
             false,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -214,6 +215,7 @@ fn check_tbc_pool_small_reserves() {
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -297,6 +299,7 @@ fn check_not_enough_liquidity() {
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )

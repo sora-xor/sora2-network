@@ -111,7 +111,7 @@ construct_runtime! {
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         #[cfg(feature = "wip")] // DEFI-R
-        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>},
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 

@@ -50,7 +50,7 @@ common = { path = "../../../common", default-features = false, features = [
 ] }
 mock-liquidity-source = { path = "../../mock-liquidity-source" }
 vested-rewards = { path = "../../vested-rewards" }
-regulated-assets = { path = "../../regulated-assets" }
+extended-assets = { path = "../../extended-assets" }
 
 [features]
 default = ["std"]
