@@ -4451,7 +4451,7 @@
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
     </span><span class="kw">type </span>AssetRegulator = (
         permissions::Pallet&lt;Runtime&gt;,
-        regulated_assets::Pallet&lt;Runtime&gt;,
+        extended_assets::Pallet&lt;Runtime&gt;,
     );
 }
 
@@ -5909,10 +5909,10 @@
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
-</span><span class="kw">impl </span>regulated_assets::Config <span class="kw">for </span>Runtime {
+</span><span class="kw">impl </span>extended_assets::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>AssetInfoProvider = Assets;
-    <span class="kw">type </span>WeightInfo = regulated_assets::weights::SubstrateWeight&lt;Runtime&gt;;
+    <span class="kw">type </span>WeightInfo = extended_assets::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
 <span class="macro">construct_runtime! </span>{
@@ -6040,7 +6040,7 @@
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
-        </span>RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">115</span>,
+        </span>ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">115</span>,
     }
 }
 
@@ -6804,7 +6804,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, bridge_data_signer, BridgeDataSigner);
             <span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
-            </span><span class="macro">list_benchmark!</span>(list, extra, regulated_assets, RegulatedAssets);
+            </span><span class="macro">list_benchmark!</span>(list, extra, extended_assets, ExtendedAssets);
 
             <span class="kw">let </span>storage_info = AllPalletsWithSystem::storage_info();
 
@@ -6901,7 +6901,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
             <span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// DEFI-R
-            </span><span class="macro">add_benchmark!</span>(params, batches, regulated_assets, RegulatedAssets);
+            </span><span class="macro">add_benchmark!</span>(params, batches, extended_assets, ExtendedAssets);
 
             <span class="kw">if </span>batches.is_empty() { <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Benchmark not found for this pallet.&quot;</span>.into()) }
             <span class="prelude-val">Ok</span>(batches)

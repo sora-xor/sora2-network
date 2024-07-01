@@ -25,6 +25,7 @@ var sourcesIndex = JSON.parse('{\
 "eth_bridge":["",[["offchain",[],["handle.rs","http.rs","mod.rs","transaction.rs"]],["requests",[],["encode_packed.rs","incoming.rs","mod.rs","outgoing.rs"]],["types",[],["block.rs","bytes.rs","log.rs","mod.rs","substrate.rs","transaction.rs","transaction_request.rs","uint.rs"]]],["contract.rs","lib.rs","macros.rs","migration.rs","rpc.rs","util.rs","weights.rs"]],\
 "eth_bridge_rpc":["",[],["lib.rs"]],\
 "eth_bridge_runtime_api":["",[],["lib.rs"]],\
+"extended_assets":["",[],["lib.rs","weights.rs"]],\
 "farming":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "farming_rpc":["",[],["lib.rs"]],\
 "farming_runtime_api":["",[],["lib.rs"]],\
@@ -61,7 +62,6 @@ var sourcesIndex = JSON.parse('{\
 "pswap_distribution_runtime_api":["",[],["lib.rs"]],\
 "qa_tools":["",[["pallet_tools",[],["assets.rs","liquidity_proxy.rs","mcbc.rs","mod.rs","order_book.rs","pool_xyk.rs","price_tools.rs","xst.rs"]]],["lib.rs","weights.rs"]],\
 "referrals":["",[],["lib.rs","weights.rs"]],\
-"regulated_assets":["",[],["lib.rs","weights.rs"]],\
 "remote_ext":["",[],["main.rs"]],\
 "rewards":["",[],["lib.rs","weights.rs"]],\
 "rewards_rpc":["",[],["lib.rs"]],\
