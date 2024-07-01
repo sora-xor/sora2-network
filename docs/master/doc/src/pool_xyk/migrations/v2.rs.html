@@ -100,9 +100,10 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
 </pre><pre class="rust"><code><span class="kw">use </span>common::{
-    generate_storage_instance, AssetIdOf, AssetManager, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, Description,
+    generate_storage_instance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType,
+    BalancePrecision, ContentSource, Description,
 };
 <span class="kw">use </span>frame_support::dispatch::Weight;
 <span class="kw">use </span>frame_support::pallet_prelude::{StorageMap, StorageVersion, ValueQuery};
@@ -135,6 +136,7 @@
                 AssetSymbol,
                 AssetName,
                 BalancePrecision,
+                AssetType,
                 ContentSource,
                 Description,
             &gt;&gt;::GetBaseAssetId::get(),

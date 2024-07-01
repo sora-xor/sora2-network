@@ -207,9 +207,12 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre><pre class="rust"><code><span class="kw">use </span>common::{
     generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
-    ContentSource, CurrencyIdOf, Description,
+    AssetType, ContentSource, CurrencyIdOf, Description,
 };
 <span class="kw">use </span>frame_support::dispatch::Weight;
 <span class="kw">use </span>frame_support::pallet_prelude::{StorageValue, ValueQuery};
@@ -232,6 +235,7 @@
         AssetSymbol,
         AssetName,
         u8,
+        AssetType,
         ContentSource,
         Description,
     &gt;&gt;::AssetId: PartialEq&lt;&lt;T <span class="kw">as </span>orml_tokens::Config&gt;::CurrencyId&gt;,
@@ -344,6 +348,7 @@
                 DEFAULT_BALANCE_PRECISION,
                 <span class="number">0</span>,
                 <span class="bool-val">true</span>,
+                common::AssetType::Regular,
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
             )
@@ -360,6 +365,7 @@
                 DEFAULT_BALANCE_PRECISION,
                 <span class="number">0</span>,
                 <span class="bool-val">true</span>,
+                common::AssetType::Regular,
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
             )

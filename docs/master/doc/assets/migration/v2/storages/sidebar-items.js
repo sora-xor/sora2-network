@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"type":["AssetInfosV1","AssetInfosV2"]};

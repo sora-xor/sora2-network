@@ -1239,8 +1239,8 @@
 <span class="kw">use </span>common::permissions::{BURN, MINT, TRANSFER};
 <span class="kw">use </span>common::prelude::{Balance, SwapAmount};
 <span class="kw">use </span>common::{
-    Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
-    BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
+    Amount, AssetInfo, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    AssetType, BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
     LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 <span class="kw">use </span>frame_support::dispatch::DispatchResultWithPostInfo;
@@ -1361,7 +1361,7 @@
 #[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>common::{AssetRegulator, ContentSource, Description};
+    <span class="kw">use </span>common::{AssetRegulator, AssetType, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_system::{ensure_root, pallet_prelude::<span class="kw-2">*</span>};
 
@@ -1449,7 +1449,7 @@
     }
 
     <span class="doccomment">/// The current storage version.
-    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">1</span>);
+    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">2</span>);
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -1486,6 +1486,12 @@
                 DEFAULT_BALANCE_PRECISION
             };
 
+            <span class="kw">let </span>asset_type = <span class="kw">if </span>is_indivisible {
+                AssetType::NFT
+            } <span class="kw">else </span>{
+                AssetType::Regular
+            };
+
             <span class="self">Self</span>::register_from(
                 <span class="kw-2">&amp;</span>author,
                 symbol,
@@ -1493,6 +1499,7 @@
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )<span class="question-mark">?</span>;
@@ -1651,14 +1658,14 @@
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
             <span class="self">Self</span>::ensure_asset_exists(<span class="kw-2">&amp;</span>asset_id)<span class="question-mark">?</span>;
-            AssetInfos::&lt;T&gt;::mutate(asset_id, |(<span class="kw-2">ref mut </span>symbol, <span class="kw-2">ref mut </span>name, ..)| {
+            AssetInfos::&lt;T&gt;::mutate(asset_id, |<span class="kw-2">ref mut </span>asset_info| {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(new_name) = new_name.clone() {
                     <span class="macro">ensure!</span>(new_name.is_valid(), Error::&lt;T&gt;::InvalidAssetName);
-                    <span class="kw-2">*</span>name = new_name;
+                    asset_info.name = new_name;
                 }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(new_symbol) = new_symbol.clone() {
                     <span class="macro">ensure!</span>(new_symbol.is_valid(), Error::&lt;T&gt;::InvalidAssetSymbol);
-                    <span class="kw-2">*</span>symbol = new_symbol;
+                    asset_info.symbol = new_symbol;
                 }
                 DispatchResult::Ok(())
             })<span class="question-mark">?</span>;
@@ -1720,23 +1727,10 @@
     </span><span class="kw">pub type </span>AssetOwners&lt;T: Config&gt; =
         StorageMap&lt;<span class="kw">_</span>, Twox64Concat, T::AssetId, T::AccountId, OptionQuery&gt;;
 
-    <span class="doccomment">/// Asset Id -&gt; (Symbol, Name, Precision, Is Mintable, Content Source, Description)
+    <span class="doccomment">/// Asset Id -&gt; AssetInfo
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>asset_infos)]
-    </span><span class="kw">pub type </span>AssetInfos&lt;T: Config&gt; = StorageMap&lt;
-        <span class="kw">_</span>,
-        Twox64Concat,
-        T::AssetId,
-        (
-            AssetSymbol,
-            AssetName,
-            BalancePrecision,
-            bool,
-            <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
-            <span class="prelude-ty">Option</span>&lt;Description&gt;,
-        ),
-        ValueQuery,
-    &gt;;
+    </span><span class="kw">pub type </span>AssetInfos&lt;T: Config&gt; = StorageMap&lt;<span class="kw">_</span>, Twox64Concat, T::AssetId, AssetInfo, ValueQuery&gt;;
 
     <span class="doccomment">/// Asset Id -&gt; AssetRecord&lt;T&gt;
     </span><span class="attr">#[pallet::storage]
@@ -1792,6 +1786,7 @@
                         precision,
                         initial_supply,
                         is_mintable,
+                        AssetType::Regular,
                         content_source,
                         description,
                     )
@@ -1852,6 +1847,7 @@
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
         opt_desc: <span class="prelude-ty">Option</span>&lt;Description&gt;,
     ) -&gt; DispatchResult {
@@ -1879,14 +1875,15 @@
         AssetOwners::&lt;T&gt;::insert(asset_id, account_id.clone());
         AssetInfos::&lt;T&gt;::insert(
             asset_id,
-            (
+            AssetInfo {
                 symbol,
                 name,
                 precision,
                 is_mintable,
-                opt_content_src,
-                opt_desc,
-            ),
+                asset_type,
+                content_source: opt_content_src,
+                description: opt_desc,
+            },
         );
         <span class="kw">let </span>permission_ids = [MINT, BURN];
         <span class="kw">for </span>permission_id <span class="kw">in </span><span class="kw-2">&amp;</span>permission_ids {
@@ -1911,6 +1908,7 @@
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
         opt_desc: <span class="prelude-ty">Option</span>&lt;Description&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;T::AssetId, DispatchError&gt; {
@@ -1924,6 +1922,7 @@
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )<span class="question-mark">?</span>;
@@ -1933,8 +1932,8 @@
 
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>ensure_asset_is_mintable(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; DispatchResult {
-        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, is_mintable, ..) = AssetInfos::&lt;T&gt;::get(asset_id);
-        <span class="macro">ensure!</span>(is_mintable, Error::&lt;T&gt;::AssetSupplyIsNotMintable);
+        <span class="kw">let </span>asset_info = AssetInfos::&lt;T&gt;::get(asset_id);
+        <span class="macro">ensure!</span>(asset_info.is_mintable, Error::&lt;T&gt;::AssetSupplyIsNotMintable);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -2061,9 +2060,9 @@
             <span class="self">Self</span>::is_asset_owner(asset_id, who),
             Error::&lt;T&gt;::InvalidAssetOwner
         );
-        AssetInfos::&lt;T&gt;::mutate(asset_id, |(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref mut </span>is_mintable, ..)| {
-            <span class="macro">ensure!</span>(<span class="kw-2">*</span>is_mintable, Error::&lt;T&gt;::AssetSupplyIsNotMintable);
-            <span class="kw-2">*</span>is_mintable = <span class="bool-val">false</span>;
+        AssetInfos::&lt;T&gt;::mutate(asset_id, |<span class="kw-2">ref mut </span>asset_info| {
+            <span class="macro">ensure!</span>(asset_info.is_mintable, Error::&lt;T&gt;::AssetSupplyIsNotMintable);
+            asset_info.is_mintable = <span class="bool-val">false</span>;
             <span class="prelude-val">Ok</span>(())
         })
     }
@@ -2083,19 +2082,17 @@
         <span class="prelude-ty">Option</span>&lt;Description&gt;,
     )&gt; {
         AssetInfos::&lt;T&gt;::iter()
-            .map(
-                |(key, (symbol, name, precision, is_mintable, content_source, description))| {
-                    (
-                        key,
-                        symbol,
-                        name,
-                        precision,
-                        is_mintable,
-                        content_source,
-                        description,
-                    )
-                },
-            )
+            .map(|(key, asset_info)| {
+                (
+                    key,
+                    asset_info.symbol,
+                    asset_info.name,
+                    asset_info.precision,
+                    asset_info.is_mintable,
+                    asset_info.content_source,
+                    asset_info.description,
+                )
+            })
             .collect()
     }
 }
@@ -2141,29 +2138,28 @@
         <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
         <span class="prelude-ty">Option</span>&lt;Description&gt;,
     ) {
-        <span class="kw">let </span>(symbol, name, precision, is_mintable, content_source, description) =
-            AssetInfos::&lt;T&gt;::get(asset_id);
+        <span class="kw">let </span>asset_info = AssetInfos::&lt;T&gt;::get(asset_id);
         (
-            symbol,
-            name,
-            precision,
-            is_mintable,
-            content_source,
-            description,
+            asset_info.symbol,
+            asset_info.name,
+            asset_info.precision,
+            asset_info.is_mintable,
+            asset_info.content_source,
+            asset_info.description,
         )
     }
 
     <span class="kw">fn </span>is_non_divisible(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; bool {
-        AssetInfos::&lt;T&gt;::get(asset_id).<span class="number">2 </span>== <span class="number">0
+        AssetInfos::&lt;T&gt;::get(asset_id).precision == <span class="number">0
     </span>}
 
     <span class="kw">fn </span>get_asset_content_src(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Option</span>&lt;ContentSource&gt; {
-        AssetInfos::&lt;T&gt;::get(asset_id).<span class="number">4
-    </span>}
+        AssetInfos::&lt;T&gt;::get(asset_id).content_source
+    }
 
     <span class="kw">fn </span>get_asset_description(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Option</span>&lt;Description&gt; {
-        AssetInfos::&lt;T&gt;::get(asset_id).<span class="number">5
-    </span>}
+        AssetInfos::&lt;T&gt;::get(asset_id).description
+    }
 
     <span class="kw">fn </span>total_issuance(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>r = T::Currency::total_issuance(<span class="kw-2">*</span>asset_id);
@@ -2208,7 +2204,7 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt;
-    AssetManager&lt;T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description&gt;
+    AssetManager&lt;T, AssetSymbol, AssetName, BalancePrecision, AssetType, ContentSource, Description&gt;
     <span class="kw">for </span>Pallet&lt;T&gt;
 {
     <span class="kw">type </span>AssetId = T::AssetId;
@@ -2234,6 +2230,7 @@
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
         opt_desc: <span class="prelude-ty">Option</span>&lt;Description&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::AssetId, DispatchError&gt; {
@@ -2244,6 +2241,7 @@
             precision,
             initial_supply,
             is_mintable,
+            asset_type,
             opt_content_src,
             opt_desc,
         )
@@ -2257,6 +2255,7 @@
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
         opt_desc: <span class="prelude-ty">Option</span>&lt;Description&gt;,
     ) -&gt; DispatchResult {
@@ -2268,6 +2267,7 @@
             precision,
             initial_supply,
             is_mintable,
+            asset_type,
             opt_content_src,
             opt_desc,
         )

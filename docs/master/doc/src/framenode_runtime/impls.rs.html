@@ -991,7 +991,7 @@
         sidechain_precision: u8,
         amount: <span class="kw">crate</span>::Balance,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw">crate</span>::Balance, <span class="kw">crate</span>::Balance)&gt; {
-        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).<span class="number">2</span>;
+        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).precision;
         <span class="self">Self</span>::convert_precision(sidechain_precision, thischain_precision, amount)
             .map(|(a, b)| (b, a))
     }
@@ -1001,7 +1001,7 @@
         sidechain_precision: u8,
         amount: <span class="kw">crate</span>::Balance,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw">crate</span>::Balance, <span class="kw">crate</span>::Balance)&gt; {
-        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).<span class="number">2</span>;
+        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).precision;
         <span class="self">Self</span>::convert_precision(thischain_precision, sidechain_precision, amount)
     }
 }
@@ -1014,7 +1014,7 @@
         sidechain_precision: u8,
         amount: U256,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw">crate</span>::Balance, U256)&gt; {
-        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).<span class="number">2</span>;
+        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).precision;
         <span class="self">Self</span>::convert_precision(
             sidechain_precision,
             thischain_precision,
@@ -1028,7 +1028,7 @@
         sidechain_precision: u8,
         amount: <span class="kw">crate</span>::Balance,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw">crate</span>::Balance, U256)&gt; {
-        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).<span class="number">2</span>;
+        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).precision;
         <span class="self">Self</span>::convert_precision(thischain_precision, sidechain_precision, amount)
             .map(|(a, b)| (a, b.into()))
     }
@@ -1043,7 +1043,7 @@
         sidechain_precision: u8,
         amount: GenericBalance,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw">crate</span>::Balance, GenericBalance)&gt; {
-        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).<span class="number">2</span>;
+        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).precision;
         <span class="kw">match </span>amount {
             GenericBalance::Substrate(val) =&gt; BalancePrecisionConverter::convert_precision(
                 sidechain_precision,
@@ -1060,7 +1060,7 @@
         sidechain_precision: u8,
         amount: <span class="kw">crate</span>::Balance,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw">crate</span>::Balance, GenericBalance)&gt; {
-        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).<span class="number">2</span>;
+        <span class="kw">let </span>thischain_precision = <span class="kw">crate</span>::Assets::asset_infos(asset_id).precision;
         BalancePrecisionConverter::convert_precision(
             thischain_precision,
             sidechain_precision,

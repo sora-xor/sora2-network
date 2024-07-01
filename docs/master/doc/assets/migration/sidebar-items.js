@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["register_asset"]};
+window.SIDEBAR_ITEMS = {"mod":["register_asset","v2"]};

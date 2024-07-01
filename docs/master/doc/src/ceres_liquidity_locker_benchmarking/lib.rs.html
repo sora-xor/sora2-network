@@ -189,6 +189,8 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Ceres liquidity locker module benchmarking.
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
@@ -260,6 +262,7 @@
         DEFAULT_BALANCE_PRECISION,
         Balance::from(<span class="number">0u32</span>),
         <span class="bool-val">true</span>,
+        common::AssetType::Regular,
         <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
     );
@@ -271,6 +274,7 @@
         DEFAULT_BALANCE_PRECISION,
         Balance::from(<span class="number">0u32</span>),
         <span class="bool-val">true</span>,
+        common::AssetType::Regular,
         <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
     );
