@@ -297,8 +297,6 @@ impl demeter_farming_platform::Config for Runtime {
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
     type WeightInfo = ();
 }
 
@@ -951,8 +949,8 @@ impl ExtBuilder {
 
     #[cfg(feature = "wip")] // DEFI-R
     fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
-        use sp_core::bounded_vec;
-
+        use frame_support::assert_ok;
+        System::set_block_number(1);
         let owner_origin = RuntimeOrigin::signed(owner.clone());
         if !RegulatedAssets::regulated_asset(asset_id) {
             RegulatedAssets::regulate_asset(owner_origin.clone(), *asset_id)
@@ -960,20 +958,34 @@ impl ExtBuilder {
         }
 
         RegulatedAssets::issue_sbt(
-            owner_origin,
+            owner_origin.clone(),
             AssetSymbol(b"SBT".to_vec()),
             AssetName(b"SBT".to_vec()),
             None,
             None,
             None,
-            None,
-            bounded_vec!(*asset_id),
         )
         .expect("Failed to issue SBT");
 
-        let sbts = RegulatedAssets::sbts_by_asset(asset_id);
-        let sbt_asset_id = sbts.first().unwrap();
-        Assets::mint_to(sbt_asset_id, &owner, &owner, 1).expect("Failed to mint SBT");
+        // Extract the issued SBT asset ID
+        let event = frame_system::Pallet::<Runtime>::events()
+            .pop()
+            .expect("Expected at least one event")
+            .event;
+        let sbt_asset_id = match event {
+            RuntimeEvent::RegulatedAssets(regulated_assets::Event::SoulboundTokenIssued {
+                asset_id,
+                ..
+            }) => asset_id,
+            _ => panic!("Unexpected event: {:?}", event),
+        };
+
+        assert_ok!(RegulatedAssets::bind_regulated_asset_to_sbt(
+            owner_origin,
+            sbt_asset_id,
+            *asset_id
+        ));
+        Assets::mint_to(&sbt_asset_id, &owner, &owner, 1).expect("Failed to mint SBT");
     }
 
     pub fn build(self) -> sp_io::TestExternalities {

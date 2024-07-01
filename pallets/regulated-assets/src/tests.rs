@@ -128,8 +128,8 @@ fn test_tech_account_can_pass_check_permission() {
 
         // Tech account can pass permission check for unregulated asset
         assert_ok!(RegulatedAssets::check_permission(
-            &account_id,
-            &account_id,
+            &tech_account_id,
+            &tech_account_id,
             &asset_id,
             &TRANSFER
         ));

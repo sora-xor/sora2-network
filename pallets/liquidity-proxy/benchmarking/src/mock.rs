@@ -241,8 +241,6 @@ impl demeter_farming_platform::Config for Runtime {
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
     type WeightInfo = ();
 }
 

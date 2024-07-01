@@ -4202,9 +4202,9 @@ fn test_pool_fails_with_regulated_asset() {
 #[cfg(feature = "wip")] // DEFI-R
 fn test_pool_works_with_regulated_asset() {
     use common::AssetId32;
-    use sp_core::bounded_vec;
 
     ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
         assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             GoldenTicket.into(),
@@ -4285,17 +4285,32 @@ fn test_pool_works_with_regulated_asset() {
             None,
             None,
             None,
-            None,
-            bounded_vec!(Apple.into()),
         )
         .expect("Issue SBT failed");
 
         let apple_asset_id = AssetId32::from(Apple);
-        let sbts = RegulatedAssets::sbts_by_asset(apple_asset_id);
-        let sbt_asset_id = sbts.first().unwrap();
 
-        assert_ok!(Assets::mint_to(sbt_asset_id, &ALICE(), &ALICE(), 1));
-        assert_ok!(Assets::mint_to(sbt_asset_id, &ALICE(), &BOB(), 1));
+        // Extract the issued SBT asset ID
+        let event = frame_system::Pallet::<Runtime>::events()
+            .pop()
+            .expect("Expected at least one event")
+            .event;
+        let sbt_asset_id = match event {
+            RuntimeEvent::RegulatedAssets(regulated_assets::Event::SoulboundTokenIssued {
+                asset_id,
+                ..
+            }) => asset_id,
+            _ => panic!("Unexpected event: {:?}", event),
+        };
+
+        assert_ok!(RegulatedAssets::bind_regulated_asset_to_sbt(
+            RuntimeOrigin::signed(ALICE()),
+            sbt_asset_id,
+            apple_asset_id
+        ));
+
+        assert_ok!(Assets::mint_to(&sbt_asset_id, &ALICE(), &ALICE(), 1));
+        assert_ok!(Assets::mint_to(&sbt_asset_id, &ALICE(), &BOB(), 1));
 
         assert_ok!(PoolXYK::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),

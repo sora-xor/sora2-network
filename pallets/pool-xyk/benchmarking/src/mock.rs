@@ -46,7 +46,7 @@ use frame_system;
 use common::prelude::Balance;
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
-use sp_core::{ConstU32, H256};
+use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, Percent};
@@ -158,8 +158,6 @@ impl demeter_farming_platform::Config for Runtime {
 impl regulated_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxAllowedAssetsPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
     type WeightInfo = ();
 }
 
