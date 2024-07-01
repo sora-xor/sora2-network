@@ -172,6 +172,7 @@ mod benchmarks_inner {
                 0,
                 1000,
                 false,
+                common::AssetType::NFT,
                 None,
                 None,
             )

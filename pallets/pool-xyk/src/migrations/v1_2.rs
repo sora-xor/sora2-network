@@ -43,6 +43,7 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             )
@@ -56,6 +57,7 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    common::AssetType::Regular,
                     None,
                     None,
                 )

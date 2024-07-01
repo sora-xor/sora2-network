@@ -333,6 +333,7 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
             DEFAULT_BALANCE_PRECISION,
             balance!(100),
             false,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -428,6 +429,7 @@ fn should_not_create_order_book_for_user_without_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -474,6 +476,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -524,6 +527,7 @@ fn should_create_order_book_for_nft() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -1389,6 +1393,7 @@ fn should_update_order_book_with_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -2042,6 +2047,7 @@ fn should_place_limit_order_with_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -3301,6 +3307,7 @@ fn should_execute_market_order_with_indivisible_asset() {
             0,
             100000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )

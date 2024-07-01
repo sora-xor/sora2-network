@@ -83,6 +83,7 @@ impl<'a> crate::Pallet<Runtime> {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ));
@@ -95,6 +96,7 @@ impl<'a> crate::Pallet<Runtime> {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ));
@@ -107,6 +109,7 @@ impl<'a> crate::Pallet<Runtime> {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ));
@@ -1936,6 +1939,7 @@ fn cannot_initialize_with_non_divisible_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -1947,6 +1951,7 @@ fn cannot_initialize_with_non_divisible_asset() {
             0,
             1,
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3228,6 +3233,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3303,6 +3309,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3315,6 +3322,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3378,6 +3386,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3390,6 +3399,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3660,6 +3670,7 @@ fn initialize_pool_with_different_dex() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3671,6 +3682,7 @@ fn initialize_pool_with_different_dex() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3710,6 +3722,7 @@ fn initialize_pool_with_synthetics() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3721,6 +3734,7 @@ fn initialize_pool_with_synthetics() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3732,6 +3746,7 @@ fn initialize_pool_with_synthetics() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));

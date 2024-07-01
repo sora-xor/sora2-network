@@ -68,6 +68,7 @@ fn add_asset<T: Config>() -> AssetIdOf<T> {
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        common::AssetType::Regular,
         None,
         None,
     )

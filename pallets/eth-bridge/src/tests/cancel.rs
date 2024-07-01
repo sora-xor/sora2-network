@@ -291,6 +291,7 @@ fn should_cancel_outgoing_prepared_requests() {
             DEFAULT_BALANCE_PRECISION,
             0,
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
