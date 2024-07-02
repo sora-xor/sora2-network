@@ -41,6 +41,7 @@ dex-manager = { path = "../../dex-manager", default-features = false }
 dex-api = { path = "../../dex-api", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+extended-assets = { path = "../../extended-assets" }
 
 [features]
 default = ['std']
@@ -64,3 +65,5 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]
+
+wip = []

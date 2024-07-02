@@ -1206,6 +1206,8 @@ pub trait AssetManager<
         amount: AmountOf<T>,
     ) -> DispatchResult;
 
+    fn gen_asset_id(account_id: &T::AccountId) -> Self::AssetId;
+
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
     #[allow(clippy::too_many_arguments)]
@@ -1310,6 +1312,10 @@ impl<
         _currency_id: CurrencyIdOf<T>,
         _amount: AmountOf<T>,
     ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn gen_asset_id(_account_id: &<T>::AccountId) -> Self::AssetId {
         unimplemented!()
     }
 
@@ -1514,6 +1520,25 @@ where
     ) -> Result<(), DispatchError> {
         A::check_permission(issuer, affected_account, asset_id, permission_id)?;
         B::check_permission(issuer, affected_account, asset_id, permission_id)?;
+        Ok(())
+    }
+}
+
+impl<AccountId, AssetId> AssetRegulator<AccountId, AssetId> for () {
+    fn assign_permission(
+        _owner: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn check_permission(
+        _issuer: &AccountId,
+        _affected_account: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
         Ok(())
     }
 }
