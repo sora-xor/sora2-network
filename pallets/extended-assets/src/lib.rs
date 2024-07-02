@@ -297,14 +297,15 @@ pub mod pallet {
 
             // Bind the regulated asset to the SBT and update the SBT's metadata
             <RegulatedAssetToSoulboundAsset<T>>::set(regulated_asset_id, sbt_asset_id);
-            <SoulboundAsset<T>>::mutate(sbt_asset_id, |metadata| {
+            <SoulboundAsset<T>>::try_mutate(sbt_asset_id, |metadata| -> DispatchResult {
                 if let Some(metadata) = metadata {
                     metadata
                         .regulated_assets
                         .try_insert(regulated_asset_id)
-                        .ok();
+                        .map_err(|_| Error::<T>::RegulatedAssetsPerSBTExceeded)?;
                 }
-            });
+                Ok(())
+            })?;
 
             Self::deposit_event(Event::RegulatedAssetBoundToSBT {
                 regulated_asset_id,
@@ -365,6 +366,8 @@ pub mod pallet {
         NotAllowedToRegulateSoulboundAsset,
         /// Invalid External URL
         InvalidExternalUrl,
+        /// Regulated Assets per SBT exceeded
+        RegulatedAssetsPerSBTExceeded,
     }
 
     #[pallet::type_value]
