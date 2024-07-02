@@ -36,7 +36,7 @@ pub fn add_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
 pub fn register_sbt_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
     let asset_name = AssetName(b"Soulbound Token".to_vec());
     let asset_symbol = AssetSymbol(b"SBT".to_vec());
-    let sbt_asset_id = T::AssetManager::gen_asset_id(&owner);
+    let sbt_asset_id = T::AssetManager::gen_asset_id(owner);
 
     // Issue SBT
     assert_ok!(crate::Pallet::<T>::issue_sbt(
@@ -48,5 +48,5 @@ pub fn register_sbt_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
         None,
     ));
 
-    sbt_asset_id.into()
+    sbt_asset_id
 }
