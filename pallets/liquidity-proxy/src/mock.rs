@@ -949,7 +949,9 @@ impl ExtBuilder {
 
     #[cfg(feature = "wip")] // DEFI-R
     fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
+        use extended_assets::test_utils::register_sbt_asset;
         use frame_support::assert_ok;
+
         System::set_block_number(1);
         let owner_origin = RuntimeOrigin::signed(owner.clone());
         if !ExtendedAssets::regulated_asset(asset_id) {
@@ -957,29 +959,7 @@ impl ExtBuilder {
                 .expect("Failed to regulate Asset");
         }
 
-        ExtendedAssets::issue_sbt(
-            owner_origin.clone(),
-            AssetSymbol(b"SBT".to_vec()),
-            AssetName(b"SBT".to_vec()),
-            None,
-            None,
-            None,
-        )
-        .expect("Failed to issue SBT");
-
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<Runtime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let sbt_asset_id = match event {
-            RuntimeEvent::ExtendedAssets(extended_assets::Event::SoulboundTokenIssued {
-                asset_id,
-                ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
-
+        let sbt_asset_id = register_sbt_asset::<Runtime>(owner);
         assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
             owner_origin,
             sbt_asset_id,

@@ -1206,6 +1206,8 @@ pub trait AssetManager<
         amount: AmountOf<T>,
     ) -> DispatchResult;
 
+    fn gen_asset_id(account_id: &T::AccountId) -> Self::AssetId;
+
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
     #[allow(clippy::too_many_arguments)]
@@ -1310,6 +1312,10 @@ impl<
         _currency_id: CurrencyIdOf<T>,
         _amount: AmountOf<T>,
     ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn gen_asset_id(_account_id: &<T>::AccountId) -> Self::AssetId {
         unimplemented!()
     }
 

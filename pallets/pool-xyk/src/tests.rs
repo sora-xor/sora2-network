@@ -4294,33 +4294,10 @@ fn test_pool_works_with_regulated_asset() {
             Apple.into(),
         ));
 
-        let sbt_asset_name = AssetName(b"Soulbound Token".to_vec());
-        let sbt_asset_symbol = AssetSymbol(b"SBT".to_vec());
         // Good Scenarios
-        ExtendedAssets::issue_sbt(
-            RuntimeOrigin::signed(ALICE()),
-            sbt_asset_symbol,
-            sbt_asset_name,
-            None,
-            None,
-            None,
-        )
-        .expect("Issue SBT failed");
 
         let apple_asset_id = AssetId32::from(Apple);
-
-        // Extract the issued SBT asset ID
-        let event = frame_system::Pallet::<Runtime>::events()
-            .pop()
-            .expect("Expected at least one event")
-            .event;
-        let sbt_asset_id = match event {
-            RuntimeEvent::ExtendedAssets(extended_assets::Event::SoulboundTokenIssued {
-                asset_id,
-                ..
-            }) => asset_id,
-            _ => panic!("Unexpected event: {:?}", event),
-        };
+        let sbt_asset_id = extended_assets::test_utils::register_sbt_asset::<Runtime>(&ALICE());
 
         assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
             RuntimeOrigin::signed(ALICE()),
