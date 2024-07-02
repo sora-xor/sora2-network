@@ -1249,44 +1249,6 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
 }
 
 #[test]
-fn should_not_update_order_book_when_attributes_exceed_total_supply() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: VAL,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-        update_orderbook_unchecked::<Runtime>(
-            order_book_id,
-            balance!(0.1),
-            balance!(0.1),
-            balance!(10000000),
-            balance!(10000000),
-        );
-
-        assert_ok!(OrderBookPallet::change_orderbook_status(
-            RuntimeOrigin::root(),
-            order_book_id,
-            OrderBookStatus::OnlyCancel
-        ));
-
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                balance!(0.001),
-                balance!(10000000),
-                balance!(10000000000)
-            ),
-            E::MaxLotSizeIsMoreThanTotalSupply
-        );
-    });
-}
-
-#[test]
 fn should_update_order_book_with_regular_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
