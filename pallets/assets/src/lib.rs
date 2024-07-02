@@ -935,7 +935,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
-        AssetInfos::<T>::iter().map(|(key, _)| key).collect()
+        AssetInfosV2::<T>::iter().map(|(key, _)| key).collect()
     }
 
     #[allow(clippy::type_complexity)]
