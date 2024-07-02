@@ -394,7 +394,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, crate::Balance)> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).precision;
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(sidechain_precision, thischain_precision, amount)
             .map(|(a, b)| (b, a))
     }
@@ -404,7 +404,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, crate::Balance)> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).precision;
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
     }
 }
@@ -417,7 +417,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: U256,
     ) -> Option<(crate::Balance, U256)> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).precision;
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(
             sidechain_precision,
             thischain_precision,
@@ -431,7 +431,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, U256)> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).precision;
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
             .map(|(a, b)| (a, b.into()))
     }
@@ -446,7 +446,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: GenericBalance,
     ) -> Option<(crate::Balance, GenericBalance)> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).precision;
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         match amount {
             GenericBalance::Substrate(val) => BalancePrecisionConverter::convert_precision(
                 sidechain_precision,
@@ -463,7 +463,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, GenericBalance)> {
-        let thischain_precision = crate::Assets::asset_infos(asset_id).precision;
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         BalancePrecisionConverter::convert_precision(
             thischain_precision,
             sidechain_precision,

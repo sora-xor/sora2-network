@@ -34,7 +34,7 @@ use crate::*;
 pub type Migrations = (
     dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,
     // DEFI-R
-    assets::migration::v2::AssetsUpdateV2<Runtime>,
+    assets::migration::asset_infos_v2::AssetInfosUpdate<Runtime>,
 );
 
 #[cfg(not(feature = "wip"))] // dex-kusd
