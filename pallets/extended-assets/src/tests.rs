@@ -32,7 +32,9 @@
 
 use crate::mock::*;
 use crate::*;
-use common::{Balance, TechAccountId, DEFAULT_BALANCE_PRECISION, XOR};
+use common::{
+    AssetId32, Balance, PredefinedAssetId, TechAccountId, DEFAULT_BALANCE_PRECISION, XOR,
+};
 use frame_support::{assert_err, assert_ok};
 use mock::Timestamp;
 use permissions::MINT;
@@ -640,6 +642,116 @@ fn test_set_sbt_expiration_fails_for_non_existent_sbt() {
                 None
             ),
             Error::<TestRuntime>::SBTNotFound
+        );
+    });
+}
+
+#[test]
+fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = bob();
+
+        let asset_name = AssetName(b"Soulbound Token".to_vec());
+        let asset_symbol = AssetSymbol(b"SBT".to_vec());
+
+        // 1. Prepare two new regulated assets
+
+        let asset_id_1 = add_asset::<TestRuntime>(&owner);
+        assert_ok!(ExtendedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id_1
+        ));
+
+        let asset_id_2 = add_asset::<TestRuntime>(&owner);
+        assert_ok!(ExtendedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id_2
+        ));
+
+        // 2. Issue two new SBTs
+
+        assert_ok!(ExtendedAssets::issue_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_symbol.clone(),
+            asset_name.clone(),
+            None,
+            None,
+            None,
+        ));
+        let sbt_asset_id_1 = get_sbt_id_from_events::<TestRuntime>();
+
+        assert_ok!(ExtendedAssets::issue_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_symbol,
+            asset_name,
+            None,
+            None,
+            None,
+        ));
+        let sbt_asset_id_2 = get_sbt_id_from_events::<TestRuntime>();
+
+        // 3. Bind each regulated asset to one SBT
+
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            sbt_asset_id_1,
+            asset_id_1
+        ));
+
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            sbt_asset_id_2,
+            asset_id_2
+        ));
+
+        // 4. Check that the SBTs have the correct asset bindings
+
+        let sbt_metadata_1 = ExtendedAssets::soulbound_asset(sbt_asset_id_1).unwrap();
+        let sbt_metadata_2 = ExtendedAssets::soulbound_asset(sbt_asset_id_2).unwrap();
+
+        let mut regulated_assets_1: BoundedBTreeSet<
+            AssetId32<PredefinedAssetId>,
+            MockMaxRegulatedAssetsPerSBT,
+        > = BoundedBTreeSet::new();
+        regulated_assets_1.try_insert(asset_id_1).unwrap();
+
+        let mut regulated_assets_2: BoundedBTreeSet<
+            AssetId32<PredefinedAssetId>,
+            MockMaxRegulatedAssetsPerSBT,
+        > = BoundedBTreeSet::new();
+        regulated_assets_2.try_insert(asset_id_2).unwrap();
+
+        assert_eq!(sbt_metadata_1.regulated_assets, regulated_assets_1);
+        assert_eq!(sbt_metadata_2.regulated_assets, regulated_assets_2);
+
+        // 5. Perform binding to an already bounded asset to a different SBT
+        //  before sbt_1 -> [asset_id_1], sbt_2 -> [asset_id_2]
+        //  after sbt_1 ->[], sbt_2 -> [asset_id_2, asset_id_1]
+
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            RuntimeOrigin::signed(owner),
+            sbt_asset_id_2,
+            asset_id_1
+        ));
+
+        let after_sbt_metadata_1 = ExtendedAssets::soulbound_asset(sbt_asset_id_1).unwrap();
+        let after_sbt_metadata_2 = ExtendedAssets::soulbound_asset(sbt_asset_id_2).unwrap();
+
+        let mut after_regulated_assets_2: BoundedBTreeSet<
+            AssetId32<PredefinedAssetId>,
+            MockMaxRegulatedAssetsPerSBT,
+        > = BoundedBTreeSet::new();
+        after_regulated_assets_2.try_insert(asset_id_2).unwrap();
+        after_regulated_assets_2.try_insert(asset_id_1).unwrap();
+
+        assert_eq!(
+            after_sbt_metadata_1.regulated_assets,
+            BoundedBTreeSet::<AssetId32<PredefinedAssetId>, MockMaxRegulatedAssetsPerSBT>::new()
+        );
+        assert_eq!(
+            after_sbt_metadata_2.regulated_assets,
+            after_regulated_assets_2
         );
     });
 }

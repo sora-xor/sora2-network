@@ -2427,6 +2427,7 @@ impl multisig_verifier::Config for Runtime {
 impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
+    type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
     type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
