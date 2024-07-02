@@ -290,7 +290,7 @@ benchmarks! {
     )
     verify {
         assert_eq!(
-            crate::AssetInfos::<T>::get(T::AssetId::from(USDT)),
+            crate::AssetInfosV2::<T>::get(T::AssetId::from(USDT)),
             AssetInfo {
                 symbol: AssetSymbol(b"DAI".to_vec()),
                 name: AssetName(b"DAI stablecoin".to_vec()),
