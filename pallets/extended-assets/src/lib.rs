@@ -55,6 +55,8 @@ use common::{
     BalancePrecision, ContentSource, Description, IsValid,
 };
 use frame_support::sp_runtime::DispatchError;
+use frame_support::BoundedBTreeSet;
+use sp_core::Get;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -63,11 +65,14 @@ type Timestamp<T> = pallet_timestamp::Pallet<T>;
 pub use pallet::*;
 
 #[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
-pub struct SoulboundTokenMetadata<Moment> {
+#[scale_info(skip_type_params(MaxRegulatedAssetsPerSBT))]
+pub struct SoulboundTokenMetadata<Moment, AssetId, MaxRegulatedAssetsPerSBT: Get<u32>> {
     /// External link of issued place
     external_url: Option<ContentSource>,
     /// Issuance Timestamp
     issued_at: Moment,
+    /// List of regulated assets permissioned by this token
+    regulated_assets: BoundedBTreeSet<AssetId, MaxRegulatedAssetsPerSBT>,
 }
 
 #[frame_support::pallet]
@@ -94,6 +99,10 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+
+        /// Max number of regulated assets per one Soulbound Token
+        #[pallet::constant]
+        type MaxRegulatedAssetsPerSBT: Get<u32>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -185,6 +194,7 @@ pub mod pallet {
             let metadata = SoulboundTokenMetadata {
                 external_url: external_url.clone(),
                 issued_at: now_timestamp,
+                regulated_assets: Default::default(),
             };
 
             <SoulboundAsset<T>>::insert(sbt_asset_id, metadata);
@@ -274,7 +284,28 @@ pub mod pallet {
 
             Self::check_regulated_assets_for_binding(&regulated_asset_id, &who)?;
 
+            // In case the regulated asset is already bound to another SBT, we need to unbind it
+            // by removing it from the previous SBT's regulated assets list.
+            if <RegulatedAssetToSoulboundAsset<T>>::contains_key(regulated_asset_id) {
+                let previous_sbt = Self::regulated_asset_to_sbt(regulated_asset_id);
+                <SoulboundAsset<T>>::mutate(previous_sbt, |metadata| {
+                    if let Some(metadata) = metadata {
+                        metadata.regulated_assets.remove(&regulated_asset_id);
+                    }
+                });
+            }
+
+            // Bind the regulated asset to the SBT and update the SBT's metadata
             <RegulatedAssetToSoulboundAsset<T>>::set(regulated_asset_id, sbt_asset_id);
+            <SoulboundAsset<T>>::try_mutate(sbt_asset_id, |metadata| -> DispatchResult {
+                if let Some(metadata) = metadata {
+                    metadata
+                        .regulated_assets
+                        .try_insert(regulated_asset_id)
+                        .map_err(|_| Error::<T>::RegulatedAssetsPerSBTExceeded)?;
+                }
+                Ok(())
+            })?;
 
             Self::deposit_event(Event::RegulatedAssetBoundToSBT {
                 regulated_asset_id,
@@ -335,6 +366,8 @@ pub mod pallet {
         NotAllowedToRegulateSoulboundAsset,
         /// Invalid External URL
         InvalidExternalUrl,
+        /// Regulated Assets per SBT exceeded
+        RegulatedAssetsPerSBTExceeded,
     }
 
     #[pallet::type_value]
@@ -351,8 +384,13 @@ pub mod pallet {
     /// Mapping from SBT (asset_id) to its metadata
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
-    pub type SoulboundAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, SoulboundTokenMetadata<T::Moment>, OptionQuery>;
+    pub type SoulboundAsset<T: Config> = StorageMap<
+        _,
+        Identity,
+        AssetIdOf<T>,
+        SoulboundTokenMetadata<T::Moment, AssetIdOf<T>, T::MaxRegulatedAssetsPerSBT>,
+        OptionQuery,
+    >;
 
     /// Mapping from Regulated asset id to SBT asset id
     #[pallet::storage]
