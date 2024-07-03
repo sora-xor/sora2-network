@@ -480,6 +480,44 @@
 <a href="#465" id="465">465</a>
 <a href="#466" id="466">466</a>
 <a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -537,6 +575,8 @@
     BalancePrecision, ContentSource, Description, IsValid,
 };
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
+<span class="kw">use </span>frame_support::BoundedBTreeSet;
+<span class="kw">use </span>sp_core::Get;
 <span class="kw">use </span>weights::WeightInfo;
 
 <span class="kw">type </span>AccountIdOf&lt;T&gt; = &lt;T <span class="kw">as </span>frame_system::Config&gt;::AccountId;
@@ -545,11 +585,14 @@
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="attr">#[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
-</span><span class="kw">pub struct </span>SoulboundTokenMetadata&lt;Moment&gt; {
+#[scale_info(skip_type_params(MaxRegulatedAssetsPerSBT))]
+</span><span class="kw">pub struct </span>SoulboundTokenMetadata&lt;Moment, AssetId, MaxRegulatedAssetsPerSBT: Get&lt;u32&gt;&gt; {
     <span class="doccomment">/// External link of issued place
     </span>external_url: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
     <span class="doccomment">/// Issuance Timestamp
     </span>issued_at: Moment,
+    <span class="doccomment">/// List of regulated assets permissioned by this token
+    </span>regulated_assets: BoundedBTreeSet&lt;AssetId, MaxRegulatedAssetsPerSBT&gt;,
 }
 
 <span class="attr">#[frame_support::pallet]
@@ -576,6 +619,10 @@
             ContentSource,
             Description,
         &gt;;
+
+        <span class="doccomment">/// Max number of regulated assets per one Soulbound Token
+        </span><span class="attr">#[pallet::constant]
+        </span><span class="kw">type </span>MaxRegulatedAssetsPerSBT: Get&lt;u32&gt;;
 
         <span class="doccomment">/// Weight information for extrinsics in this pallet
         </span><span class="kw">type </span>WeightInfo: WeightInfo;
@@ -667,6 +714,7 @@
             <span class="kw">let </span>metadata = SoulboundTokenMetadata {
                 external_url: external_url.clone(),
                 issued_at: now_timestamp,
+                regulated_assets: Default::default(),
             };
 
             &lt;SoulboundAsset&lt;T&gt;&gt;::insert(sbt_asset_id, metadata);
@@ -756,7 +804,28 @@
 
             <span class="self">Self</span>::check_regulated_assets_for_binding(<span class="kw-2">&amp;</span>regulated_asset_id, <span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
 
-            &lt;RegulatedAssetToSoulboundAsset&lt;T&gt;&gt;::set(regulated_asset_id, sbt_asset_id);
+            <span class="comment">// In case the regulated asset is already bound to another SBT, we need to unbind it
+            // by removing it from the previous SBT&#39;s regulated assets list.
+            </span><span class="kw">if </span>&lt;RegulatedAssetToSoulboundAsset&lt;T&gt;&gt;::contains_key(regulated_asset_id) {
+                <span class="kw">let </span>previous_sbt = <span class="self">Self</span>::regulated_asset_to_sbt(regulated_asset_id);
+                &lt;SoulboundAsset&lt;T&gt;&gt;::mutate(previous_sbt, |metadata| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(metadata) = metadata {
+                        metadata.regulated_assets.remove(<span class="kw-2">&amp;</span>regulated_asset_id);
+                    }
+                });
+            }
+
+            <span class="comment">// Bind the regulated asset to the SBT and update the SBT&#39;s metadata
+            </span>&lt;RegulatedAssetToSoulboundAsset&lt;T&gt;&gt;::set(regulated_asset_id, sbt_asset_id);
+            &lt;SoulboundAsset&lt;T&gt;&gt;::try_mutate(sbt_asset_id, |metadata| -&gt; DispatchResult {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(metadata) = metadata {
+                    metadata
+                        .regulated_assets
+                        .try_insert(regulated_asset_id)
+                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::RegulatedAssetsPerSBTExceeded)<span class="question-mark">?</span>;
+                }
+                <span class="prelude-val">Ok</span>(())
+            })<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deposit_event(Event::RegulatedAssetBoundToSBT {
                 regulated_asset_id,
@@ -817,6 +886,8 @@
         </span>NotAllowedToRegulateSoulboundAsset,
         <span class="doccomment">/// Invalid External URL
         </span>InvalidExternalUrl,
+        <span class="doccomment">/// Regulated Assets per SBT exceeded
+        </span>RegulatedAssetsPerSBTExceeded,
     }
 
     <span class="attr">#[pallet::type_value]
@@ -833,8 +904,13 @@
     <span class="doccomment">/// Mapping from SBT (asset_id) to its metadata
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>soulbound_asset)]
-    </span><span class="kw">pub type </span>SoulboundAsset&lt;T: Config&gt; =
-        StorageMap&lt;<span class="kw">_</span>, Identity, AssetIdOf&lt;T&gt;, SoulboundTokenMetadata&lt;T::Moment&gt;, OptionQuery&gt;;
+    </span><span class="kw">pub type </span>SoulboundAsset&lt;T: Config&gt; = StorageMap&lt;
+        <span class="kw">_</span>,
+        Identity,
+        AssetIdOf&lt;T&gt;,
+        SoulboundTokenMetadata&lt;T::Moment, AssetIdOf&lt;T&gt;, T::MaxRegulatedAssetsPerSBT&gt;,
+        OptionQuery,
+    &gt;;
 
     <span class="doccomment">/// Mapping from Regulated asset id to SBT asset id
     </span><span class="attr">#[pallet::storage]

@@ -314,22 +314,22 @@
 			.saturating_add(T::DbWeight::get().reads(<span class="number">3</span>))
 			.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>))
 	}
-	<span class="doccomment">/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(2089), added: 4564, mode: MaxEncodedLen)
+	<span class="doccomment">/// Storage: ExtendedAssets SoulboundAsset (r:1 w:1)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
 	/// Storage: Assets AssetOwners (r:2 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ExtendedAssets RegulatedAsset (r:1 w:0)
 	/// Proof: ExtendedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:0 w:1)
+	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:1)
 	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
 	</span><span class="kw">fn </span>bind_regulated_asset_to_sbt() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `1030`
-		//  Estimated: `13052`
-		// Minimum execution time: 23_000 nanoseconds.
-		</span>Weight::from_parts(<span class="number">24_000_000</span>, <span class="number">13052</span>)
-			.saturating_add(T::DbWeight::get().reads(<span class="number">4</span>))
-			.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>))
+		//  Measured:  `1031`
+		//  Estimated: `335594`
+		// Minimum execution time: 27_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">28_000_000</span>, <span class="number">335594</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">5</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">2</span>))
 	}
 }
 
@@ -355,9 +355,9 @@
 	}
 	
 	<span class="kw">fn </span>bind_regulated_asset_to_sbt() -&gt; Weight {
-			Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">13052</span>)
-			.saturating_add(RocksDbWeight::get().reads(<span class="number">4</span>))
-			.saturating_add(RocksDbWeight::get().writes(<span class="number">1</span>))
+			Weight::from_parts(<span class="number">28_000_000</span>, <span class="number">335594</span>)
+			.saturating_add(RocksDbWeight::get().reads(<span class="number">5</span>))
+			.saturating_add(RocksDbWeight::get().writes(<span class="number">2</span>))
 		}
 }
 
