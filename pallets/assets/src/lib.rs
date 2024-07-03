@@ -268,7 +268,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -480,6 +480,18 @@ pub mod pallet {
             AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
                 if let Some(new_name) = new_name.clone() {
                     ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
+                    asset_info.1 = new_name;
+                }
+                if let Some(new_symbol) = new_symbol.clone() {
+                    ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
+                    asset_info.0 = new_symbol;
+                }
+                DispatchResult::Ok(())
+            })?;
+
+            AssetInfosV2::<T>::mutate(asset_id, |ref mut asset_info| {
+                if let Some(new_name) = new_name.clone() {
+                    ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
                     asset_info.name = new_name;
                 }
                 if let Some(new_symbol) = new_symbol.clone() {
@@ -546,10 +558,29 @@ pub mod pallet {
     pub type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
-    /// Asset Id -> AssetInfo
+    /// Asset Id -> (Symbol, Name, Precision, Is Mintable, Content Source, Description)
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
-    pub type AssetInfos<T: Config> = StorageMap<_, Twox64Concat, T::AssetId, AssetInfo, ValueQuery>;
+    pub type AssetInfos<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        T::AssetId,
+        (
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            bool,
+            Option<ContentSource>,
+            Option<Description>,
+        ),
+        ValueQuery,
+    >;
+
+    /// Asset Id -> AssetInfo
+    #[pallet::storage]
+    #[pallet::getter(fn asset_infos_v2)]
+    pub type AssetInfosV2<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, AssetInfo, ValueQuery>;
 
     /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
@@ -694,6 +725,17 @@ impl<T: Config> Pallet<T> {
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         AssetInfos::<T>::insert(
             asset_id,
+            (
+                symbol.clone(),
+                name.clone(),
+                precision,
+                is_mintable,
+                opt_content_src.clone(),
+                opt_desc.clone(),
+            ),
+        );
+        AssetInfosV2::<T>::insert(
+            asset_id,
             AssetInfo {
                 symbol,
                 name,
@@ -751,7 +793,7 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub fn ensure_asset_is_mintable(asset_id: &T::AssetId) -> DispatchResult {
-        let asset_info = AssetInfos::<T>::get(asset_id);
+        let asset_info = AssetInfosV2::<T>::get(asset_id);
         ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         Ok(())
     }
@@ -880,14 +922,20 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidAssetOwner
         );
         AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
+            ensure!(asset_info.3, Error::<T>::AssetSupplyIsNotMintable);
+            asset_info.3 = false;
+            Ok::<(), DispatchError>(())
+        })?;
+        AssetInfosV2::<T>::mutate(asset_id, |ref mut asset_info| {
             ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
             asset_info.is_mintable = false;
-            Ok(())
-        })
+            Ok::<(), DispatchError>(())
+        })?;
+        Ok(())
     }
 
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
-        AssetInfos::<T>::iter().map(|(key, _)| key).collect()
+        AssetInfosV2::<T>::iter().map(|(key, _)| key).collect()
     }
 
     #[allow(clippy::type_complexity)]
@@ -900,7 +948,7 @@ impl<T: Config> Pallet<T> {
         Option<ContentSource>,
         Option<Description>,
     )> {
-        AssetInfos::<T>::iter()
+        AssetInfosV2::<T>::iter()
             .map(|(key, asset_info)| {
                 (
                     key,
@@ -957,7 +1005,7 @@ impl<T: Config>
         Option<ContentSource>,
         Option<Description>,
     ) {
-        let asset_info = AssetInfos::<T>::get(asset_id);
+        let asset_info = AssetInfosV2::<T>::get(asset_id);
         (
             asset_info.symbol,
             asset_info.name,
@@ -969,15 +1017,15 @@ impl<T: Config>
     }
 
     fn is_non_divisible(asset_id: &T::AssetId) -> bool {
-        AssetInfos::<T>::get(asset_id).precision == 0
+        AssetInfosV2::<T>::get(asset_id).precision == 0
     }
 
     fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
-        AssetInfos::<T>::get(asset_id).content_source
+        AssetInfosV2::<T>::get(asset_id).content_source
     }
 
     fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
-        AssetInfos::<T>::get(asset_id).description
+        AssetInfosV2::<T>::get(asset_id).description
     }
 
     fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {

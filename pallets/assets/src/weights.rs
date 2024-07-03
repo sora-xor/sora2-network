@@ -81,16 +81,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:2 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:0 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	fn register() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2857`
-		//  Estimated: `26406`
-		// Minimum execution time: 111_460_000 picoseconds.
-		Weight::from_parts(113_445_000, 26406)
-			.saturating_add(T::DbWeight::get().reads(6_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
+		//  Measured:  `2847`
+		//  Estimated: `29213`
+		// Minimum execution time: 74_000 nanoseconds.
+		Weight::from_parts(84_000_000, 29213)
+			.saturating_add(T::DbWeight::get().reads(6))
+			.saturating_add(T::DbWeight::get().writes(7))
 	}
 	/// Storage: System Account (r:2 w:2)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
@@ -103,10 +105,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-	/// Storage: Assets AssetInfos (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:1 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(2089), added: 4564, mode: MaxEncodedLen)
+	/// Storage: ExtendedAssets RegulatedAsset (r:1 w:0)
+	/// Proof: ExtendedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
 	/// Storage: Tokens Accounts (r:1 w:1)
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	/// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -115,12 +121,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	fn mint() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2675`
-		//  Estimated: `18045`
-		// Minimum execution time: 78_928_000 picoseconds.
-		Weight::from_parts(81_331_000, 18045)
-			.saturating_add(T::DbWeight::get().reads(5_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
+		//  Measured:  `2854`
+		//  Estimated: `25475`
+		// Minimum execution time: 58_000 nanoseconds.
+		Weight::from_parts(74_000_000, 25475)
+			.saturating_add(T::DbWeight::get().reads(7))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	/// Storage: Tokens Accounts (r:1 w:1)
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
@@ -169,27 +175,31 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	fn set_non_mintable() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1695`
-		//  Estimated: `8340`
-		// Minimum execution time: 35_862_000 picoseconds.
-		Weight::from_parts(36_922_000, 8340)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		//  Measured:  `2478`
+		//  Estimated: `14859`
+		// Minimum execution time: 28_000 nanoseconds.
+		Weight::from_parts(34_000_000, 14859)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	fn update_info() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1299`
-		//  Estimated: `7548`
-		// Minimum execution time: 33_910_000 picoseconds.
-		Weight::from_parts(35_041_000, 7548)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		//  Measured:  `1884`
+		//  Estimated: `13077`
+		// Minimum execution time: 24_000 nanoseconds.
+		Weight::from_parts(25_000_000, 13077)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(2))
 	}
 }
 

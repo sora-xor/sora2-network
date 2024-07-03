@@ -672,7 +672,7 @@ fn should_register_indivisible() {
             None,
             None,
         ));
-        let asset_info = Assets::asset_infos(next_asset_id);
+        let asset_info = Assets::asset_infos_v2(next_asset_id);
         assert_eq!(asset_info.precision, 0u8);
     })
 }
@@ -857,7 +857,7 @@ fn test_update_asset_info() {
             Event::AssetUpdated(XOR, Some(val_symbol.clone()), Some(val_name.clone())).into(),
         );
         assert_eq!(
-            Assets::asset_infos(XOR),
+            Assets::asset_infos_v2(XOR),
             AssetInfo {
                 symbol: val_symbol.clone(),
                 name: val_name,
@@ -881,7 +881,7 @@ fn test_update_asset_info() {
             Event::AssetUpdated(XOR, None, Some(pswap_name.clone())).into(),
         );
         assert_eq!(
-            Assets::asset_infos(XOR),
+            Assets::asset_infos_v2(XOR),
             AssetInfo {
                 symbol: val_symbol,
                 name: pswap_name.clone(),
@@ -903,7 +903,7 @@ fn test_update_asset_info() {
             Event::AssetUpdated(XOR, Some(pswap_symbol.clone()), None).into(),
         );
         assert_eq!(
-            Assets::asset_infos(XOR),
+            Assets::asset_infos_v2(XOR),
             AssetInfo {
                 symbol: pswap_symbol,
                 name: pswap_name,
@@ -952,7 +952,7 @@ fn test_update_asset_info() {
             Error::<Runtime>::InvalidAssetSymbol
         );
         assert_eq!(
-            Assets::asset_infos(XOR),
+            Assets::asset_infos_v2(XOR),
             AssetInfo {
                 symbol: AssetSymbol(b"PSWAP".to_vec()),
                 name: AssetName(b"Polkaswap".to_vec()),
