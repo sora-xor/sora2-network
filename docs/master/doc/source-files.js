@@ -1,6 +1,6 @@
 var sourcesIndex = JSON.parse('{\
 "apollo_platform":["",[],["lib.rs","weights.rs"]],\
-"assets":["",[["migration",[],["mod.rs","register_asset.rs","v2.rs"]]],["lib.rs","weights.rs"]],\
+"assets":["",[["migration",[],["asset_infos_v2.rs","mod.rs","register_asset.rs"]]],["lib.rs","weights.rs"]],\
 "assets_rpc":["",[],["lib.rs"]],\
 "assets_runtime_api":["",[],["lib.rs"]],\
 "band":["",[],["lib.rs","migrations.rs","weights.rs"]],\

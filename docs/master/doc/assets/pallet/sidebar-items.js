@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["GenesisConfig","Pallet"],"trait":["Config"],"type":["AssetInfos","AssetOwners","AssetRecordAssetId","Module"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["GenesisConfig","Pallet"],"trait":["Config"],"type":["AssetInfos","AssetInfosV2","AssetOwners","AssetRecordAssetId","Module"]};

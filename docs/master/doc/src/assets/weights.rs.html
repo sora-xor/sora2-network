@@ -329,6 +329,16 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -412,16 +422,18 @@
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:2 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:0 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	</span><span class="kw">fn </span>register() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `2857`
-		//  Estimated: `26406`
-		// Minimum execution time: 111_460_000 picoseconds.
-		</span>Weight::from_parts(<span class="number">113_445_000</span>, <span class="number">26406</span>)
-			.saturating_add(T::DbWeight::get().reads(<span class="number">6_u64</span>))
-			.saturating_add(T::DbWeight::get().writes(<span class="number">6_u64</span>))
+		//  Measured:  `2847`
+		//  Estimated: `29213`
+		// Minimum execution time: 74_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">84_000_000</span>, <span class="number">29213</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">6</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">7</span>))
 	}
 	<span class="doccomment">/// Storage: System Account (r:2 w:2)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
@@ -434,10 +446,14 @@
 			.saturating_add(T::DbWeight::get().reads(<span class="number">2_u64</span>))
 			.saturating_add(T::DbWeight::get().writes(<span class="number">2_u64</span>))
 	}
-	<span class="doccomment">/// Storage: Assets AssetInfos (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	<span class="doccomment">/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:1 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(2089), added: 4564, mode: MaxEncodedLen)
+	/// Storage: ExtendedAssets RegulatedAsset (r:1 w:0)
+	/// Proof: ExtendedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
 	/// Storage: Tokens Accounts (r:1 w:1)
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	/// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -446,12 +462,12 @@
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
 	</span><span class="kw">fn </span>mint() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `2675`
-		//  Estimated: `18045`
-		// Minimum execution time: 78_928_000 picoseconds.
-		</span>Weight::from_parts(<span class="number">81_331_000</span>, <span class="number">18045</span>)
-			.saturating_add(T::DbWeight::get().reads(<span class="number">5_u64</span>))
-			.saturating_add(T::DbWeight::get().writes(<span class="number">3_u64</span>))
+		//  Measured:  `2854`
+		//  Estimated: `25475`
+		// Minimum execution time: 58_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">74_000_000</span>, <span class="number">25475</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">7</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">3</span>))
 	}
 	<span class="doccomment">/// Storage: Tokens Accounts (r:1 w:1)
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
@@ -500,27 +516,31 @@
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	</span><span class="kw">fn </span>set_non_mintable() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `1695`
-		//  Estimated: `8340`
-		// Minimum execution time: 35_862_000 picoseconds.
-		</span>Weight::from_parts(<span class="number">36_922_000</span>, <span class="number">8340</span>)
-			.saturating_add(T::DbWeight::get().reads(<span class="number">2_u64</span>))
-			.saturating_add(T::DbWeight::get().writes(<span class="number">1_u64</span>))
+		//  Measured:  `2478`
+		//  Estimated: `14859`
+		// Minimum execution time: 28_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">34_000_000</span>, <span class="number">14859</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">3</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">2</span>))
 	}
 	<span class="doccomment">/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	</span><span class="kw">fn </span>update_info() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `1299`
-		//  Estimated: `7548`
-		// Minimum execution time: 33_910_000 picoseconds.
-		</span>Weight::from_parts(<span class="number">35_041_000</span>, <span class="number">7548</span>)
-			.saturating_add(T::DbWeight::get().reads(<span class="number">2_u64</span>))
-			.saturating_add(T::DbWeight::get().writes(<span class="number">1_u64</span>))
+		//  Measured:  `1884`
+		//  Estimated: `13077`
+		// Minimum execution time: 24_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">25_000_000</span>, <span class="number">13077</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">3</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">2</span>))
 	}
 }
 
