@@ -46,6 +46,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+pub mod test_utils;
+
 pub mod weights;
 
 use codec::{Decode, Encode, MaxEncodedLen};
