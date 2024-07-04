@@ -69,7 +69,7 @@ use common::{DOT, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
-use frame_support::weights::ConstantMultiplier;
+use frame_support::weights::{ConstantMultiplier, RuntimeDbWeight};
 
 // Make the WASM binary available.
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
@@ -2694,6 +2694,75 @@ pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
 
+    #[cfg(feature = "wip")] // Contracts pallet
+    impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash> for Runtime {
+        fn call(
+            origin: AccountId,
+            dest: AccountId,
+            value: Balance,
+            gas_limit: Option<Weight>,
+            storage_deposit_limit: Option<Balance>,
+            input_data: Vec<u8>,
+        ) -> pallet_contracts_primitives::ContractExecResult<Balance> {
+            let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
+            Contracts::bare_call(
+                origin,
+                dest,
+                value,
+                gas_limit,
+                storage_deposit_limit,
+                input_data,
+                false,
+                pallet_contracts::Determinism::Deterministic
+            )
+        }
+
+        fn instantiate(
+            origin: AccountId,
+            value: Balance,
+            gas_limit: Option<Weight>,
+            storage_deposit_limit: Option<Balance>,
+            code: pallet_contracts_primitives::Code<Hash>,
+            data: Vec<u8>,
+            salt: Vec<u8>,
+        ) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance> {
+            let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
+            Contracts::bare_instantiate(
+                origin,
+                value,
+                gas_limit,
+                storage_deposit_limit,
+                code,
+                data,
+                salt,
+                false
+            )
+        }
+        fn upload_code(
+            origin: AccountId,
+            code: Vec<u8>,
+            storage_deposit_limit: Option<Balance>,
+            determinism: pallet_contracts::Determinism,
+        ) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance> {
+            Contracts::bare_upload_code(
+                origin,
+                code,
+                storage_deposit_limit,
+                determinism,
+            )
+        }
+
+        fn get_storage(
+            address: AccountId,
+            key: Vec<u8>,
+        ) -> pallet_contracts_primitives::GetStorageResult {
+            Contracts::get_storage(
+                address,
+                key
+            )
+        }
+    }
+
     // impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
     // {
     // 	fn call(
@@ -2704,7 +2773,7 @@ impl_runtime_apis! {
     // 		storage_deposit_limit: Option<Balance>,
     // 		input_data: Vec<u8>,
     // 	) -> pallet_contracts_primitives::ContractExecResult<Balance, EventRecord> {
-    // 		let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
+    // 		let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
     // 		Contracts::bare_call(
     // 			origin,
     // 			dest,
@@ -2728,7 +2797,7 @@ impl_runtime_apis! {
     // 		salt: Vec<u8>,
     // 	) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance, EventRecord>
     // 	{
-    // 		let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
+    // 		let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
     // 		Contracts::bare_instantiate(
     // 			origin,
     // 			value,
