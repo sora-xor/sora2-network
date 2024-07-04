@@ -33,7 +33,7 @@
 use crate::mock::{Timestamp, *};
 use crate::test_utils::*;
 use crate::*;
-use common::{TechAccountId, XOR};
+use common::{AssetId32, PredefinedAssetId, TechAccountId, XOR};
 use frame_support::{assert_err, assert_ok};
 use permissions::MINT;
 use sp_core::crypto::AccountId32;
@@ -528,7 +528,7 @@ fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
             None,
             None,
         ));
-        let sbt_asset_id_1 = get_sbt_id_from_events::<TestRuntime>();
+        let sbt_asset_id_1 = register_sbt_asset::<TestRuntime>(&owner);
 
         assert_ok!(ExtendedAssets::issue_sbt(
             RuntimeOrigin::signed(owner.clone()),
@@ -538,7 +538,8 @@ fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
             None,
             None,
         ));
-        let sbt_asset_id_2 = get_sbt_id_from_events::<TestRuntime>();
+
+        let sbt_asset_id_2 = register_sbt_asset::<TestRuntime>(&owner);
 
         // 3. Bind each regulated asset to one SBT
 
