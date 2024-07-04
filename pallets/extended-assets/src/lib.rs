@@ -190,7 +190,7 @@ pub mod pallet {
                 0,
                 true,
                 common::AssetType::Soulbound,
-                None,
+                image.clone(),
                 description.clone(),
             )?;
 

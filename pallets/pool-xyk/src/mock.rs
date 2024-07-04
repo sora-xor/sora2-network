@@ -43,7 +43,7 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
@@ -275,6 +275,7 @@ impl xst::Config for Runtime {
 impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
     type WeightInfo = ();
 }
 
