@@ -280,6 +280,7 @@ members = [
     "pallets/band",
     "pallets/qa-tools",
     "pallets/regulated-assets",
+    "pallets/market",
     "node/",
     "utils/parse",
     "utils/generate-bags",

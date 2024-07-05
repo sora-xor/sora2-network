@@ -1126,6 +1126,14 @@ impl<T: Config>
         Self::mint_unchecked(asset_id, to, amount)
     }
 
+    fn burn_unchecked(
+        asset_id: &Self::AssetId,
+        from: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::burn_unchecked(asset_id, from, amount)
+    }
+
     fn burn(
         origin: OriginFor<T>,
         asset_id: Self::AssetId,

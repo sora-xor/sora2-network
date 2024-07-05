@@ -966,7 +966,7 @@ impl assets::Config for Runtime {
     #[cfg(feature = "wip")] // DEFI-R
     type AssetRegulator = (
         permissions::Pallet<Runtime>,
-        regulated_assets::Pallet<Runtime>,
+        (regulated_assets::Pallet<Runtime>, market::Pallet<Runtime>),
     );
 }
 
@@ -2422,6 +2422,13 @@ impl regulated_assets::Config for Runtime {
     type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "wip")] // Market
+impl market::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = market::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = Assets;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2548,6 +2555,8 @@ construct_runtime! {
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         #[cfg(feature = "wip")] // DEFI-R
         RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
+        #[cfg(feature = "wip")] // Market
+        Market: market::{Pallet, Call, Storage, Event<T>} = 116,
     }
 }
 
@@ -3312,6 +3321,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             #[cfg(feature = "wip")] // DEFI-R
             list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
+            #[cfg(feature = "wip")] // Market
+            list_benchmark!(list, extra, market, Market);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3409,6 +3420,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             #[cfg(feature = "wip")] // DEFI-R
             add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
+            #[cfg(feature = "wip")] // Market
+            add_benchmark!(params, batches, market, Market);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

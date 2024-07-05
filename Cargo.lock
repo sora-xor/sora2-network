@@ -3758,6 +3758,7 @@ dependencies = [
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
  "log",
+ "market",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
  "multisig-verifier",
@@ -5847,6 +5848,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b823e83b2affd8f40a9ee8c29dbc56404c1e34cd2710921f2801e2cf29527afa"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "market"
+version = "1.0.1"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]

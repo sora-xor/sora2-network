@@ -103,6 +103,7 @@ vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", d
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xst = { path = "../pallets/xst", default-features = false }
 xst-benchmarking = { path = "../pallets/xst/benchmarking", default-features = false, optional = true }
+market = { path = "../pallets/market", default-features = false, optional = true }
 
 # Substrate dependencies
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -290,6 +291,7 @@ std = [
     "xor-fee/std",
     "xst/std",
     "xst-benchmarking/std",
+    "market/std"
 ]
 
 private-net = [
@@ -313,6 +315,7 @@ wip = [
     "pallet-beefy",
     "pallet-beefy-mmr",
     "regulated-assets/wip",
+    "market",
 ]
 
 ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
@@ -372,7 +375,8 @@ runtime-benchmarks = [
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
-    "regulated-assets/runtime-benchmarks"
+    "regulated-assets/runtime-benchmarks",
+    "market/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []
@@ -460,6 +464,7 @@ try-runtime = [
     "multisig-verifier/try-runtime",
     "qa-tools/try-runtime",
     "regulated-assets/try-runtime",
+    "market/try-runtime",
 ]
 
 test = ["framenode-chain-spec/test", "liquidity-proxy/test", "order-book/test"]
