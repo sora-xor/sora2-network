@@ -199,8 +199,7 @@ mod _allowed_deprecated {
         KUSD = 12,
         KGOLD = 13,
         KXOR = 14,
-        SB = 15,
-        KARMA = 16,
+        KARMA = 15,
     }
 }
 
@@ -217,7 +216,6 @@ pub const KEN: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
 pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
-pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::SB);
 pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -469,6 +467,7 @@ pub enum DEXId {
     #[default]
     Polkaswap = 0,
     PolkaswapXSTUSD = 1,
+    PolkaswapKUSD = 2,
 }
 
 impl From<DEXId> for u32 {
@@ -630,6 +629,12 @@ impl Display for ContentSource {
 impl IsValid for ContentSource {
     fn is_valid(&self) -> bool {
         self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
+    }
+}
+
+impl MaxEncodedLen for ContentSource {
+    fn max_encoded_len() -> usize {
+        ASSET_CONTENT_SOURCE_MAX_LENGTH
     }
 }
 
@@ -1282,4 +1287,40 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
     }
+}
+
+/// Enumeration of all supported asset types.
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    Default,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
+pub enum AssetType {
+    #[default]
+    Regular,
+    NFT,
+    Soulbound,
+    Regulated,
+}
+
+/// Presents information about an asset.
+#[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, Default, Debug)]
+pub struct AssetInfo {
+    pub symbol: AssetSymbol,
+    pub name: AssetName,
+    pub precision: BalancePrecision,
+    pub is_mintable: bool,
+    pub asset_type: AssetType,
+    pub content_source: Option<ContentSource>,
+    pub description: Option<Description>,
 }

@@ -30,6 +30,7 @@ where
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -42,6 +43,7 @@ where
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));

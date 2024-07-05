@@ -1088,6 +1088,7 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION,
                 balance!(0),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             )?;
@@ -1875,7 +1876,9 @@ pub mod pallet {
                     swap_outcome.amount,
                 )?;
                 let to_remint = remint_percent * swap_outcome.amount;
-                Self::mint_treasury(incentive_asset_id, to_remint)?;
+                if to_remint > 0 {
+                    Self::mint_treasury(incentive_asset_id, to_remint)?;
+                }
             }
 
             Ok(())

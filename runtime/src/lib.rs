@@ -105,7 +105,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -253,10 +253,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 87,
+    spec_version: 88,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 87,
+    transaction_version: 88,
     state_version: 0,
 };
 
@@ -966,7 +966,7 @@ impl assets::Config for Runtime {
     #[cfg(feature = "wip")] // DEFI-R
     type AssetRegulator = (
         permissions::Pallet<Runtime>,
-        (regulated_assets::Pallet<Runtime>, market::Pallet<Runtime>),
+        (extended_assets::Pallet<Runtime>, market::Pallet<Runtime>),
     );
 }
 
@@ -1047,6 +1047,10 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
+    type AssetRegulator = ();
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
@@ -1086,6 +1090,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -1096,7 +1101,6 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type PrimaryMarketXST = xst::Pallet<Runtime>;
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
-    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
@@ -1111,6 +1115,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1294,6 +1300,14 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type PermittedSetPeriod = EitherOfDiverse<
+        pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
+        EnsureRoot<AccountId>,
+    >;
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
@@ -2414,12 +2428,11 @@ impl multisig_verifier::Config for Runtime {
 }
 
 #[cfg(feature = "wip")] // DEFI-R
-impl regulated_assets::Config for Runtime {
+impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type MaxAllowedTokensPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
     type AssetInfoProvider = Assets;
-    type WeightInfo = regulated_assets::weights::SubstrateWeight<Runtime>;
+    type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
+    type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "wip")] // Market
@@ -2554,7 +2567,7 @@ construct_runtime! {
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         #[cfg(feature = "wip")] // DEFI-R
-        RegulatedAssets: regulated_assets::{Pallet, Call, Storage, Event<T>} = 115,
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
         #[cfg(feature = "wip")] // Market
         Market: market::{Pallet, Call, Storage, Event<T>} = 116,
     }
@@ -3320,7 +3333,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             #[cfg(feature = "wip")] // DEFI-R
-            list_benchmark!(list, extra, regulated_assets, RegulatedAssets);
+            list_benchmark!(list, extra, extended_assets, ExtendedAssets);
             #[cfg(feature = "wip")] // Market
             list_benchmark!(list, extra, market, Market);
 
@@ -3419,7 +3432,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             #[cfg(feature = "wip")] // DEFI-R
-            add_benchmark!(params, batches, regulated_assets, RegulatedAssets);
+            add_benchmark!(params, batches, extended_assets, ExtendedAssets);
             #[cfg(feature = "wip")] // Market
             add_benchmark!(params, batches, market, Market);
 

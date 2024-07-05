@@ -92,7 +92,7 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
-regulated-assets = { path = "../pallets/regulated-assets", default-features = false, optional = true }
+extended-assets = { path = "../pallets/extended-assets", default-features = false, optional = true }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -265,7 +265,7 @@ std = [
     "pswap-distribution/std",
     "qa-tools/std",
     "referrals/std",
-    "regulated-assets/std",
+    "extended-assets/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde/std",
@@ -304,6 +304,8 @@ private-net = [
 
 wip = [
     "framenode-chain-spec/wip",
+    "dex-manager/wip",
+    "order-book/wip",
     "liquidity-proxy/wip",
     "liquidity-proxy-runtime-api/wip",
     "liquidity-proxy-benchmarking/wip",
@@ -314,7 +316,8 @@ wip = [
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "regulated-assets/wip",
+    "extended-assets/wip",
+    "xor-fee/wip",
     "market",
 ]
 
@@ -375,7 +378,7 @@ runtime-benchmarks = [
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
-    "regulated-assets/runtime-benchmarks",
+    "extended-assets/runtime-benchmarks",
     "market/runtime-benchmarks",
 ]
 
@@ -463,7 +466,7 @@ try-runtime = [
     "bridge-data-signer/try-runtime",
     "multisig-verifier/try-runtime",
     "qa-tools/try-runtime",
-    "regulated-assets/try-runtime",
+    "extended-assets/try-runtime",
     "market/try-runtime",
 ]
 

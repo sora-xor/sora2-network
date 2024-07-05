@@ -53,7 +53,7 @@ use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
+use sp_runtime::{AccountId32, DispatchError, Perbill, Percent, Permill};
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
 
@@ -132,6 +132,7 @@ parameter_types! {
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 construct_runtime! {
@@ -162,6 +163,8 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        #[cfg(feature = "wip")] // DEFI-R
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -178,12 +181,10 @@ impl Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
     type PrimaryMarketTBC = MockMCBCPool;
     type PrimaryMarketXST = MockXSTPool;
     type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
-
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
@@ -194,6 +195,8 @@ impl Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -290,6 +293,14 @@ impl demeter_farming_platform::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
+impl extended_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxRegulatedAssetsPerSBT = ConstU32<1000>;
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -312,6 +323,10 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
+    type AssetRegulator = ();
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }
@@ -369,6 +384,7 @@ pub struct ExtBuilder {
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    pub is_permissioned_xyk_pool: bool,
 }
 
 impl Default for ExtBuilder {
@@ -514,6 +530,7 @@ impl Default for ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
+            is_permissioned_xyk_pool: false,
         }
     }
 }
@@ -924,6 +941,34 @@ impl ExtBuilder {
         self
     }
 
+    #[cfg(feature = "wip")] // DEFI-R
+    pub fn with_permissioned_xyk_pool(mut self) -> Self {
+        self = self.with_xyk_pool();
+        self.is_permissioned_xyk_pool = true;
+        self
+    }
+
+    #[cfg(feature = "wip")] // DEFI-R
+    fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
+        use extended_assets::test_utils::register_sbt_asset;
+        use frame_support::assert_ok;
+
+        System::set_block_number(1);
+        let owner_origin = RuntimeOrigin::signed(owner.clone());
+        if !ExtendedAssets::regulated_asset(asset_id) {
+            ExtendedAssets::regulate_asset(owner_origin.clone(), *asset_id)
+                .expect("Failed to regulate Asset");
+        }
+
+        let sbt_asset_id = register_sbt_asset::<Runtime>(owner);
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            owner_origin,
+            sbt_asset_id,
+            *asset_id
+        ));
+        Assets::mint_to(&sbt_asset_id, &owner, &owner, 1).expect("Failed to mint SBT");
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -976,6 +1021,15 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        technical::GenesisConfig::<Runtime> {
+            register_tech_accounts: vec![(
+                GetLiquidityProxyAccountId::get().into(),
+                GetLiquidityProxyTechAccountId::get(),
+            )],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
             &dex_api::GenesisConfig {
                 source_types: self.source_types,
@@ -1023,6 +1077,10 @@ impl ExtBuilder {
                     asset.into(),
                 )
                 .unwrap();
+                if self.is_permissioned_xyk_pool {
+                    #[cfg(feature = "wip")] // DEFI-R
+                    Self::prepare_asset_for_permissioned_pool(&owner, &asset.into());
+                }
                 assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
                     .unwrap();
                 pool_xyk::Pallet::<Runtime>::initialize_pool(

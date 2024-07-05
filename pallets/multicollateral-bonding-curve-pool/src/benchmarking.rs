@@ -111,6 +111,7 @@ fn gen_asset_id<T: Config>(n: u32) -> AssetIdOf<T> {
         common::DEFAULT_BALANCE_PRECISION,
         0,
         true,
+        common::AssetType::Regular,
         None,
         None,
     )
@@ -182,6 +183,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -218,6 +220,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -249,6 +252,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -337,6 +341,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             balance!(50000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -391,6 +396,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             balance!(50000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -443,6 +449,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             balance!(50000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -509,6 +516,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -550,6 +558,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )

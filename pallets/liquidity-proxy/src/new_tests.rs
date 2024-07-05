@@ -115,7 +115,7 @@ fn check_alt() {
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
                         SwapAmount::with_desired_input(
                             balance!(7.7),
-                            balance!(0.690405237531098527)
+                            balance!(0.690405237531098531)
                         )
                     ),
                     (
@@ -123,7 +123,7 @@ fn check_alt() {
                         SwapAmount::with_desired_input(balance!(1939.3), balance!(176.3))
                     )
                 ],
-                balance!(176.990405237531098527),
+                balance!(176.990405237531098531),
                 OutcomeFee::xor(balance!(0.023099999999999999))
             )
         );
@@ -151,6 +151,7 @@ fn check_xyk_pool_small_reserves() {
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
             false,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -196,7 +197,7 @@ fn check_xyk_pool_small_reserves() {
         assert_eq!(
             info.outcome,
             SwapOutcome::new(
-                balance!(1011.132175661279064843),
+                balance!(1011.13217566127906472),
                 OutcomeFee::xor(balance!(0.033396526983837194))
             )
         );
@@ -214,6 +215,7 @@ fn check_tbc_pool_small_reserves() {
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -279,7 +281,7 @@ fn check_tbc_pool_small_reserves() {
         assert_eq!(
             info.outcome,
             SwapOutcome::new(
-                balance!(1088.90261246290912415),
+                balance!(1088.902612462909121337),
                 OutcomeFee::xor(balance!(8.267942959050548276))
             )
         );
@@ -297,6 +299,7 @@ fn check_not_enough_liquidity() {
             common::DEFAULT_BALANCE_PRECISION,
             balance!(1000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -366,6 +369,68 @@ fn check_not_enough_liquidity() {
                 true,
             ),
             E::InsufficientLiquidity
+        );
+    });
+}
+
+#[test]
+fn check_rounding() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        create_empty_order_book::<Runtime>(order_book_id);
+
+        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
+            RawOrigin::Signed(alice::<Runtime>()).into(),
+            order_book_id,
+            balance!(3600),
+            balance!(910),
+            common::PriceVariant::Sell,
+            None
+        ));
+
+        // before the fix it was balance!(36000.0000000001008),
+        // because for desired output: input = output / price
+        // price = chunk.output / chunk.input = 1 / 3600 = 0.0002(7)
+        // input = 10 / 0.0002(7) = 36000.0000000001008
+        assert_eq!(
+            LiquidityProxyPallet::inner_quote(
+                DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(balance!(10)),
+                LiquiditySourceFilter::empty(DEX.into()),
+                true,
+                true,
+            )
+            .unwrap()
+            .0
+            .outcome,
+            SwapOutcome::new(balance!(36000), Default::default())
+        );
+
+        // before the fix it was balance!(0.99999) - aligned by precision,
+        // because for desired input: output = input * price
+        // price = chunk.output / chunk.input = 1 / 3600 = 0.0002(7)
+        // output = 3600 * 0.0002(7) = 0.(9)
+        assert_eq!(
+            LiquidityProxyPallet::inner_quote(
+                DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(balance!(3600)),
+                LiquiditySourceFilter::empty(DEX.into()),
+                true,
+                true,
+            )
+            .unwrap()
+            .0
+            .outcome,
+            SwapOutcome::new(balance!(1), Default::default())
         );
     });
 }

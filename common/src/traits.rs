@@ -32,9 +32,9 @@ use crate::prelude::{
     permissions::PermissionId, ManagementMode, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use crate::{
-    Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PredefinedAssetId,
-    PriceVariant, PswapRemintInfo, RewardReason,
+    Amount, AssetId32, AssetName, AssetSymbol, AssetType, BalancePrecision, ContentSource,
+    Description, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle,
+    PredefinedAssetId, PriceVariant, PswapRemintInfo, RewardReason,
 };
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
@@ -537,6 +537,7 @@ pub type AssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
     AssetSymbol,
     AssetName,
     BalancePrecision,
+    AssetType,
     ContentSource,
     Description,
 >>::AssetId;
@@ -552,6 +553,7 @@ pub type GetBaseAssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
     AssetSymbol,
     AssetName,
     BalancePrecision,
+    AssetType,
     ContentSource,
     Description,
 >>::GetBaseAssetId;
@@ -588,6 +590,7 @@ pub trait Config: frame_system::Config {
         AssetSymbol,
         AssetName,
         BalancePrecision,
+        AssetType,
         ContentSource,
         Description,
     >;
@@ -1163,6 +1166,7 @@ pub trait AssetManager<
     AssetSymbol,
     AssetName,
     BalancePrecision,
+    AssetType,
     ContentSource,
     Description,
 >
@@ -1190,6 +1194,7 @@ pub trait AssetManager<
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError>;
@@ -1200,6 +1205,8 @@ pub trait AssetManager<
         currency_id: CurrencyIdOf<T>,
         amount: AmountOf<T>,
     ) -> DispatchResult;
+
+    fn gen_asset_id(account_id: &T::AccountId) -> Self::AssetId;
 
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
@@ -1212,6 +1219,7 @@ pub trait AssetManager<
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult;
@@ -1275,8 +1283,17 @@ pub trait AssetManager<
     ) -> DispatchResultWithPostInfo;
 }
 
-impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
-    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> for ()
+impl<
+        T: Config,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        AssetType,
+        ContentSource,
+        Description,
+    >
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, AssetType, ContentSource, Description>
+    for ()
 {
     type AssetId = AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = ();
@@ -1288,6 +1305,7 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
         _precision: BalancePrecision,
         _initial_supply: Balance,
         _is_mintable: bool,
+        _asset_type: AssetType,
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError> {
@@ -1303,6 +1321,10 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
         unimplemented!()
     }
 
+    fn gen_asset_id(_account_id: &<T>::AccountId) -> Self::AssetId {
+        unimplemented!()
+    }
+
     fn gen_asset_id_from_any(_value: &impl Encode) -> Self::AssetId {
         unimplemented!()
     }
@@ -1315,6 +1337,7 @@ impl<T: Config, AssetSymbol, AssetName, BalancePrecision, ContentSource, Descrip
         _precision: BalancePrecision,
         _initial_supply: Balance,
         _is_mintable: bool,
+        _asset_type: AssetType,
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> DispatchResult {
@@ -1511,6 +1534,25 @@ where
     ) -> Result<(), DispatchError> {
         A::check_permission(issuer, affected_account, asset_id, permission_id)?;
         B::check_permission(issuer, affected_account, asset_id, permission_id)?;
+        Ok(())
+    }
+}
+
+impl<AccountId, AssetId> AssetRegulator<AccountId, AssetId> for () {
+    fn assign_permission(
+        _owner: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn check_permission(
+        _issuer: &AccountId,
+        _affected_account: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
         Ok(())
     }
 }

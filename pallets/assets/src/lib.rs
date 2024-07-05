@@ -58,8 +58,8 @@ use codec::{Decode, Encode};
 use common::permissions::{BURN, MINT, TRANSFER};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    Amount, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
-    BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
+    Amount, AssetInfo, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    AssetType, BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
     LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::DispatchResultWithPostInfo;
@@ -180,7 +180,7 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{AssetRegulator, ContentSource, Description};
+    use common::{AssetRegulator, AssetType, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
 
@@ -305,6 +305,12 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION
             };
 
+            let asset_type = if is_indivisible {
+                AssetType::NFT
+            } else {
+                AssetType::Regular
+            };
+
             Self::register_from(
                 &author,
                 symbol,
@@ -312,6 +318,7 @@ pub mod pallet {
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )?;
@@ -470,14 +477,26 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             Self::ensure_asset_exists(&asset_id)?;
-            AssetInfos::<T>::mutate(asset_id, |(ref mut symbol, ref mut name, ..)| {
+            AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
                 if let Some(new_name) = new_name.clone() {
                     ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
-                    *name = new_name;
+                    asset_info.1 = new_name;
                 }
                 if let Some(new_symbol) = new_symbol.clone() {
                     ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
-                    *symbol = new_symbol;
+                    asset_info.0 = new_symbol;
+                }
+                DispatchResult::Ok(())
+            })?;
+
+            AssetInfosV2::<T>::mutate(asset_id, |ref mut asset_info| {
+                if let Some(new_name) = new_name.clone() {
+                    ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
+                    asset_info.name = new_name;
+                }
+                if let Some(new_symbol) = new_symbol.clone() {
+                    ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
+                    asset_info.symbol = new_symbol;
                 }
                 DispatchResult::Ok(())
             })?;
@@ -557,6 +576,12 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Asset Id -> AssetInfo
+    #[pallet::storage]
+    #[pallet::getter(fn asset_infos_v2)]
+    pub type AssetInfosV2<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, AssetInfo, ValueQuery>;
+
     /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
     #[pallet::getter(fn tuple_from_asset_id)]
@@ -611,6 +636,7 @@ pub mod pallet {
                         precision,
                         initial_supply,
                         is_mintable,
+                        AssetType::Regular,
                         content_source,
                         description,
                     )
@@ -671,6 +697,7 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult {
@@ -699,13 +726,25 @@ impl<T: Config> Pallet<T> {
         AssetInfos::<T>::insert(
             asset_id,
             (
+                symbol.clone(),
+                name.clone(),
+                precision,
+                is_mintable,
+                opt_content_src.clone(),
+                opt_desc.clone(),
+            ),
+        );
+        AssetInfosV2::<T>::insert(
+            asset_id,
+            AssetInfo {
                 symbol,
                 name,
                 precision,
                 is_mintable,
-                opt_content_src,
-                opt_desc,
-            ),
+                asset_type,
+                content_source: opt_content_src,
+                description: opt_desc,
+            },
         );
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
@@ -730,6 +769,7 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<T::AssetId, DispatchError> {
@@ -743,6 +783,7 @@ impl<T: Config> Pallet<T> {
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )?;
@@ -752,8 +793,8 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub fn ensure_asset_is_mintable(asset_id: &T::AssetId) -> DispatchResult {
-        let (_, _, _, is_mintable, ..) = AssetInfos::<T>::get(asset_id);
-        ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+        let asset_info = AssetInfosV2::<T>::get(asset_id);
+        ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         Ok(())
     }
 
@@ -880,15 +921,21 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
-        AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable, ..)| {
-            ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
-            *is_mintable = false;
-            Ok(())
-        })
+        AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
+            ensure!(asset_info.3, Error::<T>::AssetSupplyIsNotMintable);
+            asset_info.3 = false;
+            Ok::<(), DispatchError>(())
+        })?;
+        AssetInfosV2::<T>::mutate(asset_id, |ref mut asset_info| {
+            ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+            asset_info.is_mintable = false;
+            Ok::<(), DispatchError>(())
+        })?;
+        Ok(())
     }
 
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
-        AssetInfos::<T>::iter().map(|(key, _)| key).collect()
+        AssetInfosV2::<T>::iter().map(|(key, _)| key).collect()
     }
 
     #[allow(clippy::type_complexity)]
@@ -901,20 +948,18 @@ impl<T: Config> Pallet<T> {
         Option<ContentSource>,
         Option<Description>,
     )> {
-        AssetInfos::<T>::iter()
-            .map(
-                |(key, (symbol, name, precision, is_mintable, content_source, description))| {
-                    (
-                        key,
-                        symbol,
-                        name,
-                        precision,
-                        is_mintable,
-                        content_source,
-                        description,
-                    )
-                },
-            )
+        AssetInfosV2::<T>::iter()
+            .map(|(key, asset_info)| {
+                (
+                    key,
+                    asset_info.symbol,
+                    asset_info.name,
+                    asset_info.precision,
+                    asset_info.is_mintable,
+                    asset_info.content_source,
+                    asset_info.description,
+                )
+            })
             .collect()
     }
 }
@@ -960,28 +1005,27 @@ impl<T: Config>
         Option<ContentSource>,
         Option<Description>,
     ) {
-        let (symbol, name, precision, is_mintable, content_source, description) =
-            AssetInfos::<T>::get(asset_id);
+        let asset_info = AssetInfosV2::<T>::get(asset_id);
         (
-            symbol,
-            name,
-            precision,
-            is_mintable,
-            content_source,
-            description,
+            asset_info.symbol,
+            asset_info.name,
+            asset_info.precision,
+            asset_info.is_mintable,
+            asset_info.content_source,
+            asset_info.description,
         )
     }
 
     fn is_non_divisible(asset_id: &T::AssetId) -> bool {
-        AssetInfos::<T>::get(asset_id).2 == 0
+        AssetInfosV2::<T>::get(asset_id).precision == 0
     }
 
     fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
-        AssetInfos::<T>::get(asset_id).4
+        AssetInfosV2::<T>::get(asset_id).content_source
     }
 
     fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
-        AssetInfos::<T>::get(asset_id).5
+        AssetInfosV2::<T>::get(asset_id).description
     }
 
     fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
@@ -1027,11 +1071,15 @@ impl<T: Config>
 }
 
 impl<T: Config>
-    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, AssetType, ContentSource, Description>
     for Pallet<T>
 {
     type AssetId = T::AssetId;
     type GetBaseAssetId = T::GetBaseAssetId;
+
+    fn gen_asset_id(account_id: &T::AccountId) -> Self::AssetId {
+        Self::gen_asset_id(account_id)
+    }
 
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId {
         Self::gen_asset_id_from_any(value)
@@ -1053,6 +1101,7 @@ impl<T: Config>
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<Self::AssetId, DispatchError> {
@@ -1063,6 +1112,7 @@ impl<T: Config>
             precision,
             initial_supply,
             is_mintable,
+            asset_type,
             opt_content_src,
             opt_desc,
         )
@@ -1076,6 +1126,7 @@ impl<T: Config>
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult {
@@ -1087,6 +1138,7 @@ impl<T: Config>
             precision,
             initial_supply,
             is_mintable,
+            asset_type,
             opt_content_src,
             opt_desc,
         )

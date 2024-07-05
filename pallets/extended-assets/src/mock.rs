@@ -28,12 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as regulated_assets};
+use crate::{self as extended_assets};
 use common::mock::ExistentialDeposits;
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType, PredefinedAssetId, XOR, XST,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType,
+    PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::Everything;
@@ -54,6 +55,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type Moment = u64;
 type BlockNumber = u64;
 
 mock_common_config!(TestRuntime);
@@ -63,6 +65,7 @@ mock_pallet_balances_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
+mock_pallet_timestamp_config!(TestRuntime);
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
@@ -91,16 +94,17 @@ impl assets::Config for TestRuntime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = (
-        regulated_assets::Pallet<TestRuntime>,
+        extended_assets::Pallet<TestRuntime>,
         permissions::Pallet<TestRuntime>,
     );
 }
 
-impl regulated_assets::Config for TestRuntime {
+pub type MockMaxRegulatedAssetsPerSBT = ConstU32<10000>;
+
+impl extended_assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = assets::Pallet<TestRuntime>;
-    type MaxAllowedTokensPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
+    type MaxRegulatedAssetsPerSBT = MockMaxRegulatedAssetsPerSBT;
     type WeightInfo = ();
 }
 
@@ -116,8 +120,9 @@ construct_runtime! {
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RegulatedAssets: regulated_assets::{Pallet, Storage, Event<T>, Call},
+        ExtendedAssets: extended_assets::{Pallet, Storage, Event<T>, Call},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
     }
 }
 

@@ -4,7 +4,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 edition = "2021"
-name = "regulated-assets"
+name = "extended-assets"
 version = "1.0.0"
 
 [package.metadata.docs.rs]
@@ -20,10 +20,10 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 hex-literal = { version = "0.4.1", optional = true }
 
 common = { path = "../../common", default-features = false }
-permissions = { path = "../permissions", default-features = false }
 technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
@@ -46,6 +46,7 @@ std = [
     "frame-support/std",
     "frame-benchmarking/std",
     "frame-system/std",
+    "pallet-timestamp/std",
     "sp-core/std",
     "sp-std/std",
 ]
@@ -62,3 +63,5 @@ try-runtime = [
 ]
 
 wip = []
+
+test = []
