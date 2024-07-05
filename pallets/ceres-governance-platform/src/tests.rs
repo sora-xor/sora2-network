@@ -236,7 +236,7 @@ fn vote_invalid_number_of_votes() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let user = ALICE;
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -260,7 +260,7 @@ fn vote_poll_does_not_exist() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let user = ALICE;
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -305,7 +305,7 @@ fn vote_poll_is_not_started() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -352,7 +352,7 @@ fn vote_poll_is_finished() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(1000);
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -397,7 +397,7 @@ fn vote_invalid_option() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -442,7 +442,7 @@ fn vote_denied() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -496,7 +496,7 @@ fn vote_not_enough_funds() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -541,7 +541,7 @@ fn vote_ok() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -583,7 +583,7 @@ fn vote_multiple_times_ok() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -624,7 +624,7 @@ fn withdraw_poll_does_not_exist() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
 
@@ -661,7 +661,7 @@ fn withdraw_poll_is_not_finished() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -712,7 +712,7 @@ fn withdraw_not_voted() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(101);
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -750,7 +750,7 @@ fn withdraw_funds_already_withdrawn() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -805,7 +805,7 @@ fn withdraw_ok() {
         ));
 
         let user = CeresGovernancePlatform::authority_account();
-        let nonce = frame_system::Pallet::<Runtime>::account_nonce(user);
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
         let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
 
         let poll_id = H256::from(encoded);
@@ -889,9 +889,9 @@ fn ceres_governance_migration_works() {
         OldPollData::insert(&old_poll_id_a, old_poll_info_a);
         OldPollData::insert(&old_poll_id_b, old_poll_info_b);
 
-        OldVoting::insert(&old_poll_id_a, user, old_voting_info_a);
-        OldVoting::insert(&old_poll_id_a, user1, old_voting_info_c);
-        OldVoting::insert(&old_poll_id_b, user1, old_voting_info_b);
+        OldVoting::insert(&old_poll_id_a, &user, old_voting_info_a);
+        OldVoting::insert(&old_poll_id_a, &user1, old_voting_info_c);
+        OldVoting::insert(&old_poll_id_b, &user1, old_voting_info_b);
 
         run_to_block(5);
 
@@ -937,9 +937,9 @@ fn ceres_governance_migration_works() {
         assert_eq!(poll_b.description, BoundedString::truncate_from("Ceres Launchpad is coming soon with new SORA runtime release. Launchpad requires KYC services which should be paid (about $11,740)."));  
         assert_eq!(poll_b.options, vec![BoundedString::truncate_from("Yes"), BoundedString::truncate_from("No")]);
 
-        let voting_a = pallet::Voting::<Runtime>::get(poll_id_a, user).unwrap();
-        let voting_b = pallet::Voting::<Runtime>::get(poll_id_a, user1).unwrap();
-        let voting_c = pallet::Voting::<Runtime>::get(poll_id_b, user1).unwrap();
+        let voting_a = pallet::Voting::<Runtime>::get(poll_id_a, &user).unwrap();
+        let voting_b = pallet::Voting::<Runtime>::get(poll_id_a, &user1).unwrap();
+        let voting_c = pallet::Voting::<Runtime>::get(poll_id_b, &user1).unwrap();
 
         assert_eq!(voting_a.voting_option, 1u32);
         assert_eq!(voting_b.voting_option, 2u32);

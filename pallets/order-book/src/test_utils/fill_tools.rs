@@ -36,9 +36,9 @@ use order_book_imported::{
     OrderPrice, OrderVolume, Pallet, Payment,
 };
 
-use assets::AssetIdOf;
 use common::prelude::{Balance, BalanceUnit, Scalar};
 use common::PriceVariant;
+use common::{AssetIdOf, AssetManager};
 use frame_support::traits::{Get, Time};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};
@@ -77,13 +77,9 @@ pub fn users_iterator<T: Config>(
         .map(accounts::generate_account::<T>)
         // each user receives assets that should be enough for placing their orders
         .inspect(move |user| {
-            assets::Pallet::<T>::mint_unchecked(
-                &order_book_id.base,
-                user,
-                *mint_per_user.balance(),
-            )
-            .unwrap();
-            assets::Pallet::<T>::mint_unchecked(
+            T::AssetManager::mint_unchecked(&order_book_id.base, user, *mint_per_user.balance())
+                .unwrap();
+            T::AssetManager::mint_unchecked(
                 &order_book_id.quote,
                 user,
                 *max_price.checked_mul(&mint_per_user).unwrap().balance(),
@@ -262,7 +258,7 @@ pub fn fill_user_orders<T: Config>(
                 .tick_size
                 .checked_mul_by_scalar(Scalar(max_side_price_count))
                 .unwrap();
-            assets::Pallet::<T>::mint_unchecked(
+            T::AssetManager::mint_unchecked(
                 &order_book.order_book_id.quote,
                 &author,
                 *max_price
@@ -274,7 +270,7 @@ pub fn fill_user_orders<T: Config>(
             )
             .unwrap()
         }
-        PriceVariant::Sell => assets::Pallet::<T>::mint_unchecked(
+        PriceVariant::Sell => T::AssetManager::mint_unchecked(
             &order_book.order_book_id.base,
             &author,
             *order_amount
@@ -419,7 +415,7 @@ fn fill_price_inner<T: Config>(
     users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
     lifespans: &mut Peekable<impl Iterator<Item = u64>>,
     current_block: BlockNumberFor<T>,
-    total_payment: &mut Payment<T::AssetId, T::AccountId, T::DEXId>,
+    total_payment: &mut Payment<AssetIdOf<T>, T::AccountId, T::DEXId>,
     to_expire: &mut BTreeMap<BlockNumberFor<T>, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {
@@ -477,7 +473,7 @@ fn fill_price_inner<T: Config>(
 /// Returns per-order iterators for users and lifespans. They can be used for proceeding with
 /// filling respective storages (user orders and expiration schedules respectively). Can be seen
 /// as cursors.
-pub fn fill_order_book_worst_case<T: Config + assets::Config>(
+pub fn fill_order_book_worst_case<T: Config>(
     settings: FillSettings<T>,
     order_book: &mut OrderBook<T>,
     data: &mut impl DataLayer<T>,

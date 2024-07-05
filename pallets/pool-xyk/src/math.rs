@@ -28,15 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use common::prelude::{Balance, Fixed, FixedWrapper};
+use common::{fixed_wrapper, AssetIdOf, TradingPair};
 use frame_support::ensure;
+use frame_support::traits::Get;
+use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 
-use assets::AssetIdOf;
-use common::prelude::{Balance, Fixed, FixedWrapper};
-use common::{fixed_wrapper, AssetInfoProvider, TradingPair};
-
 use crate::{to_balance, to_fixed_wrapper};
-
 use crate::{Config, Error, Pallet};
 
 impl<T: Config> Pallet<T> {
@@ -214,15 +213,39 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Calculates max amount of output asset for swap with desired output.
+    pub fn calc_max_output(
+        fee_fraction: Fixed,
+        get_fee_from_destination: bool,
+        reserve_output: Balance,
+        deduce_fee: bool,
+    ) -> Result<Balance, DispatchError> {
+        if reserve_output.is_zero() {
+            return Ok(Balance::zero());
+        }
+
+        let mut max_output = if get_fee_from_destination && deduce_fee {
+            to_balance!(FixedWrapper::from(reserve_output) * (fixed_wrapper!(1) - fee_fraction))
+        } else {
+            reserve_output
+        };
+
+        // reduce by `IrreducibleReserve` percent, because (reserve - output) must be > 0
+        max_output = max_output.saturating_sub(T::IrreducibleReserve::get() * max_output);
+        Ok(max_output)
+    }
+
     pub fn get_base_asset_part_from_pool_account(
         pool_acc: &T::AccountId,
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let b_in_pool =
-            assets::Pallet::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
-        let t_in_pool =
-            assets::Pallet::<T>::free_balance(&trading_pair.target_asset_id.into(), pool_acc)?;
+        let (b_in_pool, t_in_pool, _max_output_available) = Self::get_actual_reserves(
+            pool_acc,
+            &trading_pair.base_asset_id,
+            &trading_pair.base_asset_id,
+            &trading_pair.target_asset_id,
+        )?;
         let fxw_liq_in_pool =
             to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
         let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);

@@ -48,7 +48,6 @@ use common::prelude::SwapAmount;
 use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, USDT, XOR};
 
 use crate::Pallet as MBCPool;
-use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
 
@@ -71,13 +70,14 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     assert_eq!(event, &system_event);
 }
 
-fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
+fn setup_benchmark<T>() -> Result<(), &'static str>
+where
+    T: Config + pool_xyk::Config,
+{
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
     #[cfg(test)]
     crate::mock::MockDEXApi::init_without_reserves().unwrap();
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     Permissions::<T>::assign_permission(
@@ -94,59 +94,70 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
-    Assets::<T>::mint_to(
-        &DAI.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-    Assets::<T>::mint_to(
-        &VAL.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())
-        .unwrap();
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
-        .unwrap();
-
-    XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
-        DEX.into(),
-        XOR.into(),
-        DAI.into(),
-        balance!(1000),
-        balance!(2000),
-        balance!(1000),
-        balance!(2000),
-    )
-    .unwrap();
-    XYKPool::<T>::deposit_liquidity(
-        owner_origin.clone(),
-        DEX.into(),
-        XOR.into(),
-        VAL.into(),
-        balance!(1000),
-        balance!(2000),
-        balance!(1000),
-        balance!(2000),
-    )
-    .unwrap();
-
+    T::AssetManager::mint_to(&XOR.into(), &owner, &owner, balance!(3000)).unwrap();
+    register_tbc_for_asset::<T>(DAI.into());
+    register_tbc_for_asset::<T>(VAL.into());
     Ok(())
 }
 
-fn add_pending<T: Config>(n: u32) {
-    let mut pending = Vec::new();
-    for _i in 0..n {
-        pending.push((DAI.into(), balance!(1)))
+fn gen_asset_id<T: Config>(n: u32) -> AssetIdOf<T> {
+    let asset_id = T::AssetManager::gen_asset_id_from_any(&("mbc_bench", n));
+    let owner = alice::<T>();
+    T::AssetManager::register_asset_id(
+        owner,
+        asset_id,
+        common::AssetSymbol(b"TEST".to_vec()),
+        common::AssetName(b"TEST".to_vec()),
+        common::DEFAULT_BALANCE_PRECISION,
+        0,
+        true,
+        common::AssetType::Regular,
+        None,
+        None,
+    )
+    .unwrap();
+    <T as Config>::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), asset_id)
+        .unwrap();
+    asset_id
+}
+
+fn register_tbc_for_asset<T>(asset_id: AssetIdOf<T>)
+where
+    T: Config + pool_xyk::Config,
+{
+    let owner = alice::<T>();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
+
+    T::AssetManager::mint_to(&XOR.into(), &owner, &owner, balance!(1000)).unwrap();
+    T::AssetManager::mint_to(&asset_id, &owner, &owner, balance!(50000000)).unwrap();
+
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), asset_id).unwrap();
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin,
+        DEX.into(),
+        XOR.into(),
+        asset_id,
+        balance!(1000),
+        balance!(2000),
+        balance!(1000),
+        balance!(2000),
+    )
+    .unwrap();
+}
+
+fn add_pending<T>(n: u32)
+where
+    T: Config + pool_xyk::Config,
+{
+    let mut pending = sp_std::collections::btree_map::BTreeMap::<AssetIdOf<T>, Balance>::new();
+    for i in 0..n {
+        let asset_id = gen_asset_id::<T>(i);
+        register_tbc_for_asset::<T>(asset_id);
+        pending.insert(DAI.into(), balance!(1));
     }
-    PendingFreeReserves::<T>::set(pending);
+    PendingFreeReserves::<T>::insert(BlockNumberFor::<T>::from(0u32), pending);
 }
 
 benchmarks! {
@@ -164,7 +175,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -172,6 +183,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -200,7 +212,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -208,6 +220,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -231,7 +244,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -239,6 +252,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -260,7 +274,7 @@ benchmarks! {
         setup_benchmark::<T>().unwrap();
         add_pending::<T>(n);
     }: {
-        Pallet::<T>::on_initialize(crate::RETRY_DISTRIBUTION_FREQUENCY.into());
+        Pallet::<T>::on_initialize(0u32.into());
     }
     verify {}
 
@@ -319,7 +333,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -327,6 +341,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             balance!(50000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -373,7 +388,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -381,6 +396,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             balance!(50000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -425,7 +441,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -433,11 +449,12 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             balance!(50000000),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
         .unwrap();
-        Assets::<T>::mint_to(
+        T::AssetManager::mint_to(
             &USDT.into(),
             &caller.clone(),
             &caller.clone(),
@@ -466,7 +483,7 @@ benchmarks! {
             desired_amount_in: balance!(100),
             min_amount_out: balance!(0),
         };
-        let initial_base_balance = Assets::<T>::free_balance(&USDT.into(), &caller).unwrap();
+        let initial_base_balance = <T as Config>::AssetInfoProvider::free_balance(&USDT.into(), &caller).unwrap();
     }: {
         // run only for benchmarks, not for tests
         // TODO: remake when unit tests use chainspec
@@ -476,7 +493,7 @@ benchmarks! {
     verify {
         #[cfg(not(test))]
         assert_eq!(
-            Into::<u128>::into(Assets::<T>::free_balance(&USDT.into(), &caller).unwrap()),
+            Into::<u128>::into(<T as Config>::AssetInfoProvider::free_balance(&USDT.into(), &caller).unwrap()),
             Into::<u128>::into(initial_base_balance) - balance!(100)
         );
     }
@@ -491,7 +508,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -499,6 +516,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         ).unwrap();
@@ -532,7 +550,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
 
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"TESTUSD".to_vec()),
@@ -540,11 +558,12 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
         .unwrap();
-        Assets::<T>::mint_to(
+        T::AssetManager::mint_to(
             &USDT.into(),
             &caller.clone(),
             &caller.clone(),

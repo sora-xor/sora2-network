@@ -12,7 +12,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{Balance, DemeterFarming};
+use common::{AssetIdOf, Balance, DemeterFarming};
 pub use weights::WeightInfo;
 
 /// Storage version.
@@ -68,7 +68,10 @@ use sp_runtime::DispatchError;
 pub mod pallet {
     use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
-    use common::{balance, XykPool};
+    use common::{
+        balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+        Description, XykPool,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -80,27 +83,38 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"deofarms");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config
+        frame_system::Config
+        + technical::Config
+        + ceres_liquidity_locker::Config
+        + permissions::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Demeter asset id
-        type DemeterAssetId: Get<Self::AssetId>;
+        type DemeterAssetId: Get<AssetIdOf<Self>>;
 
         /// One hour represented in block number
         const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
@@ -464,7 +478,9 @@ pub mod pallet {
             // Transfer pooled_tokens
             if !is_farm {
                 ensure!(
-                    pooled_tokens <= Assets::<T>::free_balance(&pool_asset, &user).unwrap_or(0),
+                    pooled_tokens
+                        <= <T as Config>::AssetInfoProvider::free_balance(&pool_asset, &user)
+                            .unwrap_or(0),
                     Error::<T>::InsufficientFunds
                 );
 
@@ -475,9 +491,19 @@ pub mod pallet {
                     .unwrap_or(0);
                     pooled_tokens -= fee;
 
-                    Assets::<T>::transfer_from(&pool_asset, &user, &FeeAccount::<T>::get(), fee)?;
+                    T::AssetManager::transfer_from(
+                        &pool_asset,
+                        &user,
+                        &FeeAccount::<T>::get(),
+                        fee,
+                    )?;
                 }
-                Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
+                T::AssetManager::transfer_from(
+                    &pool_asset,
+                    &user,
+                    &Self::account_id(),
+                    pooled_tokens,
+                )?;
             } else {
                 let pool_account = T::XYKPool::properties_of_pool(base_asset, pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
@@ -626,7 +652,7 @@ pub mod pallet {
                         Error::<T>::PoolDoesNotHaveRewards
                     );
 
-                    Assets::<T>::transfer_from(
+                    T::AssetManager::transfer_from(
                         &user_info.reward_asset,
                         &Self::account_id(),
                         &user,
@@ -693,7 +719,7 @@ pub mod pallet {
                     );
 
                     if is_farm == false {
-                        Assets::<T>::transfer_from(
+                        T::AssetManager::transfer_from(
                             &pool_asset,
                             &Self::account_id(),
                             &user,
@@ -1069,9 +1095,9 @@ pub mod pallet {
             .unwrap_or(0);
             let amount_for_farming_and_staking = amount - amount_for_team;
 
-            let _ = Assets::<T>::mint(
+            let _ = T::AssetManager::mint(
                 RawOrigin::Signed(AuthorityAccount::<T>::get()).into(),
-                T::DemeterAssetId::get().into(),
+                T::DemeterAssetId::get(),
                 Self::account_id(),
                 amount_for_farming_and_staking,
             );
@@ -1104,7 +1130,7 @@ pub mod pallet {
                 .try_into_balance()
                 .unwrap_or(zero);
 
-                let _ = Assets::<T>::transfer_from(
+                let _ = T::AssetManager::transfer_from(
                     &token_asset_id,
                     &Self::account_id(),
                     &token_info.team_account,
@@ -1239,12 +1265,12 @@ pub mod pallet {
     }
 }
 
-impl<T: Config> DemeterFarming<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> DemeterFarming<T::AccountId, AssetIdOf<T>> for Pallet<T> {
     fn update_pool_tokens(
         user: T::AccountId,
         pool_tokens: Balance,
-        base_asset: T::AssetId,
-        pool_asset: T::AssetId,
+        base_asset: AssetIdOf<T>,
+        pool_asset: AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         let mut user_infos = <UserInfos<T>>::get(&user);
         for u_info in user_infos.iter_mut() {

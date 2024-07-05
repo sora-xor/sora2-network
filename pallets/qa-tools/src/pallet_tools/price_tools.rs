@@ -29,11 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
-use common::{balance, Balance, PriceToolsProvider, PriceVariant, XOR};
-use frame_support::dispatch::DispatchResult;
+use common::{balance, AssetIdOf, Balance, PriceToolsProvider, PriceVariant, XOR};
+use frame_support::dispatch::{DispatchResult};
 use frame_support::ensure;
 use sp_arithmetic::traits::{CheckedDiv, One};
 use sp_runtime::DispatchError;
@@ -81,7 +80,7 @@ pub fn setup_reference_prices<T: Config>(
 /// Note that the values are not checked for sanity; it's possible to set values that result in
 /// crossed market.
 pub(crate) fn set_price_unchecked<T: Config>(
-    asset_id: &T::AssetId,
+    asset_id: &AssetIdOf<T>,
     price: Balance,
     variant: PriceVariant,
 ) -> DispatchResult {
@@ -138,8 +137,8 @@ pub fn relative_prices<T: Config>(
 ///
 /// Note that if both A and B != XOR, then B must already have some price in the `price_tools`.
 pub fn calculate_xor_prices<T: Config>(
-    asset_a: &T::AssetId,
-    asset_b: &T::AssetId,
+    asset_a: &AssetIdOf<T>,
+    asset_b: &AssetIdOf<T>,
     b_per_a_buy: Balance,
     b_per_a_sell: Balance,
 ) -> Result<CalculatedXorPrices, DispatchError> {

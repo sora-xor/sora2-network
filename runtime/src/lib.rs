@@ -108,7 +108,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    MultiSignature, Perbill, Percent, Perquintill,
+    MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -162,12 +162,9 @@ pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
 pub use {
-    assets, dex_api, eth_bridge, frame_system, liquidity_proxy, multicollateral_bonding_curve_pool,
-    order_book, trading_pair, xst,
+    assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
+    multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
 };
-
-#[cfg(feature = "ready-to-test")] // kensetsu
-pub use kensetsu;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -261,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 80,
+    spec_version: 88,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 80,
+    transaction_version: 88,
     state_version: 0,
 };
 
@@ -969,6 +966,8 @@ impl currencies::Config for Runtime {
 impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
+    type AssetManager = assets::Pallet<Runtime>;
+    type MultiCurrency = currencies::Pallet<Runtime>;
 }
 
 pub struct GetTotalBalance;
@@ -999,6 +998,13 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
+    #[cfg(not(feature = "wip"))] // DEFI-R
+    type AssetRegulator = permissions::Pallet<Runtime>;
+    #[cfg(feature = "wip")] // DEFI-R
+    type AssetRegulator = (
+        permissions::Pallet<Runtime>,
+        extended_assets::Pallet<Runtime>,
+    );
 }
 
 impl trading_pair::Config for Runtime {
@@ -1006,6 +1012,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -1021,10 +1028,12 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 parameter_type_with_key! {
@@ -1034,6 +1043,22 @@ parameter_type_with_key! {
             target_asset_id
         } = trading_pair;
         (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into())
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
+        if base_asset_id == &common::XOR {
+            Some(common::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
+        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
     };
 }
 
@@ -1054,9 +1079,13 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
-    type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1094,6 +1123,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -1104,7 +1134,6 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type PrimaryMarketXST = xst::Pallet<Runtime>;
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
-    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
@@ -1116,6 +1145,11 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type GetChameleonPool = GetChameleonPool;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1268,6 +1302,7 @@ where
 impl referrals::Config for Runtime {
     type ReservesAcc = ReferralsReservesAcc;
     type WeightInfo = referrals::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl rewards::Config for Runtime {
@@ -1298,6 +1333,14 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type PermittedSetPeriod = EitherOfDiverse<
+        pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
+        EnsureRoot<AccountId>,
+    >;
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
@@ -1498,6 +1541,7 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[cfg(feature = "private-net")]
@@ -1654,6 +1698,8 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1728,9 +1774,11 @@ parameter_types! {
         account_id
     };
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
+    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
@@ -1738,9 +1786,11 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+    type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1759,6 +1809,7 @@ impl xst::Config for Runtime {
     type Symbol = <Runtime as band::Config>::Symbol;
     type TradingPairSourceManager = TradingPair;
     type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1793,6 +1844,7 @@ impl vested_rewards::Config for Runtime {
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl price_tools::Config for Runtime {
@@ -1892,6 +1944,7 @@ impl ceres_launchpad::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ceres_launchpad::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
@@ -1916,6 +1969,7 @@ impl ceres_token_locker::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_token_locker::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {
@@ -1936,6 +1990,7 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
     type WeightInfo = demeter_farming_platform::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -1981,9 +2036,9 @@ impl hermes_governance_platform::Config for Runtime {
     type TitleLimit = TitleLimit;
     type DescriptionLimit = DescriptionLimit;
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // kensetsu
 parameter_types! {
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
@@ -1998,9 +2053,10 @@ parameter_types! {
     };
 
     pub const KenAssetId: AssetId = common::KEN;
-    pub const KusdAssetId: AssetId = common::KUSD;
+    pub const KarmaAssetId: AssetId = common::KARMA;
 
     pub GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
+    pub GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
 
     // 1 Kensetsu dollar of uncollected stability fee triggers accrue
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
@@ -2008,39 +2064,37 @@ parameter_types! {
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
-    // 100 blocks, if tx spoils, worker will resend it
-    // pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 100;
-    // TODO set 100 for release
-    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 5;
+    // 10 blocks, if tx spoils, worker will resend it
+    pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
 }
 
-#[cfg(feature = "ready-to-test")] // kensetsu
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KusdAssetId = KusdAssetId;
     type PriceTools = PriceTools;
     type LiquidityProxy = LiquidityProxy;
+    type Oracle = OracleProxy;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
+    type KenAssetId = KenAssetId;
+    type KarmaAssetId = KarmaAssetId;
+    type TbcdAssetId = GetTbcdAssetId;
     type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
+    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
-    type MaxRiskManagementTeamSize = ConstU32<100>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "ready-to-test")] // Apollo
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
     pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 5; // set 100 for release
 }
 
-#[cfg(feature = "ready-to-test")] // Apollo
 impl apollo_platform::Config for Runtime {
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
@@ -2425,6 +2479,13 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
+#[cfg(feature = "wip")] // DEFI-R
+impl extended_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = Assets;
+    type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime! {
     pub enum Runtime {
         System: frame_system = 0,
@@ -2493,9 +2554,7 @@ construct_runtime! {
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
-
-        #[cfg(feature = "ready-to-test")] // kensetsu
-        Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 58,
+        Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
@@ -2546,8 +2605,9 @@ construct_runtime! {
         #[cfg(feature = "private-net")]
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
-        #[cfg(feature = "ready-to-test")] // Apollo
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
+        #[cfg(feature = "wip")] // DEFI-R
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
 
@@ -2974,7 +3034,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(quote_info, _, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(quote_info, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(0),
                 fee: quote_info.outcome.fee,
@@ -3284,8 +3344,6 @@ impl_runtime_apis! {
         ) {
             use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
-
-            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3303,7 +3361,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, farming, Farming);
             list_benchmark!(list, extra, iroha_migration, IrohaMigration);
             list_benchmark!(list, extra, dex_api, DEXAPI);
-            #[cfg(feature = "ready-to-test")] // kensetsu
             list_benchmark!(list, extra, kensetsu, KensetsuBench::<Runtime>);
             list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3326,7 +3383,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
-            #[cfg(feature = "ready-to-test")] // Apollo
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
@@ -3349,6 +3405,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3359,8 +3417,6 @@ impl_runtime_apis! {
             config: frame_benchmarking::BenchmarkConfig
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-
-            #[cfg(feature = "ready-to-test")] // kensetsu
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3369,7 +3425,7 @@ impl_runtime_apis! {
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
             use xst_benchmarking::Pallet as XSTPoolBench;
             use order_book_benchmarking::Pallet as OrderBookBench;
-            #[cfg(feature = "ready-to-test")] // kensetsu
+
             impl kensetsu_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
@@ -3402,7 +3458,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, dex_api, DEXAPI);
-            #[cfg(feature = "ready-to-test")] // kensetsu
             add_benchmark!(params, batches, kensetsu, KensetsuBench::<Runtime>);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
@@ -3425,7 +3480,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
-            #[cfg(feature = "ready-to-test")] // Apollo
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
@@ -3448,6 +3502,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
+            #[cfg(feature = "wip")] // DEFI-R
+            add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

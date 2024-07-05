@@ -37,7 +37,7 @@
 extern crate alloc;
 
 use common::{
-    AssetInfoProvider, DexInfoProvider, EnabledSourcesManager, EnsureDEXManager,
+    AssetIdOf, AssetInfoProvider, DexInfoProvider, EnabledSourcesManager, EnsureDEXManager,
     EnsureTradingPairExists, LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode,
     TradingPairSourceManager,
 };
@@ -60,16 +60,15 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
-type Assets<T> = assets::Pallet<T>;
+pub type TradingPair<T> = common::prelude::TradingPair<AssetIdOf<T>>;
 
 pub use weights::WeightInfo;
 
-impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for Pallet<T> {
+impl<T: Config> EnsureTradingPairExists<T::DEXId, AssetIdOf<T>, DispatchError> for Pallet<T> {
     fn ensure_trading_pair_exists(
         dex_id: &T::DEXId,
-        base_asset_id: &T::AssetId,
-        target_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        target_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
         ensure!(
             Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)?,
@@ -91,11 +90,11 @@ impl<T: Config> LockedLiquiditySourcesManager<LiquiditySourceType> for Pallet<T>
     }
 }
 
-impl<T: Config> EnabledSourcesManager<T::DEXId, T::AssetId> for Pallet<T> {
+impl<T: Config> EnabledSourcesManager<T::DEXId, AssetIdOf<T>> for Pallet<T> {
     fn mutate_remove(
         dex_id: &T::DEXId,
-        base_asset_id: &T::AssetId,
-        target_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        target_asset_id: &AssetIdOf<T>,
     ) -> () {
         let pair = TradingPair::<T> {
             base_asset_id: base_asset_id.clone(),
@@ -109,11 +108,11 @@ impl<T: Config> EnabledSourcesManager<T::DEXId, T::AssetId> for Pallet<T> {
     }
 }
 
-impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
+impl<T: Config> TradingPairSourceManager<T::DEXId, AssetIdOf<T>> for Pallet<T> {
     fn list_enabled_sources_for_trading_pair(
         dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
+        &base_asset_id: &AssetIdOf<T>,
+        &target_asset_id: &AssetIdOf<T>,
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
         T::DexInfoProvider::ensure_dex_exists(dex_id)?;
         let pair = TradingPair::<T> {
@@ -131,8 +130,8 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
 
     fn is_source_enabled_for_trading_pair(
         dex_id: &T::DEXId,
-        base_asset_id: &T::AssetId,
-        target_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        target_asset_id: &AssetIdOf<T>,
         source_type: LiquiditySourceType,
     ) -> Result<bool, DispatchError> {
         Ok(
@@ -143,8 +142,8 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
 
     fn enable_source_for_trading_pair(
         dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
+        &base_asset_id: &AssetIdOf<T>,
+        &target_asset_id: &AssetIdOf<T>,
         source_type: LiquiditySourceType,
     ) -> DispatchResult {
         Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
@@ -162,8 +161,8 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
 
     fn disable_source_for_trading_pair(
         dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
+        &base_asset_id: &AssetIdOf<T>,
+        &target_asset_id: &AssetIdOf<T>,
         source_type: LiquiditySourceType,
     ) -> DispatchResult {
         Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
@@ -181,16 +180,16 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
 
     fn is_trading_pair_enabled(
         dex_id: &T::DEXId,
-        base_asset_id: &T::AssetId,
-        target_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        target_asset_id: &AssetIdOf<T>,
     ) -> Result<bool, DispatchError> {
         Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
     }
 
     fn register_pair(
         dex_id: T::DEXId,
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
+        base_asset_id: AssetIdOf<T>,
+        target_asset_id: AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         Self::register_pair(dex_id, base_asset_id, target_asset_id)
     }
@@ -199,8 +198,8 @@ impl<T: Config> TradingPairSourceManager<T::DEXId, T::AssetId> for Pallet<T> {
 impl<T: Config> Pallet<T> {
     pub fn register_pair(
         dex_id: T::DEXId,
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
+        base_asset_id: AssetIdOf<T>,
+        target_asset_id: AssetIdOf<T>,
     ) -> Result<(), DispatchError> {
         ensure!(
             base_asset_id != target_asset_id,
@@ -213,8 +212,8 @@ impl<T: Config> Pallet<T> {
                 || base_asset_id == dex_info.synthetic_base_asset_id,
             Error::<T>::ForbiddenBaseAssetId
         );
-        Assets::<T>::ensure_asset_exists(&base_asset_id)?;
-        Assets::<T>::ensure_asset_exists(&target_asset_id)?;
+        T::AssetInfoProvider::ensure_asset_exists(&base_asset_id)?;
+        T::AssetInfoProvider::ensure_asset_exists(&target_asset_id)?;
 
         let trading_pair = TradingPair::<T> {
             base_asset_id,
@@ -242,8 +241,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn is_trading_pair_enabled(
         dex_id: &T::DEXId,
-        &base_asset_id: &T::AssetId,
-        &target_asset_id: &T::AssetId,
+        &base_asset_id: &AssetIdOf<T>,
+        &target_asset_id: &AssetIdOf<T>,
     ) -> Result<bool, DispatchError> {
         T::DexInfoProvider::ensure_dex_exists(dex_id)?;
         let pair = TradingPair::<T> {
@@ -259,19 +258,30 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{DEXInfo, DexIdOf};
+    use common::{
+        AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description, DexIdOf,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {
+    pub trait Config: frame_system::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -298,8 +308,8 @@ pub mod pallet {
         pub fn register(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
-            base_asset_id: T::AssetId,
-            target_asset_id: T::AssetId,
+            base_asset_id: AssetIdOf<T>,
+            target_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let _author =
                 T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;

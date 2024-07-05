@@ -32,8 +32,10 @@ use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
+    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config, mock_permissions_config,
+    mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR,
+    XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -41,6 +43,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
@@ -62,13 +65,12 @@ construct_runtime! {
     }
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 
-pub const ALICE: AccountId = 1;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
-pub const DEX_ID: DEXId = 0;
+pub const ALICE: AccountId = AccountId32::new([1; 32]);
+pub const DEX_ID: DEXId = DEXId::Polkaswap;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
@@ -78,69 +80,24 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Nonce = u64;
-    type Block = Block;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+// mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+/* mock_assets_config!(Runtime); */
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-type DEXId = u32;
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
 }
 
 parameter_types! {
@@ -192,9 +149,6 @@ impl pallet_balances::Config for Runtime {
     type MaxFreezes = ();
 }
 
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
 
 impl dex_manager::Config for Runtime {}
 
@@ -322,7 +276,7 @@ impl Default for ExtBuilder {
                     },
                 ),
                 (
-                    1,
+                    DEXId::PolkaswapXSTUSD,
                     DEXInfo {
                         base_asset_id: XSTUSD,
                         synthetic_base_asset_id: XST,

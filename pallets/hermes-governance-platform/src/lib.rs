@@ -75,7 +75,10 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, HermesPollInfo, HermesVotingInfo, StorageVersion, WeightInfo};
     use common::prelude::Balance;
-    use common::{balance, AssetInfoProvider, BoundedString};
+    use common::{
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
+        BalancePrecision, BoundedString, ContentSource, Description,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::transactional;
@@ -90,10 +93,9 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
+        frame_system::Config + technical::Config + timestamp::Config + common::Config
     {
         /// Minimum duration of poll represented in milliseconds
         const MIN_DURATION_OF_POLL: Self::Moment;
@@ -117,13 +119,23 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Hermes asset id
-        type HermesAssetId: Get<Self::AssetId>;
+        type HermesAssetId: Get<AssetIdOf<Self>>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
@@ -302,8 +314,11 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesVotingAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &T::HermesAssetId::get().into(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForVoting
             );
 
@@ -319,7 +334,7 @@ pub mod pallet {
             };
 
             // Transfer Hermes to pallet
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &T::HermesAssetId::get().into(),
                 &user,
                 &Self::account_id(),
@@ -373,8 +388,11 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesAmountForCreatingPoll::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
-                        .unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &T::HermesAssetId::get().into(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
 
@@ -407,7 +425,7 @@ pub mod pallet {
             };
 
             // Transfer Hermes to pallet
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &T::HermesAssetId::get().into(),
                 &user.clone(),
                 &Self::account_id(),
@@ -455,7 +473,7 @@ pub mod pallet {
             );
 
             // Withdraw Hermes
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &T::HermesAssetId::get().into(),
                 &Self::account_id(),
                 &user,
@@ -503,7 +521,7 @@ pub mod pallet {
             );
 
             // Withdraw Creator Hermes
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &T::HermesAssetId::get().into(),
                 &Self::account_id(),
                 &user,

@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use crate::*;
 use codec::{Decode, Encode};
 use common::balance;
-use common::{AssetInfoProvider, FromGenericPair};
+use common::{AssetInfoProvider, AssetManager, FromGenericPair};
 use common::{Balance, Fixed, PSWAP, VAL, XSTUSD};
 use frame_support::pallet_prelude::GetStorageVersion;
 use frame_support::traits::{Get, OnRuntimeUpgrade, StorageVersion};
@@ -78,7 +78,7 @@ pub mod v4 {
         Blake2_128Concat,
         <T as frame_system::Config>::AccountId,
         Blake2_128Concat,
-        <T as assets::Config>::AssetId,
+        AssetIdOf<T>,
         BlockNumberFor<T>,
         ValueQuery,
     >;
@@ -234,9 +234,9 @@ pub(crate) mod deprecated {
     pub type MarketMakingPairs<T: Config> = StorageDoubleMap<
         Pallet<T>,
         Blake2_128Concat,
-        <T as assets::Config>::AssetId,
+        AssetIdOf<T>,
         Blake2_128Concat,
-        <T as assets::Config>::AssetId,
+        AssetIdOf<T>,
         (),
         ValueQuery,
     >;
@@ -259,14 +259,17 @@ pub fn move_market_making_rewards_to_liquidity_provider_rewards_pool<T: Config>(
 
     let market_making_reward_account = T::GetMarketMakerRewardsAccountId::get();
     let liquidity_providing_reward_account = T::GetBondingCurveRewardsAccountId::get();
-    let amount = match Assets::<T>::total_balance(&PSWAP.into(), &market_making_reward_account) {
+    let amount = match <T as Config>::AssetInfoProvider::total_balance(
+        &PSWAP.into(),
+        &market_making_reward_account,
+    ) {
         Ok(amount) => amount,
         Err(err) => {
             log::error!(target: "runtime", "Failed to transfer tokens from market maker reward pool to liquidity provider reward pool: {:?}", err);
             return T::DbWeight::get().reads(1);
         }
     };
-    if let Err(err) = Assets::<T>::transfer_from(
+    if let Err(err) = T::AssetManager::transfer_from(
         &PSWAP.into(),
         &market_making_reward_account,
         &liquidity_providing_reward_account,

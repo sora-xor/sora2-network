@@ -32,22 +32,29 @@
 #![allow(clippy::all)]
 
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, BlockLength, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+#[cfg(feature = "wip")] // Dynamic fee
+use common::weights::constants::SMALL_FEE;
+#[cfg(feature = "wip")] // Dynamic fee
+use common::DAI;
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
-    VAL, XOR,
+    self, balance, mock_assets_config, mock_common_config, mock_currencies_config, mock_permissions_config
+    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
+#[cfg(feature = "wip")] // Dynamic fee
+use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
-use frame_support::pallet_prelude::ValueQuery;
+use frame_support::pallet_prelude::{Hooks, ValueQuery};
 use frame_support::traits::{
     ConstU128, Currency, Everything, ExistenceRequirement, GenesisBuild, WithdrawReasons,
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
-
+use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -68,6 +75,8 @@ type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.7);
+pub const PRICE_XOR_DAI: Balance = balance!(800);
 pub fn account_from_str(s: &str) -> AccountId {
     sp_core::blake2_256(s.as_bytes()).into()
 }
@@ -86,7 +95,8 @@ parameter_types! {
     pub const ExistentialDeposit: u32 = 1;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
-    pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;
+    pub const DEXIdValue: DEXId = DEXId::Polkaswap;
+    pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
     pub GetParliamentAccountId: AccountId = account_from_str("sora-parliament");
 }
@@ -102,32 +112,6 @@ construct_runtime! {
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
         XorFee: xor_fee::{Pallet, Call, Event<T>},
     }
-}
-
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type Block = Block;
-    type BlockLength = BlockLength;
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Nonce = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -146,6 +130,14 @@ impl pallet_balances::Config for Runtime {
     type MaxFreezes = ();
 }
 
+/* mock_pallet_balances_config!(Runtime); */
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+
 parameter_types! {
     pub const OperationalFeeMultiplier: u8 = 5;
 }
@@ -159,60 +151,8 @@ impl pallet_transaction_payment::Config for Runtime {
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
 }
 
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub GetBuyBackAccountId: AccountId = account_from_str("buy-back");
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = XorId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 pub struct CustomFees;
@@ -317,6 +257,31 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
+    #[cfg(not(feature = "wip"))] // Dynamic fee
+    type DynamicMultiplier = ();
+    #[cfg(feature = "wip")] // Dynamic fee
+    type DynamicMultiplier = DynamicMultiplier;
+    type PermittedSetPeriod = EnsureRoot<AccountId>;
+}
+
+#[cfg(feature = "wip")] // Dynamic fee
+pub struct DynamicMultiplier;
+
+#[cfg(feature = "wip")] // Dynamic fee
+impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<FixedU128, DispatchError> {
+        let price: FixedWrapper = FixedWrapper::from(match (input_asset, ref_asset) {
+            (&XOR, &DAI) => PRICE_XOR_DAI,
+            _ => balance!(0.000000000000000001),
+        });
+        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
+            .try_into_balance()
+            .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
+        Ok(FixedU128::from_inner(new_multiplier))
+    }
 }
 
 pub struct MockReferrerAccountProvider;
@@ -563,5 +528,14 @@ pub fn post_info_pays_no() -> PostDispatchInfo {
     PostDispatchInfo {
         actual_weight: None,
         pays_fee: Pays::No,
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_initialize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_finalize(System::block_number());
+        XorFee::on_initialize(System::block_number());
     }
 }

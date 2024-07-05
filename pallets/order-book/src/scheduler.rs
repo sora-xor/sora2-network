@@ -41,8 +41,8 @@ use crate::{
     IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId, OrderBookTechStatus,
     OrderBooks, Pallet,
 };
-use assets::AssetIdOf;
 use common::weights::check_accrue_n;
+use common::AssetIdOf;
 use frame_support::weights::WeightMeter;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{One, Zero};

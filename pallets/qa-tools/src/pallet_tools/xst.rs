@@ -33,8 +33,10 @@ use crate::{Config, Error};
 use codec::{Decode, Encode};
 use common::fixnum::ops::CheckedSub;
 use common::prelude::{BalanceUnit, QuoteAmount};
-use common::{fixed, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
-use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, RawOrigin};
+use common::{fixed, AssetIdOf, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
+use frame_support::dispatch::{
+    DispatchResult, DispatchResultWithPostInfo, RawOrigin,
+};
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -111,8 +113,8 @@ pub struct SyntheticOutput<AssetId> {
 /// assets.
 fn calculate_xor_prices<T: Config>(
     input_prices: BaseInput,
-    synthetic_base_asset_id: &T::AssetId,
-    reference_asset_id: &T::AssetId,
+    synthetic_base_asset_id: &AssetIdOf<T>,
+    reference_asset_id: &AssetIdOf<T>,
 ) -> Result<BaseXorPrices, DispatchError> {
     // B = reference
     // A = synthetic base
@@ -256,11 +258,11 @@ fn calculate_band_price<T: Config>(
 }
 
 fn calculate_actual_quote<T: Config>(
-    asset_id: T::AssetId,
+    asset_id: AssetIdOf<T>,
     expected_quote: SyntheticQuote,
     synthetic_band_price: u64,
     ref_per_synthetic_base: &AssetPrices,
-) -> SyntheticOutput<T::AssetId> {
+) -> SyntheticOutput<AssetIdOf<T>> {
     let ref_per_synthetic = synthetic_band_price as Balance * 10_u128.pow(9);
     let actual_quote_result = match (&expected_quote.direction, &expected_quote.amount) {
         // sell:
@@ -343,9 +345,9 @@ pub(crate) fn initialize_base_assets<T: Config>(input: BaseInput) -> DispatchRes
 }
 
 fn initialize_single_synthetic<T: Config>(
-    input: SyntheticInput<T::AssetId, <T as Config>::Symbol>,
+    input: SyntheticInput<AssetIdOf<T>, <T as Config>::Symbol>,
     relayer: T::AccountId,
-) -> Result<SyntheticOutput<T::AssetId>, DispatchError> {
+) -> Result<SyntheticOutput<AssetIdOf<T>>, DispatchError> {
     let synthetic_base_asset_id = <T as xst::Config>::GetSyntheticBaseAssetId::get();
     let ref_per_synthetic_base = AssetPrices {
         buy: xst::Pallet::<T>::reference_price(&synthetic_base_asset_id, PriceVariant::Buy)
@@ -399,9 +401,9 @@ fn initialize_single_synthetic<T: Config>(
 }
 
 pub(crate) fn initialize_synthetics<T: Config>(
-    inputs: Vec<SyntheticInput<T::AssetId, <T as Config>::Symbol>>,
+    inputs: Vec<SyntheticInput<AssetIdOf<T>, <T as Config>::Symbol>>,
     relayer: T::AccountId,
-) -> Result<Vec<SyntheticOutput<T::AssetId>>, DispatchError> {
+) -> Result<Vec<SyntheticOutput<AssetIdOf<T>>>, DispatchError> {
     if !inputs.is_empty() {
         if !band::Pallet::<T>::trusted_relayers().is_some_and(|t| t.contains(&relayer)) {
             band::Pallet::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])

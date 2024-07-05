@@ -71,10 +71,12 @@ pub mod pallet {
     use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use common::BoundedString;
+    use common::{AssetIdOf, AssetManager};
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
+    use sp_tracing::{info, error};
     use frame_support::transactional;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -88,9 +90,7 @@ pub mod pallet {
     const PALLET_ID: PalletId = PalletId(*b"ceresgov");
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + timestamp::Config {
         /// String limit
         type StringLimit: Get<u32>;
 
@@ -110,10 +110,8 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
@@ -272,7 +270,7 @@ pub mod pallet {
             }
 
             // Transfer asset to pallet
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &poll_info.poll_asset,
                 &user,
                 &Self::account_id(),
@@ -385,7 +383,7 @@ pub mod pallet {
             );
 
             // Withdraw asset
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &poll_info.poll_asset,
                 &Self::account_id(),
                 &user,
@@ -413,12 +411,12 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             if Self::pallet_storage_version() == StorageVersion::V2 {
                 sp_runtime::runtime_logger::RuntimeLogger::init();
-                log::info!(
+                info!(
                     "Applying migration to version 2: Migrating to open governance - version 3"
                 );
 
                 if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
-                    log::error!("Failed to migrate: {}", err);
+                    error!("Failed to migrate: {}", err);
                 } else {
                     PalletStorageVersion::<T>::put(StorageVersion::V3);
                 }

@@ -30,11 +30,12 @@
 
 use crate::Config;
 use crate::{pallet_tools, Error};
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
-use common::{AssetInfoProvider, Balance, DEXId, TradingPairSourceManager, TBCD};
-use frame_support::dispatch::DispatchResult;
+use common::{
+    AssetIdOf, AssetInfoProvider, Balance, DEXId, GetBaseAssetIdOf, TradingPairSourceManager, TBCD,
+};
+use frame_support::dispatch::{DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;
 use pallet_tools::price_tools::AssetPrices;
@@ -82,7 +83,8 @@ fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> Di
     let reserves_account_id =
         technical::Pallet::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
     let current_reserves_amount: FixedWrapper =
-        assets::Pallet::<T>::free_balance(asset, &reserves_account_id)?.into();
+        <T as pool_xyk::Config>::AssetInfoProvider::free_balance(asset, &reserves_account_id)?
+            .into();
     let reserves_delta = target_reserves - current_reserves_amount;
     let reserves_delta = reserves_delta
         .get()
@@ -98,9 +100,9 @@ fn set_reserves<T: Config>(asset: &AssetIdOf<T>, target_reserves: Balance) -> Di
 }
 
 fn initialize_single_collateral_unchecked<T: Config>(
-    input: OtherCollateralInput<T::AssetId>,
+    input: OtherCollateralInput<AssetIdOf<T>>,
 ) -> Result<Option<AssetPrices>, DispatchError> {
-    let base_asset = T::GetBaseAssetId::get();
+    let base_asset = GetBaseAssetIdOf::<T>::get();
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
 
     if !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
@@ -149,7 +151,7 @@ fn initialize_single_collateral_unchecked<T: Config>(
 /// Due to limited precision of fixed-point numbers, the requested reference prices might not
 /// be precisely obtainable. Therefore, actual price of collaterals are returned.
 pub fn initialize_single_collateral<T: Config>(
-    input: OtherCollateralInput<T::AssetId>,
+    input: OtherCollateralInput<AssetIdOf<T>>,
 ) -> Result<Option<AssetPrices>, DispatchError> {
     ensure!(
         input.asset != TBCD.into(),
@@ -197,9 +199,9 @@ pub fn initialize_tbcd_collateral<T: Config>(
 ///
 /// For TBCD use [`initialize_tbcd_collateral`]
 pub fn initialize_base_supply<T: Config>(input: BaseSupply<T::AccountId>) -> DispatchResult {
-    let base_asset_id = &T::GetBaseAssetId::get();
+    let base_asset_id = &GetBaseAssetIdOf::<T>::get();
     let current_base_supply: FixedWrapper =
-        assets::Pallet::<T>::total_issuance(base_asset_id)?.into();
+        <T as pool_xyk::Config>::AssetInfoProvider::total_issuance(base_asset_id)?.into();
     let supply_delta = input.target - current_base_supply;
     let supply_delta = supply_delta
         .get()

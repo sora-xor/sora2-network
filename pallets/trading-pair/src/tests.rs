@@ -31,8 +31,8 @@
 use crate::mock::*;
 use crate::{Error, Pallet};
 use common::{
-    EnsureTradingPairExists, LiquiditySourceType, TradingPair, TradingPairSourceManager, DOT, KSM,
-    XOR, XSTUSD,
+    DEXId, EnsureTradingPairExists, LiquiditySourceType, TradingPair, TradingPairSourceManager,
+    DOT, KSM, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;
@@ -58,7 +58,7 @@ fn should_register_with_another_dex_id() {
     ext.execute_with(|| {
         assert_ok!(TradingPairPallet::register(
             RuntimeOrigin::signed(ALICE),
-            1,
+            DEXId::PolkaswapXSTUSD,
             XSTUSD,
             DOT
         ));
@@ -70,7 +70,12 @@ fn should_not_register_with_another_dex_id_with_wrong_base_asset_id() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), 1, XOR, DOT),
+            TradingPairPallet::register(
+                RuntimeOrigin::signed(ALICE),
+                DEXId::PolkaswapXSTUSD,
+                XOR,
+                DOT
+            ),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
     });

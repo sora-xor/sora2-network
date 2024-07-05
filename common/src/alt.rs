@@ -34,11 +34,13 @@ use crate::fixed_wrapper::FixedWrapper;
 use crate::outcome_fee::OutcomeFee;
 use crate::swap_amount::SwapVariant;
 use crate::{Balance, Fixed, Price};
+use fixnum::ops::Bounded;
+use fixnum::ArithmeticError;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::ops::Add;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SideAmount<AmountType> {
     Input(AmountType),
     Output(AmountType),
@@ -67,7 +69,7 @@ impl<AmountType> SideAmount<AmountType> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SwapChunk<AssetId: Ord + Clone, AmountType> {
     pub input: AmountType,
     pub output: AmountType,
@@ -89,6 +91,16 @@ impl<AssetId: Ord + Clone, AmountType: Copy> SwapChunk<AssetId, AmountType> {
         match swap_variant {
             SwapVariant::WithDesiredInput => SideAmount::Input(self.input),
             SwapVariant::WithDesiredOutput => SideAmount::Output(self.output),
+        }
+    }
+
+    pub fn get_same_type_amount(
+        &self,
+        reference: &SideAmount<AmountType>,
+    ) -> SideAmount<AmountType> {
+        match reference {
+            SideAmount::Input(..) => SideAmount::Input(self.input),
+            SideAmount::Output(..) => SideAmount::Output(self.output),
         }
     }
 }
@@ -173,9 +185,21 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
             return Some(Balance::zero());
         }
 
-        let price = self.price()?;
+        let result = ((FixedWrapper::from(output) * FixedWrapper::from(self.input))
+            / (FixedWrapper::from(self.output)))
+        .try_into_balance();
 
-        (FixedWrapper::from(output) / price).try_into_balance().ok()
+        if let Err(error) = result {
+            if error == ArithmeticError::Overflow {
+                // try to use another approach with the same result to avoid overflow
+                let price = self.price()?;
+                (FixedWrapper::from(output) / price).try_into_balance().ok()
+            } else {
+                None
+            }
+        } else {
+            result.ok()
+        }
     }
 
     /// Calculates a linearly proportional output amount depending on the price and an input amount.
@@ -185,9 +209,21 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
             return Some(Balance::zero());
         }
 
-        let price = self.price()?;
+        let result = (FixedWrapper::from(input) * FixedWrapper::from(self.output)
+            / FixedWrapper::from(self.input))
+        .try_into_balance();
 
-        (FixedWrapper::from(input) * price).try_into_balance().ok()
+        if let Err(error) = result {
+            if error == ArithmeticError::Overflow {
+                // try to use another approach with the same result to avoid overflow
+                let price = self.price()?;
+                (FixedWrapper::from(input) * price).try_into_balance().ok()
+            } else {
+                None
+            }
+        } else {
+            result.ok()
+        }
     }
 
     pub fn rescale_by_input(self, input: Balance) -> Option<Self> {
@@ -240,7 +276,7 @@ impl<AssetId: Ord + Clone> SwapChunk<AssetId, Balance> {
 }
 
 /// Limitations that could have a liquidity source for the amount of swap
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SwapLimits<AmountType> {
     /// The amount of swap cannot be less than `min_amount` if it's defined
     pub min_amount: Option<SideAmount<AmountType>>,
@@ -267,27 +303,49 @@ impl<AmountType> SwapLimits<AmountType> {
 }
 
 impl SwapLimits<Balance> {
+    pub fn get_precision_step<AssetId: Ord + Clone>(
+        &self,
+        chunk: &SwapChunk<AssetId, Balance>,
+        variant: SwapVariant,
+    ) -> Option<Balance> {
+        let step = if let Some(precision) = self.amount_precision {
+            match (variant, precision) {
+                (SwapVariant::WithDesiredInput, SideAmount::Input(value)) => value,
+                (SwapVariant::WithDesiredOutput, SideAmount::Output(value)) => value,
+                (SwapVariant::WithDesiredInput, SideAmount::Output(value)) => {
+                    chunk.proportional_input(value)?
+                }
+                (SwapVariant::WithDesiredOutput, SideAmount::Input(value)) => {
+                    chunk.proportional_output(value)?
+                }
+            }
+        } else {
+            Balance::zero()
+        };
+        Some(step)
+    }
+
     /// Aligns the `chunk` regarding to the `min_amount` limit.
     /// Returns the aligned chunk and the remainder
     pub fn align_chunk_min<AssetId: Ord + Clone>(
         &self,
         chunk: SwapChunk<AssetId, Balance>,
-    ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
+    ) -> (SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>) {
         if let Some(min) = self.min_amount {
             match min {
                 SideAmount::Input(min_amount) => {
                     if chunk.input < min_amount {
-                        return Some((Zero::zero(), chunk));
+                        return (Zero::zero(), chunk);
                     }
                 }
                 SideAmount::Output(min_amount) => {
                     if chunk.output < min_amount {
-                        return Some((Zero::zero(), chunk));
+                        return (Zero::zero(), chunk);
                     }
                 }
             }
         }
-        Some((chunk, Zero::zero()))
+        (chunk, Zero::zero())
     }
 
     /// Aligns the `chunk` regarding to the `max_amount` limit.
@@ -384,7 +442,7 @@ impl SwapLimits<Balance> {
         &self,
         chunk: SwapChunk<AssetId, Balance>,
     ) -> Option<(SwapChunk<AssetId, Balance>, SwapChunk<AssetId, Balance>)> {
-        let (chunk, remainder) = self.align_chunk_min(chunk)?;
+        let (chunk, remainder) = self.align_chunk_min(chunk);
         if !remainder.is_zero() {
             return Some((chunk, remainder));
         }
@@ -419,6 +477,52 @@ impl<AssetId: Ord + Clone, AmountType> DiscreteQuotation<AssetId, AmountType> {
     }
 }
 
+impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
+    pub fn verify(&self) -> bool {
+        let mut prev_price = Price::MAX;
+
+        for chunk in &self.chunks {
+            // chunk should not contain zeros
+            if chunk.input.is_zero() || chunk.output.is_zero() {
+                return false;
+            }
+
+            // if source provides the precision limit - all chunks must match this requirement.
+            if let Some(precision) = self.limits.amount_precision {
+                let (input_precision, output_precision) = match precision {
+                    SideAmount::Input(input_precision) => {
+                        let Some(output_precision) = self.limits.get_precision_step(chunk, SwapVariant::WithDesiredOutput) else {
+                            return false;
+                        };
+                        (input_precision, output_precision)
+                    }
+                    SideAmount::Output(output_precision) => {
+                        let Some(input_precision) = self.limits.get_precision_step(chunk, SwapVariant::WithDesiredInput) else {
+                            return false;
+                        };
+                        (input_precision, output_precision)
+                    }
+                };
+
+                if chunk.input % input_precision != 0 || chunk.output % output_precision != 0 {
+                    return false;
+                }
+            }
+
+            let Some(price) = chunk.price() else {
+                return false;
+            };
+
+            // chunks should go to reduce the price, from the best to the worst
+            if price > prev_price {
+                return false;
+            }
+            prev_price = price;
+        }
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -439,65 +543,65 @@ mod tests {
         let chunk5 = SwapChunk::new(balance!(1), balance!(1), mock_fee);
 
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk1.clone()),
             (Zero::zero(), chunk1.clone())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk2.clone()),
             (chunk2.clone(), Zero::zero())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk3.clone()),
             (Zero::zero(), chunk3.clone())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4.clone(), Zero::zero())
         );
         assert_eq!(
-            input_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            input_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5.clone(), Zero::zero())
         );
 
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk1.clone()),
             (Zero::zero(), chunk1.clone())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk2.clone()),
             (Zero::zero(), chunk2.clone())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk3.clone()),
             (chunk3.clone(), Zero::zero())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4.clone(), Zero::zero())
         );
         assert_eq!(
-            output_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            output_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5.clone(), Zero::zero())
         );
 
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk1.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk1.clone()),
             (chunk1, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk2.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk2.clone()),
             (chunk2, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk3.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk3.clone()),
             (chunk3, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk4.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk4.clone()),
             (chunk4, Zero::zero())
         );
         assert_eq!(
-            empty_min_limit.align_chunk_min(chunk5.clone()).unwrap(),
+            empty_min_limit.align_chunk_min(chunk5.clone()),
             (chunk5, Zero::zero())
         );
     }
@@ -1031,5 +1135,262 @@ mod tests {
             empty_limit.align_chunk(chunk_ok.clone()).unwrap(),
             (chunk_ok, Zero::zero())
         );
+    }
+
+    #[test]
+    fn check_discrete_quotation_verification_with_zero() {
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(0),
+                balance!(0),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(0),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(0),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
+    }
+
+    #[test]
+    fn check_discrete_quotation_verification_with_precision() {
+        // wrong input
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.11),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Input(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        // wrong output
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(1.11),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Output(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        // input is ok, but output doesn't match with proportional precision
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.1),
+                balance!(1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Input(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        // output is ok, but input doesn't match with proportional precision
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1),
+                balance!(1.1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Output(balance!(0.1))),
+            },
+        };
+        assert!(!wrong.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.1),
+                balance!(1.1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Input(balance!(0.1))),
+            },
+        };
+        assert!(correct.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.1),
+                balance!(1.1),
+                Default::default(),
+            )]),
+            limits: SwapLimits {
+                min_amount: None,
+                max_amount: None,
+                amount_precision: Some(SideAmount::Output(balance!(0.1))),
+            },
+        };
+        assert!(correct.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([SwapChunk::<u8, _>::new(
+                balance!(1.11),
+                balance!(1.11),
+                Default::default(),
+            )]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
+    }
+
+    #[test]
+    fn check_discrete_quotation_verification_with_price_order() {
+        // wrong order
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()), // wrong
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        let wrong: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()), // wrong
+            ]),
+            limits: Default::default(),
+        };
+        assert!(!wrong.verify());
+
+        //todo
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(9), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(8), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(7), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(6), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
+
+        // the same price in a row is ok
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(9), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(9), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(8), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(8), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(7), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(7), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(6), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(6), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(3), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
     }
 }

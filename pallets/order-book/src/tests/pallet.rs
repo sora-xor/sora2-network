@@ -62,6 +62,7 @@ fn should_register_technical_account() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -310,6 +311,7 @@ fn should_lock_unlock_indivisible_nft() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -350,6 +352,7 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
             0,
             4,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -450,6 +453,7 @@ fn should_not_lock_insufficient_nft() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -566,6 +570,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -1336,6 +1341,504 @@ fn should_not_quote_with_small_amount() {
             ),
             E::InvalidOrderAmount
         );
+    });
+}
+
+#[test]
+fn should_not_quote_with_wrong_order_amount() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        let base_min_amount = balance!(5);
+        let base_max_amount = balance!(100);
+
+        // values are calculated based on the orders in `create_and_fill_order_book`
+        let quote_buy_min_amount = balance!(55);
+        let quote_buy_max_amount = balance!(1100);
+        let quote_sell_min_amount = balance!(50);
+        let quote_sell_max_amount = balance!(1000);
+
+        let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
+        let step_lot_size = *order_book.step_lot_size.balance();
+        let _ = update_orderbook_unchecked::<Runtime>(
+            order_book_id,
+            *order_book.tick_size.balance(),
+            step_lot_size,
+            base_min_amount,
+            base_max_amount,
+        );
+
+        // XOR -> VAL: less than min amount
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_min_amount - balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::new(),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(quote_buy_min_amount)),
+                    Some(SideAmount::Input(quote_buy_max_amount)),
+                    Some(SideAmount::Output(step_lot_size))
+                )
+            }
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_min_amount - balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::new(),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Output(base_min_amount)),
+                    Some(SideAmount::Output(base_max_amount)),
+                    Some(SideAmount::Output(step_lot_size))
+                )
+            }
+        );
+
+        // XOR -> VAL: more than max amount
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(quote_buy_max_amount + balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Default::default()
+                )]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(quote_buy_min_amount)),
+                    Some(SideAmount::Input(quote_buy_max_amount)),
+                    Some(SideAmount::Output(step_lot_size))
+                )
+            }
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(base_max_amount + balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(1939.3),
+                    balance!(176.3),
+                    Default::default()
+                )]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Output(base_min_amount)),
+                    Some(SideAmount::Output(base_max_amount)),
+                    Some(SideAmount::Output(step_lot_size))
+                )
+            }
+        );
+
+        // VAL -> XOR: less than min amount
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_min_amount - balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::new(),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(base_min_amount)),
+                    Some(SideAmount::Input(base_max_amount)),
+                    Some(SideAmount::Input(step_lot_size))
+                )
+            }
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_min_amount - balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_min_amount - balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::new(),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Output(quote_sell_min_amount)),
+                    Some(SideAmount::Output(quote_sell_max_amount)),
+                    Some(SideAmount::Input(step_lot_size))
+                )
+            }
+        );
+
+        // VAL -> XOR: more than max amount
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(base_max_amount + balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Default::default()
+                )]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Input(base_min_amount)),
+                    Some(SideAmount::Input(base_max_amount)),
+                    Some(SideAmount::Input(step_lot_size))
+                )
+            }
+        );
+
+        assert_err!(
+            OrderBookPallet::quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_err!(
+            OrderBookPallet::quote_without_impact(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_max_amount + balance!(1)),
+                true
+            ),
+            E::InvalidOrderAmount
+        );
+        assert_eq!(
+            OrderBookPallet::step_quote(
+                &DEX.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(quote_sell_max_amount + balance!(1)),
+                10,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([SwapChunk::new(
+                    balance!(168.5),
+                    balance!(1685),
+                    Default::default()
+                )]),
+                limits: SwapLimits::new(
+                    Some(SideAmount::Output(quote_sell_min_amount)),
+                    Some(SideAmount::Output(quote_sell_max_amount)),
+                    Some(SideAmount::Input(step_lot_size))
+                )
+            }
+        );
+
+        // ok if values are equal with min/max
+
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_input(quote_buy_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_input(quote_buy_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_output(base_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_output(base_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_input(base_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_input(base_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(quote_sell_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(quote_sell_max_amount),
+            true
+        ));
+
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_input(quote_buy_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_input(quote_buy_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_output(base_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &XOR,
+            &VAL,
+            QuoteAmount::with_desired_output(base_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_input(base_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_input(base_max_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(quote_sell_min_amount),
+            true
+        ));
+        assert_ok!(OrderBookPallet::quote_without_impact(
+            &DEX.into(),
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(quote_sell_max_amount),
+            true
+        ));
     });
 }
 

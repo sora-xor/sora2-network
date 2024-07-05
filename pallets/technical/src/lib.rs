@@ -34,15 +34,15 @@
 
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::DispatchResult;
+use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
+use frame_support::dispatch::{DispatchResult};
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::DispatchError;
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
-use common::TECH_ACCOUNT_MAGIC_PREFIX;
+use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
 use sp_core::H256;
 
 #[cfg(test)]
@@ -53,7 +53,6 @@ mod tests;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TechAccountIdOf<T> = <T as Config>::TechAccountId;
-type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type TechAssetIdOf<T> = <T as Config>::TechAssetId;
 type DEXIdOf<T> = <T as common::Config>::DEXId;
 
@@ -89,7 +88,7 @@ impl<T: Config> Pallet<T> {
     pub fn create_swap_unchecked(
         source: AccountIdOf<T>,
         action: &T::SwapAction,
-        base_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
         common::with_transaction(|| {
             action.reserve(&source, base_asset_id)?;
@@ -118,7 +117,7 @@ impl<T: Config> Pallet<T> {
     pub fn create_swap(
         source: AccountIdOf<T>,
         action: &mut T::SwapAction,
-        base_asset_id: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
         ensure!(
             !action.is_abstract_checking(),
@@ -201,7 +200,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let to = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&to)?;
-        assets::Pallet::<T>::transfer_from(asset, source, &to, amount)?;
+        T::AssetManager::transfer_from(asset, source, &to, amount)?;
         Ok(())
     }
 
@@ -214,7 +213,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let from = Self::tech_account_id_to_account_id(tech_source)?;
         Self::ensure_account_registered(&from)?;
-        assets::Pallet::<T>::transfer_from(asset, &from, to, amount)?;
+        T::AssetManager::transfer_from(asset, &from, to, amount)?;
         Ok(())
     }
 
@@ -229,7 +228,7 @@ impl<T: Config> Pallet<T> {
         Self::ensure_account_registered(&from)?;
         let to = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&to)?;
-        assets::Pallet::<T>::transfer_from(asset, &from, &to, amount)
+        T::AssetManager::transfer_from(asset, &from, &to, amount)
     }
 
     /// Mint specific asset to the given `TechAccountId`.
@@ -240,17 +239,17 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Pallet::<T>::mint_to(asset, &account_id, &account_id, amount)
+        T::AssetManager::mint_to(asset, &account_id, &account_id, amount)
     }
 
     /// Returns total balance for asset from the given `TechAccountId`.
     pub fn total_balance(
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         tech_id: &T::TechAccountId,
     ) -> Result<Balance, DispatchError> {
         let account_id = Self::tech_account_id_to_account_id(tech_id)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Pallet::<T>::total_balance(asset_id, &account_id)
+        T::AssetInfoProvider::total_balance(asset_id, &account_id)
     }
 }
 
@@ -259,13 +258,13 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {
+    pub trait Config: frame_system::Config + common::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -302,8 +301,19 @@ pub mod pallet {
         type Condition: Default + Copy + Member + Parameter;
 
         /// Swap action.
-        type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self::AssetId, Self>
+        type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, AssetIdOf<Self>, Self>
             + Parameter;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.

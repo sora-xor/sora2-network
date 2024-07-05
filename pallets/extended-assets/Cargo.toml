@@ -1,0 +1,65 @@
+[package]
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+edition = "2021"
+name = "extended-assets"
+version = "1.0.0"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+hex-literal = { version = "0.4.1", optional = true }
+
+common = { path = "../../common", default-features = false }
+technical = { path = "../technical", default-features = false }
+
+[dev-dependencies]
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+hex-literal = { version = "0.4.1"}
+common = { path = "../../common", features = ['test']}
+assets = { path = "../assets" }
+permissions = { path = "../permissions" }
+technical = { path = "../technical" }
+
+[features]
+default = ["std"]
+
+std = [
+    "scale-info/std",
+    "frame-support/std",
+    "frame-benchmarking/std",
+    "frame-system/std",
+    "pallet-timestamp/std",
+    "sp-core/std",
+    "sp-std/std",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "hex-literal",
+]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]
+
+wip = []

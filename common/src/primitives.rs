@@ -59,6 +59,18 @@ pub const ASSET_CONTENT_SOURCE_MAX_LENGTH: usize = 2048;
 /// Max length of asset description, it should be enough to describe everything the user wants
 pub const ASSET_DESCRIPTION_MAX_LENGTH: usize = 512;
 
+/// Predefined asset ids start with 0x02...
+pub const ASSET_ID_PREFIX_PREDEFINED: u8 = 2;
+
+/// Synthetic asset ids start with 0x03...
+pub const ASSET_ID_PREFIX_SYNTHETIC: u8 = 3;
+
+/// Kensetsu asset ids pegged to sora assets start with 0x04...
+pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_SORA: u8 = 4;
+
+/// Kensetsu asset ids pegged to oracle start with 0x05...
+pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_ORACLE: u8 = 5;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
@@ -196,6 +208,9 @@ mod _allowed_deprecated {
         TBCD = 10,
         KEN = 11,
         KUSD = 12,
+        KGOLD = 13,
+        KXOR = 14,
+        KARMA = 15,
     }
 }
 
@@ -210,6 +225,9 @@ pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const TBCD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 pub const KEN: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KEN);
 pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
+pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
+pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
+pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
@@ -351,7 +369,7 @@ impl<AssetId> AssetId32<AssetId> {
 
     pub const fn from_asset_id(asset_id: PredefinedAssetId) -> Self {
         let mut bytes = [0u8; 32];
-        bytes[0] = 2;
+        bytes[0] = ASSET_ID_PREFIX_PREDEFINED;
         bytes[2] = asset_id as u8;
         Self::from_bytes(bytes)
     }
@@ -365,10 +383,25 @@ impl<AssetId> AssetId32<AssetId> {
             return Self::from_asset_id(PredefinedAssetId::XSTUSD);
         }
 
+        Self::from_reference_symbol(ASSET_ID_PREFIX_SYNTHETIC, reference_symbol)
+    }
+
+    /// Construct asset id for Kensetsu debt asset using its `peg_symbol` on Sora network
+    pub fn from_kensetsu_sora_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+        Self::from_reference_symbol(ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_SORA, reference_symbol)
+    }
+
+    /// Construct asset id for Kensetsu debt asset using its `peg_symbol` from Oracle
+    pub fn from_kensetsu_oracle_peg_symbol<Symbol: Encode>(reference_symbol: &Symbol) -> Self {
+        Self::from_reference_symbol(ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_ORACLE, reference_symbol)
+    }
+
+    /// Constructs Asset id from symbol with provided zero byte.
+    fn from_reference_symbol<Symbol: Encode>(zero_byte: u8, reference_symbol: &Symbol) -> Self {
         let mut bytes = [0u8; 32];
         let symbol_bytes = reference_symbol.encode();
         let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
-        bytes[0] = 3;
+        bytes[0] = zero_byte;
         bytes[2..18].copy_from_slice(&symbol_hash);
 
         Self::from_bytes(bytes)
@@ -443,6 +476,7 @@ pub enum DEXId {
     #[default]
     Polkaswap = 0,
     PolkaswapXSTUSD = 1,
+    PolkaswapKUSD = 2,
 }
 
 impl From<DEXId> for u32 {
@@ -560,6 +594,12 @@ impl IsValid for AssetName {
     }
 }
 
+impl MaxEncodedLen for AssetName {
+    fn max_encoded_len() -> usize {
+        ASSET_NAME_MAX_LENGTH
+    }
+}
+
 #[derive(
     Encode,
     Decode,
@@ -594,6 +634,12 @@ impl Display for ContentSource {
 impl IsValid for ContentSource {
     fn is_valid(&self) -> bool {
         self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
+    }
+}
+
+impl MaxEncodedLen for ContentSource {
+    fn max_encoded_len() -> usize {
+        ASSET_CONTENT_SOURCE_MAX_LENGTH
     }
 }
 
@@ -634,6 +680,12 @@ impl IsValid for Description {
     }
 }
 
+impl MaxEncodedLen for Description {
+    fn max_encoded_len() -> usize {
+        ASSET_DESCRIPTION_MAX_LENGTH
+    }
+}
+
 #[derive(
     Encode,
     Decode,
@@ -652,6 +704,11 @@ pub struct SymbolName(pub Vec<u8>);
 impl SymbolName {
     pub fn usd() -> Self {
         Self::from_str("USD").expect("`USD` is a valid symbol name")
+    }
+
+    /// Troy ounce of gold
+    pub fn xau() -> Self {
+        Self::from_str("XAU").expect("`XAU` is a valid symbol name")
     }
 }
 
@@ -1277,4 +1334,40 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
     }
+}
+
+/// Enumeration of all supported asset types.
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    Default,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
+pub enum AssetType {
+    #[default]
+    Regular,
+    NFT,
+    Soulbound,
+    Regulated,
+}
+
+/// Presents information about an asset.
+#[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, Default, Debug)]
+pub struct AssetInfo {
+    pub symbol: AssetSymbol,
+    pub name: AssetName,
+    pub precision: BalancePrecision,
+    pub is_mintable: bool,
+    pub asset_type: AssetType,
+    pub content_source: Option<ContentSource>,
+    pub description: Option<Description>,
 }

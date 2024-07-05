@@ -47,7 +47,6 @@ pub mod migrations;
 
 use core::convert::TryInto;
 
-use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
@@ -56,9 +55,10 @@ use common::prelude::{
     SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant,
-    Rate, RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
+    balance, fixed, fixed_wrapper, AssetId32, AssetIdOf, AssetInfoProvider, AssetManager,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DataFeed, Description,
+    GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant, Rate,
+    RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
@@ -75,7 +75,6 @@ use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
 
-type Assets<T> = assets::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
@@ -140,19 +139,28 @@ pub mod pallet {
     pub trait Config: frame_system::Config + technical::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
-        type GetSyntheticBaseAssetId: Get<Self::AssetId>;
+        type GetSyntheticBaseAssetId: Get<AssetIdOf<Self>>;
         type GetXSTPoolPermissionedTechAccountId: Get<Self::TechAccountId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-        type PriceToolsPallet: PriceToolsProvider<Self::AssetId>;
+        type PriceToolsPallet: PriceToolsProvider<AssetIdOf<Self>>;
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
         type Symbol: Parameter + From<common::SymbolName> + MaybeSerializeDeserialize;
         /// Maximum tradable amount of XST
         #[pallet::constant]
         type GetSyntheticBaseBuySellLimit: Get<Balance>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
     /// The current storage version.
@@ -174,13 +182,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
-            reference_asset_id: T::AssetId,
+            reference_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            Assets::<T>::ensure_asset_exists(&reference_asset_id)?;
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&reference_asset_id)?;
             ensure!(
-                !Assets::<T>::is_non_divisible(&reference_asset_id),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&reference_asset_id),
                 Error::<T>::IndivisibleReferenceAsset
             );
 
@@ -193,7 +201,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
             reference_symbol: T::Symbol,
             fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
@@ -215,7 +223,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let synthetic_asset_id: T::AssetId =
+            let synthetic_asset_id: AssetIdOf<T> =
                 AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
                     &reference_symbol,
                 )
@@ -243,7 +251,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
         pub fn disable_synthetic_asset(
             origin: OriginFor<T>,
-            synthetic_asset: T::AssetId,
+            synthetic_asset: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             ensure!(
@@ -259,7 +267,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::remove_synthetic_asset())]
         pub fn remove_synthetic_asset(
             origin: OriginFor<T>,
-            synthetic_asset: T::AssetId,
+            synthetic_asset: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let reference_symbol = EnabledSynthetics::<T>::get(synthetic_asset)
@@ -288,7 +296,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
         pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
-            synthetic_asset: T::AssetId,
+            synthetic_asset: AssetIdOf<T>,
             fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -381,7 +389,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn enabled_synthetics)]
     pub type EnabledSynthetics<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, SyntheticInfo<T::Symbol>, OptionQuery>;
+        StorageMap<_, Blake2_128Concat, AssetIdOf<T>, SyntheticInfo<T::Symbol>, OptionQuery>;
 
     /// Reference symbols and their synthetic assets.
     ///
@@ -389,17 +397,17 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn enabled_symbols)]
     pub type EnabledSymbols<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::Symbol, T::AssetId, OptionQuery>;
+        StorageMap<_, Blake2_128Concat, T::Symbol, AssetIdOf<T>, OptionQuery>;
 
     /// Asset that is used to compare collateral assets by value, e.g., DAI.
     #[pallet::storage]
     #[pallet::getter(fn reference_asset_id)]
-    pub type ReferenceAssetId<T: Config> = StorageValue<_, T::AssetId, ValueQuery>;
+    pub type ReferenceAssetId<T: Config> = StorageValue<_, AssetIdOf<T>, ValueQuery>;
 
     /// Current reserves balance for collateral tokens, used for client usability.
     #[pallet::storage]
     pub(super) type CollateralReserves<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, Balance, ValueQuery>;
+        StorageMap<_, Twox64Concat, AssetIdOf<T>, Balance, ValueQuery>;
 
     #[pallet::type_value]
     pub fn SyntheticBaseAssetDefaultFloorPrice() -> Balance {
@@ -415,10 +423,10 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
-        pub reference_asset_id: T::AssetId,
+        pub reference_asset_id: AssetIdOf<T>,
         /// List of tokens enabled as collaterals initially.
         /// TODO: replace with Vec<T::AssetId> and make corresponding changes to build() function
-        pub initial_synthetic_assets: Vec<(T::AssetId, T::Symbol, Fixed)>,
+        pub initial_synthetic_assets: Vec<(AssetIdOf<T>, T::Symbol, Fixed)>,
     }
 
     impl<T: Config> Default for GenesisConfig<T> {
@@ -457,7 +465,7 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
     fn enable_synthetic_asset_unchecked(
-        synthetic_asset_id: T::AssetId,
+        synthetic_asset_id: AssetIdOf<T>,
         reference_symbol: T::Symbol,
         fee_ratio: Fixed,
         transactional: bool,
@@ -469,9 +477,9 @@ impl<T: Config> Pallet<T> {
             );
             Self::ensure_symbol_exists(&reference_symbol)?;
 
-            Assets::<T>::ensure_asset_exists(&synthetic_asset_id)?;
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&synthetic_asset_id)?;
             ensure!(
-                Assets::<T>::get_asset_info(&synthetic_asset_id).2 != 0,
+                <T as Config>::AssetInfoProvider::get_asset_info(&synthetic_asset_id).2 != 0,
                 Error::<T>::CantEnableIndivisibleAsset
             );
 
@@ -513,7 +521,9 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn enable_synthetic_trading_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {
+    fn enable_synthetic_trading_pair(
+        synthetic_asset_id: AssetIdOf<T>,
+    ) -> sp_runtime::DispatchResult {
         if T::TradingPairSourceManager::is_trading_pair_enabled(
             &DEXId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
@@ -554,8 +564,8 @@ impl<T: Config> Pallet<T> {
     /// ### desired_amount_out variant
     /// returns amount_in = amount_out * main_asset_price / synthetic_asset_price
     pub fn buy_price(
-        main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
+        main_asset_id: &AssetIdOf<T>,
+        synthetic_asset_id: &AssetIdOf<T>,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         let main_asset_price: FixedWrapper =
@@ -603,8 +613,8 @@ impl<T: Config> Pallet<T> {
     /// ### desired_amount_out variant
     /// returns amount_in = amount_out * synthetic_asset_price / main_asset_price
     pub fn sell_price(
-        main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
+        main_asset_id: &AssetIdOf<T>,
+        synthetic_asset_id: &AssetIdOf<T>,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
@@ -646,8 +656,8 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_buy_amounts(
-        main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
+        main_asset_id: &AssetIdOf<T>,
+        synthetic_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
         check_limits: bool,
@@ -722,8 +732,8 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns ordered pair: `(input_amount, output_amount, fee_amount)`.
     fn decide_sell_amounts(
-        main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
+        main_asset_id: &AssetIdOf<T>,
+        synthetic_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
         check_limits: bool,
@@ -790,12 +800,12 @@ impl<T: Config> Pallet<T> {
     /// and mint calculated amount of `synthetic_asset_id` to the receiver.
     fn swap_mint_burn_assets(
         _dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
-    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         common::with_transaction(|| {
             let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
             let permissioned_account_id =
@@ -841,14 +851,14 @@ impl<T: Config> Pallet<T> {
                 }
             };
 
-            Assets::<T>::burn_from(
+            T::AssetManager::burn_from(
                 input_asset_id,
                 &permissioned_account_id,
                 &from_account_id,
                 input_amount,
             )?;
 
-            Assets::<T>::mint_to(
+            T::AssetManager::mint_to(
                 output_asset_id,
                 &permissioned_account_id,
                 &to_account_id,
@@ -859,7 +869,9 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    fn get_aggregated_fee(synthetic_asset_id: &T::AssetId) -> Result<FixedWrapper, DispatchError> {
+    fn get_aggregated_fee(
+        synthetic_asset_id: &AssetIdOf<T>,
+    ) -> Result<FixedWrapper, DispatchError> {
         let SyntheticInfo {
             reference_symbol,
             fee_ratio,
@@ -912,7 +924,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// Refer to price-tools pallet documentation for clarification.
     pub fn reference_price(
-        asset_id: &T::AssetId,
+        asset_id: &AssetIdOf<T>,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
@@ -952,14 +964,14 @@ impl<T: Config> Pallet<T> {
     }
 
     fn register_synthetic_asset_unchecked(
-        synthetic_asset: T::AssetId,
+        synthetic_asset: AssetIdOf<T>,
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
     ) -> Result<(), DispatchError> {
         let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
         let permissioned_account_id =
             Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
-        Assets::<T>::register_asset_id(
+        T::AssetManager::register_asset_id(
             permissioned_account_id,
             synthetic_asset,
             asset_symbol,
@@ -967,6 +979,7 @@ impl<T: Config> Pallet<T> {
             DEFAULT_BALANCE_PRECISION,
             balance!(0),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -974,12 +987,12 @@ impl<T: Config> Pallet<T> {
 
     fn inner_quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
         check_limits: bool,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1029,13 +1042,13 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
     ) -> bool {
         if *dex_id != DEXId::Polkaswap.into() {
             return false;
@@ -1052,11 +1065,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     /// Get spot price of synthetic tokens based on desired amount.
     fn quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         Self::inner_quote(
             dex_id,
             input_asset_id,
@@ -1069,12 +1082,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn step_quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<AssetIdOf<T>, Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1093,6 +1106,19 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
 
+        // Get max amount for the limit
+        let limit = T::GetSyntheticBaseBuySellLimit::get();
+
+        if limit.is_zero() {
+            return Ok((quotation, Weight::zero()));
+        }
+
+        quotation.limits.max_amount = if input_asset_id == synthetic_base_asset_id {
+            Some(SideAmount::Input(limit))
+        } else {
+            Some(SideAmount::Output(limit))
+        };
+
         // Get the price without checking the limit, because even if it exceeds the limit it will be rounded below.
         // It is necessary to use as much liquidity from the source as we can.
         let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
@@ -1106,14 +1132,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let fee = OutcomeFee::from_asset(T::GetSyntheticBaseAssetId::get(), fee_amount);
 
         let mut monolith = SwapChunk::new(input_amount, output_amount, fee);
-
-        // Get max amount for the limit
-        let limit = T::GetSyntheticBaseBuySellLimit::get();
-        quotation.limits.max_amount = if input_asset_id == synthetic_base_asset_id {
-            Some(SideAmount::Input(limit))
-        } else {
-            Some(SideAmount::Output(limit))
-        };
 
         // If amount exceeds the limit, it is necessary to round the amount to the limit.
         if input_asset_id == synthetic_base_asset_id {
@@ -1167,10 +1185,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         sender: &T::AccountId,
         receiver: &T::AccountId,
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1188,21 +1206,21 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn check_rewards(
         _dex_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
+        _input_asset_id: &AssetIdOf<T>,
+        _output_asset_id: &AssetIdOf<T>,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetIdOf<T>, RewardReason)>, Weight), DispatchError> {
         Ok((Vec::new(), Weight::zero())) // no rewards for XST
     }
 
     fn quote_without_impact(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         // no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
         Self::inner_quote(
@@ -1233,10 +1251,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
+impl<T: Config> GetMarketInfo<AssetIdOf<T>> for Pallet<T> {
     fn buy_price(
-        synthetic_base_asset: &T::AssetId,
-        synthetic_asset: &T::AssetId,
+        synthetic_base_asset: &AssetIdOf<T>,
+        synthetic_asset: &AssetIdOf<T>,
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper =
             Self::reference_price(synthetic_base_asset, PriceVariant::Buy)?.into();
@@ -1249,8 +1267,8 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     }
 
     fn sell_price(
-        synthetic_base_asset: &T::AssetId,
-        synthetic_asset: &T::AssetId,
+        synthetic_base_asset: &AssetIdOf<T>,
+        synthetic_asset: &AssetIdOf<T>,
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper =
             Self::reference_price(synthetic_base_asset, PriceVariant::Sell)?.into();
@@ -1263,19 +1281,19 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     }
 
     /// `target_assets` refer to synthetic assets
-    fn enabled_target_assets() -> BTreeSet<T::AssetId> {
+    fn enabled_target_assets() -> BTreeSet<AssetIdOf<T>> {
         EnabledSynthetics::<T>::iter()
             .map(|(asset_id, _)| asset_id)
             .collect()
     }
 }
 
-impl<T: Config> SyntheticInfoProvider<T::AssetId> for Pallet<T> {
-    fn is_synthetic(asset_id: &T::AssetId) -> bool {
+impl<T: Config> SyntheticInfoProvider<AssetIdOf<T>> for Pallet<T> {
+    fn is_synthetic(asset_id: &AssetIdOf<T>) -> bool {
         EnabledSynthetics::<T>::contains_key(asset_id)
     }
 
-    fn get_synthetic_assets() -> Vec<T::AssetId> {
+    fn get_synthetic_assets() -> Vec<AssetIdOf<T>> {
         EnabledSynthetics::<T>::iter_keys().collect()
     }
 }

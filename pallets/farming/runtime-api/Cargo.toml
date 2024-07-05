@@ -13,7 +13,6 @@ sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "rel
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
 
 [features]
 default = ["std"]

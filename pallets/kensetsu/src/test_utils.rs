@@ -31,7 +31,7 @@
 use super::*;
 use crate::mock::{RuntimeOrigin, TestRuntime};
 
-use common::{AssetInfoProvider, Balance, XOR};
+use common::{AccountIdOf, AssetInfoProvider, Balance, DAI, KUSD, KXOR, XOR};
 use frame_support::assert_ok;
 use frame_system::pallet_prelude::OriginFor;
 use hex_literal::hex;
@@ -74,34 +74,19 @@ pub fn tech_account_id() -> AccountId {
         .expect("Failed to get ordinary account id for technical account id.")
 }
 
-/// Returns Risk Manager account
-pub fn risk_manager() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
-/// Returns risk manager account id
-pub fn risk_manager_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account id
-pub fn protocol_owner_account_id() -> AccountId {
-    bob_account_id()
-}
-
-/// Returns Protocol Owner account
-pub fn protocol_owner() -> OriginFor<TestRuntime> {
-    RuntimeOrigin::signed(bob_account_id())
-}
-
 /// Sets protocol bad debt in KUSD.
 pub fn set_bad_debt(bad_debt: Balance) {
-    BadDebt::<TestRuntime>::set(bad_debt);
+    StablecoinInfos::<TestRuntime>::mutate(KUSD, |stablecoin_info| {
+        stablecoin_info.as_mut().unwrap().bad_debt = bad_debt;
+    });
 }
 
 /// Asserts that protocol bad debt is expected amount.
 pub fn assert_bad_debt(expected_amount: Balance) {
-    assert_eq!(BadDebt::<TestRuntime>::get(), expected_amount);
+    assert_eq!(
+        StablecoinInfos::<TestRuntime>::get(KUSD).unwrap().bad_debt,
+        expected_amount
+    );
 }
 
 /// Sets protocol borrow tax.
@@ -109,24 +94,62 @@ pub fn set_borrow_tax(borrow_tax: Percent) {
     BorrowTax::<TestRuntime>::set(borrow_tax);
 }
 
-/// Sets risk manager for protocol
-pub fn set_up_risk_manager() {
-    KensetsuPallet::add_risk_manager(RuntimeOrigin::root(), risk_manager_account_id())
-        .expect("Must set risk manager");
+/// Configures Kensetsu Dollar stablecoin pegged to DAI.
+pub fn set_kensetsu_dollar_stablecoin() {
+    StablecoinInfos::<TestRuntime>::set::<AssetIdOf<TestRuntime>>(
+        KUSD,
+        Some(StablecoinInfo {
+            bad_debt: 0,
+            stablecoin_parameters: StablecoinParameters {
+                peg_asset: PegAsset::SoraAssetId(DAI),
+                minimal_stability_fee_accrue: balance!(1),
+            },
+        }),
+    );
 }
 
-/// Sets XOR asset id as collateral with default parameters
-/// As if Risk Manager called `update_collateral_risk_parameters(XOR, some_info)`
-pub fn set_xor_as_collateral_type(
+/// Configures Kensetsu Gold stablecoin pegged to XAU.
+pub fn set_kensetsu_gold_stablecoin() {
+    KensetsuPallet::register_stablecoin(
+        RuntimeOrigin::root(),
+        StablecoinParameters {
+            peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
+            minimal_stability_fee_accrue: balance!(0.01),
+        },
+    )
+    .expect("Must add Kensetsu Gold pegged to XAU")
+}
+
+/// Configures KXOR stablecoin pegged to XOR.
+pub fn set_kensetsu_xor_stablecoin() {
+    StablecoinInfos::<TestRuntime>::set::<AssetIdOf<TestRuntime>>(
+        KXOR,
+        Some(StablecoinInfo {
+            bad_debt: 0,
+            stablecoin_parameters: StablecoinParameters {
+                peg_asset: PegAsset::SoraAssetId(XOR),
+                minimal_stability_fee_accrue: balance!(1),
+            },
+        }),
+    );
+}
+
+/// Configures Kensetsu with basic parameters.
+///
+/// Sets XOR asset id as collateral with default parameters and sets Kensetsu
+/// dollar as stablecoin asset. As if it was called `set_stablecoin` and
+/// `update_collateral_risk_parameters(XOR, some_info)`.
+pub fn configure_kensetsu_dollar_for_xor(
     hard_cap: Balance,
     liquidation_ratio: Perbill,
     stability_fee_rate: FixedU128,
     minimal_collateral_deposit: Balance,
 ) {
-    set_up_risk_manager();
+    set_kensetsu_dollar_stablecoin();
     assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
-        risk_manager(),
+        RuntimeOrigin::root(),
         XOR,
+        KUSD,
         CollateralRiskParameters {
             hard_cap,
             max_liquidation_lot: balance!(1000),
@@ -135,22 +158,52 @@ pub fn set_xor_as_collateral_type(
             minimal_collateral_deposit,
         }
     ));
-    KusdHardCap::<TestRuntime>::set(hard_cap);
+}
+
+/// Configures Kensetsu with basic parameters.
+///
+/// Sets XOR asset id as collateral with default parameters and sets KXOR as stablecoin asset. As if
+/// it was called `set_stablecoin` and `update_collateral_risk_parameters(XOR, some_info)`.
+pub fn configure_kxor_for_xor(
+    hard_cap: Balance,
+    liquidation_ratio: Perbill,
+    stability_fee_rate: FixedU128,
+    minimal_collateral_deposit: Balance,
+) {
+    set_kensetsu_xor_stablecoin();
+    assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+        RuntimeOrigin::root(),
+        XOR,
+        KXOR,
+        CollateralRiskParameters {
+            hard_cap,
+            max_liquidation_lot: balance!(1000),
+            liquidation_ratio,
+            stability_fee_rate,
+            minimal_collateral_deposit,
+        }
+    ));
 }
 
 /// Makes CDPs unsafe by changing liquidation ratio.
 pub fn make_cdps_unsafe() {
-    CollateralInfos::<TestRuntime>::mutate(XOR, |info| {
-        if let Some(info) = info.as_mut() {
-            info.risk_parameters = CollateralRiskParameters {
-                hard_cap: Balance::MAX,
-                max_liquidation_lot: balance!(1000),
-                liquidation_ratio: Perbill::from_percent(1),
-                stability_fee_rate: FixedU128::zero(),
-                minimal_collateral_deposit: balance!(0),
+    CollateralInfos::<TestRuntime>::mutate(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        },
+        |info| {
+            if let Some(info) = info.as_mut() {
+                info.risk_parameters = CollateralRiskParameters {
+                    hard_cap: Balance::MAX,
+                    max_liquidation_lot: balance!(1000),
+                    liquidation_ratio: Perbill::from_percent(1),
+                    stability_fee_rate: FixedU128::zero(),
+                    minimal_collateral_deposit: balance!(0),
+                }
             }
-        }
-    });
+        },
+    );
 }
 
 /// Creates CDP with XOR as collateral asset id
@@ -161,7 +214,13 @@ pub fn create_cdp_for_xor(
 ) -> CdpId {
     add_balance(alice_account_id(), collateral, XOR);
     assert_ok!(KensetsuPallet::create_cdp(
-        owner, XOR, collateral, debt, debt
+        owner,
+        XOR,
+        collateral,
+        KUSD,
+        debt,
+        debt,
+        CdpType::Type2
     ));
     NextCDPId::<TestRuntime>::get()
 }
@@ -180,7 +239,7 @@ pub fn deposit_xor_to_cdp(
     ));
 }
 
-/// Updates account balance
+/// Adds to account balance
 pub fn add_balance(account: AccountId, balance: Balance, asset_id: AssetId) {
     assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
         RuntimeOrigin::root(),
@@ -202,4 +261,12 @@ pub fn assert_balance(account: &AccountId, asset_id: &AssetId, expected: Balance
         assets::Pallet::<TestRuntime>::free_balance(asset_id, account).unwrap(),
         expected
     );
+}
+
+/// Returns CDP ids where the account id is owner
+pub fn get_account_cdp_ids(account_id: &AccountIdOf<TestRuntime>) -> Vec<CdpId> {
+    CDPDepository::<TestRuntime>::iter()
+        .filter(|(_, cdp)| cdp.owner == *account_id)
+        .map(|(cdp_id, _)| cdp_id)
+        .collect()
 }

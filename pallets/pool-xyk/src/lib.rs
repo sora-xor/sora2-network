@@ -41,12 +41,13 @@ use frame_system::ensure_signed;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
-use common::alt::{DiscreteQuotation, SwapChunk};
+use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
+    SwapVariant,
 };
 use common::{
-    fixed_wrapper, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
+    fixed_wrapper, AssetIdOf, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
     RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
     XykPool,
@@ -54,8 +55,8 @@ use common::{
 
 mod aliases;
 use aliases::{
-    AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
-    PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
+    AccountIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf, PolySwapActionStructOf,
+    TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -89,7 +90,7 @@ const MIN_LIQUIDITY: u128 = 1000;
 
 pub use weights::WeightInfo;
 
-impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
+impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
     type PoolPropertiesOutput =
         PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;
@@ -107,8 +108,8 @@ impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
     }
 
     fn properties_of_pool(
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
+        base_asset_id: AssetIdOf<T>,
+        target_asset_id: AssetIdOf<T>,
     ) -> Option<(T::AccountId, T::AccountId)> {
         Properties::<T>::get(base_asset_id, target_asset_id)
     }
@@ -122,8 +123,8 @@ impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
 
     fn transfer_lp_tokens(
         pool_account: T::AccountId,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
+        asset_a: AssetIdOf<T>,
+        asset_b: AssetIdOf<T>,
         base_account_id: T::AccountId,
         target_account_id: T::AccountId,
         pool_tokens: Balance,
@@ -146,7 +147,7 @@ impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
             .is_zero()
             && !pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(&asset_a.clone(), &asset_a, &asset_b)?;
+            let pair = Pallet::<T>::get_trading_pair(&asset_a.clone(), &asset_a, &asset_b)?;
             AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
@@ -166,8 +167,8 @@ impl<T: Config> XykPool<T::AccountId, T::AssetId> for Pallet<T> {
 impl<T: Config> Pallet<T> {
     fn initialize_pool_properties(
         dex_id: &T::DEXId,
-        asset_a: &T::AssetId,
-        asset_b: &T::AssetId,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
     ) -> DispatchResult {
@@ -198,17 +199,30 @@ impl<T: Config> Pallet<T> {
     }
 
     fn update_reserves(
-        base_asset_id: &T::AssetId,
-        asset_a: &T::AssetId,
-        asset_b: &T::AssetId,
+        base_asset_id: &AssetIdOf<T>,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
         balance_pair: (&Balance, &Balance),
     ) {
-        if base_asset_id == asset_a {
-            Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
-            T::OnPoolReservesChanged::reserves_changed(asset_b);
-        } else if base_asset_id == asset_b {
-            Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
-            T::OnPoolReservesChanged::reserves_changed(asset_a);
+        let tpair = Pallet::<T>::get_trading_pair(base_asset_id, asset_a, asset_b);
+        if let Ok(tpair) = tpair {
+            if asset_a == &tpair.target_asset_id {
+                Reserves::<T>::insert(
+                    &tpair.base_asset_id,
+                    &tpair.target_asset_id,
+                    (balance_pair.1, balance_pair.0),
+                );
+            } else if asset_b == &tpair.target_asset_id {
+                Reserves::<T>::insert(
+                    &tpair.base_asset_id,
+                    &tpair.target_asset_id,
+                    (balance_pair.0, balance_pair.1),
+                );
+            } else {
+                // Do nothing, should never happen
+                return;
+            }
+            T::OnPoolReservesChanged::reserves_changed(&tpair.target_asset_id);
         } else {
             let hash_key = common::comm_merkle_op(asset_a, asset_b);
             let (pair_u, pair_v) = common::sort_with_hash_key(
@@ -341,7 +355,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn get_pool_trading_pair(
         pool_account: &T::AccountId,
-    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+    ) -> Result<TradingPair<AssetIdOf<T>>, DispatchError> {
         let tech_acc = technical::Pallet::<T>::lookup_tech_account_id(pool_account)?;
         match tech_acc.into() {
             TechAccountId::Pure(_, TechPurpose::XykLiquidityKeeper(trading_pair)) => {
@@ -350,26 +364,67 @@ impl<T: Config> Pallet<T> {
             _ => Err(Error::<T>::PoolIsInvalid.into()),
         }
     }
+
+    /// Returns (input reserves, output reserves, max output amount)
+    /// Output reserves could only be greater than max output amount if it's chameleon pool
+    pub fn get_actual_reserves(
+        pool_acc_id: &T::AccountId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        let (tpair, base_chameleon_asset_id, is_chameleon_pool) =
+            Self::get_pair_info(base_asset_id, input_asset_id, output_asset_id)?;
+        let reserve_base =
+            <T as Config>::AssetInfoProvider::free_balance(&tpair.base_asset_id, &pool_acc_id)?;
+        let reserve_target =
+            <T as Config>::AssetInfoProvider::free_balance(&tpair.target_asset_id, &pool_acc_id)?;
+        let reserve_chameleon = if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
+            if is_chameleon_pool {
+                <T as Config>::AssetInfoProvider::free_balance(
+                    &base_chameleon_asset_id,
+                    &pool_acc_id,
+                )?
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+        let reserve_base_chameleon = reserve_base
+            .checked_add(reserve_chameleon)
+            .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
+        let max_output = if *output_asset_id == tpair.target_asset_id {
+            reserve_target
+        } else if *output_asset_id == tpair.base_asset_id {
+            reserve_base
+        } else {
+            reserve_chameleon
+        };
+        if tpair.target_asset_id == *input_asset_id {
+            Ok((reserve_target, reserve_base_chameleon, max_output))
+        } else {
+            Ok((reserve_base_chameleon, reserve_target, max_output))
+        }
+    }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
     ) -> bool {
         if let Ok(dex_info) = T::DexInfoProvider::get_dex_info(dex_id) {
-            let target_asset_id = if *input_asset_id == dex_info.base_asset_id {
-                output_asset_id
-            } else if *output_asset_id == dex_info.base_asset_id {
-                input_asset_id
+            if let Ok(tpair) =
+                Self::get_trading_pair(&dex_info.base_asset_id, input_asset_id, output_asset_id)
+            {
+                Properties::<T>::contains_key(&tpair.base_asset_id, &tpair.target_asset_id)
             } else {
-                return false;
-            };
-
-            Properties::<T>::contains_key(&dex_info.base_asset_id, &target_asset_id)
+                false
+            }
         } else {
             false
         }
@@ -377,11 +432,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -392,8 +447,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let (reserve_input, reserve_output, max_output_available) = Self::get_actual_reserves(
+            &pool_acc_id,
+            &dex_info.base_asset_id,
+            &input_asset_id,
+            &output_asset_id,
+        )?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -412,16 +471,34 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // Calculate quote.
         let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                Pallet::<T>::calc_output_for_exact_input(
+                let (calculated, fee_amount) = Pallet::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_in,
                     deduce_fee,
-                )?
+                )?;
+                if max_output_available != reserve_output {
+                    let required_output = if get_fee_from_destination {
+                        calculated + fee_amount
+                    } else {
+                        calculated
+                    };
+                    ensure!(
+                        required_output <= max_output_available,
+                        Error::<T>::NotEnoughOutputReserves
+                    );
+                }
+                (calculated, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                if max_output_available != reserve_output {
+                    ensure!(
+                        desired_amount_out <= max_output_available,
+                        Error::<T>::NotEnoughOutputReserves
+                    );
+                }
                 Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
@@ -442,12 +519,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn step_quote(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         recommended_samples_count: usize,
         deduce_fee: bool,
-    ) -> Result<(DiscreteQuotation<T::AssetId, Balance>, Weight), DispatchError> {
+    ) -> Result<(DiscreteQuotation<AssetIdOf<T>, Balance>, Weight), DispatchError> {
         let mut quotation = DiscreteQuotation::new();
 
         if amount.amount().is_zero() {
@@ -470,14 +547,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let (reserve_input, reserve_output, max_output_available) = Self::get_actual_reserves(
+            &pool_acc_id,
+            &dex_info.base_asset_id,
+            &input_asset_id,
+            &output_asset_id,
+        )?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
-            fail!(Error::<T>::PoolIsEmpty);
-        } else if reserve_input <= 0 || reserve_output <= 0 {
-            fail!(Error::<T>::PoolIsInvalid);
+            return Ok((quotation, Weight::zero()));
         }
 
         // Decide which side should be used for fee.
@@ -487,15 +566,53 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             output_asset_id,
         )?;
 
+        let variant = amount.variant();
+        let amount = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in }
+                if max_output_available == reserve_output =>
+            {
+                desired_amount_in
+            }
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let max_amount = Pallet::<T>::calc_input_for_exact_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &max_output_available,
+                    deduce_fee,
+                )
+                .ok();
+                quotation.limits.max_amount =
+                    max_amount.map(|(calculated, _fee)| SideAmount::Input(calculated));
+                if let Some((calculated, _fee)) = max_amount {
+                    desired_amount_in.min(calculated)
+                } else {
+                    desired_amount_in
+                }
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let max_output = Pallet::<T>::calc_max_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    reserve_output,
+                    deduce_fee,
+                )?;
+                quotation.limits.max_amount =
+                    Some(SideAmount::Output(max_output.min(max_output_available)));
+
+                max_output.min(desired_amount_out).min(max_output_available)
+            }
+        };
+
         let common_step = amount
-            .amount()
             .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
 
         // volume & step
         let mut volumes = Vec::new();
 
-        let mut remaining = amount.amount();
+        let mut remaining = amount;
         for i in 1..=samples_count - 1 {
             let volume = common_step
                 .checked_mul(i as Balance)
@@ -503,13 +620,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             volumes.push((volume, common_step));
             remaining = remaining.saturating_sub(common_step);
         }
-        volumes.push((amount.amount(), remaining));
+        volumes.push((amount, remaining));
 
         let mut sub_sum = Balance::zero();
         let mut sub_fee = Balance::zero();
 
-        match amount {
-            QuoteAmount::WithDesiredInput { .. } => {
+        match variant {
+            SwapVariant::WithDesiredInput => {
                 for (volume, step) in volumes {
                     let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
                         T::GetFee::get(),
@@ -534,7 +651,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         .push_back(SwapChunk::new(step, output, fee_chunk));
                 }
             }
-            QuoteAmount::WithDesiredOutput { .. } => {
+            SwapVariant::WithDesiredOutput => {
                 for (volume, step) in volumes {
                     let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
                         T::GetFee::get(),
@@ -568,10 +685,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         sender: &T::AccountId,
         receiver: &T::AccountId,
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<(SwapOutcome<Balance, T::AssetId>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -632,22 +749,22 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn check_rewards(
         _target_id: &T::DEXId,
-        _input_asset_id: &T::AssetId,
-        _output_asset_id: &T::AssetId,
+        _input_asset_id: &AssetIdOf<T>,
+        _output_asset_id: &AssetIdOf<T>,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetIdOf<T>, RewardReason)>, Weight), DispatchError> {
         // XYK Pool has no rewards currently
         Ok((Vec::new(), Weight::zero()))
     }
 
     fn quote_without_impact(
         dex_id: &T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance, T::AssetId>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         let dex_info = T::DexInfoProvider::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -658,8 +775,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let (reserve_input, reserve_output, _max_output_available) = Self::get_actual_reserves(
+            &pool_acc_id,
+            &dex_info.base_asset_id,
+            &input_asset_id,
+            &output_asset_id,
+        )?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -768,8 +889,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetPoolReserves<T::AssetId> for Pallet<T> {
-    fn reserves(base_asset: &T::AssetId, other_asset: &T::AssetId) -> (Balance, Balance) {
+impl<T: Config> GetPoolReserves<AssetIdOf<T>> for Pallet<T> {
+    fn reserves(base_asset: &AssetIdOf<T>, other_asset: &AssetIdOf<T>) -> (Balance, Balance) {
         Reserves::<T>::get(base_asset, other_asset)
     }
 }
@@ -780,19 +901,24 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated};
+    use common::{
+        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+        EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
+    };
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use orml_traits::GetByKey;
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
         + technical::Config
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
+        + permissions::Config
+        + orml_tokens::Config
     {
         /// The minimum amount of XOR to deposit as liquidity
         const MIN_XOR: Balance;
@@ -812,21 +938,39 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
-        type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, AssetIdOf<Self>>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
-            Self::AssetId,
+            AssetIdOf<Self>,
             DispatchError,
         >;
-        type XSTMarketInfo: GetMarketInfo<Self::AssetId>;
+        type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
-        type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
+        type OnPoolReservesChanged: OnPoolReservesChanged<AssetIdOf<Self>>;
+        type GetTradingPairRestrictedFlag: GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
+        type GetChameleonPoolBaseAssetId: orml_traits::GetByKey<
+            AssetIdOf<Self>,
+            Option<AssetIdOf<Self>>,
+        >;
+        type GetChameleonPool: orml_traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
+        /// Percent of reserve which is not involved in swap
+        #[pallet::constant]
+        type IrreducibleReserve: Get<Percent>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
-        type GetTradingPairRestrictedFlag: GetByKey<TradingPair<Self::AssetId>, bool>;
     }
 
     /// The current storage version.
@@ -860,10 +1004,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                !assets::Pallet::<T>::is_non_divisible(&input_asset_a)
-                    && !assets::Pallet::<T>::is_non_divisible(&input_asset_b),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_a)
+                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -904,10 +1047,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
 
-            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
-                !assets::Pallet::<T>::is_non_divisible(&output_asset_a)
-                    && !assets::Pallet::<T>::is_non_divisible(&output_asset_b),
+                !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_a)
+                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_b),
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
             ensure!(
@@ -946,10 +1088,9 @@ pub mod pallet {
                     ManagementMode::Public,
                 )?;
 
-                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
-                    !assets::Pallet::<T>::is_non_divisible(&asset_a)
-                        && !assets::Pallet::<T>::is_non_divisible(&asset_b),
+                    !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_a)
+                        && !<T as Config>::AssetInfoProvider::is_non_divisible(&asset_b),
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 
@@ -962,7 +1103,7 @@ pub mod pallet {
                     )?;
 
                 Pallet::<T>::ensure_trading_pair_is_not_restricted(
-                    &trading_pair.map(|a| Into::<T::AssetId>::into(a)),
+                    &trading_pair.map(|a| Into::<AssetIdOf<T>>::into(a)),
                 )?;
 
                 let ta_repr =
@@ -1121,6 +1262,10 @@ pub mod pallet {
         NotEnoughLiquidityOutOfFarming,
         /// Cannot create a pool with restricted target asset
         TargetAssetIsRestricted,
+        /// Restricted Chameleon pool
+        RestrictedChameleonPool,
+        /// Output asset reserves is not enough
+        NotEnoughOutputReserves,
     }
 
     /// Updated after last liquidity change operation.
@@ -1134,9 +1279,9 @@ pub mod pallet {
     pub type Reserves<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf<T>,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf<T>,
         (Balance, Balance),
         ValueQuery,
     >;
@@ -1173,9 +1318,9 @@ pub mod pallet {
     pub type Properties<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf<T>,
         Blake2_128Concat,
-        T::AssetId,
+        AssetIdOf<T>,
         (T::AccountId, T::AccountId),
     >;
 }

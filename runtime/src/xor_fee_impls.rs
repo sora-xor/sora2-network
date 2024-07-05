@@ -31,10 +31,14 @@
 use crate::*;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
+#[cfg(feature = "wip")] // Dynamic fee
+use common::prelude::FixedWrapper;
 use common::LiquidityProxyTrait;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
+#[cfg(feature = "wip")] // Dynamic fee
+use sp_runtime::FixedU128;
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
@@ -405,6 +409,27 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                 ExistenceRequirement::KeepAlive,
             )?),
         ))
+    }
+}
+
+#[cfg(feature = "wip")] // Dynamic fee
+pub struct DynamicMultiplier;
+
+#[cfg(feature = "wip")] // Dynamic fee
+impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
+    fn calculate_multiplier(
+        input_asset: &AssetId,
+        ref_asset: &AssetId,
+    ) -> Result<FixedU128, DispatchError> {
+        let price: FixedWrapper = FixedWrapper::from(PriceTools::get_average_price(
+            input_asset,
+            ref_asset,
+            common::PriceVariant::Sell,
+        )?);
+        let new_multiplier: Balance = (XorFee::small_reference_amount() / (SMALL_FEE * price))
+            .try_into_balance()
+            .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
+        Ok(FixedU128::from_inner(new_multiplier))
     }
 }
 

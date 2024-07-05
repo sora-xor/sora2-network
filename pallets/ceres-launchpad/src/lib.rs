@@ -81,8 +81,10 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::Fixed;
-    use common::{balance, AssetInfoProvider, DEXId, XykPool, PSWAP, XSTUSD};
+    use common::{
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, DEXId, XykPool, PSWAP, XSTUSD,
+    };
+    use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -94,14 +96,11 @@ pub mod pallet {
         AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto, Zero,
     };
     use sp_std::prelude::*;
-
     const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + assets::Config
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
@@ -115,13 +114,23 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
@@ -130,7 +139,6 @@ pub mod pallet {
     type VestedRewards<T> = vested_rewards::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
     type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]
@@ -437,25 +445,31 @@ pub mod pallet {
 
             ensure!(
                 CeresBurnFeeAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get(), &user).unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
             let total_tokens = tokens_for_liquidity + tokens_for_ilo;
             ensure!(
-                total_tokens <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total_tokens
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughTokens
             );
 
             // Burn CERES as fee
-            Assets::<T>::burn(
+            T::AssetManager::burn(
                 origin,
                 CeresAssetIdOf::<T>::get(),
                 CeresBurnFeeAmount::<T>::get(),
             )?;
 
             // Transfer tokens to pallet
-            Assets::<T>::transfer_from(&asset_id, &user, &Self::account_id(), total_tokens)?;
+            T::AssetManager::transfer_from(&asset_id, &user, &Self::account_id(), total_tokens)?;
 
             let ilo_info = ILOInfo {
                 ilo_organizer: user.clone(),
@@ -520,7 +534,11 @@ pub mod pallet {
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
-                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get(), &user).unwrap_or(0),
+                    <= <T as Config>::AssetInfoProvider::free_balance(
+                        &CeresAssetIdOf::<T>::get(),
+                        &user
+                    )
+                    .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
 
@@ -564,7 +582,7 @@ pub mod pallet {
             contribution_info.tokens_bought += tokens_bought;
 
             // Transfer base_asset to pallet
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &ilo_info.base_asset,
                 &user,
                 &Self::account_id(),
@@ -620,7 +638,7 @@ pub mod pallet {
 
             let pallet_account = Self::account_id();
             // Emergency withdraw funds
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &ilo_info.base_asset,
                 &pallet_account,
                 &user,
@@ -629,7 +647,7 @@ pub mod pallet {
 
             let penalty = contribution_info.funds_contributed - funds_to_claim;
 
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &ilo_info.base_asset,
                 &pallet_account,
                 &PenaltiesAccount::<T>::get(),
@@ -686,13 +704,13 @@ pub mod pallet {
                 ilo_info.failed = true;
                 let total_tokens = ilo_info.tokens_for_liquidity + ilo_info.tokens_for_ilo;
                 if !ilo_info.refund_type {
-                    Assets::<T>::burn(
+                    T::AssetManager::burn(
                         RawOrigin::Signed(pallet_account).into(),
                         asset_id,
                         total_tokens,
                     )?;
                 } else {
-                    Assets::<T>::transfer_from(
+                    T::AssetManager::transfer_from(
                         &asset_id,
                         &pallet_account,
                         &ilo_info.ilo_organizer,
@@ -710,7 +728,7 @@ pub mod pallet {
                 * FixedWrapper::from(FeePercentOnRaisedFunds::<T>::get()))
             .try_into_balance()
             .unwrap_or(0);
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &ilo_info.base_asset,
                 &pallet_account,
                 &AuthorityAccount::<T>::get(),
@@ -724,7 +742,7 @@ pub mod pallet {
             .try_into_balance()
             .unwrap_or(0);
             let funds_for_team = raised_funds_without_fee - funds_for_liquidity;
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &ilo_info.base_asset,
                 &pallet_account,
                 &ilo_info.ilo_organizer,
@@ -772,14 +790,14 @@ pub mod pallet {
             )?;
 
             // Burn unused tokens for liquidity
-            Assets::<T>::burn(
+            T::AssetManager::burn(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 asset_id,
                 ilo_info.tokens_for_liquidity - tokens_for_liquidity,
             )?;
 
             // Burn unused tokens for ilo
-            Assets::<T>::burn(
+            T::AssetManager::burn(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 asset_id,
                 ilo_info.tokens_for_ilo - ilo_info.sold_tokens,
@@ -819,7 +837,9 @@ pub mod pallet {
                     .unwrap_or(0);
 
                 ensure!(
-                    tokens_to_lock <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                    tokens_to_lock
+                        <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                            .unwrap_or(0),
                     Error::<T>::NotEnoughTeamTokensToLock
                 );
 
@@ -934,7 +954,7 @@ pub mod pallet {
             // ILO failed
             if ilo_info.failed {
                 // Claim unused funds
-                Assets::<T>::transfer_from(
+                T::AssetManager::transfer_from(
                     &ilo_info.base_asset,
                     &pallet_account,
                     &user,
@@ -949,7 +969,12 @@ pub mod pallet {
                     .try_into_balance()
                     .unwrap_or(0);
                     // Claim first time
-                    Assets::<T>::transfer_from(&asset_id, &pallet_account, &user, tokens_to_claim)?;
+                    T::AssetManager::transfer_from(
+                        &asset_id,
+                        &pallet_account,
+                        &user,
+                        tokens_to_claim,
+                    )?;
                     contribution_info.tokens_claimed += tokens_to_claim;
                     if ilo_info.contributors_vesting.first_release_percent == balance!(1) {
                         contribution_info.claiming_finished = true;
@@ -987,7 +1012,7 @@ pub mod pallet {
                     }
 
                     // Claim tokens
-                    Assets::<T>::transfer_from(&asset_id, &pallet_account, &user, claimable)?;
+                    T::AssetManager::transfer_from(&asset_id, &pallet_account, &user, claimable)?;
                     contribution_info.tokens_claimed += claimable;
                     contribution_info.number_of_claims += (claimable / tokens_per_claim) as u32;
 
@@ -1099,10 +1124,11 @@ pub mod pallet {
                 VestedRewards::<T>::claim_rewards(RawOrigin::Signed(pallet_account.clone()).into());
 
             let pswap_rewards =
-                Assets::<T>::free_balance(&PSWAP.into(), &pallet_account).unwrap_or(0);
+                <T as Config>::AssetInfoProvider::free_balance(&PSWAP.into(), &pallet_account)
+                    .unwrap_or(0);
 
             // Claim PSWAP rewards
-            Assets::<T>::transfer_from(
+            T::AssetManager::transfer_from(
                 &PSWAP.into(),
                 &pallet_account,
                 &AuthorityAccount::<T>::get(),
@@ -1228,13 +1254,13 @@ pub mod pallet {
                             let total_tokens =
                                 ilo_info.tokens_for_liquidity + ilo_info.tokens_for_ilo;
                             if !ilo_info.refund_type {
-                                let _ = Assets::<T>::burn(
+                                let _ = T::AssetManager::burn(
                                     RawOrigin::Signed(pallet_account.clone()).into(),
                                     ilo_asset,
                                     total_tokens,
                                 );
                             } else {
-                                let _ = Assets::<T>::transfer_from(
+                                let _ = T::AssetManager::transfer_from(
                                     &ilo_asset,
                                     &pallet_account,
                                     &ilo_info.ilo_organizer,

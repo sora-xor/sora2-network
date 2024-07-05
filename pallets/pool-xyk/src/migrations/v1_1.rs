@@ -1,4 +1,7 @@
-use common::{generate_storage_instance, AssetInfoProvider};
+use common::{
+    generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
+    AssetType, ContentSource, CurrencyIdOf, Description,
+};
 use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
 use frame_support::traits::Get;
@@ -13,25 +16,37 @@ generate_storage_instance!(PoolXYK, MarkerTokensIndex);
 type OldMarkerTokensIndex<AssetId> =
     StorageValue<MarkerTokensIndexOldInstance, BTreeSet<AssetId>, ValueQuery>;
 
-pub fn migrate<T: Config>() -> Weight {
-    if OldMarkerTokensIndex::<T::AssetId>::exists() {
-        OldMarkerTokensIndex::<T::AssetId>::kill();
+pub fn migrate<T: Config>() -> Weight
+where
+    <<T as common::Config>::AssetManager as AssetManager<
+        T,
+        AssetSymbol,
+        AssetName,
+        u8,
+        AssetType,
+        ContentSource,
+        Description,
+    >>::AssetId: PartialEq<<T as orml_tokens::Config>::CurrencyId>,
+{
+    if OldMarkerTokensIndex::<AssetIdOf<T>>::exists() {
+        OldMarkerTokensIndex::<AssetIdOf<T>>::kill();
     }
     let mut acc_asset_currs = Vec::new();
-    Properties::<T>::translate::<(T::AccountId, T::AccountId, T::AssetId), _>(
+    Properties::<T>::translate::<(T::AccountId, T::AccountId, AssetIdOf<T>), _>(
         |_ba, _ta, (reserves_acc, fee_acc, marker_asset)| {
-            let currency: <T as orml_tokens::Config>::CurrencyId = marker_asset.clone().into();
+            let currency: CurrencyIdOf<T> = CurrencyIdOf::<T>::from(marker_asset.clone());
             acc_asset_currs.push((reserves_acc.clone(), marker_asset, currency));
             Some((reserves_acc, fee_acc))
         },
     );
 
     for (reserves_acc, asset, _) in &acc_asset_currs {
-        let total_issuance = if let Ok(issuance) = assets::Pallet::<T>::total_issuance(asset) {
-            issuance
-        } else {
-            continue;
-        };
+        let total_issuance =
+            if let Ok(issuance) = <T as Config>::AssetInfoProvider::total_issuance(asset) {
+                issuance
+            } else {
+                continue;
+            };
         TotalIssuances::<T>::insert(reserves_acc, total_issuance);
     }
 
@@ -121,6 +136,7 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             )
@@ -137,6 +153,7 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             )

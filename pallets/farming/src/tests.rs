@@ -30,7 +30,7 @@
 
 use frame_support::{assert_noop, assert_ok};
 
-use common::{balance, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
+use common::{balance, DEXId, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
 use frame_system;
 use frame_system::RawOrigin;
 use log::debug;
@@ -39,8 +39,8 @@ use sp_runtime::traits::BadOrigin;
 use vested_rewards::Rewards;
 
 use crate::mock::{
-    self, run_to_block, AssetId, DEXId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE,
-    DAVE, DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
+    self, run_to_block, AssetId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE, DAVE,
+    DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
 };
 use crate::{Event, Pallet, PoolFarmer, PoolFarmers};
 

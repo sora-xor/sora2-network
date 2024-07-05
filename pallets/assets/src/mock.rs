@@ -31,7 +31,11 @@
 use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
-use common::{AssetId32, DEXId, LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST};
+use common::{
+    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId, LiquidityProxyTrait,
+    LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -65,6 +69,12 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT: AccountId = 24;
+
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -108,7 +118,7 @@ parameter_types! {
     pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
-impl crate::Config for Runtime {
+impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
@@ -124,11 +134,7 @@ impl crate::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
+    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl permissions::Config for Runtime {

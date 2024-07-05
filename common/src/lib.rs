@@ -53,6 +53,7 @@ mod fixed_wrapper;
 pub mod macros;
 pub mod migrations;
 mod outcome_fee;
+pub mod permissions;
 mod primitives;
 pub mod serialization;
 pub mod storage;
@@ -72,6 +73,7 @@ pub mod prelude {
     pub use super::balance_unit::*;
     pub use super::fixed_wrapper::*;
     pub use super::outcome_fee::*;
+    pub use super::permissions;
     pub use super::primitives::*;
     pub use super::serialization::*;
     pub use super::swap_amount::*;

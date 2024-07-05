@@ -42,7 +42,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use common::{AssetName, AssetSymbol, CrowdloanTag, FromGenericPair, PSWAP, XOR};
+use common::{AssetManager, AssetName, AssetSymbol, CrowdloanTag, FromGenericPair, PSWAP, XOR};
 
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
@@ -59,10 +59,10 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
     Technical::<T>::tech_account_id_to_account_id(&tech_account).unwrap()
 }
 
-fn create_asset<T: Config>(prefix: &str, index: u128) -> T::AssetId {
-    let asset_id = assets::Pallet::<T>::gen_asset_id_from_any(&(prefix, index));
+fn create_asset<T: Config>(prefix: &str, index: u128) -> AssetIdOf<T> {
+    let asset_id = T::AssetManager::gen_asset_id_from_any(&(prefix, index));
     let name = format!("{prefix}{index}").as_bytes().to_vec();
-    assets::Pallet::<T>::register_asset_id(
+    T::AssetManager::register_asset_id(
         alice::<T>(),
         asset_id.clone(),
         AssetSymbol(name.clone()),
@@ -70,6 +70,7 @@ fn create_asset<T: Config>(prefix: &str, index: u128) -> T::AssetId {
         18,
         0,
         true,
+        common::AssetType::Regular,
         None,
         None,
     )
@@ -77,7 +78,7 @@ fn create_asset<T: Config>(prefix: &str, index: u128) -> T::AssetId {
     asset_id
 }
 
-fn prepare_crowdloan_rewards<T: Config>(n: u128) -> Vec<(T::AssetId, Balance)> {
+fn prepare_crowdloan_rewards<T: Config>(n: u128) -> Vec<(AssetIdOf<T>, Balance)> {
     let mut rewards = vec![];
     for i in 0..n {
         let asset_id = create_asset::<T>("TEST", i.into());
@@ -116,9 +117,9 @@ benchmarks! {
     claim_rewards {
         let caller = alice::<T>();
 
-        T::Currency::deposit(PSWAP.into(), &T::GetBondingCurveRewardsAccountId::get(), balance!(100)).unwrap();
-        T::Currency::deposit(PSWAP.into(), &T::GetMarketMakerRewardsAccountId::get(), balance!(200)).unwrap();
-        T::Currency::deposit(XOR.into(), &caller, balance!(1)).unwrap(); // to prevent inc ref error
+        <T as common::Config>::MultiCurrency::deposit(PSWAP.into(), &T::GetBondingCurveRewardsAccountId::get(), balance!(100)).unwrap();
+        <T as common::Config>::MultiCurrency::deposit(PSWAP.into(), &T::GetMarketMakerRewardsAccountId::get(), balance!(200)).unwrap();
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1)).unwrap(); // to prevent inc ref error
 
         VestedRewards::<T>::add_tbc_reward(&caller, balance!(100)).expect("Failed to add reward.");
         VestedRewards::<T>::distribute_limits(balance!(100));
@@ -127,7 +128,7 @@ benchmarks! {
     )
     verify {
         assert_eq!(
-            T::Currency::free_balance(PSWAP.into(), &caller),
+            <T as common::Config>::MultiCurrency::free_balance(PSWAP.into(), &caller),
             balance!(100)
         );
     }
@@ -147,7 +148,7 @@ benchmarks! {
 
     register_crowdloan {
         let m in 1 .. 1000;
-        T::Currency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
         let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
         let rewards = prepare_crowdloan_rewards::<T>(10);
         let contributions = prepare_crowdloan_contributions::<T>(m as u128);
@@ -157,7 +158,7 @@ benchmarks! {
     }
 
     claim_crowdloan_rewards {
-        T::Currency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
         let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
         let rewards = prepare_crowdloan_rewards::<T>(5);
         let contributions = prepare_crowdloan_contributions::<T>(100);
@@ -166,13 +167,13 @@ benchmarks! {
         Pallet::<T>::register_crowdloan(RawOrigin::Root.into(), tag.clone(), 0u32.into(), T::BLOCKS_PER_DAY * 4u32.into(), rewards.clone(), contributions).unwrap();
         let info = crate::CrowdloanInfos::<T>::get(&tag).unwrap();
         for (asset_id, _) in rewards {
-            T::Currency::deposit(asset_id.clone(), &info.account, balance!(1000)).unwrap();
+            <T as common::Config>::MultiCurrency::deposit(asset_id.clone(), &info.account, balance!(1000)).unwrap();
         }
         frame_system::Pallet::<T>::set_block_number(T::BLOCKS_PER_DAY);
     }: _(RawOrigin::Signed(account.clone()), tag.clone())
     verify {
         assert_eq!(
-            T::Currency::free_balance(first_asset_id, &account),
+            <T as common::Config>::MultiCurrency::free_balance(first_asset_id, &account),
             balance!(0.025) // 10 / 100 / 4
         );
     }

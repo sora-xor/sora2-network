@@ -1,8 +1,9 @@
 use crate::*;
 use codec::{Decode, Encode};
 use common::generate_storage_instance;
-use common::CERES_ASSET_ID;
+use common::{AssetIdOf, CERES_ASSET_ID};
 use frame_support::pallet_prelude::*;
+use sp_tracing::info;
 use frame_support::BoundedVec;
 use hex_literal::hex;
 use sp_core::H256;
@@ -51,7 +52,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
 
     //Drain old data
     let number_of_drained_polls = OldPollData::<T::Moment>::drain().count();
-    log::info!("Number of drained polls: {}", number_of_drained_polls);
+    info!("Number of drained polls: {}", number_of_drained_polls);
 
     let mut poll_start_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647612888u32.into();
     poll_start_timestamp_a *= 1000u32.into();

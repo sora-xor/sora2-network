@@ -8,15 +8,14 @@ use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
-    XOR,
+    balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, DEXId, TradingPairSourceManager,
+    DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use assets::Pallet as Assets;
 use pallet_timestamp::Pallet as Timestamp;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
@@ -25,7 +24,7 @@ use pool_xyk::Pallet as XYKPool;
 mod mock;
 
 pub struct Pallet<T: Config>(ceres_liquidity_locker::Pallet<T>);
-pub trait Config: ceres_liquidity_locker::Config + pool_xyk::Config {}
+pub trait Config: ceres_liquidity_locker::Config + pool_xyk::Config + permissions::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -62,7 +61,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         permissions::Scope::Unlimited,
     );
 
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
@@ -70,10 +69,11 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        common::AssetType::Regular,
         None,
         None,
     );
-    let _ = Assets::<T>::register_asset_id(
+    let _ = T::AssetManager::register_asset_id(
         owner.clone(),
         ceres_asset_id.into(),
         AssetSymbol(b"CERES".to_vec()),
@@ -81,6 +81,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        common::AssetType::Regular,
         None,
         None,
     );
@@ -88,8 +89,8 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), ceres_asset_id.into())
         .unwrap();
 
-    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
-    Assets::<T>::mint_to(
+    T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    T::AssetManager::mint_to(
         &ceres_asset_id.into(),
         &owner.clone(),
         &owner.clone(),
@@ -137,7 +138,7 @@ benchmarks! {
         let caller = alice::<T>();
         let timestamp = Timestamp::<T>::get() + 5u32.into();
         let lp_percentage = balance!(0.5);
-        let ceres_asset_id: T::AssetId = common::AssetId32::from_bytes(hex!(
+        let ceres_asset_id: AssetIdOf<T> = common::AssetId32::from_bytes(hex!(
             "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
         )).into();
     }: {

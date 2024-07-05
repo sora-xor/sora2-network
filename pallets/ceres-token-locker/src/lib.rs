@@ -43,7 +43,10 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, AssetInfoProvider};
+    use common::{
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
+        BalancePrecision, ContentSource, Description,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -55,25 +58,31 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crstlock");
 
-    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + timestamp::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + timestamp::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Ceres asset id
-        type CeresAssetId: Get<Self::AssetId>;
+        type CeresAssetId: Get<AssetIdOf<Self>>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+
+        /// To retrieve asset info
+        type AssetInfoProvider: AssetInfoProvider<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
     }
 
-    type Assets<T> = assets::Pallet<T>;
     pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
@@ -198,15 +207,22 @@ pub mod pallet {
             let total = number_of_tokens + fee;
 
             ensure!(
-                total <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total
+                    <= <T as Config>::AssetInfoProvider::free_balance(&asset_id, &user)
+                        .unwrap_or(0),
                 Error::<T>::NotEnoughFunds
             );
 
             // Transfer tokens
-            Assets::<T>::transfer_from(&asset_id, &user, &Self::account_id(), number_of_tokens)?;
+            T::AssetManager::transfer_from(
+                &asset_id,
+                &user,
+                &Self::account_id(),
+                number_of_tokens,
+            )?;
 
             // Pay fees
-            Assets::<T>::transfer_from(&asset_id, &user, &FeesAccount::<T>::get(), fee)?;
+            T::AssetManager::transfer_from(&asset_id, &user, &FeesAccount::<T>::get(), fee)?;
 
             <TokenLockerData<T>>::append(&user, token_lock_info);
 
@@ -258,7 +274,12 @@ pub mod pallet {
             }
 
             // Withdraw tokens
-            Assets::<T>::transfer_from(&asset_id, &Self::account_id(), &user, number_of_tokens)?;
+            T::AssetManager::transfer_from(
+                &asset_id,
+                &Self::account_id(),
+                &user,
+                number_of_tokens,
+            )?;
 
             token_lock_info_vec.remove(idx);
             <TokenLockerData<T>>::insert(&user, token_lock_info_vec);

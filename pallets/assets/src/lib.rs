@@ -46,6 +46,8 @@ pub mod weights;
 
 mod benchmarking;
 
+pub mod migration;
+
 #[cfg(test)]
 mod mock;
 
@@ -53,17 +55,20 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
+use common::permissions::{BURN, MINT, TRANSFER};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    hash, Amount, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
+    Amount, AssetInfo, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    AssetType, BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
+    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::DispatchResultWithPostInfo;
+use frame_support::dispatch::{DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT};
+use frame_system::pallet_prelude::OriginFor;
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
@@ -76,7 +81,6 @@ use traits::{
 pub use weights::WeightInfo;
 
 pub type AssetIdOf<T> = <T as Config>::AssetId;
-pub type Permissions<T> = permissions::Pallet<T>;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type CurrencyIdOf<T> =
@@ -177,7 +181,7 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{ContentSource, Description};
+    use common::{AssetRegulator, AssetType, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
 
@@ -186,9 +190,7 @@ pub mod pallet {
     >>::Amount;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + permissions::Config + tokens::Config + common::Config
-    {
+    pub trait Config: frame_system::Config + tokens::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
@@ -218,6 +220,8 @@ pub mod pallet {
             + Ord
             + Default
             + Into<CurrencyIdOf<Self>>
+            + Into<common::AssetIdOf<Self>>
+            + From<common::AssetIdOf<Self>>
             + From<common::AssetId32<common::PredefinedAssetId>>
             + From<H256>
             + Into<H256>
@@ -257,12 +261,15 @@ pub mod pallet {
         /// Get the balance from other components
         type GetTotalBalance: GetTotalBalance<Self>;
 
+        /// Regulator of asset operations
+        type AssetRegulator: AssetRegulator<Self::AccountId, Self::AssetId>;
+
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -298,6 +305,12 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION
             };
 
+            let asset_type = if is_indivisible {
+                AssetType::NFT
+            } else {
+                AssetType::Regular
+            };
+
             Self::register_from(
                 &author,
                 symbol,
@@ -305,6 +318,7 @@ pub mod pallet {
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )?;
@@ -463,14 +477,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             Self::ensure_asset_exists(&asset_id)?;
-            AssetInfos::<T>::mutate(asset_id, |(ref mut symbol, ref mut name, ..)| {
+            AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
                 if let Some(new_name) = new_name.clone() {
                     ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
-                    *name = new_name;
+                    asset_info.name = new_name;
                 }
                 if let Some(new_symbol) = new_symbol.clone() {
                     ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
-                    *symbol = new_symbol;
+                    asset_info.symbol = new_symbol;
                 }
                 DispatchResult::Ok(())
             })?;
@@ -532,23 +546,10 @@ pub mod pallet {
     pub type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
-    /// Asset Id -> (Symbol, Name, Precision, Is Mintable, Content Source, Description)
+    /// Asset Id -> AssetInfo
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
-    pub type AssetInfos<T: Config> = StorageMap<
-        _,
-        Twox64Concat,
-        T::AssetId,
-        (
-            AssetSymbol,
-            AssetName,
-            BalancePrecision,
-            bool,
-            Option<ContentSource>,
-            Option<Description>,
-        ),
-        ValueQuery,
-    >;
+    pub type AssetInfos<T: Config> = StorageMap<_, Twox64Concat, T::AssetId, AssetInfo, ValueQuery>;
 
     /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
@@ -603,6 +604,7 @@ pub mod pallet {
                         precision,
                         initial_supply,
                         is_mintable,
+                        AssetType::Regular,
                         content_source,
                         description,
                     )
@@ -663,6 +665,7 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult {
@@ -690,25 +693,19 @@ impl<T: Config> Pallet<T> {
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         AssetInfos::<T>::insert(
             asset_id,
-            (
+            AssetInfo {
                 symbol,
                 name,
                 precision,
                 is_mintable,
-                opt_content_src,
-                opt_desc,
-            ),
+                asset_type,
+                content_source: opt_content_src,
+                description: opt_desc,
+            },
         );
-
-        let scope = Scope::Limited(hash(&asset_id));
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
-            Permissions::<T>::assign_permission(
-                account_id.clone(),
-                &account_id,
-                *permission_id,
-                scope,
-            )?;
+            T::AssetRegulator::assign_permission(&account_id, &asset_id, permission_id)?;
         }
 
         if !initial_supply.is_zero() {
@@ -729,6 +726,7 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        asset_type: AssetType,
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> Result<T::AssetId, DispatchError> {
@@ -742,6 +740,7 @@ impl<T: Config> Pallet<T> {
                 precision,
                 initial_supply,
                 is_mintable,
+                asset_type,
                 opt_content_src,
                 opt_desc,
             )?;
@@ -751,28 +750,8 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub fn ensure_asset_is_mintable(asset_id: &T::AssetId) -> DispatchResult {
-        let (_, _, _, is_mintable, ..) = AssetInfos::<T>::get(asset_id);
-        ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
-        Ok(())
-    }
-
-    fn check_permission_maybe_with_parameters(
-        issuer: &T::AccountId,
-        permission_id: u32,
-        asset_id: &T::AssetId,
-    ) -> Result<(), DispatchError> {
-        Permissions::<T>::check_permission_with_scope(
-            issuer.clone(),
-            permission_id,
-            &Scope::Limited(hash(asset_id)),
-        )
-        .or_else(|_| {
-            Permissions::<T>::check_permission_with_scope(
-                issuer.clone(),
-                permission_id,
-                &Scope::Unlimited,
-            )
-        })?;
+        let asset_info = AssetInfos::<T>::get(asset_id);
+        ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         Ok(())
     }
 
@@ -782,6 +761,7 @@ impl<T: Config> Pallet<T> {
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
+        T::AssetRegulator::check_permission(from, to, asset_id, &TRANSFER)?;
         let r = T::Currency::transfer(*asset_id, from, to, amount);
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
@@ -799,8 +779,7 @@ impl<T: Config> Pallet<T> {
         // No need to check if asset exist.
         // `ensure_asset_is_mintable` will get Default::default() aka `is_mintable == false` and return an error.
         Self::ensure_asset_is_mintable(asset_id)?;
-        Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
-
+        T::AssetRegulator::check_permission(issuer, to, asset_id, &MINT)?;
         Self::mint_unchecked(asset_id, to, amount)
     }
 
@@ -818,11 +797,7 @@ impl<T: Config> Pallet<T> {
         from: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        // Holder can burn its funds.
-        if issuer != from {
-            Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
-        }
-
+        T::AssetRegulator::check_permission(issuer, from, asset_id, &BURN)?;
         Self::burn_unchecked(asset_id, from, amount)
     }
 
@@ -866,8 +841,8 @@ impl<T: Config> Pallet<T> {
         who: &T::AccountId,
         by_amount: Amount,
     ) -> DispatchResult {
-        Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
+        T::AssetRegulator::check_permission(who, who, asset_id, &BURN)?;
+        T::AssetRegulator::check_permission(who, who, asset_id, &MINT)?;
         if by_amount.is_positive() {
             Self::ensure_asset_is_mintable(asset_id)?;
         }
@@ -903,9 +878,9 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
-        AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable, ..)| {
-            ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
-            *is_mintable = false;
+        AssetInfos::<T>::mutate(asset_id, |ref mut asset_info| {
+            ensure!(asset_info.is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+            asset_info.is_mintable = false;
             Ok(())
         })
     }
@@ -925,19 +900,17 @@ impl<T: Config> Pallet<T> {
         Option<Description>,
     )> {
         AssetInfos::<T>::iter()
-            .map(
-                |(key, (symbol, name, precision, is_mintable, content_source, description))| {
-                    (
-                        key,
-                        symbol,
-                        name,
-                        precision,
-                        is_mintable,
-                        content_source,
-                        description,
-                    )
-                },
-            )
+            .map(|(key, asset_info)| {
+                (
+                    key,
+                    asset_info.symbol,
+                    asset_info.name,
+                    asset_info.precision,
+                    asset_info.is_mintable,
+                    asset_info.content_source,
+                    asset_info.description,
+                )
+            })
             .collect()
     }
 }
@@ -983,28 +956,27 @@ impl<T: Config>
         Option<ContentSource>,
         Option<Description>,
     ) {
-        let (symbol, name, precision, is_mintable, content_source, description) =
-            AssetInfos::<T>::get(asset_id);
+        let asset_info = AssetInfos::<T>::get(asset_id);
         (
-            symbol,
-            name,
-            precision,
-            is_mintable,
-            content_source,
-            description,
+            asset_info.symbol,
+            asset_info.name,
+            asset_info.precision,
+            asset_info.is_mintable,
+            asset_info.content_source,
+            asset_info.description,
         )
     }
 
     fn is_non_divisible(asset_id: &T::AssetId) -> bool {
-        AssetInfos::<T>::get(asset_id).2 == 0
+        AssetInfos::<T>::get(asset_id).precision == 0
     }
 
     fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
-        AssetInfos::<T>::get(asset_id).4
+        AssetInfos::<T>::get(asset_id).content_source
     }
 
     fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
-        AssetInfos::<T>::get(asset_id).5
+        AssetInfos::<T>::get(asset_id).description
     }
 
     fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
@@ -1041,5 +1013,153 @@ impl<T: Config>
             Self::ensure_asset_exists(asset_id)?;
         }
         r
+    }
+
+    fn get_asset_owner(asset_id: &T::AssetId) -> Result<T::AccountId, DispatchError> {
+        let owner = Self::asset_owner(asset_id).ok_or(Error::<T>::AssetIdNotExists)?;
+        Ok(owner)
+    }
+}
+
+impl<T: Config>
+    AssetManager<T, AssetSymbol, AssetName, BalancePrecision, AssetType, ContentSource, Description>
+    for Pallet<T>
+{
+    type AssetId = T::AssetId;
+    type GetBaseAssetId = T::GetBaseAssetId;
+
+    fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId {
+        Self::gen_asset_id_from_any(value)
+    }
+
+    fn update_balance(
+        origin: OriginFor<T>,
+        who: T::AccountId,
+        currency_id: common::CurrencyIdOf<T>,
+        amount: AmountOf<T>,
+    ) -> DispatchResult {
+        Self::update_balance(origin, who, currency_id.into(), amount)
+    }
+
+    fn register_from(
+        account_id: &T::AccountId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        asset_type: AssetType,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> Result<Self::AssetId, DispatchError> {
+        Self::register_from(
+            account_id,
+            symbol,
+            name,
+            precision,
+            initial_supply,
+            is_mintable,
+            asset_type,
+            opt_content_src,
+            opt_desc,
+        )
+    }
+
+    fn register_asset_id(
+        account_id: T::AccountId,
+        asset_id: Self::AssetId,
+        symbol: AssetSymbol,
+        name: AssetName,
+        precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
+        asset_type: AssetType,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> DispatchResult {
+        Self::register_asset_id(
+            account_id,
+            asset_id,
+            symbol,
+            name,
+            precision,
+            initial_supply,
+            is_mintable,
+            asset_type,
+            opt_content_src,
+            opt_desc,
+        )
+    }
+    fn burn_from(
+        asset_id: &Self::AssetId,
+        issuer: &T::AccountId,
+        from: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::burn_from(asset_id, issuer, from, amount)
+    }
+
+    fn transfer_from(
+        asset_id: &Self::AssetId,
+        from: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::transfer_from(asset_id, from, to, amount)
+    }
+
+    fn mint_to(
+        asset_id: &Self::AssetId,
+        issuer: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::mint_to(asset_id, issuer, to, amount)
+    }
+
+    fn mint_unchecked(
+        asset_id: &Self::AssetId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::mint_unchecked(asset_id, to, amount)
+    }
+
+    fn burn(
+        origin: OriginFor<T>,
+        asset_id: Self::AssetId,
+        amount: Balance,
+    ) -> DispatchResultWithPostInfo {
+        Self::burn(origin, asset_id, amount)
+    }
+    fn mint(
+        origin: OriginFor<T>,
+        asset_id: Self::AssetId,
+        to: T::AccountId,
+        amount: Balance,
+    ) -> DispatchResultWithPostInfo {
+        Self::mint(origin, asset_id, to, amount)
+    }
+
+    fn register(
+        origin: OriginFor<T>,
+        symbol: AssetSymbol,
+        name: AssetName,
+        initial_supply: Balance,
+        is_mintable: bool,
+        is_indivisible: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
+    ) -> DispatchResultWithPostInfo {
+        Self::register(
+            origin,
+            symbol,
+            name,
+            initial_supply,
+            is_mintable,
+            is_indivisible,
+            opt_content_src,
+            opt_desc,
+        )
     }
 }

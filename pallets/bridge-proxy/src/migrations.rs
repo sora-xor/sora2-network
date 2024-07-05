@@ -1,7 +1,7 @@
 pub mod init {
     use core::marker::PhantomData;
 
-    use assets::AssetIdOf;
+    use common::AssetIdOf;
     use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::traits::StorageVersion;
     use sp_core::Get;
@@ -97,7 +97,7 @@ pub mod init {
 pub mod generic_account_v2 {
     use core::marker::PhantomData;
 
-    use assets::AssetIdOf;
+    use common::AssetIdOf;
     use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::traits::StorageVersion;
     use sp_core::Get;

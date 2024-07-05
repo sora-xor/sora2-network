@@ -35,7 +35,10 @@
 use super::*;
 
 use codec::Encode;
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, XOR};
+use common::{
+    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION,
+    XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -53,15 +56,15 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> T::AssetId {
+fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> AssetIdOf<T> {
     let entropy: [u8; 32] = (prefix, index).using_encoded(blake2_256);
-    T::AssetId::from(H256(entropy))
+    AssetIdOf::<T>::from(H256(entropy))
 }
 
-fn register_asset<T: Config>(owner: T::AccountId, asset: T::AssetId) {
+fn register_asset<T: Config>(owner: T::AccountId, asset: AssetIdOf<T>) {
     PriceTools::<T>::register_asset(&asset).unwrap();
 
-    assets::Pallet::<T>::register_asset_id(
+    T::AssetManager::register_asset_id(
         owner,
         asset,
         AssetSymbol(b"ASSET".to_vec()),
@@ -69,6 +72,7 @@ fn register_asset<T: Config>(owner: T::AccountId, asset: T::AssetId) {
         DEFAULT_BALANCE_PRECISION,
         balance!(1000000),
         true,
+        common::AssetType::Regular,
         None,
         None,
     )
@@ -78,9 +82,9 @@ fn register_asset<T: Config>(owner: T::AccountId, asset: T::AssetId) {
 fn create_pair_with_xor<T: Config>(
     owner: T::AccountId,
     origin: T::RuntimeOrigin,
-    asset: T::AssetId,
+    asset: AssetIdOf<T>,
 ) {
-    assets::Pallet::<T>::mint(origin.clone(), asset, owner, balance!(1000000)).unwrap();
+    T::AssetManager::mint(origin.clone(), asset, owner, balance!(1000000)).unwrap();
 
     <T as Config>::TradingPairSourceManager::register_pair(
         DEXId::Polkaswap.into(),
@@ -114,10 +118,10 @@ fn prepare_secondary_market<T: Config>(elems_active: u32, elems_updated: u32) {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
 
-    let xor_id = T::AssetId::from(XOR);
-    let xor_owner = assets::Pallet::<T>::asset_owner(&xor_id).unwrap();
+    let xor_id = AssetIdOf::<T>::from(XOR);
+    let xor_owner = <T as pool_xyk::Config>::AssetInfoProvider::get_asset_owner(&xor_id).unwrap();
 
-    assets::Pallet::<T>::mint(
+    T::AssetManager::mint(
         RawOrigin::Signed(xor_owner.clone()).into(),
         XOR.into(),
         owner.clone(),

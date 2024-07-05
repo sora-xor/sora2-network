@@ -75,6 +75,9 @@ pub enum ComicAssetId {
     MichaelJacksonCD,
     JesterMarotte,
     CrackedBrassBell,
+    Tomato,
+    Potato,
+    Table,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -109,6 +112,9 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KEN => JesterMarotte,
             PredefinedAssetId::TBCD => MichaelJacksonCD,
             PredefinedAssetId::KUSD => CrackedBrassBell,
+            PredefinedAssetId::KGOLD => Tomato,
+            PredefinedAssetId::KXOR => Potato,
+            PredefinedAssetId::KARMA => Table,
         }
     }
 }
@@ -178,6 +184,22 @@ impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedF
     }
 }
 
+parameter_type_with_key! {
+    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId32<PredefinedAssetId>| -> Option<AssetId32<PredefinedAssetId>> {
+        if base_asset_id == &crate::XOR {
+            Some(crate::KXOR)
+        } else {
+            None
+        }
+    };
+}
+
+parameter_type_with_key! {
+    pub GetChameleonPool: |tpair: crate::TradingPair<AssetId32<PredefinedAssetId>>| -> bool {
+        tpair.base_asset_id == crate::XOR && tpair.target_asset_id == crate::ETH
+    };
+}
+
 pub fn alice() -> AccountId32 {
     AccountId32::from([1; 32])
 }
@@ -195,20 +217,16 @@ pub fn charlie() -> AccountId32 {
 macro_rules! mock_assets_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const GetBaseAssetId: AssetId = XOR;
-            pub const GetBuyBackAssetId: AssetId = XST;
+            pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
             pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
             pub const GetBuyBackPercentage: u8 = 0;
-            pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-                    "0000000000000000000000000000000000000000000000000000000000000023"
-            ));
-            pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+            pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
         }
         impl assets::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
             type ExtraAccountId = [u8; 32];
             type ExtraAssetRecordArg =
-                common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
+                common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
             type AssetId = AssetId;
             type GetBaseAssetId = GetBaseAssetId;
             type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -217,9 +235,10 @@ macro_rules! mock_assets_config {
             type GetBuyBackAccountId = GetBuyBackAccountId;
             type GetBuyBackDexId = GetBuyBackDexId;
             type BuyBackLiquidityProxy = ();
-            type Currency = currencies::Pallet<TestRuntime>;
+            type Currency = currencies::Pallet<$runtime>;
             type GetTotalBalance = ();
             type WeightInfo = ();
+            type AssetRegulator = permissions::Pallet<$runtime>;
         }
     };
 }
@@ -229,9 +248,7 @@ macro_rules! mock_assets_config {
 macro_rules! mock_pallet_balances_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const MaxLocks: u32 = 50;
-            pub const ExistentialDeposit: u128 = 1;
-            pub const MaxReserves: u32 = 50;
+            pub const ExistentialDeposit: u128 = 0;
         }
         impl pallet_balances::Config for $runtime {
             type Balance = Balance;
@@ -240,8 +257,8 @@ macro_rules! mock_pallet_balances_config {
             type ExistentialDeposit = ExistentialDeposit;
             type AccountStore = System;
             type WeightInfo = ();
-            type MaxLocks = MaxLocks;
-            type MaxReserves = MaxReserves;
+            type MaxLocks = ();
+            type MaxReserves = ();
             type ReserveIdentifier = ();
             type RuntimeHoldReason = ();
             type FreezeIdentifier = ();
@@ -257,7 +274,9 @@ macro_rules! mock_common_config {
     ($runtime:ty) => {
         impl common::Config for $runtime {
             type DEXId = DEXId;
-            type LstId = LiquiditySourceType;
+            type LstId = common::LiquiditySourceType;
+            type MultiCurrency = currencies::Pallet<$runtime>;
+            type AssetManager = assets::Pallet<$runtime>;
         }
     };
 }
@@ -268,8 +287,8 @@ macro_rules! mock_currencies_config {
     ($runtime:ty) => {
         impl currencies::Config for $runtime {
             type MultiCurrency = Tokens;
-            type NativeCurrency = BasicCurrencyAdapter<TestRuntime, Balances, Amount, u64>;
-            type GetNativeCurrencyId = <TestRuntime as assets::Config>::GetBaseAssetId;
+            type NativeCurrency = BasicCurrencyAdapter<$runtime, Balances, Amount, BlockNumber>;
+            type GetNativeCurrencyId = <$runtime as assets::Config>::GetBaseAssetId;
             type WeightInfo = ();
         }
     };
@@ -292,7 +311,7 @@ macro_rules! mock_frame_system_config {
             type AccountId = AccountId;
             type Lookup = IdentityLookup<Self::AccountId>;
             type RuntimeEvent = RuntimeEvent;
-            type BlockHashCount = ConstU64<250>;
+            type BlockHashCount = frame_support::traits::ConstU64<250>;
             type DbWeight = ();
             type Version = ();
             type PalletInfo = PalletInfo;
@@ -300,9 +319,9 @@ macro_rules! mock_frame_system_config {
             type OnNewAccount = ();
             type OnKilledAccount = ();
             type SystemWeightInfo = ();
-            type SS58Prefix = ConstU16<42>;
+            type SS58Prefix = ();
             type OnSetCode = ();
-            type MaxConsumers = frame_support::traits::ConstU32<16>;
+            type MaxConsumers = frame_support::traits::ConstU32<65536>;
         }
     };
 }
@@ -328,6 +347,18 @@ macro_rules! mock_technical_config {
             type Trigger = ();
             type Condition = ();
             type SwapAction = ();
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+        }
+    };
+    ($runtime:ty, $swap_action:ty) => {
+        impl technical::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type TechAssetId = TechAssetId;
+            type TechAccountId = TechAccountId;
+            type Trigger = ();
+            type Condition = ();
+            type SwapAction = $swap_action;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
         }
     };
 }
@@ -340,7 +371,7 @@ macro_rules! mock_tokens_config {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
             type Amount = Amount;
-            type CurrencyId = <TestRuntime as assets::Config>::AssetId;
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();

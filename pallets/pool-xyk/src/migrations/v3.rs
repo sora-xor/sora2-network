@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::pallet::{Config, Pallet};
-use common::{Balance, EnabledSourcesManager, ToFeeAccount};
 use frame_support::pallet_prelude::Weight;
+use common::{AssetIdOf, Balance, EnabledSourcesManager, ToFeeAccount};
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;
@@ -47,7 +47,7 @@ pub struct XYKPoolUpgrade<T, L>(core::marker::PhantomData<(T, L)>);
 impl<T, L> XYKPoolUpgrade<T, L>
 where
     T: crate::Config,
-    L: Get<Vec<(T::AssetId, T::AssetId, T::DEXId)>>,
+    L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)>>,
 {
     /// Unlocks and withdraws a liquidity portion provided by `user_account`
     /// Returns resulting weight and error flag, indicating that there was some problem
@@ -55,8 +55,8 @@ where
     fn pull_out_user_from_pool(
         weight_meter: &mut WeightMeter,
         user_account: T::AccountId,
-        base_asset: T::AssetId,
-        target_asset: T::AssetId,
+        base_asset: AssetIdOf<T>,
+        target_asset: AssetIdOf<T>,
         dex_id: T::DEXId,
         lp_tokens: u128,
     ) -> DispatchResult {
@@ -106,8 +106,8 @@ where
     fn remove_pool(
         weight_meter: &mut WeightMeter,
         dex_id: T::DEXId,
-        base_asset: T::AssetId,
-        target_asset: T::AssetId,
+        base_asset: AssetIdOf<T>,
+        target_asset: AssetIdOf<T>,
         pool_account: T::AccountId,
     ) -> DispatchResult {
         weight_meter.check_accrue(T::DbWeight::get().reads_writes(4, 8));
@@ -145,7 +145,7 @@ where
 
         info!("Migrating PoolXYK to v3");
 
-        let swap_pairs_to_be_deleted: Vec<(T::AssetId, T::AssetId, T::DEXId)> = L::get();
+        let swap_pairs_to_be_deleted: Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)> = L::get();
 
         for (base_asset, target_asset, dex_id) in swap_pairs_to_be_deleted {
             weight_meter.check_accrue(T::DbWeight::get().reads(1));
@@ -211,7 +211,7 @@ where
 impl<T, L> OnRuntimeUpgrade for XYKPoolUpgrade<T, L>
 where
     T: crate::Config,
-    L: Get<Vec<(T::AssetId, T::AssetId, T::DEXId)>>,
+    L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)>>,
 {
     fn on_runtime_upgrade() -> Weight {
         // new() returns max limit
