@@ -1311,6 +1311,7 @@ pub enum AssetType {
     NFT,
     Soulbound,
     Regulated,
+    Product,
 }
 
 /// Presents information about an asset.

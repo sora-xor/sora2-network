@@ -45,6 +45,7 @@ fn test_price_asset() -> AssetId {
         18,
         balance!(1000),
         true,
+        AssetType::Regular,
         None,
         None,
     )

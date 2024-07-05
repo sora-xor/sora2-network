@@ -33,6 +33,7 @@
 use common::AssetInfoProvider;
 use common::AssetManager;
 use common::AssetRegulator;
+use common::AssetType;
 use common::Balance;
 use common::{AccountIdOf, AssetIdOf};
 use frame_support::pallet_prelude::*;
@@ -228,6 +229,7 @@ impl<T: Config> Pallet<T> {
             0,
             0,
             true,
+            AssetType::Product,
             Some(content_source),
             Some(description),
         )?;
