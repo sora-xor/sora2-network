@@ -1339,6 +1339,62 @@
 <a href="#1324" id="1324">1324</a>
 <a href="#1325" id="1325">1325</a>
 <a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1387,10 +1443,10 @@
     SwapVariant,
 };
 <span class="kw">use </span>common::{
-    fixed_wrapper, AssetIdOf, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
-    XykPool,
+    fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
+    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
+    OnPoolReservesChanged, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, XykPool,
 };
 
 <span class="kw">mod </span>aliases;
@@ -2029,6 +2085,22 @@
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         swap_amount: SwapAmount&lt;Balance&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(SwapOutcome&lt;Balance, AssetIdOf&lt;T&gt;&gt;, Weight), DispatchError&gt; {
+        T::AssetRegulator::check_permission(
+            <span class="kw-2">&amp;</span>sender,
+            <span class="kw-2">&amp;</span>receiver,
+            <span class="kw-2">&amp;</span>input_asset_id,
+            <span class="kw-2">&amp;</span>common::permissions::TRANSFER,
+        )
+        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AssetRegulationsCheckFailed)<span class="question-mark">?</span>;
+
+        T::AssetRegulator::check_permission(
+            <span class="kw-2">&amp;</span>sender,
+            <span class="kw-2">&amp;</span>receiver,
+            <span class="kw-2">&amp;</span>output_asset_id,
+            <span class="kw-2">&amp;</span>common::permissions::TRANSFER,
+        )
+        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AssetRegulationsCheckFailed)<span class="question-mark">?</span>;
+
         <span class="kw">let </span>dex_info = T::DexInfoProvider::get_dex_info(<span class="kw-2">&amp;</span>dex_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>(<span class="kw">_</span>, tech_acc_id) = Pallet::&lt;T&gt;::tech_account_from_dex_and_asset_pair(
             <span class="kw-2">*</span>dex_id,
@@ -2242,8 +2314,8 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::{
-        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-        EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
+        AccountIdOf, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
+        Description, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
     };
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::sp_runtime::Percent;
@@ -2306,6 +2378,10 @@
             ContentSource,
             Description,
         &gt;;
+
+        <span class="doccomment">/// Regulator of asset operations
+        </span><span class="kw">type </span>AssetRegulator: AssetRegulator&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+
         <span class="doccomment">/// Percent of reserve which is not involved in swap
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>IrreducibleReserve: Get&lt;Percent&gt;;
@@ -2362,6 +2438,23 @@
                 input_a_desired &gt;= input_a_min &amp;&amp; input_b_desired &gt;= input_b_min,
                 Error::&lt;T&gt;::InvalidMinimumBoundValueOfBalance
             );
+
+            T::AssetRegulator::check_permission(
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>input_asset_a,
+                <span class="kw-2">&amp;</span>common::permissions::TRANSFER,
+            )
+            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AssetRegulationsCheckFailed)<span class="question-mark">?</span>;
+
+            T::AssetRegulator::check_permission(
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>input_asset_b,
+                <span class="kw-2">&amp;</span>common::permissions::TRANSFER,
+            )
+            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AssetRegulationsCheckFailed)<span class="question-mark">?</span>;
+
             Pallet::&lt;T&gt;::deposit_liquidity_unchecked(
                 source,
                 dex_id,
@@ -2401,6 +2494,23 @@
                 output_b_min &gt; <span class="number">0</span>,
                 Error::&lt;T&gt;::InvalidWithdrawLiquidityTargetAssetAmount
             );
+
+            T::AssetRegulator::check_permission(
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>output_asset_a,
+                <span class="kw-2">&amp;</span>common::permissions::TRANSFER,
+            )
+            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AssetRegulationsCheckFailed)<span class="question-mark">?</span>;
+
+            T::AssetRegulator::check_permission(
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>source,
+                <span class="kw-2">&amp;</span>output_asset_b,
+                <span class="kw-2">&amp;</span>common::permissions::TRANSFER,
+            )
+            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AssetRegulationsCheckFailed)<span class="question-mark">?</span>;
+
             Pallet::&lt;T&gt;::withdraw_liquidity_unchecked(
                 source,
                 dex_id,
@@ -2607,6 +2717,8 @@
         </span>RestrictedChameleonPool,
         <span class="doccomment">/// Output asset reserves is not enough
         </span>NotEnoughOutputReserves,
+        <span class="doccomment">/// Asset Regulations Check failed
+        </span>AssetRegulationsCheckFailed,
     }
 
     <span class="doccomment">/// Updated after last liquidity change operation.

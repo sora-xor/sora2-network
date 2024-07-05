@@ -1532,6 +1532,31 @@
 <a href="#1517" id="1517">1517</a>
 <a href="#1518" id="1518">1518</a>
 <a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2740,6 +2765,8 @@
         amount: AmountOf&lt;T&gt;,
     ) -&gt; DispatchResult;
 
+    <span class="kw">fn </span>gen_asset_id(account_id: <span class="kw-2">&amp;</span>T::AccountId) -&gt; <span class="self">Self</span>::AssetId;
+
     <span class="kw">fn </span>gen_asset_id_from_any(value: <span class="kw-2">&amp;</span><span class="kw">impl </span>Encode) -&gt; <span class="self">Self</span>::AssetId;
 
     <span class="attr">#[allow(clippy::too_many_arguments)]
@@ -2844,6 +2871,10 @@
         _currency_id: CurrencyIdOf&lt;T&gt;,
         _amount: AmountOf&lt;T&gt;,
     ) -&gt; DispatchResult {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>gen_asset_id(_account_id: <span class="kw-2">&amp;</span>&lt;T&gt;::AccountId) -&gt; <span class="self">Self</span>::AssetId {
         <span class="macro">unimplemented!</span>()
     }
 
@@ -3048,6 +3079,25 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         A::check_permission(issuer, affected_account, asset_id, permission_id)<span class="question-mark">?</span>;
         B::check_permission(issuer, affected_account, asset_id, permission_id)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="kw">impl</span>&lt;AccountId, AssetId&gt; AssetRegulator&lt;AccountId, AssetId&gt; <span class="kw">for </span>() {
+    <span class="kw">fn </span>assign_permission(
+        _owner: <span class="kw-2">&amp;</span>AccountId,
+        _asset_id: <span class="kw-2">&amp;</span>AssetId,
+        _permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>check_permission(
+        _issuer: <span class="kw-2">&amp;</span>AccountId,
+        _affected_account: <span class="kw-2">&amp;</span>AccountId,
+        _asset_id: <span class="kw-2">&amp;</span>AssetId,
+        _permission_id: <span class="kw-2">&amp;</span>PermissionId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="prelude-val">Ok</span>(())
     }
 }
