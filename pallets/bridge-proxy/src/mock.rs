@@ -127,7 +127,6 @@ impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;
 }
 
-
 impl pallet_balances::Config for Test {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;

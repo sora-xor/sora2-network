@@ -5,9 +5,9 @@ pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, mock_permissions_config
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, CERES_ASSET_ID, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXId, Description, CERES_ASSET_ID, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};

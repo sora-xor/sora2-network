@@ -32,10 +32,10 @@ use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config, mock_permissions_config,
-    mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR,
-    XST, XSTUSD,
+    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, AssetId32, AssetName,
+    AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION,
+    DOT, KSM, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -148,7 +148,6 @@ impl pallet_balances::Config for Runtime {
     type MaxHolds = ();
     type MaxFreezes = ();
 }
-
 
 impl dex_manager::Config for Runtime {}
 

@@ -43,9 +43,9 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, mock_permissions_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
 
