@@ -49,6 +49,8 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
+use framenode_runtime::RuntimeGenesisConfig;
+
 #[cfg(feature = "wip")]
 use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{

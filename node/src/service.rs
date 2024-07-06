@@ -39,6 +39,7 @@ use framenode_runtime::eth_bridge::{
 };
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
+use futures::prelude::*;
 use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
@@ -60,6 +61,8 @@ use std::fs::File;
 use std::sync::Arc;
 use std::time::Duration;
 use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
+
+use mmr_gadget::MmrGadget;
 
 type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
@@ -529,7 +532,6 @@ pub fn new_full(
         // )
         // .expect("failed to build offchain workers");
         // use futures::stream::Stream;
-        use futures::FutureExt;
         // use sc_network::event::SyncEventStream;
 
         task_manager.spawn_handle().spawn(
@@ -680,7 +682,7 @@ pub fn new_full(
             task_manager.spawn_handle().spawn_blocking(
                 "mmr-gadget",
                 None,
-                mmr_gadget::MmrGadget::start(
+                MmrGadget::start(
                     client.clone(),
                     backend.clone(),
                     sp_mmr_primitives::INDEXING_PREFIX.to_vec(),
