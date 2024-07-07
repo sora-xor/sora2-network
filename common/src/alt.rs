@@ -491,13 +491,19 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
             if let Some(precision) = self.limits.amount_precision {
                 let (input_precision, output_precision) = match precision {
                     SideAmount::Input(input_precision) => {
-                        let Some(output_precision) = self.limits.get_precision_step(chunk, SwapVariant::WithDesiredOutput) else {
+                        let Some(output_precision) = self
+                            .limits
+                            .get_precision_step(chunk, SwapVariant::WithDesiredOutput)
+                        else {
                             return false;
                         };
                         (input_precision, output_precision)
                     }
                     SideAmount::Output(output_precision) => {
-                        let Some(input_precision) = self.limits.get_precision_step(chunk, SwapVariant::WithDesiredInput) else {
+                        let Some(input_precision) = self
+                            .limits
+                            .get_precision_step(chunk, SwapVariant::WithDesiredInput)
+                        else {
                             return false;
                         };
                         (input_precision, output_precision)
