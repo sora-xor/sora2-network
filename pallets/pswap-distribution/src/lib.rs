@@ -78,7 +78,7 @@ impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.
     ///
     /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
-    pub fn is_subscribed(fees_account_id: &T::AccountId) -> bool {
+    pub fn is_subscribed(fees_account_id: &AccountIdOf<T>) -> bool {
         SubscribedAccounts::<T>::get(fees_account_id).is_some()
     }
 
@@ -91,7 +91,7 @@ impl<T: Config> Pallet<T> {
     /// - `marker_token_id`: Namely Pool Token, Asset Id by which shares of LP's are determined.
     /// - `frequency`: Number of blocks between incentive distribution operations.
     pub fn subscribe(
-        fees_account_id: T::AccountId,
+        fees_account_id: AccountIdOf<T>,
         dex_id: T::DEXId,
         pool_account: AccountIdOf<T>,
         frequency: Option<BlockNumberFor<T>>,
@@ -115,7 +115,7 @@ impl<T: Config> Pallet<T> {
     /// Remove fees account from list of periodic distribution of incentives.
     ///
     /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
-    pub fn unsubscribe(fees_account_id: T::AccountId) -> DispatchResult {
+    pub fn unsubscribe(fees_account_id: AccountIdOf<T>) -> DispatchResult {
         let value = SubscribedAccounts::<T>::take(&fees_account_id);
         ensure!(value.is_some(), Error::<T>::UnknownSubscription);
         frame_system::Pallet::<T>::dec_consumers(&fees_account_id);
@@ -125,7 +125,7 @@ impl<T: Config> Pallet<T> {
     /// Query actual amount of PSWAP that can be claimed by account.
     ///
     /// - `account_id`: Id of the account to query.
-    pub fn claimable_amount(account_id: &T::AccountId) -> Result<Balance, DispatchError> {
+    pub fn claimable_amount(account_id: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
         let current_position = ShareholderAccounts::<T>::get(&account_id);
         Ok(current_position
             .into_bits()
@@ -136,7 +136,7 @@ impl<T: Config> Pallet<T> {
     /// Perform claim of PSWAP by account, desired amount is not indicated - all available will be claimed.
     ///
     /// - `account_id`: Id of the account
-    fn claim_by_account(account_id: &T::AccountId) -> DispatchResult {
+    fn claim_by_account(account_id: &AccountIdOf<T>) -> DispatchResult {
         let current_position = ShareholderAccounts::<T>::get(&account_id);
         if current_position != fixed!(0) {
             ShareholderAccounts::<T>::mutate(&account_id, |current| *current = fixed!(0));
@@ -165,7 +165,7 @@ impl<T: Config> Pallet<T> {
     /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
     /// - `dex_id`: Id of DEX to which given account belongs.
     fn exchange_fees_to_incentive(
-        fees_account_id: &T::AccountId,
+        fees_account_id: &AccountIdOf<T>,
         dex_id: T::DEXId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
@@ -242,10 +242,10 @@ impl<T: Config> Pallet<T> {
     /// - `pool_account`: Pool account which stores reserves, used to identify pool and determine user liquidity share.
     /// - `tech_account_id`: Id of Account which holds permissions needed for mint/burn of arbitrary tokens, stores claimable incentives.
     fn distribute_incentive(
-        fees_account_id: &T::AccountId,
+        fees_account_id: &AccountIdOf<T>,
         dex_id: &T::DEXId,
         pool_account: &AccountIdOf<T>,
-        tech_account_id: &T::AccountId,
+        tech_account_id: &AccountIdOf<T>,
     ) -> Result<u32, DispatchError> {
         common::with_transaction(|| {
             // Get state of incentive availability and corresponding definitions.
@@ -337,8 +337,8 @@ impl<T: Config> Pallet<T> {
     /// - `incentive_asset_id`: Incentive asset id.
     /// - `incentive_total`: total number of incentives to be distributed.
     fn calculate_and_burn_distribution(
-        fees_account_id: &T::AccountId,
-        tech_account_id: &T::AccountId,
+        fees_account_id: &AccountIdOf<T>,
+        tech_account_id: &AccountIdOf<T>,
         incentive_asset_id: &AssetIdOf<T>,
         incentive_total: Balance,
     ) -> Result<PswapRemintInfo, DispatchError> {
@@ -663,7 +663,7 @@ pub mod pallet {
     pub struct GenesisConfig<T: Config> {
         /// (Fees Account, (DEX Id, Pool Account Id, Distribution Frequency, Block Offset))
         pub subscribed_accounts: Vec<(
-            T::AccountId,
+            AccountIdOf<T>,
             (
                 DexIdOf<T>,
                 AccountIdOf<T>,
