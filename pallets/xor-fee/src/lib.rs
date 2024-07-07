@@ -42,6 +42,7 @@ use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 use log::error;
 use pallet_transaction_payment as ptp;
 use pallet_transaction_payment::{
@@ -732,7 +733,7 @@ pub mod pallet {
                         weight += T::DbWeight::get().writes(1);
                     }
                     Err(e) => {
-                        frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                        log::error!("Could not update Multiplier due to: {e:?}");
                     }
                 }
             }
@@ -764,7 +765,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
             origin: OriginFor<T>,
-            new_period: <T as frame_system::Config>::BlockNumber,
+            new_period: BlockNumberFor<T>,
         ) -> DispatchResultWithPostInfo {
             T::PermittedSetPeriod::ensure_origin(origin)?;
             #[cfg(feature = "wip")] // Dynamic fee
@@ -809,7 +810,7 @@ pub mod pallet {
         WeightToFeeMultiplierUpdated(FixedU128),
         #[cfg(feature = "wip")] // Dynamic fee
         /// New block number to update multiplier is set. [New value]
-        PeriodUpdated(<T as frame_system::Config>::BlockNumber),
+        PeriodUpdated(BlockNumberFor<T>),
         #[cfg(feature = "wip")] // Dynamic fee
         /// New small reference amount set. [New value]
         SmallReferenceAmountUpdated(Balance),
@@ -834,8 +835,7 @@ pub mod pallet {
     /// set 0 value
     #[pallet::storage]
     #[pallet::getter(fn update_period)]
-    pub type UpdatePeriod<T> =
-        StorageValue<_, <T as frame_system::Config>::BlockNumber, ValueQuery>;
+    pub type UpdatePeriod<T> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]
