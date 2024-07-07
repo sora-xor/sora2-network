@@ -2,7 +2,7 @@ use crate::{Config, LockInfo, LockerData, Timestamp, Weight};
 use common::{convert_block_number_to_timestamp, AssetIdOf, Balance};
 use frame_support::traits::Get;
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_tracing::info;
+use log::info;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {

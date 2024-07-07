@@ -33,6 +33,7 @@ use core::marker::PhantomData;
 use frame_support::traits::OnRuntimeUpgrade;
 
 pub mod v2 {
+    use common::AccountIdOf;
     use frame_support::traits::StorageVersion;
     use log::info;
     use sp_std::prelude::Vec;
@@ -44,7 +45,7 @@ pub mod v2 {
     impl<T, G> OnRuntimeUpgrade for Migrate<T, G>
     where
         T: Config,
-        G: Get<Vec<(T::AccountId, T::AccountId)>>,
+        G: Get<Vec<(AccountIdOf<T>, AccountIdOf<T>)>>,
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {

@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::pallet::{Config, Pallet};
-use frame_support::pallet_prelude::Weight;
 use common::{AssetIdOf, Balance, EnabledSourcesManager, ToFeeAccount};
+use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;

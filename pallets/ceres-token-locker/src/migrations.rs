@@ -2,8 +2,8 @@ use crate::{Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
 use common::{convert_block_number_to_timestamp, AssetIdOf, Balance};
 use frame_support::traits::Get;
 use frame_system::pallet_prelude::BlockNumberFor;
+use log::info;
 use sp_std::vec::Vec;
-use sp_tracing::info;
 
 pub fn migrate<T: Config>() -> Weight {
     sp_runtime::runtime_logger::RuntimeLogger::init();

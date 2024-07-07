@@ -99,20 +99,20 @@ pub mod v1_to_v2 {
     };
     use common::{balance, AssetIdOf, SymbolName, DAI, KARMA, KGOLD, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
-    use sp_arithmetic::traits::Zero;
-    use frame_support::dispatch::Weight;
-    use log::error;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
+    use log::error;
     use permissions::{Scope, BURN, MINT};
+    use sp_arithmetic::traits::Zero;
     use sp_core::Get;
 
     mod v1 {
         use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
         use codec::{Decode, Encode, MaxEncodedLen};
         use common::{AccountIdOf, AssetIdOf, Balance};
-        use frame_support::dispatch::TypeInfo;
         use frame_support::pallet_prelude::ValueQuery;
         use frame_support::Identity;
+        use scale_info::TypeInfo;
         use sp_arithmetic::FixedU128;
 
         #[derive(

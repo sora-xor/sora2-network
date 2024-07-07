@@ -32,9 +32,11 @@
 pub mod v2 {
     use common::balance;
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
-    use frame_support::{log::info, traits::StorageVersion};
+    use frame_support::traits::StorageVersion;
+    use frame_support::weights::Weight;
+    use frame_system::pallet_prelude::BlockNumberFor;
+    use log::info;
 
     use crate::*;
 
@@ -45,8 +47,10 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            let period =
-                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+            let period = BlockNumberFor::<T>::try_from(3600_u32).unwrap_or_default();
+
+            // let period =
+            //     <T as frame_system::Config>::BlockNumberFor::try_from(3600_u32).unwrap_or_default();
             let small_reference_amount = balance!(0.2);
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
