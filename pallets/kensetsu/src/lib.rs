@@ -209,7 +209,7 @@ pub mod pallet {
         DEFAULT_BALANCE_PRECISION, KXOR, XOR,
     };
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::Randomness;
+    use frame_support::traits::{BuildGenesisConfig, Randomness};
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
@@ -459,7 +459,6 @@ pub mod pallet {
         pub predefined_stablecoin_oracle_peg: Vec<(AssetIdOf<T>, SymbolName, Balance)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -472,7 +471,7 @@ pub mod pallet {
     /// Populates StablecoinInfos with passed parameters. Used for populating with predefined
     /// stable assets.
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.predefined_stablecoin_sora_peg
                 .iter()
