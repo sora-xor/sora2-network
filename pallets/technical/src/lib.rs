@@ -35,7 +35,7 @@
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::DispatchError;

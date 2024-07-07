@@ -35,7 +35,7 @@ pub mod liquidity_sources {
     use crate::pallet_tools::price_tools::AssetPrices;
     use crate::Config;
     use common::{AssetIdOf, DexIdOf};
-    use frame_support::dispatch::{DispatchResult};
+    use frame_support::dispatch::DispatchResult;
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};

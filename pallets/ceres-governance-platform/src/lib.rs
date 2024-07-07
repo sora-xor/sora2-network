@@ -76,7 +76,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
-    use sp_tracing::{info, error};
     use frame_support::transactional;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -411,12 +410,12 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             if Self::pallet_storage_version() == StorageVersion::V2 {
                 sp_runtime::runtime_logger::RuntimeLogger::init();
-                info!(
+                log::info!(
                     "Applying migration to version 2: Migrating to open governance - version 3"
                 );
 
                 if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
-                    error!("Failed to migrate: {}", err);
+                    log::error!("Failed to migrate: {}", err);
                 } else {
                     PalletStorageVersion::<T>::put(StorageVersion::V3);
                 }

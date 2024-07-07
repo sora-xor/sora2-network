@@ -34,9 +34,7 @@ use codec::{Decode, Encode};
 use common::fixnum::ops::CheckedSub;
 use common::prelude::{BalanceUnit, QuoteAmount};
 use common::{fixed, AssetIdOf, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
-use frame_support::dispatch::{
-    DispatchResult, DispatchResultWithPostInfo, RawOrigin,
-};
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, RawOrigin};
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;

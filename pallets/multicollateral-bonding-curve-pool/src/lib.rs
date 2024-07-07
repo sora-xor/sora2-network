@@ -228,7 +228,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             let elems =
                 Pallet::<T>::free_reserves_distribution_routine(block_number).unwrap_or_default();
             <T as Config>::WeightInfo::on_initialize(elems)

@@ -87,7 +87,7 @@ where
 {
     fn on_runtime_upgrade() -> Weight {
         if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
-            frame_support::log::error!(
+            log::error!(
                 "Expected storage version 1, found {:?}, skipping migration",
                 StorageVersion::get::<Pallet<T>>()
             );

@@ -30,7 +30,7 @@
 
 use codec::{Decode, Encode};
 use common::prelude::{OutcomeFee, SwapAmount};
-use frame_support::RuntimeDebug;
+use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 #[cfg(feature = "wip")] // ALT
 use {common::prelude::SwapVariant, sp_std::collections::btree_map::BTreeMap};

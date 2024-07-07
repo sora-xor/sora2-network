@@ -302,6 +302,7 @@ impl<T: Config> OnValBurned for Pallet<T> {
 
 #[frame_support::pallet]
 pub mod pallet {
+    use common::balance;
     use common::PSWAP;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;

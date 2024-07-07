@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use sp_runtime::DispatchError;
 use common::{AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, FixedInner};
+use sp_runtime::DispatchError;
 use sp_std::cmp::Ordering;
 
 #[derive(Debug, Eq, PartialEq)]

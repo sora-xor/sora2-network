@@ -66,6 +66,7 @@ use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use liquidity_aggregator::AggregatedSwapOutcome;
+use log;
 pub use pallet::*;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
@@ -365,7 +366,7 @@ impl<T: Config> ExchangePath<T> {
                 &mut path_builder
             }
         };
-        frame_support::log::trace!("Found paths: {:?}", path_builder);
+        log::trace!("Found paths: {:?}", path_builder);
         if path_builder.paths.is_empty() {
             None
         } else {

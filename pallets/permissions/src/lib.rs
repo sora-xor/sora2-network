@@ -48,13 +48,13 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use codec::{Decode, Encode};
 use common::permissions::TRANSFER;
 use common::{hash, AssetRegulator};
-use codec::{Decode, Encode};
-use frame_support::sp_runtime::DispatchError;
-use frame_support::{ensure};
+use frame_support::ensure;
 #[cfg(feature = "std")]
 use frame_support::sp_runtime;
+use frame_support::sp_runtime::DispatchError;
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_core::RuntimeDebug;
