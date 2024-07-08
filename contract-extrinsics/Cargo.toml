@@ -1,0 +1,21 @@
+[package]
+name = "contract-extrinsics"
+version = "4.2.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# TODO Update versions
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+ink_primitives = "4.2.1"
+
+common = { path = "../common", default-features = false }
+
+[features]
+std = [
+    "common/std",
+    "scale-info/std",
+    "ink_primitives/std",
+]
