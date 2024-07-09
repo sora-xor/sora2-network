@@ -1197,7 +1197,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Vec<(Balance, Balance, Balance)>, DispatchError> {
         let mut res = vec![];
         for step in 1..steps {
-            res.push(Self::decide_buy_amounts(
+            res.push(Self::decide_sell_amounts(
                 main_asset_id,
                 collateral_asset_id,
                 amount.copy_direction(
@@ -1209,7 +1209,7 @@ impl<T: Config> Pallet<T> {
             )?);
         }
 
-        res.push(Self::decide_buy_amounts(
+        res.push(Self::decide_sell_amounts(
             main_asset_id,
             collateral_asset_id,
             amount,
@@ -1230,24 +1230,40 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
     ) -> Result<Vec<(Balance, Balance, Balance)>, DispatchError> {
         let mut res = vec![];
-        let (step_input, step_output, step_fee) = Self::decide_buy_amounts(
-            main_asset_id,
-            collateral_asset_id,
-            amount.copy_direction(step_amount),
-            deduce_fee,
-        )?;
-        for step in 1..steps {
-            res.push((
-                step_input
-                    .checked_mul(step as u128)
-                    .ok_or(Error::<T>::PriceCalculationFailed)?,
-                step_output
-                    .checked_mul(step as u128)
-                    .ok_or(Error::<T>::PriceCalculationFailed)?,
-                step_fee
-                    .checked_mul(step as u128)
-                    .ok_or(Error::<T>::PriceCalculationFailed)?,
-            ))
+        if collateral_asset_id == &TBCD.into() {
+            let (step_input, step_output, step_fee) = Self::decide_buy_amounts(
+                main_asset_id,
+                collateral_asset_id,
+                amount.copy_direction(step_amount),
+                deduce_fee,
+            )?;
+            for step in 1..steps {
+                res.push((
+                    step_input
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                    step_output
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                    step_fee
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                ))
+            }
+        } else {
+            for step in 1..steps {
+                let (step_input, step_output, step_fee) = Self::decide_buy_amounts(
+                    main_asset_id,
+                    collateral_asset_id,
+                    amount.copy_direction(
+                        step_amount
+                            .checked_mul(step as u128)
+                            .ok_or(Error::<T>::PriceCalculationFailed)?,
+                    ),
+                    deduce_fee,
+                )?;
+                res.push((step_input, step_output, step_fee));
+            }
         }
 
         res.push(Self::decide_buy_amounts(
@@ -1771,8 +1787,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         let amounts = if input_asset_id == base_asset_id {
             Self::decide_step_sell_amounts(
-                &output_asset_id,
                 &input_asset_id,
+                &output_asset_id,
                 amount,
                 step,
                 samples_count,
