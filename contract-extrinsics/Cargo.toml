@@ -9,7 +9,6 @@ edition = "2021"
 # TODO Update versions
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-ink_primitives = "4.2.1"
 
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -21,7 +20,6 @@ order-book = {path="../pallets/order-book", default-features = false}
 std = [
     "common/std",
     "scale-info/std",
-    "ink_primitives/std",
     "frame-support/std",
     "sp-std/std",
 ]

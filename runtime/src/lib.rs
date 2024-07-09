@@ -69,7 +69,7 @@ use common::{DOT, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
-use frame_support::weights::{ConstantMultiplier, RuntimeDbWeight};
+use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
