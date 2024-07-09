@@ -285,6 +285,7 @@ members = [
     "utils/generate-bags",
     "utils/remote-ext",
     "contracts",
+    "contract-extrinsics",
 ]
 
 resolver = "2"
