@@ -32,6 +32,7 @@ use crate::{AssetIdBounds, OrderIdBounds};
 use common::{Balance, DEXId, PriceVariant};
 use order_book::OrderBookId;
 use scale::Encode;
+use sp_std::vec::Vec;
 
 /// It is a part of a pallet dispatchables API.
 /// The indexes can be found in your pallet code's #[pallet::call] section and check #[pallet::call_index(x)] attribute of the call.

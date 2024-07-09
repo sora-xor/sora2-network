@@ -82,9 +82,14 @@ where
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
+    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
+    C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 {
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
-    rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
+    use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
+
+    rpc.merge(BeefyLightClientClient::new(client.clone()).into_rpc())?;
+    rpc.merge(TransactionPayment::new(client).into_rpc())?;
     Ok(rpc)
 }
 

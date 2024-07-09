@@ -32,7 +32,7 @@
 
 #[ink::contract]
 mod asset_contract {
-    use common::AssetId32;
+    use common::{AssetId32, PredefinedAssetId};
     use contract_extrinsics::assets::AssetsCall;
     use contract_extrinsics::RuntimeCall;
     use scale::{Decode, Encode};
@@ -62,7 +62,11 @@ mod asset_contract {
             amount: Balance,
         ) -> Result<(), RuntimeError> {
             self.env()
-                .call_runtime(&RuntimeCall::Assets(AssetsCall::Transfer {
+                .call_runtime(&RuntimeCall::<
+                    AssetId32<PredefinedAssetId>,
+                    AccountId32,
+                    u128,
+                >::Assets(AssetsCall::Transfer {
                     asset_id: AssetId32::from_bytes(asset_id),
                     to,
                     amount,
