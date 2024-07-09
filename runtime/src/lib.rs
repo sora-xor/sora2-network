@@ -2443,7 +2443,6 @@ impl extended_assets::Config for Runtime {
 parameter_types! {
     pub const DepositPerItem: Balance = deposit(1, 0); // differs
     pub const DepositPerByte: Balance = deposit(0, 1);
-    // some limits removed in the next versions
     pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
     pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024); // deposit(16, 16 * 1024), ConstU128<{ u128::MAX }>
     pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
@@ -2457,8 +2456,7 @@ parameter_types! {
         .unwrap_or(BlockWeights::get().max_block);
 }
 
-/// Charge fee for stored bytes and items as part of `pallet-contracts`.
-///
+// TODO: Decide should we use another deposit for contracts? How to calculate?
 /// The slight difference to general `deposit` function is because there is fixed bound on how large
 /// the DB key can grow so it doesn't make sense to have as high deposit per item as in the general
 /// approach.
@@ -2481,7 +2479,7 @@ impl pallet_contracts::Config for Runtime {
     type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
     type ChainExtension = ();
     type Schedule = Schedule;
-    type CallStack = [pallet_contracts::Frame<Self>; 5]; // 16
+    type CallStack = [pallet_contracts::Frame<Self>; 5];
     type DepositPerByte = DepositPerByte;
     type DepositPerItem = DepositPerItem;
     type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
@@ -2493,9 +2491,11 @@ impl pallet_contracts::Config for Runtime {
     // `MaxCodeLen = (64MB/6 - 2) / 72 = 26/216 = 13/108 MB ≈ 123 * 1024 < 13/108 MB`
     type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
     type MaxStorageKeyLen = ConstU32<128>;
+    // For 9.38 call runtime is unstable
     //type UnsafeUnstableInterface = ConstBool<false>;
     type UnsafeUnstableInterface = ConstBool<true>;
     type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+    // For 1.1.0
     // type DefaultDepositLimit = DefaultDepositLimit;
     // type RuntimeHoldReason = RuntimeHoldReason;
     // #[cfg(not(feature = "runtime-benchmarks"))]
@@ -2763,6 +2763,7 @@ impl_runtime_apis! {
         }
     }
 
+    // For 1.1.0
     // impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
     // {
     // 	fn call(

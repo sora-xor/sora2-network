@@ -28,24 +28,37 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{AccountId, AssetId, Runtime, Weight};
+use crate::{AccountId, AssetId, OrderBook, Runtime, TradingPair, Weight};
+use assets::AssetIdOf;
 use common::mock::{alice, bob, charlie};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    balance, AssetName, AssetSymbol, Balance, DEXId, DEXInfo, PriceVariant,
+    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use frame_support::pallet_prelude::GenesisBuild;
 use frame_support::sp_io;
+use frame_system::RawOrigin;
+use order_book::OrderBookId;
 
 pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000_000, 1024 * 1024);
 
 pub struct ExtBuilder {
+    initial_dex_list: Vec<(u32, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: [XOR, PSWAP, VAL]
+            initial_dex_list: vec![(
+                DEXId::Polkaswap.into(),
+                DEXInfo {
+                    base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
+                    is_public: true,
+                },
+            )],
+            endowed_accounts: [XOR, PSWAP, VAL, XST]
                 .into_iter()
                 .flat_map(|asset| {
                     [alice(), bob(), charlie()]
@@ -114,11 +127,69 @@ impl ExtBuilder {
                     None,
                     None,
                 ),
+                (
+                    XST.into(),
+                    alice(),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"XST".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
             ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         t.into()
     }
+}
+
+pub fn create_order_book() -> OrderBookId<AssetIdOf<Runtime>, u32> {
+    let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, u32> {
+        dex_id: DEXId::Polkaswap.into(),
+        base: XST,
+        quote: XOR,
+    };
+    TradingPair::register_pair(DEXId::Polkaswap.into(), XOR, XST)
+        .expect("Error while register pair");
+    OrderBook::create_orderbook(
+        RawOrigin::Root.into(),
+        order_book_id1,
+        balance!(0.00001),
+        balance!(0.00001),
+        balance!(1),
+        balance!(1000),
+    )
+    .expect("Error while create order book");
+
+    OrderBook::place_limit_order(
+        RawOrigin::Signed(alice()).into(),
+        order_book_id1,
+        balance!(10),
+        balance!(168),
+        PriceVariant::Sell,
+        Some(<Runtime as order_book::Config>::MIN_ORDER_LIFESPAN + 1000000),
+    )
+    .expect("Error while place new limit order");
+
+    OrderBook::place_limit_order(
+        RawOrigin::Signed(alice()).into(),
+        order_book_id1,
+        balance!(11),
+        balance!(167),
+        PriceVariant::Sell,
+        Some(<Runtime as order_book::Config>::MIN_ORDER_LIFESPAN + 1000000),
+    )
+    .expect("Error while place new limit order");
+
+    order_book_id1
 }

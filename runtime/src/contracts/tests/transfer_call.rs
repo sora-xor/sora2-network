@@ -30,10 +30,10 @@
 
 use crate::contracts::mock::{ExtBuilder, GAS_LIMIT};
 use crate::contracts::tests::compile_module;
-use crate::{assets::WeightInfo, Assets, Contracts, Runtime, RuntimeCall};
+use crate::{assets::WeightInfo, Contracts, Runtime, RuntimeCall};
 use codec::{Decode, Encode};
 use common::mock::{alice, bob};
-use common::{balance, AssetInfoProvider, XOR};
+use common::{balance, XOR};
 use frame_support::{assert_ok, weights::Weight};
 use pallet_contracts::Determinism;
 use pallet_contracts_primitives::{Code, ContractResult};
@@ -57,12 +57,6 @@ fn call_transfer_right() {
         .expect("Error while instantiate contract")
         .account_id;
 
-        println!(
-            "USER XOR BALANCE BEFORE: {}",
-            Assets::total_balance(&XOR.into(), &alice()).expect("Could not get total balance")
-        );
-        println!("CONTRACT ADDRESS {}", contract_addr);
-
         let call = RuntimeCall::Assets(assets::Call::transfer {
             asset_id: XOR,
             to: bob(),
@@ -79,14 +73,7 @@ fn call_transfer_right() {
             false,
             Determinism::Deterministic,
         );
-        println!(
-            "ALICE XOR BALANCE AFTER: {}",
-            Assets::total_balance(&XOR.into(), &alice()).expect("Could not get total balance")
-        );
-        println!(
-            "BOB XOR BALANCE AFTER: {}",
-            Assets::total_balance(&XOR.into(), &bob()).expect("Could not get total balance")
-        );
+
         let ContractResult {
             gas_consumed,
             gas_required,
