@@ -77,10 +77,4 @@ mod asset_contract {
 }
 
 #[cfg(test)]
-mod tests {
-    use ink::env::DefaultEnvironment;
-
-    fn default_accounts() -> ink::env::test::DefaultAccounts<DefaultEnvironment> {
-        ink::env::test::default_accounts::<DefaultEnvironment>()
-    }
-}
+mod tests {}
