@@ -34,10 +34,10 @@ use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, AssetId32, AssetName,
-    AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, mock_pallet_timestamp_config, mock_permissions_config
+    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
+    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
+    KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -159,6 +159,8 @@ parameter_types! {
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
+
+
 impl Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 14400;
     type RuntimeEvent = RuntimeEvent;
@@ -270,6 +272,8 @@ impl pallet_balances::Config for Runtime {
     type MaxHolds = ();
     type MaxFreezes = ();
 }
+
+
 
 impl dex_manager::Config for Runtime {}
 

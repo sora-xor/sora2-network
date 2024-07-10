@@ -33,7 +33,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, DEXId, XST,
+    mock_pallet_balances_config, mock_tokens_config, mock_permissions_config, DEXId, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
@@ -96,6 +96,8 @@ mock_tokens_config!(Runtime);
 mock_permissions_config!(Runtime);
 mock_assets_config!(Runtime);
 
+
+
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
@@ -111,6 +113,7 @@ impl pallet_balances::Config for Runtime {
     type MaxHolds = ();
     type MaxFreezes = ();
 }
+
 
 parameter_types! {
     pub GetBuyBackAssetId: AssetId = XST.into();

@@ -19,7 +19,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{BuildStorage, MultiSignature, Perbill, Percent};
+use sp_runtime::{MultiSignature, Perbill, Percent, BuildStorage};
 
 pub type BlockNumber = u64;
 
