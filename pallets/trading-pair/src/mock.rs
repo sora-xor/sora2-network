@@ -35,7 +35,7 @@ use common::{
     hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, AssetId32, AssetName,
     AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION,
-    DOT, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
+    DOT, KSM, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -71,7 +71,6 @@ pub type Amount = i128;
 
 pub const ALICE: AccountId = AccountId32::new([1; 32]);
 pub const DEX_ID: DEXId = DEXId::Polkaswap;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
@@ -106,7 +105,7 @@ parameter_types! {
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub const GetBuyBackDexId: DEXId = 0;
 }
 
 impl assets::Config for Runtime {
@@ -125,7 +124,6 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 parameter_types! {

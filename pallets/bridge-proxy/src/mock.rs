@@ -127,7 +127,45 @@ impl permissions::Config for Test {
     type RuntimeEvent = RuntimeEvent;
 }
 
+impl pallet_balances::Config for Test {
+    type Balance = Balance;
+    type RuntimeEvent = RuntimeEvent;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
+}
+
+impl tokens::Config for Test {
+    type RuntimeEvent = RuntimeEvent;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Test as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type CurrencyHooks = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type DustRemovalWhitelist = Everything;
+}
+
+impl currencies::Config for Test {
+    type MultiCurrency = Tokens;
+    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
+    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
+    type WeightInfo = ();
+}
+
 parameter_types! {
+    pub const ExistentialDeposit: u128 = 1;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
 }

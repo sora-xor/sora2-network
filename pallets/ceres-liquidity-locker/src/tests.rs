@@ -728,7 +728,7 @@ fn liquidity_locker_storage_migration_works() {
             }
         }
 
-        let lockups_bob: Vec<_> = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB);
+        let lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB);
         for lockup in lockups_bob {
             assert_eq!(lockup.unlocking_timestamp, 9988000);
         }
