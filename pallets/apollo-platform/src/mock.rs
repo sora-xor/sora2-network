@@ -26,7 +26,7 @@ use {
     sp_runtime::{
         testing::{Header, TestXt},
         traits::{BlakeTwo256, IdentityLookup, Zero},
-        AccountId32, BuildStorage, Perbill, Percent,
+        AccountId32, BuildStorage, Perbill, Percent, Permill,
     },
 };
 
@@ -115,51 +115,10 @@ parameter_types! {
     pub const MinimumPeriod: u64 = 5;
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Nonce = u64;
-    type Block = Block;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
-
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
-}
-
-#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_types! {

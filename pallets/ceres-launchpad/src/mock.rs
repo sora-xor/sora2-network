@@ -63,12 +63,12 @@ pub const EMILY: AccountId = AccountId32::new([5u8; 32]);
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
-// mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-// mock_currencies_config!(Runtime);
-// mock_pallet_balances_config!(Runtime);
-// mock_frame_system_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_currencies_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
-// mock_tokens_config!(Runtime);
+mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
 
 parameter_types! {

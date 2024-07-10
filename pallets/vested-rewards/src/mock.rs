@@ -153,7 +153,6 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub const MinimumPeriod: u64 = 5;
     pub const CrowdloanVestingPeriod: u64 = 14400;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);

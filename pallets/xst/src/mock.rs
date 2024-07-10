@@ -140,31 +140,14 @@ construct_runtime! {
     }
 }
 
-impl frame_system::Config for Runtime {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Nonce = u64;
-    type Block = Block;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
+mock_technical_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_common_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_frame_system_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 

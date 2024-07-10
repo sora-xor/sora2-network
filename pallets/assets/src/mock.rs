@@ -162,29 +162,6 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
-}
-
 pub struct MockLiquidityProxy;
 
 impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {

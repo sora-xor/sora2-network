@@ -33,8 +33,9 @@ use core::str::FromStr;
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
-    LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
+    balance, fixed, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
+    LiquiditySourceType, Oracle, PredefinedAssetId, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_support::assert_ok;
 use frame_support::{assert_err, assert_noop};
@@ -2809,8 +2810,7 @@ fn swapping_should_not_affect_k_1() {
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_out = balance!(4);
         let expected_in = balance!(18.054162487462387185);
-        let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.054162487462387161));
+        let expected_fee = OutcomeFee::from_asset(GoldenTicket, balance!(0.054162487462387161));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -2871,8 +2871,8 @@ fn swapping_should_not_affect_k_2() {
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_out = balance!(4);
         let expected_in = balance!(4.826060727930826461);
-        let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.012036108324974924));
+        let expected_fee: OutcomeFee<AssetId, u128> =
+            OutcomeFee::from_asset(GoldenTicket, balance!(0.012036108324974924));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -2934,7 +2934,7 @@ fn swapping_should_not_affect_k_3() {
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_in = balance!(4);
         let expected_out = balance!(1.842315983985217123);
-        let expected_fee =
+        let expected_fee: OutcomeFee<AssetId, u128> =
             OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.012000000000000000));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
@@ -2997,8 +2997,7 @@ fn swapping_should_not_affect_k_4() {
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_in = balance!(4);
         let expected_out = balance!(3.589200000000000000);
-        let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010800000000000000));
+        let expected_fee = OutcomeFee::from_asset(GoldenTicket, balance!(0.010800000000000000));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -3094,64 +3093,70 @@ fn mint() {
 #[test]
 fn test_get_pair_info() {
     ExtBuilder::default().build().execute_with(|| {
-        let asset_base = GetBaseAssetId::get();
-        let asset_target = GreenPromise.into();
-        let asset_target_2 = BlackPepper.into();
+        let asset_base: super::mock::AssetId = GetBaseAssetId::get();
+        let asset_target: AssetId32<ComicAssetId> = GreenPromise.into();
+        let asset_target_2: AssetId32<ComicAssetId> = BlackPepper.into();
         let asset_chameleon = Potato.into();
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_target).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_target_2).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_target_2, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_target_2).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_target_2, &asset_chameleon).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<AssetId32<ComicAssetId>>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_chameleon).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_chameleon);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
-        let (pair, asset_chameleon_opt, flag) =
+        let (pair, asset_chameleon_opt, flag): (TradingPair<ComicAssetId>, _, _) =
             PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_base).unwrap();
-        assert_eq!(pair.base_asset_id, asset_base);
-        assert_eq!(pair.target_asset_id, asset_chameleon);
+        assert_eq!(
+            Into::<common::AssetId32<common::mock::ComicAssetId>>::into(pair.base_asset_id),
+            asset_base
+        );
+        assert_eq!(
+            Into::<common::AssetId32<common::mock::ComicAssetId>>::into(pair.target_asset_id),
+            asset_chameleon
+        );
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
@@ -3453,7 +3458,7 @@ fn price_without_impact_small_amount() {
             |dex_id, _, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
                 let amount = balance!(1);
                 // Buy base asset with desired input
-                let (quote_outcome_a, _) = PoolXYK::quote(
+                let (quote_outcome_a, _): (SwapOutcome<_, ComicAssetId>, _) = PoolXYK::quote(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3560,7 +3565,7 @@ fn price_without_impact_large_amount() {
             |dex_id, _, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
                 let amount = balance!(100000);
                 // Buy base asset with desired input
-                let (quote_outcome_a, _) = PoolXYK::quote(
+                let (quote_outcome_a, _): (SwapOutcome<_, ComicAssetId>, _) = PoolXYK::quote(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
