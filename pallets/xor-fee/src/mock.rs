@@ -38,10 +38,11 @@ use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Dynamic fee
 use common::DAI;
 use common::{
-    self, balance, mock_assets_config, mock_common_config, mock_currencies_config, mock_permissions_config
-    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
+    self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
+    VAL, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;

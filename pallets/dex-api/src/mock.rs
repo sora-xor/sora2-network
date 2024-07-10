@@ -298,7 +298,6 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
-
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;

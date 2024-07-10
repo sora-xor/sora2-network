@@ -33,10 +33,10 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, PriceToolsProvider};
 use common::{
     self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, mock_permissions_config, mock_pallet_timestamp_config
-    mock_tokens_config, Amount, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR,
-    XST, XSTUSD,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, PriceVariant, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -233,8 +233,6 @@ impl dex_api::Config for Runtime {
     type OrderBook = ();
     type WeightInfo = ();
 }
-
-
 
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;

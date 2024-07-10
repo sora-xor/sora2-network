@@ -5,8 +5,9 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, mock_pallet_timestamp_config, mock_permissions_config
-    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
+    Fixed, PSWAP, TBCD, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -203,7 +204,6 @@ impl pswap_distribution::Config for Runtime {
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
-
 
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
