@@ -961,9 +961,6 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
-    #[cfg(not(feature = "wip"))] // DEFI-R
-    type AssetRegulator = permissions::Pallet<Runtime>;
-    #[cfg(feature = "wip")] // DEFI-R
     type AssetRegulator = (
         permissions::Pallet<Runtime>,
         extended_assets::Pallet<Runtime>,
@@ -1047,9 +1044,6 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = GetChameleonPool;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    #[cfg(not(feature = "wip"))] // DEFI-R
-    type AssetRegulator = ();
-    #[cfg(feature = "wip")] // DEFI-R
     type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
@@ -2427,7 +2421,6 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
-#[cfg(feature = "wip")] // DEFI-R
 impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
@@ -2559,7 +2552,6 @@ construct_runtime! {
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
-        #[cfg(feature = "wip")] // DEFI-R
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
     }
 }
@@ -3323,7 +3315,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
-            #[cfg(feature = "wip")] // DEFI-R
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
             let storage_info = AllPalletsWithSystem::storage_info();
@@ -3420,7 +3411,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
-            #[cfg(feature = "wip")] // DEFI-R
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

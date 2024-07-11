@@ -314,7 +314,6 @@ wip = [
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "extended-assets/wip",
     "xor-fee/wip",
 ]
 
