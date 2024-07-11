@@ -1076,6 +1076,10 @@ impl<T: Config>
         let owner = Self::asset_owner(asset_id).ok_or(Error::<T>::AssetIdNotExists)?;
         Ok(owner)
     }
+
+    fn get_asset_type(asset_id: &T::AssetId) -> AssetType {
+        Self::asset_infos_v2(asset_id).asset_type
+    }
 }
 
 impl<T: Config>
