@@ -962,6 +962,14 @@ impl<T: Config> Pallet<T> {
             })
             .collect()
     }
+
+    pub fn update_asset_type(asset_id: &T::AssetId, asset_type: &AssetType) -> DispatchResult {
+        AssetInfosV2::<T>::mutate(asset_id, |ref mut asset_info| {
+            asset_info.asset_type = *asset_type;
+            Ok::<(), DispatchError>(())
+        })?;
+        Ok(())
+    }
 }
 
 impl<T: Config>
@@ -1214,5 +1222,9 @@ impl<T: Config>
             opt_content_src,
             opt_desc,
         )
+    }
+
+    fn update_asset_type(asset_id: &Self::AssetId, asset_type: &AssetType) -> DispatchResult {
+        Self::update_asset_type(asset_id, asset_type)
     }
 }

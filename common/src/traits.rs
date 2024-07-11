@@ -1275,6 +1275,8 @@ pub trait AssetManager<
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo;
+
+    fn update_asset_type(asset_id: &Self::AssetId, asset_type: &AssetType) -> DispatchResult;
 }
 
 impl<
@@ -1400,6 +1402,10 @@ impl<
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo {
+        unimplemented!()
+    }
+
+    fn update_asset_type(_asset_id: &Self::AssetId, _asset_type: &AssetType) -> DispatchResult {
         unimplemented!()
     }
 }

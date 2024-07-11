@@ -125,6 +125,11 @@ fn test_only_asset_owner_can_regulate_asset() {
             RuntimeOrigin::signed(owner),
             asset_id
         ));
+
+        assert_eq!(
+            Assets::asset_infos_v2(asset_id).asset_type,
+            AssetType::Regulated
+        );
     })
 }
 

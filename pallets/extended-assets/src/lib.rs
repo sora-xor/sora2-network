@@ -54,7 +54,7 @@ pub mod weights;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
     permissions::{PermissionId, TRANSFER},
-    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol, AssetType,
     BalancePrecision, ContentSource, Description, IsValid,
 };
 use frame_support::sp_runtime::DispatchError;
@@ -149,6 +149,7 @@ pub mod pallet {
             );
 
             <RegulatedAsset<T>>::set(asset_id, true);
+            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
             Self::deposit_event(Event::AssetRegulated { asset_id });
 
             Ok(())
@@ -189,7 +190,7 @@ pub mod pallet {
                 0,
                 0,
                 true,
-                common::AssetType::Soulbound,
+                AssetType::Soulbound,
                 image.clone(),
                 description.clone(),
             )?;
