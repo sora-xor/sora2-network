@@ -4084,7 +4084,6 @@ fn check_quote_chameleon_limits() {
 }
 
 #[test]
-#[cfg(feature = "wip")] // DEFI-R
 fn test_pool_fails_with_regulated_asset() {
     ExtBuilder::default().build().execute_with(|| {
         assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
@@ -4216,7 +4215,6 @@ fn test_pool_fails_with_regulated_asset() {
 }
 
 #[test]
-#[cfg(feature = "wip")] // DEFI-R
 fn test_pool_works_with_regulated_asset() {
     use common::AssetId32;
 
