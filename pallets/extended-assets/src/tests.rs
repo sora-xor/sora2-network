@@ -37,14 +37,6 @@ use permissions::MINT;
 use sp_core::crypto::AccountId32;
 
 #[test]
-fn test_default_value_asset_regulated() {
-    new_test_ext().execute_with(|| {
-        let default_value = ExtendedAssets::regulated_asset(XOR);
-        assert!(!default_value);
-    })
-}
-
-#[test]
 fn test_cannot_regulate_already_regulated_asset() {
     new_test_ext().execute_with(|| {
         let owner = bob();
@@ -123,6 +115,11 @@ fn test_only_asset_owner_can_regulate_asset() {
             RuntimeOrigin::signed(owner),
             asset_id
         ));
+
+        assert_eq!(
+            Assets::asset_infos_v2(asset_id).asset_type,
+            AssetType::Regulated
+        );
     })
 }
 

@@ -1086,6 +1086,8 @@ pub trait AssetInfoProvider<
     fn ensure_can_withdraw(asset_id: &AssetId, who: &AccountId, amount: Balance) -> DispatchResult;
 
     fn get_asset_owner(asset_id: &AssetId) -> Result<AccountId, DispatchError>;
+
+    fn get_asset_type(asset_id: &AssetId) -> AssetType;
 }
 
 impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
@@ -1157,6 +1159,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 
     fn get_asset_owner(_asset_id: &AssetId) -> Result<AccountId, DispatchError> {
+        unimplemented!()
+    }
+
+    fn get_asset_type(_asset_id: &AssetId) -> AssetType {
         unimplemented!()
     }
 }
@@ -1275,6 +1281,8 @@ pub trait AssetManager<
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo;
+
+    fn update_asset_type(asset_id: &Self::AssetId, asset_type: &AssetType) -> DispatchResult;
 }
 
 impl<
@@ -1400,6 +1408,10 @@ impl<
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo {
+        unimplemented!()
+    }
+
+    fn update_asset_type(_asset_id: &Self::AssetId, _asset_type: &AssetType) -> DispatchResult {
         unimplemented!()
     }
 }

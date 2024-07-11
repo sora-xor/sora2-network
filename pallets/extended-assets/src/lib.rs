@@ -54,7 +54,7 @@ pub mod weights;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
     permissions::{PermissionId, TRANSFER},
-    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol, AssetType,
     BalancePrecision, ContentSource, Description, IsValid,
 };
 use frame_support::sp_runtime::DispatchError;
@@ -140,7 +140,7 @@ pub mod pallet {
                 <Error<T>>::OnlyAssetOwnerCanRegulate
             );
             ensure!(
-                !Self::regulated_asset(asset_id),
+                !Self::is_asset_regulated(&asset_id),
                 <Error<T>>::AssetAlreadyRegulated
             );
             ensure!(
@@ -148,7 +148,7 @@ pub mod pallet {
                 <Error<T>>::NotAllowedToRegulateSoulboundAsset
             );
 
-            <RegulatedAsset<T>>::set(asset_id, true);
+            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
             Self::deposit_event(Event::AssetRegulated { asset_id });
 
             Ok(())
@@ -189,7 +189,7 @@ pub mod pallet {
                 0,
                 1,
                 true,
-                common::AssetType::Soulbound,
+                AssetType::Soulbound,
                 image.clone(),
                 description.clone(),
             )?;
@@ -373,17 +373,6 @@ pub mod pallet {
         RegulatedAssetsPerSBTExceeded,
     }
 
-    #[pallet::type_value]
-    pub fn DefaultRegulatedAsset<T: Config>() -> bool {
-        false
-    }
-
-    /// Mapping from asset id to whether it is regulated or not
-    #[pallet::storage]
-    #[pallet::getter(fn regulated_asset)]
-    pub type RegulatedAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, bool, ValueQuery, DefaultRegulatedAsset<T>>;
-
     /// Mapping from SBT (asset_id) to its metadata
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
@@ -420,8 +409,7 @@ impl<T: Config> Pallet<T> {
             return Err(Error::<T>::RegulatedAssetNoOwnedBySBTIssuer);
         }
 
-        let is_asset_regulated = Self::regulated_asset(regulated_asset_id);
-        if !is_asset_regulated {
+        if !Self::is_asset_regulated(regulated_asset_id) {
             return Err(Error::<T>::AssetNotRegulated);
         }
 
@@ -445,6 +433,11 @@ impl<T: Config> Pallet<T> {
         let is_expired = expires_at.map_or(false, |expiration_date| expiration_date < *now);
 
         is_holding && !is_expired
+    }
+
+    pub fn is_asset_regulated(asset_id: &AssetIdOf<T>) -> bool {
+        let asset_type = <T as Config>::AssetInfoProvider::get_asset_type(asset_id);
+        asset_type == AssetType::Regulated
     }
 }
 
@@ -479,7 +472,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         }
 
         // If asset is not regulated, then no need to check permissions
-        if !Self::regulated_asset(asset_id) {
+        if !Self::is_asset_regulated(asset_id) {
             return Ok(());
         }
 

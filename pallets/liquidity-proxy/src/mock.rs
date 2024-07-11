@@ -955,7 +955,7 @@ impl ExtBuilder {
 
         System::set_block_number(1);
         let owner_origin = RuntimeOrigin::signed(owner.clone());
-        if !ExtendedAssets::regulated_asset(asset_id) {
+        if !ExtendedAssets::is_asset_regulated(asset_id) {
             ExtendedAssets::regulate_asset(owner_origin.clone(), *asset_id)
                 .expect("Failed to regulate Asset");
         }
