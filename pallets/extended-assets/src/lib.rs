@@ -187,7 +187,7 @@ pub mod pallet {
                 symbol,
                 name.clone(),
                 0,
-                0,
+                1,
                 true,
                 common::AssetType::Soulbound,
                 image.clone(),

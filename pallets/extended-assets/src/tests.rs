@@ -140,15 +140,19 @@ fn test_issue_sbt_succeeds() {
         ));
 
         frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
+        let sbt_asset_id = Assets::gen_asset_id(&owner);
+
         // Owner can issue SBT
         assert_ok!(ExtendedAssets::issue_sbt(
-            RuntimeOrigin::signed(owner),
+            RuntimeOrigin::signed(owner.clone()),
             asset_symbol,
             asset_name,
             None,
             None,
             None,
         ));
+
+        assert_eq!(Assets::free_balance(&sbt_asset_id, &owner).unwrap(), 1);
     })
 }
 
