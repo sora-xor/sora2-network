@@ -30,7 +30,6 @@
 
 //! Regulated Assets module benchmarking.
 #![cfg(feature = "runtime-benchmarks")]
-#![cfg(feature = "wip")] // DEFI-R
 
 use super::test_utils::{add_asset, register_sbt_asset};
 use super::*;

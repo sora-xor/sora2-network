@@ -1,5 +1,3 @@
-#![cfg(feature = "wip")] // DEFI-R
-
 use common::{AssetIdOf, AssetManager, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
 use frame_support::assert_ok;
 use sp_core::crypto::AccountId32;
