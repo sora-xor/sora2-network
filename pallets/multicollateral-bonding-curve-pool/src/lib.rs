@@ -1195,7 +1195,7 @@ impl<T: Config> Pallet<T> {
         steps: usize,
         deduce_fee: bool,
     ) -> Result<Vec<(Balance, Balance, Balance)>, DispatchError> {
-        let mut res = vec![];
+        let mut res = Vec::new();
         for step in 1..steps {
             res.push(Self::decide_sell_amounts(
                 main_asset_id,
@@ -1229,7 +1229,7 @@ impl<T: Config> Pallet<T> {
         steps: usize,
         deduce_fee: bool,
     ) -> Result<Vec<(Balance, Balance, Balance)>, DispatchError> {
-        let mut res = vec![];
+        let mut res = Vec::new();
         if collateral_asset_id == &TBCD.into() {
             let (step_input, step_output, step_fee) = Self::decide_buy_amounts(
                 main_asset_id,
