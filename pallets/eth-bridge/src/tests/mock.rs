@@ -72,7 +72,7 @@ use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
 use frame_support::traits::UnfilteredDispatchable;
-use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
+use frame_support::traits::{BuildGenesisConfig, Everything, Get, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
@@ -262,7 +262,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const ExistentialDeposit: u128 = 1;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
@@ -280,7 +279,7 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
     }
 }
 
-/* mock_pallet_balances_config!(Runtime); */
+mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
@@ -339,23 +338,6 @@ where
 {
     type Extrinsic = TestExtrinsic;
     type OverarchingCall = RuntimeCall;
-}
-impl pallet_balances::Config for Runtime {
-    /// The type for recording an account's balance.
-    type Balance = Balance;
-    type DustRemoval = ();
-    /// The ubiquitous event type.
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
 }
 
 parameter_types! {

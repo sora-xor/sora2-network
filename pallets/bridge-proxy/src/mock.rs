@@ -41,11 +41,12 @@ use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, Balance,
+    DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{BuildGenesisConfig, Everything};
 use frame_system as system;
 use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
@@ -92,6 +93,8 @@ mock_currencies_config!(Test);
 mock_common_config!(Test);
 mock_tokens_config!(Test);
 mock_assets_config!(Test);
+mock_pallet_timestamp_config!(Test);
+mock_permissions_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -123,49 +126,7 @@ impl system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-impl permissions::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl pallet_balances::Config for Test {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
-}
-
-impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Test {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
-    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
 }
@@ -325,13 +286,6 @@ impl proxy::Config for Test {
     type ManagerOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
     type AccountIdConverter = sp_runtime::traits::Identity;
-}
-
-impl pallet_timestamp::Config for Test {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = ();
-    type WeightInfo = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
