@@ -40,9 +40,9 @@ mod mock;
 #[cfg(test)]
 mod new_tests;
 #[cfg(test)]
-mod test_utils;
+mod old_tests;
 #[cfg(test)]
-mod tests;
+mod test_utils;
 pub mod weights;
 
 use assets::WeightInfo as _;
