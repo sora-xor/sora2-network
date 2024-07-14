@@ -111,6 +111,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 impl Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 20;

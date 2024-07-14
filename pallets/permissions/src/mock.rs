@@ -30,7 +30,6 @@
 
 use crate::{self as permissions, Config, Scope, BURN, INIT_DEX, MINT, SLASH};
 use common::prelude::Balance;
-use common::{mock_frame_system_config, mock_pallet_balances_config};
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
@@ -64,13 +63,54 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
-
-mock_pallet_balances_config!(Runtime);
-
-mock_frame_system_config!(Runtime);
-
-impl Config for Runtime {
+impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+}
+
+parameter_types! {
+    pub const ExistentialDeposit: u128 = 0;
+}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
+    type DustRemoval = ();
+    type RuntimeEvent = RuntimeEvent;
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
+}
+
+impl frame_system::Config for Runtime {
+    type BaseCallFilter = frame_support::traits::Everything;
+    type BlockWeights = ();
+    type BlockLength = ();
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
+    type Nonce = u64;
+    type Block = Block;
+    type Hash = H256;
+    type Hashing = BlakeTwo256;
+    type AccountId = AccountId;
+    type Lookup = IdentityLookup<Self::AccountId>;
+    type RuntimeEvent = RuntimeEvent;
+    type BlockHashCount = frame_support::traits::ConstU64<250>;
+    type DbWeight = ();
+    type Version = ();
+    type PalletInfo = PalletInfo;
+    type AccountData = pallet_balances::AccountData<Balance>;
+    type OnNewAccount = ();
+    type OnKilledAccount = ();
+    type SystemWeightInfo = ();
+    type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 pub struct ExtBuilder {
