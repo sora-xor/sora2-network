@@ -32,8 +32,9 @@ use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, DEXInfo,
-    GetMarketInfo, TBCD,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, DEXInfo, GetMarketInfo,
+    TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -78,7 +79,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
@@ -95,7 +95,7 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Tokens: orml_tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -116,10 +116,9 @@ mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId,
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_assets_config!(Runtime);
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
+mock_permissions_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -128,41 +127,7 @@ impl trading_pair::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
-}
-
-impl orml_tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -188,13 +153,6 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
@@ -436,7 +394,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        orml_tokens::GenesisConfig::<Runtime> {
+        tokens::GenesisConfig::<Runtime> {
             balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

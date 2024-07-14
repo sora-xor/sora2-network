@@ -5,10 +5,10 @@ use common::{
 use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
 use frame_support::traits::Get;
-use orml_tokens::{AccountData, Accounts};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
+use tokens::{AccountData, Accounts};
 
 use crate::{Config, PoolProviders, Properties, TotalIssuances};
 
@@ -26,7 +26,7 @@ where
         AssetType,
         ContentSource,
         Description,
-    >>::AssetId: PartialEq<<T as orml_tokens::Config>::CurrencyId>,
+    >>::AssetId: PartialEq<<T as tokens::Config>::CurrencyId>,
 {
     if OldMarkerTokensIndex::<AssetIdOf<T>>::exists() {
         OldMarkerTokensIndex::<AssetIdOf<T>>::kill();
@@ -51,7 +51,7 @@ where
     }
 
     Accounts::<T>::translate(
-        |account, currency, data: AccountData<<T as orml_tokens::Config>::Balance>| {
+        |account, currency, data: AccountData<<T as tokens::Config>::Balance>| {
             if let Some((pool_acc, _, _)) = acc_asset_currs
                 .iter()
                 .find(|(_, _, probe_currency)| probe_currency == &currency)
