@@ -1653,13 +1653,13 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::set_fee_update_period())]
         </span><span class="kw">pub fn </span>set_fee_update_period(
             origin: OriginFor&lt;T&gt;,
-            new_period: &lt;T <span class="kw">as </span>frame_system::Config&gt;::BlockNumber,
+            _new_period: &lt;T <span class="kw">as </span>frame_system::Config&gt;::BlockNumber,
         ) -&gt; DispatchResultWithPostInfo {
             T::PermittedSetPeriod::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Dynamic fee
             </span>{
-                &lt;UpdatePeriod&lt;T&gt;&gt;::put(new_period);
-                <span class="self">Self</span>::deposit_event(Event::PeriodUpdated(new_period));
+                &lt;UpdatePeriod&lt;T&gt;&gt;::put(_new_period);
+                <span class="self">Self</span>::deposit_event(Event::PeriodUpdated(_new_period));
             }
             <span class="prelude-val">Ok</span>(().into())
         }

@@ -260,16 +260,16 @@
 <span class="kw">impl</span>&lt;T: frame_system::Config&gt; WeightInfo <span class="kw">for </span>SubstrateWeight&lt;T&gt; {
 	<span class="doccomment">/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets RegulatedAsset (r:1 w:1)
-	/// Proof: ExtendedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(2089), added: 4564, mode: MaxEncodedLen)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
 	</span><span class="kw">fn </span>regulate_asset() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `761`
-		//  Estimated: `10308`
-		// Minimum execution time: 18_000 nanoseconds.
-		</span>Weight::from_parts(<span class="number">19_000_000</span>, <span class="number">10308</span>)
+		//  Measured:  `1215`
+		//  Estimated: `331946`
+		// Minimum execution time: 22_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">331946</span>)
 			.saturating_add(T::DbWeight::get().reads(<span class="number">3</span>))
 			.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>))
 	}
@@ -332,7 +332,7 @@
 
 <span class="kw">impl </span>WeightInfo <span class="kw">for </span>() {
     <span class="kw">fn </span>regulate_asset() -&gt; Weight {
-        Weight::from_parts(<span class="number">20_000_000</span>, <span class="number">10308</span>)
+        Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">331946</span>)
             .saturating_add(RocksDbWeight::get().reads(<span class="number">3_u64</span>))
             .saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
     }

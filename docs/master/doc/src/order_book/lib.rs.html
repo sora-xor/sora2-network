@@ -1854,13 +1854,6 @@
 <a href="#1839" id="1839">1839</a>
 <a href="#1840" id="1840">1840</a>
 <a href="#1841" id="1841">1841</a>
-<a href="#1842" id="1842">1842</a>
-<a href="#1843" id="1843">1843</a>
-<a href="#1844" id="1844">1844</a>
-<a href="#1845" id="1845">1845</a>
-<a href="#1846" id="1846">1846</a>
-<a href="#1847" id="1847">1847</a>
-<a href="#1848" id="1848">1848</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3215,13 +3208,6 @@
             .try_into_balance() <span class="comment">// Returns error if value overflows.
             </span>.map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::TickSizeAndStepLotSizeAreTooBig)<span class="question-mark">?</span>;
         }
-
-        <span class="comment">// `max_lot_size` couldn&#39;t be more then total supply of `base` asset
-        </span><span class="kw">let </span>total_supply = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::total_issuance(<span class="kw-2">&amp;</span>order_book_id.base)<span class="question-mark">?</span>;
-        <span class="macro">ensure!</span>(
-            max_lot_size &lt;= total_supply,
-            Error::&lt;T&gt;::MaxLotSizeIsMoreThanTotalSupply
-        );
 
         <span class="prelude-val">Ok</span>(())
     }

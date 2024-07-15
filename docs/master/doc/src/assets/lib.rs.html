@@ -1231,6 +1231,22 @@
 <a href="#1216" id="1216">1216</a>
 <a href="#1217" id="1217">1217</a>
 <a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2195,6 +2211,14 @@
             })
             .collect()
     }
+
+    <span class="kw">pub fn </span>update_asset_type(asset_id: <span class="kw-2">&amp;</span>T::AssetId, asset_type: <span class="kw-2">&amp;</span>AssetType) -&gt; DispatchResult {
+        AssetInfosV2::&lt;T&gt;::mutate(asset_id, |<span class="kw-2">ref mut </span>asset_info| {
+            asset_info.asset_type = <span class="kw-2">*</span>asset_type;
+            <span class="prelude-val">Ok</span>::&lt;(), DispatchError&gt;(())
+        })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt;
@@ -2300,6 +2324,10 @@
     <span class="kw">fn </span>get_asset_owner(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;T::AccountId, DispatchError&gt; {
         <span class="kw">let </span>owner = <span class="self">Self</span>::asset_owner(asset_id).ok_or(Error::&lt;T&gt;::AssetIdNotExists)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(owner)
+    }
+
+    <span class="kw">fn </span>get_asset_type(asset_id: <span class="kw-2">&amp;</span>T::AssetId) -&gt; AssetType {
+        <span class="self">Self</span>::asset_infos_v2(asset_id).asset_type
     }
 }
 
@@ -2447,6 +2475,10 @@
             opt_content_src,
             opt_desc,
         )
+    }
+
+    <span class="kw">fn </span>update_asset_type(asset_id: <span class="kw-2">&amp;</span><span class="self">Self</span>::AssetId, asset_type: <span class="kw-2">&amp;</span>AssetType) -&gt; DispatchResult {
+        <span class="self">Self</span>::update_asset_type(asset_id, asset_type)
     }
 }
 </code></pre></div>

@@ -1982,6 +1982,101 @@
 <a href="#1967" id="1967">1967</a>
 <a href="#1968" id="1968">1968</a>
 <a href="#1969" id="1969">1969</a>
+<a href="#1970" id="1970">1970</a>
+<a href="#1971" id="1971">1971</a>
+<a href="#1972" id="1972">1972</a>
+<a href="#1973" id="1973">1973</a>
+<a href="#1974" id="1974">1974</a>
+<a href="#1975" id="1975">1975</a>
+<a href="#1976" id="1976">1976</a>
+<a href="#1977" id="1977">1977</a>
+<a href="#1978" id="1978">1978</a>
+<a href="#1979" id="1979">1979</a>
+<a href="#1980" id="1980">1980</a>
+<a href="#1981" id="1981">1981</a>
+<a href="#1982" id="1982">1982</a>
+<a href="#1983" id="1983">1983</a>
+<a href="#1984" id="1984">1984</a>
+<a href="#1985" id="1985">1985</a>
+<a href="#1986" id="1986">1986</a>
+<a href="#1987" id="1987">1987</a>
+<a href="#1988" id="1988">1988</a>
+<a href="#1989" id="1989">1989</a>
+<a href="#1990" id="1990">1990</a>
+<a href="#1991" id="1991">1991</a>
+<a href="#1992" id="1992">1992</a>
+<a href="#1993" id="1993">1993</a>
+<a href="#1994" id="1994">1994</a>
+<a href="#1995" id="1995">1995</a>
+<a href="#1996" id="1996">1996</a>
+<a href="#1997" id="1997">1997</a>
+<a href="#1998" id="1998">1998</a>
+<a href="#1999" id="1999">1999</a>
+<a href="#2000" id="2000">2000</a>
+<a href="#2001" id="2001">2001</a>
+<a href="#2002" id="2002">2002</a>
+<a href="#2003" id="2003">2003</a>
+<a href="#2004" id="2004">2004</a>
+<a href="#2005" id="2005">2005</a>
+<a href="#2006" id="2006">2006</a>
+<a href="#2007" id="2007">2007</a>
+<a href="#2008" id="2008">2008</a>
+<a href="#2009" id="2009">2009</a>
+<a href="#2010" id="2010">2010</a>
+<a href="#2011" id="2011">2011</a>
+<a href="#2012" id="2012">2012</a>
+<a href="#2013" id="2013">2013</a>
+<a href="#2014" id="2014">2014</a>
+<a href="#2015" id="2015">2015</a>
+<a href="#2016" id="2016">2016</a>
+<a href="#2017" id="2017">2017</a>
+<a href="#2018" id="2018">2018</a>
+<a href="#2019" id="2019">2019</a>
+<a href="#2020" id="2020">2020</a>
+<a href="#2021" id="2021">2021</a>
+<a href="#2022" id="2022">2022</a>
+<a href="#2023" id="2023">2023</a>
+<a href="#2024" id="2024">2024</a>
+<a href="#2025" id="2025">2025</a>
+<a href="#2026" id="2026">2026</a>
+<a href="#2027" id="2027">2027</a>
+<a href="#2028" id="2028">2028</a>
+<a href="#2029" id="2029">2029</a>
+<a href="#2030" id="2030">2030</a>
+<a href="#2031" id="2031">2031</a>
+<a href="#2032" id="2032">2032</a>
+<a href="#2033" id="2033">2033</a>
+<a href="#2034" id="2034">2034</a>
+<a href="#2035" id="2035">2035</a>
+<a href="#2036" id="2036">2036</a>
+<a href="#2037" id="2037">2037</a>
+<a href="#2038" id="2038">2038</a>
+<a href="#2039" id="2039">2039</a>
+<a href="#2040" id="2040">2040</a>
+<a href="#2041" id="2041">2041</a>
+<a href="#2042" id="2042">2042</a>
+<a href="#2043" id="2043">2043</a>
+<a href="#2044" id="2044">2044</a>
+<a href="#2045" id="2045">2045</a>
+<a href="#2046" id="2046">2046</a>
+<a href="#2047" id="2047">2047</a>
+<a href="#2048" id="2048">2048</a>
+<a href="#2049" id="2049">2049</a>
+<a href="#2050" id="2050">2050</a>
+<a href="#2051" id="2051">2051</a>
+<a href="#2052" id="2052">2052</a>
+<a href="#2053" id="2053">2053</a>
+<a href="#2054" id="2054">2054</a>
+<a href="#2055" id="2055">2055</a>
+<a href="#2056" id="2056">2056</a>
+<a href="#2057" id="2057">2057</a>
+<a href="#2058" id="2058">2058</a>
+<a href="#2059" id="2059">2059</a>
+<a href="#2060" id="2060">2060</a>
+<a href="#2061" id="2061">2061</a>
+<a href="#2062" id="2062">2062</a>
+<a href="#2063" id="2063">2063</a>
+<a href="#2064" id="2064">2064</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3168,6 +3263,97 @@
             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed.into())
     }
 
+    <span class="doccomment">/// Quote sell amounts for several steps
+    ///
+    /// Returns ordered pair: Vec&lt;(input_amount, output_amount, fee_amount)&gt;.
+    </span><span class="kw">fn </span>decide_step_sell_amounts(
+        main_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        amount: QuoteAmount&lt;Balance&gt;,
+        step_amount: Balance,
+        steps: usize,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Balance, Balance, Balance)&gt;, DispatchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::new();
+        <span class="kw">for </span>step <span class="kw">in </span><span class="number">1</span>..steps {
+            res.push(<span class="self">Self</span>::decide_sell_amounts(
+                main_asset_id,
+                collateral_asset_id,
+                amount.copy_direction(
+                    step_amount
+                        .checked_mul(step <span class="kw">as </span>u128)
+                        .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+                ),
+                deduce_fee,
+            )<span class="question-mark">?</span>);
+        }
+
+        res.push(<span class="self">Self</span>::decide_sell_amounts(
+            main_asset_id,
+            collateral_asset_id,
+            amount,
+            deduce_fee,
+        )<span class="question-mark">?</span>);
+        <span class="prelude-val">Ok</span>(res)
+    }
+
+    <span class="doccomment">/// Quote buy amounts for several steps
+    ///
+    /// Returns ordered pair: Vec&lt;(input_amount, output_amount, fee_amount)&gt;.
+    </span><span class="kw">fn </span>decide_step_buy_amounts(
+        main_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        amount: QuoteAmount&lt;Balance&gt;,
+        step_amount: Balance,
+        steps: usize,
+        deduce_fee: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(Balance, Balance, Balance)&gt;, DispatchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::new();
+        <span class="kw">if </span>collateral_asset_id == <span class="kw-2">&amp;</span>TBCD.into() {
+            <span class="kw">let </span>(step_input, step_output, step_fee) = <span class="self">Self</span>::decide_buy_amounts(
+                main_asset_id,
+                collateral_asset_id,
+                amount.copy_direction(step_amount),
+                deduce_fee,
+            )<span class="question-mark">?</span>;
+            <span class="kw">for </span>step <span class="kw">in </span><span class="number">1</span>..steps {
+                res.push((
+                    step_input
+                        .checked_mul(step <span class="kw">as </span>u128)
+                        .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+                    step_output
+                        .checked_mul(step <span class="kw">as </span>u128)
+                        .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+                    step_fee
+                        .checked_mul(step <span class="kw">as </span>u128)
+                        .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+                ))
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">for </span>step <span class="kw">in </span><span class="number">1</span>..steps {
+                <span class="kw">let </span>(step_input, step_output, step_fee) = <span class="self">Self</span>::decide_buy_amounts(
+                    main_asset_id,
+                    collateral_asset_id,
+                    amount.copy_direction(
+                        step_amount
+                            .checked_mul(step <span class="kw">as </span>u128)
+                            .ok_or(Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>,
+                    ),
+                    deduce_fee,
+                )<span class="question-mark">?</span>;
+                res.push((step_input, step_output, step_fee));
+            }
+        }
+
+        res.push(<span class="self">Self</span>::decide_buy_amounts(
+            main_asset_id,
+            collateral_asset_id,
+            amount,
+            deduce_fee,
+        )<span class="question-mark">?</span>);
+        <span class="prelude-val">Ok</span>(res)
+    }
+
     <span class="doccomment">/// Decompose SwapAmount into particular buy quotation query.
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
@@ -3678,27 +3864,31 @@
             .checked_div(samples_count <span class="kw">as </span>Balance)
             .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>volumes = Vec::new();
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=samples_count - <span class="number">1 </span>{
-            <span class="kw">let </span>volume = amount.copy_direction(
-                step.checked_mul(i <span class="kw">as </span>Balance)
-                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
-            );
-            volumes.push(volume);
-        }
-        volumes.push(amount);
+        <span class="kw">let </span>amounts = <span class="kw">if </span>input_asset_id == base_asset_id {
+            <span class="self">Self</span>::decide_step_sell_amounts(
+                <span class="kw-2">&amp;</span>input_asset_id,
+                <span class="kw-2">&amp;</span>output_asset_id,
+                amount,
+                step,
+                samples_count,
+                deduce_fee,
+            )<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="self">Self</span>::decide_step_buy_amounts(
+                <span class="kw-2">&amp;</span>output_asset_id,
+                <span class="kw-2">&amp;</span>input_asset_id,
+                amount,
+                step,
+                samples_count,
+                deduce_fee,
+            )<span class="question-mark">?
+        </span>};
 
         <span class="kw">let </span><span class="kw-2">mut </span>sub_in = Balance::zero();
         <span class="kw">let </span><span class="kw-2">mut </span>sub_out = Balance::zero();
         <span class="kw">let </span><span class="kw-2">mut </span>sub_fee = Balance::zero();
 
-        <span class="kw">for </span>volume <span class="kw">in </span>volumes {
-            <span class="kw">let </span>(input_amount, output_amount, fee_amount) = <span class="kw">if </span>input_asset_id == base_asset_id {
-                <span class="self">Self</span>::decide_sell_amounts(<span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, volume, deduce_fee)<span class="question-mark">?
-            </span>} <span class="kw">else </span>{
-                <span class="self">Self</span>::decide_buy_amounts(<span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>input_asset_id, volume, deduce_fee)<span class="question-mark">?
-            </span>};
-
+        <span class="kw">for </span>(input_amount, output_amount, fee_amount) <span class="kw">in </span>amounts {
             <span class="kw">let </span>input_chunk = input_amount.saturating_sub(sub_in);
             <span class="kw">let </span>output_chunk = output_amount.saturating_sub(sub_out);
 
