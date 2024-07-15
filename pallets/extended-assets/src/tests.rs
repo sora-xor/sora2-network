@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // DEFI-R
-
 use crate::mock::{Timestamp, *};
 use crate::test_utils::*;
 use crate::*;
@@ -37,14 +35,6 @@ use common::{AssetId32, PredefinedAssetId, TechAccountId, XOR};
 use frame_support::{assert_err, assert_ok};
 use permissions::MINT;
 use sp_core::crypto::AccountId32;
-
-#[test]
-fn test_default_value_asset_regulated() {
-    new_test_ext().execute_with(|| {
-        let default_value = ExtendedAssets::regulated_asset(XOR);
-        assert!(!default_value);
-    })
-}
 
 #[test]
 fn test_cannot_regulate_already_regulated_asset() {
@@ -125,6 +115,11 @@ fn test_only_asset_owner_can_regulate_asset() {
             RuntimeOrigin::signed(owner),
             asset_id
         ));
+
+        assert_eq!(
+            Assets::asset_infos_v2(asset_id).asset_type,
+            AssetType::Regulated
+        );
     })
 }
 
@@ -142,15 +137,19 @@ fn test_issue_sbt_succeeds() {
         ));
 
         frame_system::Pallet::<TestRuntime>::inc_providers(&owner);
+        let sbt_asset_id = Assets::gen_asset_id(&owner);
+
         // Owner can issue SBT
         assert_ok!(ExtendedAssets::issue_sbt(
-            RuntimeOrigin::signed(owner),
+            RuntimeOrigin::signed(owner.clone()),
             asset_symbol,
             asset_name,
             None,
             None,
             None,
         ));
+
+        assert_eq!(Assets::free_balance(&sbt_asset_id, &owner).unwrap(), 1);
     })
 }
 

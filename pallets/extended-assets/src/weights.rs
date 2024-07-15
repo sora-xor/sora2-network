@@ -74,16 +74,16 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Assets AssetOwners (r:1 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets RegulatedAsset (r:1 w:1)
-	/// Proof: ExtendedAssets RegulatedAsset (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(2089), added: 4564, mode: MaxEncodedLen)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
 	fn regulate_asset() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `761`
-		//  Estimated: `10308`
-		// Minimum execution time: 18_000 nanoseconds.
-		Weight::from_parts(19_000_000, 10308)
+		//  Measured:  `1215`
+		//  Estimated: `331946`
+		// Minimum execution time: 22_000 nanoseconds.
+		Weight::from_parts(23_000_000, 331946)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
@@ -146,7 +146,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 impl WeightInfo for () {
     fn regulate_asset() -> Weight {
-        Weight::from_parts(20_000_000, 10308)
+        Weight::from_parts(23_000_000, 331946)
             .saturating_add(RocksDbWeight::get().reads(3_u64))
             .saturating_add(RocksDbWeight::get().writes(1_u64))
     }
