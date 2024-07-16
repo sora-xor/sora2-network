@@ -248,7 +248,7 @@ macro_rules! mock_assets_config {
 macro_rules! mock_pallet_balances_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const ExistentialDeposit: u128 = 0;
+            pub const ExistentialDeposit: u128 = 1;
         }
         impl pallet_balances::Config for $runtime {
             type Balance = Balance;
