@@ -195,7 +195,6 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
-            + Copy
             + Encode
             + Decode
             + scale_info::TypeInfo
