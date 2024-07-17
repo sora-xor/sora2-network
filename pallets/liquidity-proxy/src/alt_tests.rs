@@ -67,8 +67,6 @@ fn bob<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
     <T as frame_system::Config>::AccountId::decode(&mut &[2u8; 32][..]).unwrap()
 }
 
-// todo #750, it is a test just to catch the problem. All tests will be written in #750
-
 #[test]
 fn check_alt() {
     ext().execute_with(|| {
