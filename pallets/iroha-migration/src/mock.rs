@@ -39,13 +39,12 @@ use common::{
     PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::BuildStorage;
 use sp_runtime::{self, Perbill};
@@ -56,7 +55,6 @@ type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
@@ -139,9 +137,9 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     pallet_balances::GenesisConfig::<Runtime> {
         balances: vec![
-            (ALICE, 0u128.into()),
-            (BOB, 0u128.into()),
-            (MINTING_ACCOUNT, 0u128.into()),
+            (ALICE, 1u128.into()),
+            (BOB, 1u128.into()),
+            (MINTING_ACCOUNT, 1u128.into()),
         ],
     }
     .assimilate_storage(&mut t)

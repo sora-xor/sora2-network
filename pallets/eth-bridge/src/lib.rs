@@ -342,7 +342,6 @@ pub mod pallet {
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
-    use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use log;
 

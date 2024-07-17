@@ -32,19 +32,18 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    TechPurpose, DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
+    self, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, BURN, MINT};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill, Percent};
 
@@ -146,7 +145,7 @@ impl ExtBuilder {
                     account_id.clone(),
                     (faucet::DEFAULT_LIMIT * FixedWrapper::from(1.5)).into_balance(),
                 ),
-                (alice(), balance!(0)),
+                (alice(), 1),
             ],
         }
         .assimilate_storage(&mut t)
@@ -170,7 +169,7 @@ impl ExtBuilder {
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    Balance::from(0u32),
+                    Balance::from(0_u32),
                     true,
                     None,
                     None,

@@ -60,7 +60,6 @@ use frame_support::sp_runtime::offchain::testing::{
     OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
 use frame_support::sp_runtime::serde::{Serialize, Serializer};
-use frame_support::sp_runtime::testing::Header;
 use frame_support::sp_runtime::traits::{
     self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
     IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
@@ -72,7 +71,7 @@ use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
 use frame_support::traits::UnfilteredDispatchable;
-use frame_support::traits::{BuildGenesisConfig, Everything, Get, PrivilegeCmp};
+use frame_support::traits::{Everything, Get, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
@@ -106,7 +105,6 @@ pub type Signature = MultiSignature;
 /// to the public key of our transaction signing scheme.
 pub type AccountId = AccountId32;
 pub type AssetId = AssetId32<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
@@ -837,11 +835,11 @@ impl ExtBuilder {
             .iter()
             .map(|(acc, ..)| acc)
             .chain(vec![&self.root_account_id, &authority_account_id])
-            .map(|x| (x.clone(), Balance::from(0u32)))
+            .map(|x| (x.clone(), Balance::from(1u32)))
             .collect();
-        balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 0)));
+        balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 1)));
         for (_net_id, ext_network) in &self.networks {
-            balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 0)));
+            balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 1)));
         }
         balances.sort_by_key(|x| x.0.clone());
         balances.dedup_by_key(|x| x.0.clone());

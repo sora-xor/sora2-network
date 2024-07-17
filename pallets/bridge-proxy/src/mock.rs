@@ -46,11 +46,10 @@ use common::{
     DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
-use frame_support::traits::{BuildGenesisConfig, Everything};
+use frame_support::traits::Everything;
 use frame_system as system;
 use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
@@ -63,6 +62,7 @@ use crate as proxy;
 pub type Block = frame_system::mocking::MockBlock<Test>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type BlockNumber = u64;
+type Moment = u64;
 
 frame_support::construct_runtime!(
     pub enum Test {

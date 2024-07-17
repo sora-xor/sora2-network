@@ -1,14 +1,14 @@
-use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
+use common::AccountIdOf;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, DEXId, DEXInfo, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything, Hooks};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -16,13 +16,9 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill, Percent};
 
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::crypto::AccountId32;
 
@@ -32,8 +28,8 @@ pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
@@ -119,7 +115,6 @@ impl orml_tokens::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub const Moment: u64 = u64;
 }
 
 impl demeter_farming_platform::Config for Runtime {

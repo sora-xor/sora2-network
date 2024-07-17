@@ -10,7 +10,7 @@ use common::{
     AssetSymbol, BalancePrecision, ContentSource, Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything, Hooks};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -18,7 +18,6 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{BuildStorage, Perbill, Percent};
 

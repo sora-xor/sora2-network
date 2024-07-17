@@ -37,14 +37,13 @@ use common::{
     mock_tokens_config, AssetId32, DEXId, DEXInfo, Fixed, DOT, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::Scope;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill};
 
@@ -52,7 +51,6 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 type AssetId = AssetId32<common::PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const ALICE: AccountId32 = AccountId32::new([1; 32]);

@@ -55,7 +55,6 @@ use frame_support::{ensure, fail};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
 use frame_system::pallet_prelude::BlockNumberFor;
 use log::{debug, error, info, trace, warn};
-use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_std::collections::btree_map::BTreeMap;

@@ -37,7 +37,7 @@ use common::{
     TradingPair,
 };
 use frame_support::dispatch::DispatchResult;
-use frame_support::{ensure, fail};
+use frame_support::ensure;
 use orml_traits::GetByKey;
 use sp_runtime::DispatchError;
 

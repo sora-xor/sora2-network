@@ -1,8 +1,6 @@
 use crate::{self as ceres_launchpad};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
@@ -11,14 +9,13 @@ use common::{
     TBCD, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything, Hooks};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::{BuildStorage, MultiSignature, Perbill, Percent};
 
@@ -30,8 +27,8 @@ pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 construct_runtime! {
     pub enum Runtime {
@@ -93,7 +90,7 @@ parameter_types! {
 }
 
 impl crate::Config for Runtime {
-    const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
+    const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();

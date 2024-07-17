@@ -1,8 +1,6 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
@@ -10,7 +8,7 @@ use common::{
     ContentSource, DEXId, Description, CERES_ASSET_ID, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{BuildGenesisConfig, Everything, Hooks};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -18,11 +16,9 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{BuildStorage, Perbill};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 

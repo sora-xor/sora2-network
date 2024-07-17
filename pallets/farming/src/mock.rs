@@ -38,9 +38,7 @@ use common::{
     DEXId, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{
-    BuildGenesisConfig, Everything, OnFinalize, OnInitialize, PrivilegeCmp,
-};
+use frame_support::traits::{Everything, OnFinalize, OnInitialize, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -48,15 +46,10 @@ use frame_system::EnsureRoot;
 use permissions::*;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill, Percent};
 use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
-
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
@@ -64,7 +57,6 @@ pub type Amount = i128;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 

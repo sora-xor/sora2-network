@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use core::marker::PhantomData;
-
 use crate::{self as dex_api, Config};
 use common::alt::DiscreteQuotation;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
@@ -43,7 +41,7 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::{BuildGenesisConfig, Everything};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -51,13 +49,11 @@ use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -497,24 +493,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        // <crate::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-        //     &crate::GenesisConfig {
-        //         source_types: self.source_types,
-        //         phantom: PhantomData
-        //     },
-        //     &mut t,
-        // )
-        // .unwrap();
-
-        // TODO: This change may be incorrect and will be noted
-        t.assimilate_storage(
-            &mut crate::GenesisConfig::<Runtime> {
-                source_types: self.source_types,
-                phantom: Default::default(),
-            }
-            .build_storage()
-            .unwrap(),
-        )
+        crate::GenesisConfig::<Runtime> {
+            phantom: Default::default(),
+            source_types: self.source_types,
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         t.into()

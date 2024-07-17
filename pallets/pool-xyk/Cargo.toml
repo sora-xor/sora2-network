@@ -57,6 +57,7 @@ default = ['std']
 std = [
     'codec/std',
     "scale-info/std",
+    "common/std",
     'currencies/std',
     'frame-support/std',
     'frame-system/std',

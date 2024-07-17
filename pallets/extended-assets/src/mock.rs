@@ -45,13 +45,12 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{BuildStorage, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
 type Balance = u128;
 type Signature = MultiSignature;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -125,8 +124,8 @@ construct_runtime! {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
+    frame_system::GenesisConfig::<TestRuntime>::default()
+        .build_storage()
         .unwrap()
         .into()
 }

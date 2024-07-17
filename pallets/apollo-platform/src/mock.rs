@@ -17,7 +17,7 @@ use {
         construct_runtime,
         pallet_prelude::Weight,
         parameter_types,
-        traits::{BuildGenesisConfig, ConstU64, Everything, Hooks},
+        traits::{ConstU64, Everything, Hooks},
     },
     frame_system::{
         self, offchain::SendTransactionTypes, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin,
@@ -25,13 +25,12 @@ use {
     permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
     sp_runtime::{
-        testing::{Header, TestXt},
+        testing::TestXt,
         traits::{BlakeTwo256, IdentityLookup, Zero},
-        AccountId32, BuildStorage, Perbill, Percent,
+        AccountId32, BuildStorage, Perbill, Percent, Permill,
     },
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 
@@ -114,7 +113,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([100; 32]);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
-    pub const MinimumPeriod: u64 = 5;
 }
 
 parameter_types! {

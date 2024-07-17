@@ -845,6 +845,7 @@ dependencies = [
  "hex-literal",
  "log",
  "oracle-proxy",
+ "orml-tokens",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",

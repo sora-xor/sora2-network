@@ -7,7 +7,7 @@ use common::{
 };
 use frame_support::{assert_err, assert_ok, Identity};
 
-use crate::AccountIdOf;
+use common::AccountIdOf;
 use frame_support::pallet_prelude::StorageMap;
 use frame_support::storage::types::ValueQuery;
 use frame_support::traits::Hooks;
