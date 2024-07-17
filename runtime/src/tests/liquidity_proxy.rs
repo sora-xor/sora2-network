@@ -603,5 +603,99 @@ fn chameleon_pool_swaps_burn_kxor() {
             PoolXYK::total_issuance(&pool_account).unwrap(),
             balance!(122474.487139158904905757),
         );
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            0,
+            XOR,
+            ETH,
+            SwapAmount::with_desired_input(balance!(10000000), 1),
+            vec![],
+            common::FilterMode::Disabled
+        ));
+
+        ensure_balances(
+            alice(),
+            vec![
+                (ETH, balance!(1000000561.653712407606758439)),
+                (KXOR, balance!(974999999.999999999999918350)),
+                (XOR, balance!(990000000)),
+            ],
+        );
+
+        ensure_balances(
+            pool_account.clone(),
+            vec![
+                (ETH, balance!(188.346287592393241561)),
+                (XOR, balance!(9970000)),
+                (KXOR, balance!(10000000.000000000000081650)),
+            ],
+        );
+
+        assert_eq!(
+            PoolXYK::reserves(XOR, ETH),
+            (
+                balance!(19970000.000000000000081650),
+                balance!(188.346287592393241561)
+            )
+        );
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            0,
+            ETH,
+            KXOR,
+            SwapAmount::with_desired_output(balance!(9970000), balance!(10000)),
+            vec![],
+            common::FilterMode::Disabled
+        ));
+
+        ensure_balances(
+            alice(),
+            vec![
+                (ETH, balance!(1000000372.740685735196285461)),
+                (KXOR, balance!(984969999.999999999999918350)),
+                (XOR, balance!(990000000)),
+            ],
+        );
+
+        ensure_balances(
+            pool_account.clone(),
+            vec![
+                (ETH, balance!(377.259314264803714539)),
+                (XOR, balance!(9970000)),
+                (KXOR, balance!(0.000000000000081650)),
+            ],
+        );
+
+        assert_eq!(
+            PoolXYK::reserves(XOR, ETH),
+            (
+                balance!(9970000.000000000000081650),
+                balance!(377.259314264803714539)
+            )
+        );
+
+        let (reserve_x, reserve_y) = PoolXYK::reserves(XOR, ETH);
+        let real_issuance = to_fixed_wrapper!(reserve_x)
+            .multiply_and_sqrt(&to_fixed_wrapper!(reserve_y))
+            .try_into_balance()
+            .unwrap();
+        assert_eq!(real_issuance, balance!(61329.237425718029498246));
+
+        assert_eq!(
+            PoolXYK::pool_providers(pool_account.clone(), alice()),
+            Some(balance!(61237.243569579452452727))
+        );
+
+        assert_eq!(
+            PoolXYK::pool_providers(pool_account.clone(), bob()),
+            Some(balance!(61237.243569579452453030)),
+        );
+
+        assert_eq!(
+            PoolXYK::total_issuance(&pool_account).unwrap(),
+            balance!(122474.487139158904905757),
+        );
     });
 }
