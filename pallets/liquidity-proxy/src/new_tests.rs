@@ -35,7 +35,7 @@ use codec::Decode;
 use common::prelude::{OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, DexIdOf, FilterMode, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    VAL, XOR,
+    TBCD, VAL, XOR,
 };
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
@@ -432,5 +432,57 @@ fn check_rounding() {
             .outcome,
             SwapOutcome::new(balance!(1), Default::default())
         );
+    });
+}
+
+#[test]
+fn check_tbcd_swap() {
+    ext().execute_with(|| {
+        let pair = AssetPairInput::new(DEX.into(), TBCD, XOR, balance!(0.3), None);
+        assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
+            bob::<Runtime>(),
+            vec![pair]
+        ));
+
+        assert_ok!(liquidity_sources::initialize_mcbc::<Runtime>(
+            None,
+            Vec::new(),
+            Some(TbcdCollateralInput {
+                parameters: CollateralCommonParameters {
+                    ref_prices: Some(AssetPrices {
+                        buy: balance!(1),
+                        sell: balance!(1)
+                    }),
+                    reserves: Some(balance!(10000))
+                },
+                ref_xor_prices: Some(AssetPrices {
+                    buy: balance!(0.000020960663069257),
+                    sell: balance!(0.000020960663069257)
+                })
+            }),
+        ));
+
+        <Runtime as common::Config>::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            alice::<Runtime>(),
+            TBCD,
+            balance!(1000).try_into().unwrap(),
+        )
+        .unwrap();
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(1),
+            min_amount_out: balance!(0),
+        };
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice::<Runtime>()),
+            DEX.into(),
+            TBCD,
+            XOR,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
     });
 }
