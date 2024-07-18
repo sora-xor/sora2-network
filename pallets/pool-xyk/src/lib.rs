@@ -727,6 +727,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             fee: Default::default(),
             fee_account: None,
             get_fee_from_destination: None,
+            base_chameleon_asset: None,
+            is_chameleon_pool: None,
             dex_id: *dex_id,
         });
         common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::prepare_and_validate(
