@@ -102,6 +102,8 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -162,6 +164,8 @@
     <span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, Balance&gt;,
     <span class="kw">pub </span>fee_account: <span class="prelude-ty">Option</span>&lt;TechAccountId&gt;,
     <span class="kw">pub </span>get_fee_from_destination: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="kw">pub </span>base_chameleon_asset: <span class="prelude-ty">Option</span>&lt;AssetId&gt;,
+    <span class="kw">pub </span>is_chameleon_pool: <span class="prelude-ty">Option</span>&lt;bool&gt;,
     <span class="kw">pub </span>dex_id: DEXId,
 }
 

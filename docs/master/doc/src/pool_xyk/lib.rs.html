@@ -1395,6 +1395,8 @@
 <a href="#1380" id="1380">1380</a>
 <a href="#1381" id="1381">1381</a>
 <a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2124,6 +2126,8 @@
             fee: Default::default(),
             fee_account: <span class="prelude-val">None</span>,
             get_fee_from_destination: <span class="prelude-val">None</span>,
+            base_chameleon_asset: <span class="prelude-val">None</span>,
+            is_chameleon_pool: <span class="prelude-val">None</span>,
             dex_id: <span class="kw-2">*</span>dex_id,
         });
         common::SwapRulesValidation::&lt;AccountIdOf&lt;T&gt;, TechAccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, T&gt;::prepare_and_validate(

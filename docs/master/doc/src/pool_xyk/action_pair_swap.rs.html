@@ -437,6 +437,19 @@
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -474,7 +487,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::to_fixed_wrapper;
 <span class="kw">use </span>common::prelude::{AssetIdOf, Balance, FixedWrapper};
-<span class="kw">use </span>common::{balance, AssetInfoProvider, DexInfoProvider};
+<span class="kw">use </span>common::{balance, AssetInfoProvider, AssetManager, DexInfoProvider};
 <span class="kw">use </span>sp_runtime::traits::Zero;
 
 <span class="kw">use </span><span class="kw">crate</span>::bounds::<span class="kw-2">*</span>;
@@ -561,17 +574,19 @@
         } <span class="kw">else if </span>balance_st &lt;= <span class="number">0 </span>|| balance_tt &lt;= <span class="number">0 </span>{
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::PoolIsInvalid)<span class="question-mark">?</span>;
         }
+        <span class="kw">let </span>additional_swap_params = Pallet::&lt;T&gt;::get_additional_swap_params(
+            base_asset_id,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.destination.asset,
+        )<span class="question-mark">?</span>;
 
-        <span class="kw">match </span><span class="self">self</span>.get_fee_from_destination {
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">let </span>is_fee_from_d = Pallet::&lt;T&gt;::decide_is_fee_from_destination(
-                    base_asset_id,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.destination.asset,
-                )<span class="question-mark">?</span>;
-                <span class="self">self</span>.get_fee_from_destination = <span class="prelude-val">Some</span>(is_fee_from_d);
-            }
-            <span class="kw">_ </span>=&gt; (),
+        <span class="kw">if </span><span class="self">self</span>.get_fee_from_destination.is_none() {
+            <span class="self">self</span>.get_fee_from_destination = <span class="prelude-val">Some</span>(additional_swap_params.is_fee_from_destination);
+        }
+
+        <span class="kw">if </span><span class="self">self</span>.is_chameleon_pool.is_none() {
+            <span class="self">self</span>.is_chameleon_pool = <span class="prelude-val">Some</span>(additional_swap_params.is_chameleon_pool);
+            <span class="self">self</span>.base_chameleon_asset = additional_swap_params.base_chameleon_asset;
         }
 
         <span class="comment">// Recommended fee, will be used if fee is not specified or for checking if specified.
@@ -814,12 +829,23 @@
                     <span class="self">self</span>.destination.amount.unwrap(),
                 )<span class="question-mark">?</span>;
             } <span class="kw">else </span>{
-                technical::Pallet::&lt;T&gt;::transfer_in(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
-                    <span class="kw-2">&amp;</span>source,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.pool_account,
-                    <span class="self">self</span>.source.amount.unwrap() - fee,
-                )<span class="question-mark">?</span>;
+                <span class="kw">if </span><span class="self">self</span>.is_chameleon_pool.unwrap()
+                    &amp;&amp; <span class="self">self</span>.base_chameleon_asset.unwrap() == <span class="self">self</span>.source.asset
+                {
+                    T::AssetManager::burn_from(
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
+                        <span class="kw-2">&amp;</span>source,
+                        <span class="kw-2">&amp;</span>source,
+                        <span class="self">self</span>.source.amount.unwrap() - fee,
+                    )<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    technical::Pallet::&lt;T&gt;::transfer_in(
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
+                        <span class="kw-2">&amp;</span>source,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.pool_account,
+                        <span class="self">self</span>.source.amount.unwrap() - fee,
+                    )<span class="question-mark">?</span>;
+                }
                 technical::Pallet::&lt;T&gt;::transfer_in(
                     <span class="kw-2">&amp;</span><span class="self">self</span>.source.asset,
                     <span class="kw-2">&amp;</span>source,
