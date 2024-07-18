@@ -9,6 +9,7 @@ use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{pallet_prelude::StorageVersion, traits::GetStorageVersion as _};
 use log::{error, info};
 use sp_runtime::traits::Zero;
+use sp_runtime::TryRuntimeError;
 
 #[cfg(feature = "try-runtime")]
 use common::AssetInfoProvider;
@@ -96,32 +97,32 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         frame_support::ensure!(
             <T as technical::Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into()).is_err(),
-            "TBCD asset already registered"
+            TryRuntimeError::Other("TBCD asset already registered")
         );
         frame_support::ensure!(
             !crate::EnabledTargets::<T>::get().contains(&TBCD.into()),
-            "TBCD pool already initialized"
+            TryRuntimeError::Other("TBCD pool already initialized")
         );
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 1,
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         <T as technical::Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into())?;
         frame_support::ensure!(
             crate::EnabledTargets::<T>::get().contains(&TBCD.into()),
-            "TBCD pool is not initialized"
+            TryRuntimeError::Other("TBCD pool is not initialized")
         );
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 2,
-            "should be upgraded to version 1"
+            TryRuntimeError::Other("should be upgraded to version 1")
         );
         Ok(())
     }

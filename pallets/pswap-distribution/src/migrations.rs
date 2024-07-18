@@ -36,6 +36,7 @@ pub mod v2 {
     use common::AccountIdOf;
     use frame_support::traits::StorageVersion;
     use log::info;
+    use sp_runtime::TryRuntimeError;
     use sp_std::prelude::Vec;
 
     use super::*;
@@ -73,19 +74,19 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
-                "Wrong storage version before upgrade"
+                TryRuntimeError::Other("Wrong storage version before upgrade")
             );
             Ok(Vec::new())
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-                "Wrong storage version after upgrade"
+                TryRuntimeError::Other("Wrong storage version after upgrade")
             );
             let pools = &G::get();
 

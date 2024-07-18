@@ -35,7 +35,7 @@ use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;
 use log::{error, info};
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchResult, TryRuntimeError};
 use sp_std::prelude::Vec;
 
 use crate::{PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
@@ -228,19 +228,19 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(3),
-            "should be upgraded to version 3"
+            TryRuntimeError::Other("should be upgraded to version 3")
         );
         Ok(())
     }
