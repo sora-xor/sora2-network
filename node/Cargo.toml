@@ -122,6 +122,11 @@ wip = [
     "beefy-light-client-rpc",
 ]
 
+stage = [
+    "framenode-chain-spec/stage",
+    "framenode-runtime/stage",
+]
+
 ready-to-test = [
     "framenode-chain-spec/ready-to-test",
     "framenode-runtime/ready-to-test",
