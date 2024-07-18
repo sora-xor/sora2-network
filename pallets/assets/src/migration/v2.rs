@@ -130,7 +130,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
             "must upgrade linearly"
@@ -139,7 +139,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), DispatchError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
             "should be upgraded to version 1"

@@ -35,9 +35,10 @@
 use super::{Call, Config, Event, Pallet};
 
 use codec::Decode;
-use frame_benchmarking::{benchmarks, Zero};
+use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
 
 use common::{balance, AssetManager, AssetName, AssetSymbol, Balance, XOR};
