@@ -108,6 +108,7 @@ enum-as-inner = "=0.5.1"
 sc-consensus-babe-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 sc-consensus-epochs = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 sp-keystore = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+sp-statement-store = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 
 # TODO remove after toolchain is updated
 # newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
@@ -156,6 +157,7 @@ runtime-benchmarks = [
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
     "sc-client-db/runtime-benchmarks",
+    "sc-service/runtime-benchmarks",
 ]
 
 try-runtime = [
