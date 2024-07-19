@@ -36,7 +36,7 @@ build() {
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'testnet'* ]]; then
-        featureList='private-net include-real-files ready-to-test'
+        featureList='private-net include-real-files stage'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
         sudoCheckStatus=1

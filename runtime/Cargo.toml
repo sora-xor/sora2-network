@@ -319,8 +319,6 @@ wip = [
 
 stage = ["framenode-chain-spec/stage"]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
-
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
     "assets/runtime-benchmarks",

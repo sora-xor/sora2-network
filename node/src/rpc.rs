@@ -88,8 +88,8 @@ where
     Ok(rpc)
 }
 
-#[cfg(feature = "ready-to-test")]
-pub fn add_ready_for_test_rpc(
+#[cfg(feature = "stage")]
+pub fn add_stage_rpc(
     rpc: RpcExtension,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
     Ok(rpc)

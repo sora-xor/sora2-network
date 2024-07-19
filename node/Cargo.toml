@@ -127,11 +127,6 @@ stage = [
     "framenode-runtime/stage",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
-]
-
 runtime-benchmarks = [
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
