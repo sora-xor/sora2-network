@@ -38,7 +38,7 @@ type DEXId = common::DEXId;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 use crate::bounds::*;
 
