@@ -1827,7 +1827,7 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
@@ -2223,7 +2223,7 @@ fn mainnet_genesis(
             None,
         )
     }));
-    GenesisConfig {
+    RuntimeGenesisConfig {
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -2239,6 +2239,7 @@ fn mainnet_genesis(
 
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
+            ..Default::default()
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
@@ -2246,9 +2247,11 @@ fn mainnet_genesis(
         babe: BabeConfig {
             authorities: vec![],
             epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+            ..Default::default()
         },
         grandpa: GrandpaConfig {
             authorities: vec![],
+            ..Default::default()
         },
         session: SessionConfig {
             keys: initial_authorities
@@ -2482,6 +2485,7 @@ fn mainnet_genesis(
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
+            ..Default::default()
         },
         eth_bridge: EthBridgeConfig {
             authority_account: Some(eth_bridge_authority_account_id.clone()),
@@ -2553,6 +2557,7 @@ fn mainnet_genesis(
         },
         beefy: BeefyConfig {
             authorities: vec![],
+            genesis_block: None,
         },
     }
 }
