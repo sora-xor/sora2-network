@@ -54,7 +54,7 @@ use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, BuildStorage, DispatchError, Perbill, Percent};
+use sp_runtime::{AccountId32, BuildStorage, DispatchError, Perbill, Percent, Permill};
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
 
