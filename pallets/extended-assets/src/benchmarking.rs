@@ -63,6 +63,7 @@ benchmarks! {
         let owner = asset_owner::<T>();
         let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
         frame_system::Pallet::<T>::inc_providers(&owner);
+        let asset_id = T::AssetManager::gen_asset_id(&owner);
     }: {
         Pallet::<T>::register_regulated_asset(
             owner_origin,
@@ -75,15 +76,21 @@ benchmarks! {
             None
         ).unwrap();
     }
+    verify{
+        assert_last_event::<T>(Event::RegulatedAssetRegistered  {
+             asset_id,
+            }.into()
+        );
+    }
 
 
     issue_sbt{
         let owner = asset_owner::<T>();
         frame_system::Pallet::<T>::inc_providers(&owner);
-        let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner).into();
+        let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
         let asset_name =  AssetName(b"Soulbound Token".to_vec());
         let asset_symbol = AssetSymbol(b"SBT".to_vec());
-
+        let asset_id = T::AssetManager::gen_asset_id(&owner);
     }: {
         Pallet::<T>::issue_sbt(
             owner_origin,
@@ -93,6 +100,16 @@ benchmarks! {
             None,
             None,
         ).unwrap();
+    }
+    verify{
+        assert_last_event::<T>(Event::SoulboundTokenIssued  {
+             asset_id,
+             owner,
+             external_url: None,
+             image: None,
+             issued_at: pallet_timestamp::Pallet::<T>::now()
+            }.into()
+        );
     }
 
     set_sbt_expiration {

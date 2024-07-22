@@ -125,12 +125,22 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        /// Registers a new regulated asset, representing that the asset will only operate between KYC-verified wallets.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `asset_id`: The identifier of the asset.
+        /// - `symbol`: AssetSymbol should represent string with only uppercase latin chars with max length of 7.
+        /// - `name`: AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
+        /// - `initial_supply`: Balance type representing the total amount of the asset to be issued initially.
+        /// - `is_indivisible`: A boolean flag indicating whether the asset can be divided into smaller units or not.
+        /// - `opt_content_src`: An optional parameter of type `ContentSource`, which can include a URI or a reference to a content source that provides more details about the asset.
+        /// - `opt_desc`: An optional parameter of type `Description`, which is a string providing a short description or commentary about the asset.
+        ///
+        /// ## Events
+        ///
+        /// Emits `RegulatedAssetRegistered` event when the asset is successfully registered.
+        ///
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register_regulated_asset())]
         pub fn register_regulated_asset(
@@ -151,7 +161,7 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION
             };
 
-            T::AssetManager::register_from(
+            let asset_id = T::AssetManager::register_from(
                 &who,
                 symbol,
                 name,
@@ -162,6 +172,8 @@ pub mod pallet {
                 opt_content_src,
                 opt_desc,
             )?;
+
+            Self::deposit_event(Event::RegulatedAssetRegistered { asset_id });
 
             Ok(().into())
         }
@@ -334,8 +346,8 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Emits When an asset is regulated
-        AssetRegulated { asset_id: AssetIdOf<T> },
+        /// Emits When a new regulated asset is registered
+        RegulatedAssetRegistered { asset_id: AssetIdOf<T> },
         /// Emits When an SBT is issued
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
@@ -363,10 +375,6 @@ pub mod pallet {
         SoulboundAssetNotOperationable,
         /// SBT is not transferable
         SoulboundAssetNotTransferable,
-        /// Only asset owner can regulate
-        OnlyAssetOwnerCanRegulate,
-        /// Asset is already regulated
-        AssetAlreadyRegulated,
         /// All involved users of a regulated asset operation should hold valid SBT
         AllInvolvedUsersShouldHoldValidSBT,
         /// All Allowed assets must be owned by SBT issuer
