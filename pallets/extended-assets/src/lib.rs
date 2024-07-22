@@ -82,6 +82,7 @@ pub struct SoulboundTokenMetadata<Moment, AssetId, MaxRegulatedAssetsPerSBT: Get
 pub mod pallet {
 
     use super::*;
+    use common::{Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -131,27 +132,38 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `asset_id`: The identifier of the asset.
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
-        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+        #[pallet::weight(<T as Config>::WeightInfo::register_regulated_asset())]
+        pub fn register_regulated_asset(
+            origin: OriginFor<T>,
+            symbol: AssetSymbol,
+            name: AssetName,
+            initial_supply: Balance,
+            is_mintable: bool,
+            is_indivisible: bool,
+            opt_content_src: Option<ContentSource>,
+            opt_desc: Option<Description>,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
-            ensure!(
-                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
-                <Error<T>>::OnlyAssetOwnerCanRegulate
-            );
-            ensure!(
-                !Self::is_asset_regulated(&asset_id),
-                <Error<T>>::AssetAlreadyRegulated
-            );
-            ensure!(
-                Self::soulbound_asset(asset_id).is_none(),
-                <Error<T>>::NotAllowedToRegulateSoulboundAsset
-            );
 
-            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
-            Self::deposit_event(Event::AssetRegulated { asset_id });
+            let precision = if is_indivisible {
+                0
+            } else {
+                DEFAULT_BALANCE_PRECISION
+            };
 
-            Ok(())
+            T::AssetManager::register_from(
+                &who,
+                symbol,
+                name,
+                precision,
+                initial_supply,
+                is_mintable,
+                AssetType::Regulated,
+                opt_content_src,
+                opt_desc,
+            )?;
+
+            Ok(().into())
         }
 
         /// Issues a new Soulbound Token (SBT).

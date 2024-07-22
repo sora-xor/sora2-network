@@ -31,7 +31,9 @@
 //! Regulated Assets module benchmarking.
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::test_utils::{add_asset, register_sbt_asset};
+use super::test_utils::{
+    register_regulated_asset as utils_register_regulated_asset, register_sbt_asset,
+};
 use super::*;
 use codec::Decode;
 use frame_benchmarking::benchmarks;
@@ -57,19 +59,23 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 }
 
 benchmarks! {
-    regulate_asset {
+    register_regulated_asset {
         let owner = asset_owner::<T>();
         let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
-        let asset_id = add_asset::<T>(&owner);
+        frame_system::Pallet::<T>::inc_providers(&owner);
     }: {
-        Pallet::<T>::regulate_asset(owner_origin, asset_id).unwrap();
+        Pallet::<T>::register_regulated_asset(
+            owner_origin,
+            AssetSymbol(b"TOKEN".to_vec()),
+            AssetName(b"TOKEN".to_vec()),
+            common::Balance::from(0u32),
+            true,
+            true,
+            None,
+            None
+        ).unwrap();
     }
-    verify{
-        assert_last_event::<T>(Event::AssetRegulated{
-                asset_id
-            }.into()
-        );
-    }
+
 
     issue_sbt{
         let owner = asset_owner::<T>();
@@ -92,13 +98,7 @@ benchmarks! {
     set_sbt_expiration {
         let owner = asset_owner::<T>();
         let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
-        let asset_id = add_asset::<T>(&owner);
-        let asset_name =  AssetName(b"Soulbound Token".to_vec());
-        let asset_symbol = AssetSymbol(b"SBT".to_vec());
-
-        Pallet::<T>::regulate_asset(owner_origin.clone(), asset_id).unwrap();
         let sbt_asset_id = register_sbt_asset::<T>(&owner);
-
     }: {
         Pallet::<T>::set_sbt_expiration(owner_origin.clone(), owner,  sbt_asset_id, Some(T::Moment::from(100_u32)))?;
     }
@@ -114,9 +114,7 @@ benchmarks! {
     bind_regulated_asset_to_sbt {
         let owner = asset_owner::<T>();
         let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
-        let asset_id = add_asset::<T>(&owner);
-
-        Pallet::<T>::regulate_asset(owner_origin.clone(), asset_id).unwrap();
+        let asset_id = utils_register_regulated_asset::<T>(&owner);
         let sbt_asset_id = register_sbt_asset::<T>(&owner);
 
     }: {

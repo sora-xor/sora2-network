@@ -941,14 +941,12 @@ impl ExtBuilder {
         self
     }
 
-    #[cfg(feature = "wip")] // DEFI-R
     pub fn with_permissioned_xyk_pool(mut self) -> Self {
         self = self.with_xyk_pool();
         self.is_permissioned_xyk_pool = true;
         self
     }
 
-    #[cfg(feature = "wip")] // DEFI-R
     fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
         use extended_assets::test_utils::register_sbt_asset;
         use frame_support::assert_ok;
@@ -956,7 +954,7 @@ impl ExtBuilder {
         System::set_block_number(1);
         let owner_origin = RuntimeOrigin::signed(owner.clone());
         if !ExtendedAssets::is_asset_regulated(asset_id) {
-            ExtendedAssets::regulate_asset(owner_origin.clone(), *asset_id)
+            assets::Pallet::<Runtime>::update_asset_type(asset_id, &common::AssetType::Regulated)
                 .expect("Failed to regulate Asset");
         }
 
@@ -1078,7 +1076,6 @@ impl ExtBuilder {
                 )
                 .unwrap();
                 if self.is_permissioned_xyk_pool {
-                    #[cfg(feature = "wip")] // DEFI-R
                     Self::prepare_asset_for_permissioned_pool(&owner, &asset.into());
                 }
                 assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)

@@ -63,7 +63,7 @@ use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
 
 pub trait WeightInfo {
-    fn regulate_asset() -> Weight;
+    fn register_regulated_asset() -> Weight;
 	fn issue_sbt() -> Weight;
 	fn set_sbt_expiration() -> Weight;
 	fn bind_regulated_asset_to_sbt() -> Weight;
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
 	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	fn regulate_asset() -> Weight {
+	fn register_regulated_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1215`
 		//  Estimated: `331946`
@@ -145,7 +145,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 
 impl WeightInfo for () {
-    fn regulate_asset() -> Weight {
+    fn register_regulated_asset() -> Weight {
         Weight::from_parts(23_000_000, 331946)
             .saturating_add(RocksDbWeight::get().reads(3_u64))
             .saturating_add(RocksDbWeight::get().writes(1_u64))

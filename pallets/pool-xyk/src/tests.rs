@@ -4106,7 +4106,7 @@ fn test_pool_fails_with_regulated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
-            common::AssetType::Regular,
+            common::AssetType::Regulated,
             None,
             None,
         ));
@@ -4139,10 +4139,10 @@ fn test_pool_fails_with_regulated_asset() {
             balance!(900000)
         ));
 
-        assert_ok!(extended_assets::Pallet::<Runtime>::regulate_asset(
-            RuntimeOrigin::signed(ALICE()),
-            Apple.into(),
-        ));
+        // assert_ok!(extended_assets::Pallet::<Runtime>::regulate_asset(
+        //     RuntimeOrigin::signed(ALICE()),
+        //     Apple.into(),
+        // ));
 
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
             RuntimeOrigin::signed(BOB()),
@@ -4240,7 +4240,7 @@ fn test_pool_works_with_regulated_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
-            common::AssetType::Regular,
+            common::AssetType::Regulated,
             None,
             None,
         ));
@@ -4271,11 +4271,6 @@ fn test_pool_works_with_regulated_asset() {
             &ALICE(),
             &BOB(),
             balance!(900000)
-        ));
-
-        assert_ok!(extended_assets::Pallet::<Runtime>::regulate_asset(
-            RuntimeOrigin::signed(ALICE()),
-            Apple.into(),
         ));
 
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
