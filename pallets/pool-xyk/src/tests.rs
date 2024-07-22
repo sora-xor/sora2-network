@@ -4139,11 +4139,6 @@ fn test_pool_fails_with_regulated_asset() {
             balance!(900000)
         ));
 
-        // assert_ok!(extended_assets::Pallet::<Runtime>::regulate_asset(
-        //     RuntimeOrigin::signed(ALICE()),
-        //     Apple.into(),
-        // ));
-
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
             RuntimeOrigin::signed(BOB()),
             DEX_A_ID,
