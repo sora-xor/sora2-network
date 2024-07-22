@@ -115,6 +115,11 @@ orml-traits = { git = "https://github.com/open-web3-stack//open-runtime-module-l
 orml-currencies = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v1.1.0" }
 orml-utilities = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v1.1.0" }
 
+# TODO: Decide to stay with patch there or change at sdk repository
+# patch check only url changes, not rev, so add to url ignored filter
+#[patch."https://github.com/w3f/ring-vrf"]
+#bandersnatch_vrfs = { git = "https://github.com/w3f/ring-vrf.git#4125212", rev = "4125212", default-features = false, optional = true }
+
 [patch."https://github.com/sora-xor/polkadot-sdk.git"]
 frame-benchmarking = { path = "../sora-polkadot-sdk/substrate/frame/benchmarking" }
 frame-benchmarking-cli = { path = "../sora-polkadot-sdk/substrate/utils/frame/benchmarking-cli" }
