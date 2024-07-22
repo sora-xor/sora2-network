@@ -14,7 +14,7 @@ pub fn bob() -> AccountId32 {
     AccountId32::from([2; 32])
 }
 
-pub fn add_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
+pub fn register_regular_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
     frame_system::Pallet::<T>::inc_providers(owner);
 
     T::AssetManager::register_from(
@@ -31,16 +31,33 @@ pub fn add_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
     .expect("Failed to register asset")
 }
 
+pub fn register_regulated_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
+    frame_system::Pallet::<T>::inc_providers(owner);
+    let regulated_asset_id = T::AssetManager::gen_asset_id(owner);
+
+    assert_ok!(crate::Pallet::<T>::register_regulated_asset(
+        RawOrigin::Signed(owner.clone()).into(),
+        AssetSymbol(b"TOKEN".to_vec()),
+        AssetName(b"TOKEN".to_vec()),
+        common::Balance::from(0u32),
+        true,
+        true,
+        None,
+        None,
+    ));
+
+    regulated_asset_id
+}
+
 pub fn register_sbt_asset<T: Config>(owner: &T::AccountId) -> AssetIdOf<T> {
-    let asset_name = AssetName(b"Soulbound Token".to_vec());
-    let asset_symbol = AssetSymbol(b"SBT".to_vec());
+    frame_system::Pallet::<T>::inc_providers(owner);
     let sbt_asset_id = T::AssetManager::gen_asset_id(owner);
 
     // Issue SBT
     assert_ok!(crate::Pallet::<T>::issue_sbt(
         RawOrigin::Signed(owner.clone()).into(),
-        asset_symbol,
-        asset_name,
+        AssetSymbol(b"SBT".to_vec()),
+        AssetName(b"Soulbound Token".to_vec()),
         None,
         None,
         None,
