@@ -135,12 +135,6 @@ fn test_sbt_only_operationable_by_its_owner() {
 
         let sbt_asset_id = register_sbt_asset::<TestRuntime>(&owner);
 
-        // assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
-        //     RuntimeOrigin::signed(owner.clone()),
-        //     sbt_asset_id,
-        //     regulated_asset_id
-        // ));
-
         // SBT operations by non-owner should fail
         assert_err!(
             ExtendedAssets::check_permission(&non_owner, &non_owner, &sbt_asset_id, &TRANSFER),
