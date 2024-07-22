@@ -514,6 +514,26 @@
 <a href="#499" id="499">499</a>
 <a href="#500" id="500">500</a>
 <a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -598,6 +618,7 @@
 </span><span class="kw">pub mod </span>pallet {
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::{Balance, DEFAULT_BALANCE_PRECISION};
     <span class="kw">use </span>frame_support::pallet_prelude::{OptionQuery, ValueQuery, <span class="kw-2">*</span>};
     <span class="kw">use </span>frame_support::traits::StorageVersion;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
@@ -640,34 +661,57 @@
 
     <span class="attr">#[pallet::call]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-        <span class="doccomment">/// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        <span class="doccomment">/// Registers a new regulated asset, representing that the asset will only operate between KYC-verified wallets.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `asset_id`: The identifier of the asset.
+        /// - `symbol`: AssetSymbol should represent string with only uppercase latin chars with max length of 7.
+        /// - `name`: AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
+        /// - `initial_supply`: Balance type representing the total amount of the asset to be issued initially.
+        /// - `is_indivisible`: A boolean flag indicating whether the asset can be divided into smaller units or not.
+        /// - `opt_content_src`: An optional parameter of type `ContentSource`, which can include a URI or a reference to a content source that provides more details about the asset.
+        /// - `opt_desc`: An optional parameter of type `Description`, which is a string providing a short description or commentary about the asset.
+        ///
+        /// ## Events
+        ///
+        /// Emits `RegulatedAssetRegistered` event when the asset is successfully registered.
+        ///
         </span><span class="attr">#[pallet::call_index(<span class="number">0</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::regulate_asset())]
-        </span><span class="kw">pub fn </span>regulate_asset(origin: OriginFor&lt;T&gt;, asset_id: AssetIdOf&lt;T&gt;) -&gt; DispatchResult {
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::register_regulated_asset())]
+        </span><span class="kw">pub fn </span>register_regulated_asset(
+            origin: OriginFor&lt;T&gt;,
+            symbol: AssetSymbol,
+            name: AssetName,
+            initial_supply: Balance,
+            is_mintable: bool,
+            is_indivisible: bool,
+            opt_content_src: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
+            opt_desc: <span class="prelude-ty">Option</span>&lt;Description&gt;,
+        ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::ensure_asset_exists(<span class="kw-2">&amp;</span>asset_id)<span class="question-mark">?</span>;
-            <span class="macro">ensure!</span>(
-                &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_asset_owner(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>who),
-                &lt;Error&lt;T&gt;&gt;::OnlyAssetOwnerCanRegulate
-            );
-            <span class="macro">ensure!</span>(
-                !<span class="self">Self</span>::is_asset_regulated(<span class="kw-2">&amp;</span>asset_id),
-                &lt;Error&lt;T&gt;&gt;::AssetAlreadyRegulated
-            );
-            <span class="macro">ensure!</span>(
-                <span class="self">Self</span>::soulbound_asset(asset_id).is_none(),
-                &lt;Error&lt;T&gt;&gt;::NotAllowedToRegulateSoulboundAsset
-            );
 
-            T::AssetManager::update_asset_type(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>AssetType::Regulated)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::deposit_event(Event::AssetRegulated { asset_id });
+            <span class="kw">let </span>precision = <span class="kw">if </span>is_indivisible {
+                <span class="number">0
+            </span>} <span class="kw">else </span>{
+                DEFAULT_BALANCE_PRECISION
+            };
 
-            <span class="prelude-val">Ok</span>(())
+            <span class="kw">let </span>asset_id = T::AssetManager::register_from(
+                <span class="kw-2">&amp;</span>who,
+                symbol,
+                name,
+                precision,
+                initial_supply,
+                is_mintable,
+                AssetType::Regulated,
+                opt_content_src,
+                opt_desc,
+            )<span class="question-mark">?</span>;
+
+            <span class="self">Self</span>::deposit_event(Event::RegulatedAssetRegistered { asset_id });
+
+            <span class="prelude-val">Ok</span>(().into())
         }
 
         <span class="doccomment">/// Issues a new Soulbound Token (SBT).
@@ -838,8 +882,8 @@
     <span class="attr">#[pallet::event]
     #[pallet::generate_deposit(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deposit_event)]
     </span><span class="kw">pub enum </span>Event&lt;T: Config&gt; {
-        <span class="doccomment">/// Emits When an asset is regulated
-        </span>AssetRegulated { asset_id: AssetIdOf&lt;T&gt; },
+        <span class="doccomment">/// Emits When a new regulated asset is registered
+        </span>RegulatedAssetRegistered { asset_id: AssetIdOf&lt;T&gt; },
         <span class="doccomment">/// Emits When an SBT is issued
         </span>SoulboundTokenIssued {
             asset_id: AssetIdOf&lt;T&gt;,
@@ -867,10 +911,6 @@
         </span>SoulboundAssetNotOperationable,
         <span class="doccomment">/// SBT is not transferable
         </span>SoulboundAssetNotTransferable,
-        <span class="doccomment">/// Only asset owner can regulate
-        </span>OnlyAssetOwnerCanRegulate,
-        <span class="doccomment">/// Asset is already regulated
-        </span>AssetAlreadyRegulated,
         <span class="doccomment">/// All involved users of a regulated asset operation should hold valid SBT
         </span>AllInvolvedUsersShouldHoldValidSBT,
         <span class="doccomment">/// All Allowed assets must be owned by SBT issuer

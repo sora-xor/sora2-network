@@ -184,6 +184,12 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -249,7 +255,7 @@
 <span class="kw">use </span>sp_std::marker::PhantomData;
 
 <span class="kw">pub trait </span>WeightInfo {
-    <span class="kw">fn </span>regulate_asset() -&gt; Weight;
+    <span class="kw">fn </span>register_regulated_asset() -&gt; Weight;
 	<span class="kw">fn </span>issue_sbt() -&gt; Weight;
 	<span class="kw">fn </span>set_sbt_expiration() -&gt; Weight;
 	<span class="kw">fn </span>bind_regulated_asset_to_sbt() -&gt; Weight;
@@ -258,20 +264,26 @@
 <span class="doccomment">/// Weight functions for `extended_assets`.
 </span><span class="kw">pub struct </span>SubstrateWeight&lt;T&gt;(PhantomData&lt;T&gt;);
 <span class="kw">impl</span>&lt;T: frame_system::Config&gt; WeightInfo <span class="kw">for </span>SubstrateWeight&lt;T&gt; {
-	<span class="doccomment">/// Storage: Assets AssetOwners (r:1 w:0)
+	<span class="doccomment">/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Assets AssetOwners (r:1 w:1)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Storage: Permissions Owners (r:2 w:2)
+	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Permissions Permissions (r:2 w:1)
+	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	</span><span class="kw">fn </span>regulate_asset() -&gt; Weight {
+	/// Storage: Assets AssetInfos (r:0 w:1)
+	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	</span><span class="kw">fn </span>register_regulated_asset() -&gt; Weight {
 		<span class="comment">// Proof Size summary in bytes:
-		//  Measured:  `1215`
-		//  Estimated: `331946`
-		// Minimum execution time: 22_000 nanoseconds.
-		</span>Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">331946</span>)
-			.saturating_add(T::DbWeight::get().reads(<span class="number">3</span>))
-			.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>))
+		//  Measured:  `2100`
+		//  Estimated: `25478`
+		// Minimum execution time: 77_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">78_000_000</span>, <span class="number">25478</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">6</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">7</span>))
 	}
 	<span class="doccomment">/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
@@ -331,10 +343,10 @@
 
 
 <span class="kw">impl </span>WeightInfo <span class="kw">for </span>() {
-    <span class="kw">fn </span>regulate_asset() -&gt; Weight {
-        Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">331946</span>)
-            .saturating_add(RocksDbWeight::get().reads(<span class="number">3_u64</span>))
-            .saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
+    <span class="kw">fn </span>register_regulated_asset() -&gt; Weight {
+		Weight::from_parts(<span class="number">78_000_000</span>, <span class="number">25478</span>)
+			.saturating_add(RocksDbWeight::get().reads(<span class="number">6</span>))
+			.saturating_add(RocksDbWeight::get().writes(<span class="number">7</span>))
     }
 	
 	<span class="kw">fn </span>issue_sbt() -&gt; Weight {
