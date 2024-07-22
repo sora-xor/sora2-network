@@ -14,9 +14,9 @@ test() {
     if  [[ -n ${TAG_NAME} ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks" -- --test-threads 2 -- -j 4
-        if [[ ${TAG_NAME} =~ 'testnet'* ]]; then
+        if [[ ${TAG_NAME} =~ 'testnet'* && $specialLabel = true ]]; then
             RUST_LOG="debug"
-            cargo test -j 3 --features try-runtime -- run_migrations 
+            cargo test -j 3 --features try-runtime -- run_migrations
         fi
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"

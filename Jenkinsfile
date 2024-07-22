@@ -9,13 +9,15 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       smartContractScanner: false,
       clippyLinter: false,
       cargoClippyTag: ':substrate',
-      pushTags: ['master': 'dev'],
+      pushTags: ['master': 'latest'],
       cargoClippyCmds: ['housekeeping/clippy.sh'],
       buildTestCmds: 'housekeeping/build.sh',
       buildArtifacts: 'framenode_runtime.compact.compressed.wasm, subwasm_report.json, pallet_list.txt',
       pushToPublicRegistry: true,
       sonarProjectKey: 'sora:sora2-network',
       sonarProjectName: 'sora2-network',
-      dojoProductType: 'sora'
+      dojoProductType: 'sora',
+      // temp. disabled
+      assignReviewers: false
 )
 pipeline.runPipeline()
