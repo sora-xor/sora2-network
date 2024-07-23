@@ -32,7 +32,8 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::test_utils::{
-    register_regulated_asset as utils_register_regulated_asset, register_sbt_asset,
+    register_regular_asset, register_regulated_asset as utils_register_regulated_asset,
+    register_sbt_asset,
 };
 use super::*;
 use codec::Decode;
@@ -141,6 +142,20 @@ benchmarks! {
         assert_last_event::<T>(Event::RegulatedAssetBoundToSBT {
              sbt_asset_id,
              regulated_asset_id: asset_id
+            }.into()
+        );
+    }
+
+    regulate_asset {
+        let owner = asset_owner::<T>();
+        let owner_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(owner.clone()).into();
+        let asset_id = register_regular_asset::<T>(&owner);
+    }: {
+        Pallet::<T>::regulate_asset(owner_origin, asset_id).unwrap();
+    }
+    verify{
+        assert_last_event::<T>(Event::AssetRegulated{
+                asset_id
             }.into()
         );
     }
