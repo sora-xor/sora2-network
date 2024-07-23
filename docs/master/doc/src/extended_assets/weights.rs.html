@@ -190,6 +190,29 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -259,6 +282,7 @@
 	<span class="kw">fn </span>issue_sbt() -&gt; Weight;
 	<span class="kw">fn </span>set_sbt_expiration() -&gt; Weight;
 	<span class="kw">fn </span>bind_regulated_asset_to_sbt() -&gt; Weight;
+	<span class="kw">fn </span>regulate_asset() -&gt; Weight;
 }
 
 <span class="doccomment">/// Weight functions for `extended_assets`.
@@ -338,6 +362,22 @@
 			.saturating_add(T::DbWeight::get().reads(<span class="number">5</span>))
 			.saturating_add(T::DbWeight::get().writes(<span class="number">2</span>))
 	}
+
+	<span class="doccomment">/// Storage: Assets AssetOwners (r:1 w:0)
+	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	</span><span class="kw">fn </span>regulate_asset() -&gt; Weight {
+		<span class="comment">// Proof Size summary in bytes:
+		//  Measured:  `1215`
+		//  Estimated: `331946`
+		// Minimum execution time: 22_000 nanoseconds.
+		</span>Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">331946</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">3</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>))
+	}
 }
 
 
@@ -365,7 +405,13 @@
 			Weight::from_parts(<span class="number">28_000_000</span>, <span class="number">335594</span>)
 			.saturating_add(RocksDbWeight::get().reads(<span class="number">5</span>))
 			.saturating_add(RocksDbWeight::get().writes(<span class="number">2</span>))
-		}
+	}
+		
+	<span class="kw">fn </span>regulate_asset() -&gt; Weight {
+		Weight::from_parts(<span class="number">23_000_000</span>, <span class="number">331946</span>)
+            .saturating_add(RocksDbWeight::get().reads(<span class="number">3_u64</span>))
+            .saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
+	}
 }
 </code></pre></div>
 </section></main></body></html>
