@@ -453,3 +453,75 @@ fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
         );
     });
 }
+
+#[test]
+fn test_cannot_regulate_already_regulated_asset() {
+    new_test_ext().execute_with(|| {
+        let owner = bob();
+        let asset_id = register_regular_asset::<TestRuntime>(&owner);
+
+        // Regulate the asset for the first time
+        assert_ok!(ExtendedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id
+        ));
+
+        // Try to regulate the already regulated asset
+        assert_err!(
+            ExtendedAssets::regulate_asset(RuntimeOrigin::signed(owner), asset_id),
+            Error::<TestRuntime>::AssetAlreadyRegulated
+        );
+    })
+}
+
+#[test]
+fn test_only_asset_owner_can_regulate_asset() {
+    new_test_ext().execute_with(|| {
+        let owner = bob();
+        let non_owner = alice();
+        let asset_id = register_regular_asset::<TestRuntime>(&owner);
+
+        // Non-owner cannot regulate asset
+        assert_err!(
+            ExtendedAssets::regulate_asset(RuntimeOrigin::signed(non_owner), asset_id),
+            Error::<TestRuntime>::OnlyAssetOwnerCanRegulate
+        );
+
+        // Owner can regulate asset
+        assert_ok!(ExtendedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner),
+            asset_id
+        ));
+
+        assert_eq!(
+            Assets::asset_infos_v2(asset_id).asset_type,
+            AssetType::Regulated
+        );
+    })
+}
+
+#[test]
+fn test_not_allowed_to_regulate_sbt() {
+    new_test_ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = bob();
+
+        let asset_id = register_regular_asset::<TestRuntime>(&owner);
+        assert_ok!(ExtendedAssets::regulate_asset(
+            RuntimeOrigin::signed(owner.clone()),
+            asset_id
+        ));
+
+        let sbt_asset_id = register_sbt_asset::<TestRuntime>(&owner);
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            RuntimeOrigin::signed(owner.clone()),
+            sbt_asset_id,
+            asset_id
+        ));
+
+        assert_err!(
+            ExtendedAssets::regulate_asset(RuntimeOrigin::signed(owner), sbt_asset_id),
+            Error::<TestRuntime>::NotAllowedToRegulateSoulboundAsset
+        );
+    });
+}
