@@ -67,6 +67,7 @@ pub trait WeightInfo {
 	fn issue_sbt() -> Weight;
 	fn set_sbt_expiration() -> Weight;
 	fn bind_regulated_asset_to_sbt() -> Weight;
+	fn regulate_asset() -> Weight;
 }
 
 /// Weight functions for `extended_assets`.
@@ -146,6 +147,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+
+	/// Storage: Assets AssetOwners (r:1 w:0)
+	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	fn regulate_asset() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1215`
+		//  Estimated: `331946`
+		// Minimum execution time: 22_000 nanoseconds.
+		Weight::from_parts(23_000_000, 331946)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 }
 
 
@@ -173,5 +190,11 @@ impl WeightInfo for () {
 			Weight::from_parts(28_000_000, 335594)
 			.saturating_add(RocksDbWeight::get().reads(5))
 			.saturating_add(RocksDbWeight::get().writes(2))
-		}
+	}
+		
+	fn regulate_asset() -> Weight {
+		Weight::from_parts(23_000_000, 331946)
+            .saturating_add(RocksDbWeight::get().reads(3_u64))
+            .saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
 }
