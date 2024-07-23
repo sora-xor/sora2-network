@@ -18,7 +18,14 @@
 use crate::cli::{Cli, Subcommand};
 use crate::service;
 use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
+use sc_executor::sp_wasm_interface::ExtendedHostFunctions;
+use sc_executor::NativeExecutionDispatch;
 use sc_service::PartialComponents;
+
+type HostFunctionsOf<E> = ExtendedHostFunctions<
+    sp_io::SubstrateHostFunctions,
+    <E as NativeExecutionDispatch>::ExtendHostFunctions,
+>;
 
 fn set_default_ss58_version() {
     sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::from(
@@ -91,10 +98,6 @@ impl SubstrateCli for Cli {
         };
 
         Ok(Box::new(chain_spec))
-    }
-
-    fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-        &framenode_runtime::VERSION
     }
 }
 
@@ -206,7 +209,7 @@ pub fn run() -> sc_cli::Result<()> {
                     }
 
                     runner.sync_run(|config| {
-                        cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
+                        cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(config)
                     })
                 }
                 #[allow(unreachable_patterns)]
@@ -215,11 +218,6 @@ pub fn run() -> sc_cli::Result<()> {
         }
         #[cfg(feature = "try-runtime")]
         Some(Subcommand::TryRuntime(cmd)) => {
-            use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
-            type HostFunctionsOf<E> = ExtendedHostFunctions<
-                sp_io::SubstrateHostFunctions,
-                <E as NativeExecutionDispatch>::ExtendHostFunctions,
-            >;
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
 
@@ -234,7 +232,7 @@ pub fn run() -> sc_cli::Result<()> {
 
             runner.async_run(|_config| {
                 Ok((
-                    cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
+                    cmd.try_run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
                     task_manager,
                 ))
             })

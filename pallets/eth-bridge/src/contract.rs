@@ -30,9 +30,9 @@
 
 use alloc::boxed::Box;
 use ethabi::Function;
-#[cfg(feature = "std")]
-use frame_support::RuntimeDebug;
 use once_cell::race::OnceBox;
+#[cfg(feature = "std")]
+use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
 

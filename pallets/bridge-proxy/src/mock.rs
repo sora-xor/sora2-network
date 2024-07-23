@@ -41,34 +41,31 @@ use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, Balance,
+    DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_system as system;
 use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
 use system::EnsureRoot;
 
 use crate as proxy;
 
-pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 pub type Block = frame_system::mocking::MockBlock<Test>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type BlockNumber = u64;
+type Moment = u64;
 
 frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Test {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Storage, Event<T>},
@@ -96,6 +93,8 @@ mock_currencies_config!(Test);
 mock_common_config!(Test);
 mock_tokens_config!(Test);
 mock_assets_config!(Test);
+mock_pallet_timestamp_config!(Test);
+mock_permissions_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -107,13 +106,12 @@ impl system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
+    type Block = Block;
+    type Nonce = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -126,10 +124,6 @@ impl system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
-
-impl permissions::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
@@ -276,9 +270,7 @@ impl TimepointProvider for GenericTimepointProvider {
 pub struct ReferencePriceProvider;
 
 impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
-    fn get_reference_price(
-        _asset_id: &AssetId,
-    ) -> Result<Balance, frame_support::dispatch::DispatchError> {
+    fn get_reference_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
         Ok(common::balance!(2.5))
     }
 }
@@ -296,16 +288,9 @@ impl proxy::Config for Test {
     type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
-impl pallet_timestamp::Config for Test {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = ();
-    type WeightInfo = ();
-}
-
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     technical::GenesisConfig::<Test> {
@@ -323,35 +308,33 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &evm_fungible_app::GenesisConfig {
-            apps: vec![(BASE_EVM_NETWORK_ID, H160::repeat_byte(1))],
-            assets: vec![
-                (
-                    BASE_EVM_NETWORK_ID,
-                    XOR,
-                    H160::repeat_byte(3),
-                    AssetKind::Thischain,
-                    18,
-                ),
-                (
-                    BASE_EVM_NETWORK_ID,
-                    DAI,
-                    H160::repeat_byte(4),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-                (
-                    BASE_EVM_NETWORK_ID,
-                    ETH,
-                    H160::repeat_byte(0),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-            ],
-        },
-        &mut storage,
-    )
+    let _ = &evm_fungible_app::GenesisConfig::<Test> {
+        apps: vec![(BASE_EVM_NETWORK_ID, H160::repeat_byte(1))],
+        assets: vec![
+            (
+                BASE_EVM_NETWORK_ID,
+                XOR,
+                H160::repeat_byte(3),
+                AssetKind::Thischain,
+                18,
+            ),
+            (
+                BASE_EVM_NETWORK_ID,
+                DAI,
+                H160::repeat_byte(4),
+                AssetKind::Sidechain,
+                18,
+            ),
+            (
+                BASE_EVM_NETWORK_ID,
+                ETH,
+                H160::repeat_byte(0),
+                AssetKind::Sidechain,
+                18,
+            ),
+        ],
+    }
+    .assimilate_storage(&mut storage)
     .unwrap();
 
     let bob: AccountId = Keyring::Bob.into();

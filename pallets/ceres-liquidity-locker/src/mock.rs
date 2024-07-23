@@ -1,14 +1,14 @@
-use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::mock::GetTradingPairRestrictedFlag;
 use common::prelude::{Balance, Fixed};
+use common::AccountIdOf;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config, DEXId, DEXInfo,
-    TBCD, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, DEXId, DEXInfo, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -16,13 +16,9 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::crypto::AccountId32;
 
@@ -32,8 +28,8 @@ pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
@@ -45,7 +41,6 @@ pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
 ));
 
 parameter_types! {
-    pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
@@ -56,7 +51,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId::new([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
-    pub const MinimumPeriod: u64 = 5;
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
@@ -68,12 +62,8 @@ parameter_type_with_key! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -96,10 +86,8 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_assets_config!(Runtime);
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
+mock_permissions_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -127,13 +115,6 @@ impl orml_tokens::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -240,8 +221,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {

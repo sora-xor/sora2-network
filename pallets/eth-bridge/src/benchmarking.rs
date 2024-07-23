@@ -104,6 +104,15 @@ benchmarks! {
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
         let alice = alice::<T>();
+        Assets::<T>::mint_to(&asset_id, &caller, &caller, balance!(100)).unwrap();
+        let initial_base_balance = Assets::<T>::free_balance(&asset_id, &caller).unwrap();
+        frame_support::assert_ok!(crate::Pallet::<T>::transfer_to_sidechain(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id,
+            EthAddress::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
+            balance!(100),
+            net_id
+        ));
         let inc_req = IncomingRequest::Transfer(IncomingTransfer::<T> {
             from: EthAddress::from([10u8; 20]),
             to: alice.clone(),
@@ -132,6 +141,15 @@ benchmarks! {
         let asset_id: T::AssetId = XOR.into();
         let req_hash = H256([1u8; 32]);
         let alice = alice::<T>();
+        Assets::<T>::mint_to(&asset_id, &caller, &caller, balance!(100)).unwrap();
+        let initial_base_balance = Assets::<T>::free_balance(&asset_id, &caller).unwrap();
+        frame_support::assert_ok!(crate::Pallet::<T>::transfer_to_sidechain(
+            RawOrigin::Signed(caller.clone()).into(),
+            asset_id,
+            EthAddress::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
+            balance!(100),
+            net_id
+        ));
         let inc_req = IncomingRequest::Transfer(IncomingTransfer::<T> {
             from: EthAddress::from([10u8; 20]),
             to: alice.clone(),

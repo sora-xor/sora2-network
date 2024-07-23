@@ -30,10 +30,10 @@
 
 use common::prelude::{Balance, Fixed, FixedWrapper};
 use common::{fixed_wrapper, AssetIdOf, TradingPair};
-use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 
 use crate::{to_balance, to_fixed_wrapper};
 use crate::{Config, Error, Pallet};

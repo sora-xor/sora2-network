@@ -50,8 +50,7 @@ use common::{
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, UnfilteredDispatchable};
-use frame_support::sp_io::TestExternalities;
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainDbExt, TransactionPoolExt};
@@ -61,7 +60,6 @@ use frame_support::sp_runtime::offchain::testing::{
     OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
 use frame_support::sp_runtime::serde::{Serialize, Serializer};
-use frame_support::sp_runtime::testing::Header;
 use frame_support::sp_runtime::traits::{
     self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
     IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
@@ -72,7 +70,8 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
+use frame_support::traits::UnfilteredDispatchable;
+use frame_support::traits::{Everything, Get, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
@@ -82,8 +81,11 @@ use parking_lot::RwLock;
 use rustc_hex::ToHex;
 use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
-use sp_keystore::testing::KeyStore;
-use sp_keystore::{KeystoreExt, SyncCryptoStore};
+use sp_io::TestExternalities;
+use sp_keystore::testing::MemoryKeystore;
+use sp_keystore::{Keystore, KeystoreExt};
+use sp_runtime::generic::SignedPayload;
+use sp_runtime::BuildStorage;
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
@@ -103,7 +105,6 @@ pub type Signature = MultiSignature;
 /// to the public key of our transaction signing scheme.
 pub type AccountId = AccountId32;
 pub type AssetId = AssetId32<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
@@ -118,7 +119,7 @@ parameter_types! {
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct MyTestXt<RuntimeCall, Extra> {
     /// Signature of the extrinsic.
-    pub signature: Option<(AccountId, Extra)>,
+    pub signature: Option<(AccountId, Signature, Extra)>,
     /// RuntimeCall of the extrinsic.
     pub call: RuntimeCall,
 }
@@ -142,9 +143,11 @@ impl<RuntimeCall: Codec + Sync + Send, Context, Extra> Checkable<Context>
     }
 }
 
-impl<RuntimeCall: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<RuntimeCall, Extra> {
+impl<RuntimeCall: Codec + Sync + Send + scale_info::TypeInfo, Extra: scale_info::TypeInfo>
+    traits::Extrinsic for MyTestXt<RuntimeCall, Extra>
+{
     type Call = RuntimeCall;
-    type SignaturePayload = (AccountId, Extra);
+    type SignaturePayload = (AccountId, Signature, Extra);
 
     fn is_signed(&self) -> Option<bool> {
         Some(self.signature.is_some())
@@ -213,7 +216,7 @@ where
         info: &DispatchInfoOf<Self::Call>,
         len: usize,
     ) -> ApplyExtrinsicResultWithInfo<PostDispatchInfoOf<Self::Call>> {
-        let maybe_who = if let Some((who, extra)) = self.signature {
+        let maybe_who = if let Some((who, _, extra)) = self.signature {
             Extra::pre_dispatch(extra, &who, &self.call, info, len)?;
             Some(who)
         } else {
@@ -303,14 +306,22 @@ where
 {
     fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
         call: RuntimeCall,
-        _public: <Signature as Verify>::Signer,
+        public: <Signature as Verify>::Signer,
         account: <Runtime as frame_system::Config>::AccountId,
-        _index: <Runtime as frame_system::Config>::Index,
+        _index: <Runtime as frame_system::Config>::Nonce,
     ) -> Option<(
         RuntimeCall,
         <TestExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
     )> {
-        Some((call, (account, MyExtra {})))
+        let extra = MyExtra {};
+        let raw_payload = SignedPayload::new(call.clone(), extra)
+            .map_err(|e| {
+                log::warn!("Unable to create signed payload: {:?}", e);
+            })
+            .ok()?;
+        let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
+
+        Some((call, (account, signature, MyExtra {})))
     }
 }
 
@@ -348,6 +359,7 @@ impl bridge_multisig::Config for Runtime {
 impl pallet_sudo::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type RuntimeCall = RuntimeCall;
+    type WeightInfo = ();
 }
 
 /// Used the compare the privilege of an origin inside the scheduler.
@@ -401,12 +413,8 @@ impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
 }
 
 construct_runtime!(
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -570,7 +578,7 @@ impl State {
         std::mem::swap(&mut guard.transactions, &mut txs);
         for tx in txs {
             let e = TestExtrinsic::decode(&mut &*tx).unwrap();
-            let (who, _) = e.signature.unwrap();
+            let (who, _, _) = e.signature.unwrap();
             let call = e.call;
             // In reality you would do `e.apply`, but this is a test. we assume we don't care
             // about validation etc.
@@ -782,9 +790,9 @@ impl ExtBuilder {
             &Vec::from(ocw_keys.2).encode(),
         );
         drop(offchain_guard);
-        let key_store = KeyStore::new();
+        let key_store = MemoryKeystore::new();
         key_store
-            .insert_unknown(
+            .insert(
                 crate::KEY_TYPE,
                 &format!("0x{}", ocw_keys.2.to_hex::<String>()),
                 ocw_keys.0.as_ref(),
@@ -819,19 +827,19 @@ impl ExtBuilder {
             })
             .collect();
 
-        let mut storage = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         let mut balances: Vec<_> = endowed_accounts
             .iter()
             .map(|(acc, ..)| acc)
             .chain(vec![&self.root_account_id, &authority_account_id])
-            .map(|x| (x.clone(), Balance::from(0u32)))
+            .map(|x| (x.clone(), Balance::from(1u32)))
             .collect();
-        balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 0)));
+        balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 1)));
         for (_net_id, ext_network) in &self.networks {
-            balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 0)));
+            balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 1)));
         }
         balances.sort_by_key(|x| x.0.clone());
         balances.dedup_by_key(|x| x.0.clone());

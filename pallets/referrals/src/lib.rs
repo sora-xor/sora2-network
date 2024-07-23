@@ -91,6 +91,7 @@ pub mod pallet {
         BalancePrecision, ContentSource, Description, XOR,
     };
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
@@ -116,7 +117,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -234,7 +234,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.referrers.iter().for_each(|(k, v)| {
                 frame_system::Pallet::<T>::inc_consumers(k).unwrap();

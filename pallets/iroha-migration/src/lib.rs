@@ -54,16 +54,18 @@ mod tests;
 
 pub mod weights;
 
+use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
-use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, Pays};
-use frame_support::log::error;
+use frame_support::dispatch::Pays;
+use frame_support::ensure;
+use frame_support::pallet_prelude::{DispatchError, RuntimeDebug};
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::weights::Weight;
-use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
+use frame_system::pallet_prelude::BlockNumberFor;
+use log::error;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::Sha3_256;
@@ -76,7 +78,7 @@ pub use weights::WeightInfo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-fn blocks_till_migration<T>() -> T::BlockNumber
+fn blocks_till_migration<T>() -> BlockNumberFor<T>
 where
     T: frame_system::Config,
 {
@@ -92,7 +94,7 @@ where
     T: frame_system::Config,
 {
     approving_accounts: Vec<T::AccountId>,
-    migrate_at: Option<T::BlockNumber>,
+    migrate_at: Option<BlockNumberFor<T>>,
 }
 
 impl<T> Default for PendingMultisigAccount<T>
@@ -324,6 +326,7 @@ pub mod pallet {
     use common::AccountIdOf;
     use frame_support::dispatch::PostDispatchInfo;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
@@ -339,14 +342,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             // Migrate accounts whose quorum has been reached and enough time has passed since then
             PendingMultiSigAccounts::<T>::translate(|key, mut value: PendingMultisigAccount<T>| {
                 if let Some(migrate_at) = value.migrate_at {
@@ -384,8 +386,8 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
-                frame_support::log::error!("faucet: iroha_public_key: {}", iroha_public_key);
-                frame_support::log::error!("faucet: iroha_signature: {}", iroha_signature);
+                log::error!("faucet: iroha_public_key: {}", iroha_public_key);
+                log::error!("faucet: iroha_signature: {}", iroha_signature);
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(
                     !MigratedAccounts::<T>::contains_key(&iroha_address),
@@ -481,7 +483,6 @@ pub mod pallet {
         pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -492,7 +493,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
             Account::<T>::put(&self.account_id.as_ref().unwrap());

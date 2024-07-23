@@ -138,7 +138,7 @@ fn should_success_incoming_transfer() {
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
-            amount: 100u32.into(),
+            amount: 99u32.into(),
             author: alice.clone(),
             tx_hash,
             at_height: 1,
@@ -146,7 +146,7 @@ fn should_success_incoming_transfer() {
             network_id: ETH_NETWORK_ID,
             should_take_fee: false,
         });
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 1);
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
@@ -174,7 +174,7 @@ fn should_cancel_incoming_transfer() {
     ext.execute_with(|| {
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR.into(), &alice, &alice, 99999u32.into()).unwrap();
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         let tx_hash = request_incoming(
             alice.clone(),
@@ -237,7 +237,7 @@ fn should_fail_incoming_transfer() {
         let net_id = ETH_NETWORK_ID;
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR.into(), &alice, &alice, 99999u32.into()).unwrap();
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
@@ -312,7 +312,7 @@ fn should_take_fee_in_incoming_transfer() {
             to: alice.clone(),
             asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
-            amount: balance!(100),
+            amount: balance!(100) - 1,
             author: alice.clone(),
             tx_hash,
             at_height: 1,
@@ -323,7 +323,7 @@ fn should_take_fee_in_incoming_transfer() {
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
-            0
+            1
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         let fee_amount = crate::IncomingTransfer::<Runtime>::fee_amount();

@@ -44,7 +44,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{self, Perbill};
+use sp_runtime::{self, BuildStorage, Perbill};
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -73,12 +73,8 @@ parameter_types! {
 }
 
 construct_runtime!(
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -112,8 +108,8 @@ impl referrals::Config for Runtime {
 }
 
 pub fn test_ext() -> sp_io::TestExternalities {
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Runtime>()
+    let mut t = frame_system::GenesisConfig::<Runtime>::default()
+        .build_storage()
         .unwrap();
 
     pallet_balances::GenesisConfig::<Runtime> {

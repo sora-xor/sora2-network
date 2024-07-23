@@ -4,8 +4,6 @@ binary="./target/debug/framenode"
 
 chain="local"
 
-execution="--execution native"
-
 keep_db=0
 
 if which gawk > /dev/null 2>&1; then
@@ -28,7 +26,7 @@ fi
 # so installing gnu version should make it work.
 #
 # brew install gnu-getopt
-getopt_code=`$awk -f ./misc/getopt.awk <<EOF
+getopt_code=$($awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
   -h, --help                         Show usage message
@@ -49,14 +47,14 @@ execution="--execution wasm --wasm-execution compiled"
   -k, --keep-db                      Keep previous chain state
 keep_db=1
 EOF
-`
+)
 eval "$getopt_code"
 
 #export RUST_LOG="beefy=info,ethereum_light_client=debug,bridge_channel=debug,dispatch=debug,eth_app=debug"
 export RUST_LOG="info,runtime=debug"
 
-localid=`mktemp`
-tmpdir=`dirname $localid`
+localid=$(mktemp)
+tmpdir=$(dirname "$localid")
 
 if [ ! -f $binary ]; then
 	echo "Please build framenode binary"
@@ -90,19 +88,19 @@ wsport="9944"
 num="0"
 for name in alice bob charlie dave eve ferdie
 do
-	newport=`expr $port + 1`
-	rpcport=`expr $wsport + 10`
+	newport=$(expr $port + 1)
+	rpcport=$(expr $wsport + 10)
 	$binary key insert --chain $chain --suri "//${name}" --scheme ecdsa --key-type ethb --base-path db$num
 	mkdir -p "db$num/chains/sora-substrate-$chain/bridge"
 	cp misc/eth.json "db$num/chains/sora-substrate-$chain/bridge"
 	if [ "$num" == "0" ]; then
-		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --rpc-port $rpcport --chain $chain 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
-		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --rpc-port $rpcport --chain $chain 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
 	port="$newport"
-	wsport=`expr $wsport + 1`
+	wsport=$(expr $wsport + 1)
 	num=$(($num + 1))
 done
 

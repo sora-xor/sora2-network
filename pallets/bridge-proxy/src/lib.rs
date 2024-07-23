@@ -24,12 +24,13 @@ use bridge_types::{
 use codec::{Decode, Encode};
 use common::{prelude::FixedWrapper, AssetIdOf, Balance, BalanceOf};
 use common::{AssetInfoProvider, AssetManager, ReferencePriceProvider};
-use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
-use frame_support::log;
+use log;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
+use sp_runtime::DispatchResult;
+use sp_runtime::RuntimeDebug;
 use sp_runtime::Saturating;
 use sp_std::prelude::*;
 
@@ -61,7 +62,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
+    use super::{DispatchResult, *};
     use bridge_types::MainnetAccountId;
     use bridge_types::{
         substrate::ParachainAccountId,
@@ -179,7 +180,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);

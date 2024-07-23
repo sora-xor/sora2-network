@@ -118,9 +118,10 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
 
     #[track_caller]
     fn check_invariant() {
+        let total_existential_deposit = 7;
         assert_eq!(
             Assets::total_issuance(&XOR.into()).unwrap(),
-            balance!(350000)
+            balance!(350000) + total_existential_deposit
         );
     }
 

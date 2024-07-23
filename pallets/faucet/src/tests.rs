@@ -86,7 +86,7 @@ fn transfer_passes_native_currency() {
             Assets::free_balance(&XOR, &account_id()).unwrap(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
         );
-        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 1);
         assert_eq!(
             Assets::free_balance(&XOR, &bob()).unwrap(),
             Pallet::transfer_limit()
@@ -107,7 +107,7 @@ fn transfer_passes_multiple_assets() {
             Assets::free_balance(&XOR, &account_id()).unwrap(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
         );
-        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 1);
         assert_eq!(
             Assets::free_balance(&XOR, &bob()).unwrap(),
             Pallet::transfer_limit()
@@ -151,7 +151,7 @@ fn transfer_passes_after_limit_is_reset() {
             Assets::free_balance(&XOR, &account_id()).unwrap(),
             balance!(0)
         );
-        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 1);
         assert_eq!(
             Assets::free_balance(&XOR, &bob()).unwrap(),
             (Pallet::transfer_limit() * FixedWrapper::from(1.5)).into_balance()

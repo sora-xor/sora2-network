@@ -32,21 +32,20 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    self, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
     mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
     DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, BURN, MINT};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -54,7 +53,6 @@ type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId32 {
@@ -87,13 +85,9 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Runtime {
         Faucet: faucet::{Pallet, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -113,6 +107,8 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+// Required by assets::Config
+mock_permissions_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -134,16 +130,11 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-// Required by assets::Config
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
 pub struct ExtBuilder {}
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let tech_account_id = tech_account_id();
         let account_id: AccountId = account_id();
@@ -154,7 +145,7 @@ impl ExtBuilder {
                     account_id.clone(),
                     (faucet::DEFAULT_LIMIT * FixedWrapper::from(1.5)).into_balance(),
                 ),
-                (alice(), balance!(0)),
+                (alice(), 1),
             ],
         }
         .assimilate_storage(&mut t)
@@ -178,7 +169,7 @@ impl ExtBuilder {
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    Balance::from(0u32),
+                    Balance::from(0_u32),
                     true,
                     None,
                     None,

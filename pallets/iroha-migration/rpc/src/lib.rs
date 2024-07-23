@@ -73,11 +73,11 @@ where
 {
     fn needs_migration(&self, iroha_address: String, at: Option<Block::Hash>) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.needs_migration(&at, iroha_address)
+        );
+        api.needs_migration(at, iroha_address)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

@@ -11,17 +11,23 @@ repository = "https://github.com/sora-xor/sora2-network"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0" }
-clap = { version = "=4.3.17", features = ["derive"] }
+clap = { version = "=4.5.4", features = ["derive"] }
 jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
 tokio = { version = "1.18.2", features = ["macros", "rt-multi-thread", "sync"] }
 anyhow = "1.0.51"
 env_logger = "0.10.0"
 hex = "0.4.3"
 
-frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+frame-remote-externalities = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+sp-version = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+frame-election-provider-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
     "std",

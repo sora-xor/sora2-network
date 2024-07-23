@@ -164,11 +164,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.free_balance(&at, account_id, asset_id)
+        );
+        api.free_balance(at, account_id, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -179,11 +179,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.usable_balance(&at, account_id, asset_id)
+        );
+        api.usable_balance(at, account_id, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -194,11 +194,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.total_balance(&at, account_id, asset_id)
+        );
+        api.total_balance(at, account_id, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -208,21 +208,21 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.total_supply(&at, asset_id)
+        );
+        api.total_supply(at, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_asset_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<AssetId>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_asset_ids(&at)
+        );
+        api.list_asset_ids(at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -233,11 +233,11 @@ where
         Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>,
     > {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_asset_infos(&at)
+        );
+        api.list_asset_infos(at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -249,11 +249,11 @@ where
         Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>,
     > {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.get_asset_info(&at, asset_id)
+        );
+        api.get_asset_info(at, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

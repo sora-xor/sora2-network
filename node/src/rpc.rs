@@ -34,20 +34,25 @@ use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
-    FilterMode, Index, LiquiditySourceType, ResolveTime, Runtime, SwapVariant, Symbol,
+    FilterMode, LiquiditySourceType, Nonce, ResolveTime, Runtime, SwapVariant, Symbol,
 };
 use jsonrpsee::RpcModule;
+use sc_client_api::AuxStore;
+use sc_consensus_babe::{BabeApi, BabeWorkerHandle};
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
 use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
+use sp_consensus::SelectChain;
+use sp_core::H256 as Hash;
+use sp_keystore::KeystorePtr;
 use std::sync::Arc;
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = RpcModule<()>;
 
-use beefy_gadget::communication::notification::{
+use sc_consensus_beefy::communication::notification::{
     BeefyBestBlockStream, BeefyVersionedFinalityProofStream,
 };
 /// Dependencies for BEEFY
@@ -57,19 +62,35 @@ pub struct BeefyDeps {
     /// Receives notifications about best block events from BEEFY.
     pub beefy_best_block_stream: BeefyBestBlockStream<Block>,
     /// Executor to drive the subscription manager in the BEEFY RPC handler.
-    pub subscription_executor: sc_rpc::SubscriptionTaskExecutor,
+    pub subscription_executor: SubscriptionTaskExecutor,
+}
+
+/// Extra dependencies for BABE.
+pub struct BabeDeps {
+    /// A handle to the BABE worker for issuing requests.
+    pub babe_worker_handle: BabeWorkerHandle<Block>,
+    /// The keystore that manages the keys of the node.
+    pub keystore: KeystorePtr,
 }
 
 /// Full client dependencies
-pub struct FullDeps<C, P> {
+pub struct FullDeps<C, P, SC, B> {
     /// The client instance to use.
     pub client: Arc<C>,
     /// Transaction pool instance.
     pub pool: Arc<P>,
+    /// The SelectChain Strategy
+    pub select_chain: SC,
+    /// A copy of the chain spec.
+    pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
     /// Whether to deny unsafe calls
     pub deny_unsafe: DenyUnsafe,
+    /// BABE specific dependencies.
+    pub babe: BabeDeps,
     /// BEEFY specific dependencies.
     pub beefy: BeefyDeps,
+    /// Backend used by the node.
+    pub backend: Arc<B>,
 }
 
 #[cfg(feature = "wip")]
@@ -101,11 +122,18 @@ pub fn add_ready_for_test_rpc(
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(
-    deps: FullDeps<C, P>,
+pub fn create_full<C, P, SC, B>(
+    deps: FullDeps<C, P, SC, B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
-    C: ProvideRuntimeApi<Block>,
+    C: ProvideRuntimeApi<Block>
+        + sc_client_api::BlockBackend<Block>
+        + HeaderBackend<Block>
+        + AuxStore
+        + HeaderMetadata<Block, Error = BlockChainError>
+        + Sync
+        + Send
+        + 'static,
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
     C::Api: mmr_rpc::MmrRuntimeApi<
@@ -113,8 +141,8 @@ where
         <Block as sp_runtime::traits::Block>::Hash,
         <<Block as sp_runtime::traits::Block>::Header as sp_runtime::traits::Header>::Number,
     >,
-    C::Api: sp_beefy::BeefyApi<Block>,
-    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
+    // C::Api: sp_beefy::BeefyApi<Block>,
+    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
     C::Api: dex_api_rpc::DEXRuntimeAPI<
         Block,
@@ -124,6 +152,7 @@ where
         LiquiditySourceType,
         SwapVariant,
     >,
+    C::Api: BabeApi<Block>,
     C::Api: oracle_proxy_rpc::OracleProxyRuntimeApi<Block, Symbol, ResolveTime>,
     C::Api: dex_manager_rpc::DEXManagerRuntimeAPI<Block, DEXId>,
     C::Api: trading_pair_rpc::TradingPairRuntimeAPI<
@@ -183,9 +212,11 @@ where
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: bridge_proxy_rpc::BridgeProxyRuntimeAPI<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
+    SC: SelectChain<Block> + 'static,
+    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashingFor<Block>>,
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
-    use beefy_gadget_rpc::{Beefy, BeefyApiServer};
     use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
@@ -199,6 +230,8 @@ where
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
+    use sc_consensus_babe_rpc::{Babe, BabeApiServer};
+    use sc_consensus_beefy_rpc::{Beefy, BeefyApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
@@ -207,11 +240,29 @@ where
     let FullDeps {
         client,
         pool,
+        select_chain,
+        chain_spec,
         deny_unsafe,
+        babe,
         beefy,
+        backend,
     } = deps;
 
-    io.merge(Mmr::new(client.clone()).into_rpc())?;
+    let BabeDeps {
+        keystore,
+        babe_worker_handle,
+    } = babe;
+    let properties = chain_spec.properties();
+
+    io.merge(
+        Mmr::new(
+            client.clone(),
+            backend
+                .offchain_storage()
+                .ok_or("Backend doesn't provide the required offchain storage")?,
+        )
+        .into_rpc(),
+    )?;
     io.merge(
         Beefy::<Block>::new(
             beefy.beefy_finality_proof_stream,
@@ -223,6 +274,18 @@ where
 
     io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
     io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+
+    io.merge(
+        Babe::new(
+            client.clone(),
+            babe_worker_handle.clone(),
+            keystore,
+            select_chain,
+            deny_unsafe,
+        )
+        .into_rpc(),
+    )?;
+
     io.merge(DEX::new(client.clone()).into_rpc())?;
     io.merge(DEXManager::new(client.clone()).into_rpc())?;
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;

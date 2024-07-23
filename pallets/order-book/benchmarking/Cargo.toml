@@ -11,26 +11,32 @@ version = "0.1.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false, optional = true }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 assets = { path = "../../assets", default-features = false }
 common = { path = "../../../common", default-features = false }
 order-book = { path = "..", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
+log = "0.4.20"
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 framenode-chain-spec = { path = "../../../node/chain_spec", features = ["test"] }
 framenode-runtime = { path = "../../../runtime", default-features = false, features = [
     "std",
 ] }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+pallet-collective = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+log = "0.4.20"
 
 [features]
 default = ["std"]
@@ -41,7 +47,9 @@ std = [
     "frame-system/std",
     "order-book/std",
     "pallet-timestamp/std",
+    "scale-info/std",
     "sp-runtime/std",
+    "scale-info/std",
     "sp-std/std",
     "trading-pair/std",
 ]
@@ -50,7 +58,8 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-    "order-book/runtime-benchmarks"
+    "order-book/runtime-benchmarks",
+    "common/runtime-benchmarks"
 ]
 
 try-runtime = ["frame-support/try-runtime", "order-book/try-runtime"]

@@ -131,6 +131,7 @@ fn register_crowdloan_fails() {
 #[test]
 fn can_claim_crowdloan_reward() {
     ExtBuilder::default().build().execute_with(|| {
+        let ed = ExistentialDeposit::get();
         const BLOCKS_PER_DAY: u64 = 14400;
         let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
         assert_eq!(CrowdloanUserInfos::<Runtime>::get(alice(), &tag), None);
@@ -166,29 +167,20 @@ fn can_claim_crowdloan_reward() {
                 ))
             }
         );
-        assert_balances(vec![
-            (alice(), XOR, balance!(0)),
-            (alice(), PSWAP, balance!(0)),
-        ]);
+        assert_balances(vec![(alice(), XOR, ed), (alice(), PSWAP, balance!(0))]);
         // Too early claim
         assert_err!(
             VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
             Error::<Runtime>::CrowdloanRewardsDistributionNotStarted
         );
-        assert_balances(vec![
-            (alice(), XOR, balance!(0)),
-            (alice(), PSWAP, balance!(0)),
-        ]);
+        assert_balances(vec![(alice(), XOR, ed), (alice(), PSWAP, balance!(0))]);
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 2);
         // Empty crowdloan tech account
         assert_err!(
             VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
-        assert_balances(vec![
-            (alice(), XOR, balance!(0)),
-            (alice(), PSWAP, balance!(0)),
-        ]);
+        assert_balances(vec![(alice(), XOR, ed), (alice(), PSWAP, balance!(0))]);
         assert_eq!(
             CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
             CrowdloanUserInfo {

@@ -83,11 +83,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.claimables(&at, eth_address)
+        );
+        api.claimables(at, eth_address)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

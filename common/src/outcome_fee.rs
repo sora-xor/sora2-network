@@ -33,9 +33,9 @@ use crate::{Balance, Fixed};
 
 use codec::{Decode, Encode};
 use fixnum::ops::Zero as _;
-use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_core::RuntimeDebug;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 

@@ -38,8 +38,10 @@ use common::{
     AssetIdOf, DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
+use frame_support::sp_runtime;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
+use log;
 use sp_std::vec::Vec;
 
 mod benchmarking;
@@ -88,7 +90,7 @@ impl<T: Config>
             MockPool4 => can_exchange!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         };
-        frame_support::log::trace!("can_exchange({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}): {res:?}");
+        log::trace!("can_exchange({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}): {res:?}");
         res
     }
 
@@ -122,7 +124,7 @@ impl<T: Config>
             MockPool4 => quote!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         };
-        frame_support::log::trace!("quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}");
+        log::trace!("quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}");
         res
     }
 
@@ -158,7 +160,7 @@ impl<T: Config>
             MockPool4 => step_quote!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         };
-        frame_support::log::trace!("step_quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {recommended_samples_count:?}, {deduce_fee:?}): {res:?}");
+        log::trace!("step_quote({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {recommended_samples_count:?}, {deduce_fee:?}): {res:?}");
         res
     }
 
@@ -194,7 +196,7 @@ impl<T: Config>
             MockPool4 => exchange!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         };
-        frame_support::log::trace!("exchange({sender:?}, {receiver:?}, {liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {swap_amount:?}): {res:?}");
+        log::trace!("exchange({sender:?}, {receiver:?}, {liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {swap_amount:?}): {res:?}");
         res
     }
 
@@ -228,7 +230,7 @@ impl<T: Config>
             MockPool4 => check_rewards!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         };
-        frame_support::log::trace!("check_rewards({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {input_amount:?}, {output_amount:?}): {res:?}");
+        log::trace!("check_rewards({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {input_amount:?}, {output_amount:?}): {res:?}");
         res
     }
 
@@ -264,7 +266,7 @@ impl<T: Config>
             MockPool4 => quote_without_impact!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         };
-        frame_support::log::trace!("quote_without_impact({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}");
+        log::trace!("quote_without_impact({liquidity_source_id:?}, {input_asset_id:?}, {output_asset_id:?}, {amount:?}, {deduce_fee:?}): {res:?}");
         res
     }
 
@@ -449,7 +451,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -521,21 +522,22 @@ pub mod pallet {
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig {
+    pub struct GenesisConfig<T> {
+        pub phantom: PhantomData<T>,
         pub source_types: Vec<LiquiditySourceType>,
     }
 
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
+    impl<T> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
+                phantom: Default::default(),
                 source_types: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             EnabledSourceTypes::<T>::put(&self.source_types);
         }

@@ -5,8 +5,9 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
+    Fixed, PSWAP, TBCD, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -20,7 +21,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, Percent};
+use sp_runtime::{AccountId32, BuildStorage, Percent};
 
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -37,34 +38,33 @@ pub fn alice() -> AccountId {
 }
 
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_pallet_balances_config!(Runtime);
+// mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+// mock_assets_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
+    pub const ExistentialDeposit: u128 = 1;
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub const MinimumPeriod: u64 = 5;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -73,7 +73,7 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -84,7 +84,46 @@ construct_runtime! {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = 0;
+}
+
+impl assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type ExtraAccountId = [u8; 32];
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
+    type GetTotalBalance = ();
+    type WeightInfo = ();
+}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
+    type DustRemoval = ();
+    type RuntimeEvent = RuntimeEvent;
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 impl dex_manager::Config for Runtime {}
@@ -95,10 +134,6 @@ impl trading_pair::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl dex_api::Config for Runtime {
@@ -171,13 +206,6 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
@@ -223,8 +251,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {

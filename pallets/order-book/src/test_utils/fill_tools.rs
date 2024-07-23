@@ -39,11 +39,12 @@ use order_book_imported::{
 use common::prelude::{Balance, BalanceUnit, Scalar};
 use common::PriceVariant;
 use common::{AssetIdOf, AssetManager};
-use frame_support::log::{debug, trace};
 use frame_support::traits::{Get, Time};
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};
 use sp_std::iter::Peekable;
 use sp_std::{collections::btree_map::BTreeMap, iter::repeat, vec::Vec};
+use sp_tracing::{debug, trace};
 
 /// iterator over the smallest possible bid prices (ascending)
 pub fn bid_prices_iterator(
@@ -413,9 +414,9 @@ fn fill_price_inner<T: Config>(
     price: OrderPrice,
     users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
     lifespans: &mut Peekable<impl Iterator<Item = u64>>,
-    current_block: T::BlockNumber,
+    current_block: BlockNumberFor<T>,
     total_payment: &mut Payment<AssetIdOf<T>, T::AccountId, T::DEXId>,
-    to_expire: &mut BTreeMap<T::BlockNumber, Vec<T::OrderId>>,
+    to_expire: &mut BTreeMap<BlockNumberFor<T>, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {
         let Some(user) = users.next() else { break };

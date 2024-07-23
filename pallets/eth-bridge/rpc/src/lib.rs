@@ -195,9 +195,9 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
         api.get_requests(
-            &at,
+            at,
             request_hashes,
             network_id,
             redirect_finished_load_requests.unwrap_or(true),
@@ -212,8 +212,8 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_approved_requests(&at, request_hashes, network_id)
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_approved_requests(at, request_hashes, network_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -224,8 +224,8 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<Vec<Approval>>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_approvals(&at, request_hashes, network_id)
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_approvals(at, request_hashes, network_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -236,8 +236,8 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(NetworkId, Hash)>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_account_requests(&at, account_id, status_filter)
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_account_requests(at, account_id, status_filter)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -256,8 +256,8 @@ where
         >,
     > {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_registered_assets(&at, network_id)
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
+        api.get_registered_assets(at, network_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

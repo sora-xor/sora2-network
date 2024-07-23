@@ -1,3 +1,4 @@
+use common::mock_pallet_timestamp_config;
 use {
     crate as apollo_platform,
     common::{
@@ -16,7 +17,7 @@ use {
         construct_runtime,
         pallet_prelude::Weight,
         parameter_types,
-        traits::{ConstU64, Everything, GenesisBuild, Hooks},
+        traits::{ConstU64, Everything, Hooks},
     },
     frame_system::{
         self, offchain::SendTransactionTypes, pallet_prelude::BlockNumberFor, EnsureRoot, RawOrigin,
@@ -24,13 +25,12 @@ use {
     permissions::{Scope, MANAGE_DEX},
     sp_core::{ConstU32, H256},
     sp_runtime::{
-        testing::{Header, TestXt},
+        testing::TestXt,
         traits::{BlakeTwo256, IdentityLookup, Zero},
-        AccountId32, Perbill, Percent, Permill,
+        AccountId32, BuildStorage, Perbill, Percent, Permill,
     },
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 
@@ -59,19 +59,15 @@ pub fn exchange_account() -> AccountId32 {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -96,6 +92,7 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
@@ -116,7 +113,12 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([100; 32]);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
-    pub const MinimumPeriod: u64 = 5;
+}
+
+parameter_types! {
+    pub const TransferFee: u128 = 0;
+    pub const CreationFee: u128 = 0;
+    pub const TransactionByteFee: u128 = 1;
 }
 
 parameter_types! {
@@ -272,13 +274,6 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl dex_manager::Config for Runtime {}
@@ -536,7 +531,7 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         common::test_utils::init_logger();
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
