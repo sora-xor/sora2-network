@@ -1,4 +1,4 @@
-@Library('jenkins-library@feature/dops-3304/update-sora2-deploy') _
+@Library('jenkins-library@feature/dops-3304-update-rustlib') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
