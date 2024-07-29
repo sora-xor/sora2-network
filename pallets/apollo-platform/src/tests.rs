@@ -4904,6 +4904,9 @@ mod test {
             let asset_id = XOR;
             let initial_parameter_value = balance!(1);
             let edit_parameter_value = balance!(0.8);
+            let new_tl = balance!(0.691337);
+            let new_tb = balance!(0.69);
+            let new_tc = balance!(0.1337);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
@@ -4929,6 +4932,9 @@ mod test {
                 edit_parameter_value,
                 edit_parameter_value,
                 edit_parameter_value,
+                new_tl,
+                new_tb,
+                new_tc
             ));
 
             let pool_info_after_edit = pallet::PoolData::<Runtime>::get(asset_id).unwrap();
@@ -4955,6 +4961,9 @@ mod test {
             assert_eq!(pool_info_after_edit.slope_rate_1, edit_parameter_value);
             assert_eq!(pool_info_after_edit.slope_rate_2, edit_parameter_value);
             assert_eq!(pool_info_after_edit.reserve_factor, edit_parameter_value);
+            assert_eq!(pool_info_after_edit.total_liquidity, new_tl);
+            assert_eq!(pool_info_after_edit.total_borrowed, new_tb);
+            assert_eq!(pool_info_after_edit.total_collateral, new_tc);
         });
     }
 
@@ -4990,6 +4999,9 @@ mod test {
                     edit_parameter_value,
                     edit_parameter_value,
                     edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value
                 ),
                 Error::<Runtime>::Unauthorized
             );

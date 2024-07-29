@@ -1148,6 +1148,9 @@ pub mod pallet {
             new_slope_rate_1: Balance,
             new_slope_rate_2: Balance,
             new_reserve_factor: Balance,
+            new_tl: Balance,
+            new_tb: Balance,
+            new_tc: Balance,
         ) -> DispatchResult {
             let user = ensure_signed(origin)?;
 
@@ -1177,6 +1180,9 @@ pub mod pallet {
             pool_info.slope_rate_1 = new_slope_rate_1;
             pool_info.slope_rate_2 = new_slope_rate_2;
             pool_info.reserve_factor = new_reserve_factor;
+            pool_info.total_liquidity = new_tl;
+            pool_info.total_borrowed = new_tb;
+            pool_info.total_collateral = new_tc;
 
             // Saving new pool info
             <PoolData<T>>::insert(asset_id, pool_info);
