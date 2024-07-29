@@ -735,14 +735,14 @@ benchmarks! {
             initial_parameter_value,
             initial_parameter_value,
             initial_parameter_value,
-            initial_parameter_value,
-            initial_parameter_value,
-            initial_parameter_value,
         ).unwrap();
     }: {
          ApolloPlatform::<T>::edit_pool_info(
             RawOrigin::Signed(caller.clone()).into(),
             asset_id.into(),
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
             edit_parameter_value,
             edit_parameter_value,
             edit_parameter_value,
