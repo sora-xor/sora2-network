@@ -466,6 +466,25 @@ mod test {
 
             assert_ok!(ApolloPlatform::remove_pool(user.clone(), DOT));
 
+            let new_basic_lending_rate =
+                (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
+                    / FixedWrapper::from(balance!(2)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            let new_borrowing_rewards_rate =
+                (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
+                    / FixedWrapper::from(balance!(2)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            for (asset_id, pool_info) in pallet::PoolData::<Runtime>::iter() {
+                if asset_id != DOT {
+                    assert_eq!(pool_info.basic_lending_rate, new_basic_lending_rate);
+                    assert_eq!(pool_info.borrowing_rewards_rate, new_borrowing_rewards_rate);
+                }
+            }
+
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
