@@ -735,6 +735,9 @@ benchmarks! {
             initial_parameter_value,
             initial_parameter_value,
             initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
+            initial_parameter_value,
         ).unwrap();
     }: {
          ApolloPlatform::<T>::edit_pool_info(
