@@ -876,10 +876,10 @@ impl ExtBuilder {
                     }
                 })
                 .chain(vec![
-                    (bob(), 0),
-                    (assets_owner(), 0),
-                    (incentives_account(), 0),
-                    (free_reserves_account(), 0),
+                    (bob(), 1),
+                    (assets_owner(), 1),
+                    (incentives_account(), 1),
+                    (free_reserves_account(), 1),
                 ])
                 .collect(),
         }
