@@ -343,7 +343,7 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
     }
 
     fn register_asset(_asset_id: &AssetId) -> frame_support::pallet_prelude::DispatchResult {
-        Ok(().into())
+        Ok(())
     }
 }
 
