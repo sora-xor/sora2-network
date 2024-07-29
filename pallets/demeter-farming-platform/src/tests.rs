@@ -2416,16 +2416,28 @@ mod tests {
     fn change_token_info_unauthorized() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let pool_asset = XOR;
+            let reward_asset = XOR;
             let token_per_block = balance!(1);
             let farms_allocation = balance!(0.6);
             let staking_allocation = balance!(0.2);
             let team_allocation = balance!(0.2);
 
+            let token_info = TokenInfo {
+                farms_total_multiplier: 0,
+                staking_total_multiplier: 0,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                team_account: BOB,
+            };
+
+            demeter_farming_platform::TokenInfos::<Runtime>::insert(&reward_asset, &token_info);
+
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
                     RuntimeOrigin::signed(ALICE),
-                    pool_asset,
+                    reward_asset,
                     token_per_block,
                     farms_allocation,
                     staking_allocation,
@@ -2566,9 +2578,7 @@ mod tests {
 
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
-                    RuntimeOrigin::signed(
-                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
-                    ),
+                    RuntimeOrigin::signed(BOB),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
