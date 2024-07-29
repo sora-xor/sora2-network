@@ -34,9 +34,9 @@ use crate::fixed_wrapper::FixedWrapper;
 use crate::outcome_fee::OutcomeFee;
 use crate::swap_amount::SwapVariant;
 use crate::{Balance, Fixed, Price};
-use fixnum::ops::Bounded;
 use fixnum::ArithmeticError;
 use sp_runtime::traits::{Saturating, Zero};
+use sp_runtime::Permill;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::ops::Add;
 
@@ -479,7 +479,8 @@ impl<AssetId: Ord + Clone, AmountType> DiscreteQuotation<AssetId, AmountType> {
 
 impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
     pub fn verify(&self) -> bool {
-        let mut prev_price = Price::MAX;
+        let price_epsilon = Permill::from_rational(1u32, 1000000); // 0.0001%
+        let mut prev_price = Balance::MAX;
 
         for chunk in &self.chunks {
             // chunk should not contain zeros
@@ -513,8 +514,13 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
                 return false;
             };
 
-            // chunks should go to reduce the price, from the best to the worst
-            if price > prev_price {
+            let Ok(price): Result<Balance, _> = price.into_bits().try_into() else {
+                return false;
+            };
+
+            // chunks should go to reduce the price, from the best to the worst (or don't exceed the epsilon)
+            if price > prev_price && price.abs_diff(prev_price) > price_epsilon * prev_price {
+                frame_support::log::error!("price = {price}, prev_price = {prev_price}");
                 return false;
             }
             prev_price = price;
