@@ -901,7 +901,13 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
-                <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
+                borrow_user_info.remove(&collateral_asset);
+                if borrow_user_info.is_empty() {
+                    <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
+                } else {
+                    <UserBorrowingInfo<T>>::insert(borrowing_asset, user.clone(), borrow_user_info);
+                }
+
                 Self::distribute_protocol_interest(
                     borrowing_asset,
                     user_info.borrowing_interest,

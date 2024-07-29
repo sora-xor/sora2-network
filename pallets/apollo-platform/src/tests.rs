@@ -3143,6 +3143,139 @@ mod test {
     }
 
     #[test]
+    fn repay_full_loan_with_two_collaterals_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            static_set_dex();
+            init_exchange();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DAI,
+                &alice(),
+                &alice(),
+                balance!(10000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(0.8),
+                balance!(0.7),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.2),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+                balance!(0.8),
+                balance!(0.7),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.2),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DAI,
+                balance!(0.8),
+                balance!(0.7),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.2),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(200),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DAI,
+                balance!(1500),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(80),
+                balance!(0.8)
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DAI,
+                XOR,
+                balance!(80),
+                balance!(0.8)
+            ));
+
+            let borrow_user_info_before_lq =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrow_user_info_dot_coll_before_lq = borrow_user_info_before_lq.get(&DOT).unwrap();
+            let borrow_user_info_dai_coll_before_lq = borrow_user_info_before_lq.get(&DAI).unwrap();
+
+            assert_eq!(
+                borrow_user_info_dot_coll_before_lq.collateral_amount,
+                balance!(100)
+            );
+            assert_eq!(
+                borrow_user_info_dai_coll_before_lq.collateral_amount,
+                balance!(1000)
+            );
+
+            assert_ok!(ApolloPlatform::repay(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(100)
+            ));
+
+            // One collateral should remain after the other collateral full repayment
+            let borrow_user_info_before_lq =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrow_user_info_dot_coll_before_lq = borrow_user_info_before_lq.get(&DOT);
+            assert_eq!(borrow_user_info_dot_coll_before_lq, None);
+
+            let borrow_user_info_dai_coll_before_lq = borrow_user_info_before_lq.get(&DAI).unwrap();
+            assert_eq!(
+                borrow_user_info_dai_coll_before_lq.collateral_amount,
+                balance!(1000)
+            );
+        });
+    }
+
+    #[test]
     fn change_rewards_amount_unauthorized() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
