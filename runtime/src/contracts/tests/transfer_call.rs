@@ -35,7 +35,7 @@ use codec::{Decode, Encode};
 use common::mock::{alice, bob};
 use common::{balance, XOR};
 use frame_support::{assert_ok, weights::Weight};
-use pallet_contracts::Determinism;
+use pallet_contracts::{CollectEvents, DebugInfo, Determinism};
 use pallet_contracts_primitives::{Code, ContractResult};
 use sp_core::crypto::AccountId32;
 
@@ -45,13 +45,14 @@ fn call_transfer_right() {
     ExtBuilder::default().build().execute_with(|| {
         let contract_addr: AccountId32 = Contracts::bare_instantiate(
             alice(),
-            0,
+            1_u128,
             GAS_LIMIT,
             None,
             Code::Upload(code),
             vec![],
             vec![0],
-            false,
+            DebugInfo::Skip,
+            CollectEvents::Skip,
         )
         .result
         .expect("Error while instantiate contract")
@@ -70,8 +71,9 @@ fn call_transfer_right() {
             GAS_LIMIT,
             None,
             call.encode(),
-            false,
-            Determinism::Deterministic,
+            DebugInfo::Skip,
+            CollectEvents::Skip,
+            Determinism::Enforced,
         );
 
         let ContractResult {
@@ -80,6 +82,7 @@ fn call_transfer_right() {
             storage_deposit: _storage_deposit,
             debug_message: _debug_message,
             result,
+            ..
         } = result;
 
         // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
@@ -97,8 +100,9 @@ fn call_transfer_right() {
                 gas_required,
                 None,
                 call.encode(),
-                false,
-                Determinism::Deterministic
+                DebugInfo::Skip,
+                CollectEvents::Skip,
+                Determinism::Enforced,
             )
             .result
         );

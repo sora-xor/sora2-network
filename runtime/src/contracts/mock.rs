@@ -32,19 +32,18 @@ use crate::{AccountId, AssetId, OrderBook, Runtime, TradingPair, Weight};
 use assets::AssetIdOf;
 use common::mock::{alice, bob, charlie};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, DEXId, DEXInfo, PriceVariant,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    balance, AssetName, AssetSymbol, DEXId, DEXInfo, PriceVariant, DEFAULT_BALANCE_PRECISION,
+    PSWAP, VAL, XOR, XST,
 };
-use frame_support::pallet_prelude::GenesisBuild;
-use frame_support::sp_io;
 use frame_system::RawOrigin;
 use order_book::OrderBookId;
+use sp_runtime::BuildStorage;
 
 pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000_000, 1024 * 1024);
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(u32, DEXInfo<AssetId>)>,
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    // endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -58,22 +57,27 @@ impl Default for ExtBuilder {
                     is_public: true,
                 },
             )],
-            endowed_accounts: [XOR, PSWAP, VAL, XST]
-                .into_iter()
-                .flat_map(|asset| {
-                    [alice(), bob(), charlie()]
-                        .into_iter()
-                        .map(move |account| (account, asset, balance!(2000000)))
-                })
-                .collect(),
+            // endowed_accounts: [XOR, PSWAP, VAL, XST]
+            //     .into_iter()
+            //     .flat_map(|asset| {
+            //         [alice(), bob(), charlie()]
+            //             .into_iter()
+            //             .map(move |account| (account, asset, balance!(100000000000000000000)))
+            //     })
+            //     .collect(),
         }
     }
 }
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        use env_logger::{Builder, Env};
+
+        let env = Env::new().default_filter_or("runtime=debug");
+        let _ = Builder::from_env(env).is_test(true).try_init();
+
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
@@ -86,11 +90,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
-            balances: self.endowed_accounts,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
+        // tokens::GenesisConfig::<Runtime> {
+        //     balances: self.endowed_accounts,
+        // }
+        // .assimilate_storage(&mut t)
+        // .unwrap();
 
         assets::GenesisConfig::<Runtime> {
             endowed_assets: vec![
@@ -143,13 +147,71 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        // tokens::GenesisConfig::<Runtime> {
+        //     balances: self.endowed_accounts,
+        // }
+        // .assimilate_storage(&mut t)
+        // .unwrap();
+
+        // assets::GenesisConfig::<Runtime> {
+        //     endowed_assets: vec![
+        //         (
+        //             XOR.into(),
+        //             alice(),
+        //             AssetSymbol(b"XOR".to_vec()),
+        //             AssetName(b"SORA".to_vec()),
+        //             DEFAULT_BALANCE_PRECISION,
+        //             0,
+        //             true,
+        //             None,
+        //             None,
+        //         ),
+        //         (
+        //             PSWAP.into(),
+        //             alice(),
+        //             AssetSymbol(b"PSWAP".to_vec()),
+        //             AssetName(b"PSWAP".to_vec()),
+        //             DEFAULT_BALANCE_PRECISION,
+        //             balance!(10000000000000000000),
+        //             true,
+        //             None,
+        //             None,
+        //         ),
+        //         (
+        //             VAL.into(),
+        //             alice(),
+        //             AssetSymbol(b"VAL".to_vec()),
+        //             AssetName(b"VAL".to_vec()),
+        //             DEFAULT_BALANCE_PRECISION,
+        //             balance!(10000000000000000000),
+        //             true,
+        //             None,
+        //             None,
+        //         ),
+        //         (
+        //             XST.into(),
+        //             alice(),
+        //             AssetSymbol(b"XST".to_vec()),
+        //             AssetName(b"XST".to_vec()),
+        //             DEFAULT_BALANCE_PRECISION,
+        //             balance!(10000000000000000000),
+        //             true,
+        //             None,
+        //             None,
+        //         ),
+        //     ],
+        // }
+        // .assimilate_storage(&mut t)
+        // .unwrap();
+
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        t.into()
+        let mut ext = sp_io::TestExternalities::new(t);
+        ext
     }
 }
 

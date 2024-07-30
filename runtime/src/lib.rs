@@ -220,6 +220,11 @@ type AtLeastTwoThirdsCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
 >;
 
+type EventRecord = frame_system::EventRecord<
+    <Runtime as frame_system::Config>::RuntimeEvent,
+    <Runtime as frame_system::Config>::Hash,
+>;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -912,7 +917,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = MaxLocks;
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
+    type RuntimeHoldReason = RuntimeHoldReason;
     type FreezeIdentifier = ();
     type MaxHolds = ();
     type MaxFreezes = ();
@@ -2504,12 +2509,12 @@ parameter_types! {
     pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
 
     // For 9.38
-    pub const DeletionQueueDepth: u32 = 128;
-    pub DeletionWeightLimit: Weight = BlockWeights::get()
-        .per_class
-        .get(DispatchClass::Normal)
-        .max_total
-        .unwrap_or(BlockWeights::get().max_block);
+    // pub const DeletionQueueDepth: u32 = 128;
+    // pub DeletionWeightLimit: Weight = BlockWeights::get()
+    //     .per_class
+    //     .get(DispatchClass::Normal)
+    //     .max_total
+    //     .unwrap_or(BlockWeights::get().max_block);
 }
 
 // TODO: Decide should we use another deposit for contracts? How to calculate?
@@ -2522,8 +2527,8 @@ parameter_types! {
 
 #[cfg(feature = "wip")] // Contracts pallet
 impl pallet_contracts::Config for Runtime {
-    type DeletionQueueDepth = DeletionQueueDepth;
-    type DeletionWeightLimit = DeletionWeightLimit;
+    // type DeletionQueueDepth = DeletionQueueDepth;
+    // type DeletionWeightLimit = DeletionWeightLimit;
 
     type Time = Timestamp;
     type Randomness = RandomnessCollectiveFlip;
@@ -2537,7 +2542,10 @@ impl pallet_contracts::Config for Runtime {
     type Schedule = Schedule;
     type CallStack = [pallet_contracts::Frame<Self>; 5];
     type DepositPerByte = DepositPerByte;
+    // For 1.1.0
+    type DefaultDepositLimit = DefaultDepositLimit;
     type DepositPerItem = DepositPerItem;
+    type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
     type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
     // Got from `pallet_contracts::integrity_test`
     // For every contract executed in runtime, at least `MaxCodeLen*18*4` memory should be available
@@ -2547,21 +2555,16 @@ impl pallet_contracts::Config for Runtime {
     // `MaxCodeLen = (64MB/6 - 2) / 72 = 26/216 = 13/108 MB ≈ 123 * 1024 < 13/108 MB`
     type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
     type MaxStorageKeyLen = ConstU32<128>;
-    // For 9.38 call runtime is unstable
-    //type UnsafeUnstableInterface = ConstBool<false>;
-    type UnsafeUnstableInterface = ConstBool<true>;
+    type MaxDelegateDependencies = ConstU32<32>;
+    type UnsafeUnstableInterface = ConstBool<false>;
     type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-    // For 1.1.0
-    // type DefaultDepositLimit = DefaultDepositLimit;
-    // type RuntimeHoldReason = RuntimeHoldReason;
-    // #[cfg(not(feature = "runtime-benchmarks"))]
-    // type Migrations = ();
-    // #[cfg(feature = "runtime-benchmarks")]
-    // type Migrations = pallet_contracts::migration::codegen::BenchMigrations;
-    // type MaxDelegateDependencies = ConstU32<32>;
-    // type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
-    // type Debug = ();
-    // type Environment = ();
+    type RuntimeHoldReason = RuntimeHoldReason;
+    #[cfg(not(feature = "runtime-benchmarks"))]
+    type Migrations = ();
+    #[cfg(feature = "runtime-benchmarks")]
+    type Migrations = pallet_contracts::migration::codegen::BenchMigrations;
+    type Debug = ();
+    type Environment = ();
 }
 construct_runtime! {
     pub enum Runtime {
@@ -2687,7 +2690,7 @@ construct_runtime! {
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
         // Ink! contracts
         #[cfg(feature = "wip")] // Contracts pallet
-        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 116
+        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason} = 116
     }
 }
 
@@ -2746,8 +2749,78 @@ pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
 
+    // impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash> for Runtime {
+    //     fn call(
+    //         origin: AccountId,
+    //         dest: AccountId,
+    //         value: Balance,
+    //         gas_limit: Option<Weight>,
+    //         storage_deposit_limit: Option<Balance>,
+    //         input_data: Vec<u8>,
+    //     ) -> pallet_contracts_primitives::ContractExecResult<Balance> {
+    //         let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
+    //         Contracts::bare_call(
+    //             origin,
+    //             dest,
+    //             value,
+    //             gas_limit,
+    //             storage_deposit_limit,
+    //             input_data,
+    //             false,
+    //             pallet_contracts::Determinism::Deterministic
+    //         )
+    //     }
+    //
+    //     fn instantiate(
+    //         origin: AccountId,
+    //         value: Balance,
+    //         gas_limit: Option<Weight>,
+    //         storage_deposit_limit: Option<Balance>,
+    //         code: pallet_contracts_primitives::Code<Hash>,
+    //         data: Vec<u8>,
+    //         salt: Vec<u8>,
+    //     ) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance> {
+    //         let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
+    //         Contracts::bare_instantiate(
+    //             origin,
+    //             value,
+    //             gas_limit,
+    //             storage_deposit_limit,
+    //             code,
+    //             data,
+    //             salt,
+    //             false
+    //         )
+    //     }
+    //     fn upload_code(
+    //         origin: AccountId,
+    //         code: Vec<u8>,
+    //         storage_deposit_limit: Option<Balance>,
+    //         determinism: pallet_contracts::Determinism,
+    //     ) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance> {
+    //         Contracts::bare_upload_code(
+    //             origin,
+    //             code,
+    //             storage_deposit_limit,
+    //             determinism,
+    //         )
+    //     }
+    //
+    //     fn get_storage(
+    //         address: AccountId,
+    //         key: Vec<u8>,
+    //     ) -> pallet_contracts_primitives::GetStorageResult {
+    //         Contracts::get_storage(
+    //             address,
+    //             key
+    //         )
+    //     }
+    // }
+
+    // For 1.1.0
     #[cfg(feature = "wip")] // Contracts pallet
-    impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash> for Runtime {
+    impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
+    {
         fn call(
             origin: AccountId,
             dest: AccountId,
@@ -2755,7 +2828,7 @@ impl_runtime_apis! {
             gas_limit: Option<Weight>,
             storage_deposit_limit: Option<Balance>,
             input_data: Vec<u8>,
-        ) -> pallet_contracts_primitives::ContractExecResult<Balance> {
+        ) -> pallet_contracts_primitives::ContractExecResult<Balance, EventRecord> {
             let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
             Contracts::bare_call(
                 origin,
@@ -2764,8 +2837,9 @@ impl_runtime_apis! {
                 gas_limit,
                 storage_deposit_limit,
                 input_data,
-                false,
-                pallet_contracts::Determinism::Deterministic
+                pallet_contracts::DebugInfo::UnsafeDebug,
+                pallet_contracts::CollectEvents::UnsafeCollect,
+                pallet_contracts::Determinism::Enforced,
             )
         }
 
@@ -2777,7 +2851,8 @@ impl_runtime_apis! {
             code: pallet_contracts_primitives::Code<Hash>,
             data: Vec<u8>,
             salt: Vec<u8>,
-        ) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance> {
+        ) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance, EventRecord>
+        {
             let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
             Contracts::bare_instantiate(
                 origin,
@@ -2787,15 +2862,18 @@ impl_runtime_apis! {
                 code,
                 data,
                 salt,
-                false
+                pallet_contracts::DebugInfo::UnsafeDebug,
+                pallet_contracts::CollectEvents::UnsafeCollect,
             )
         }
+
         fn upload_code(
             origin: AccountId,
             code: Vec<u8>,
             storage_deposit_limit: Option<Balance>,
             determinism: pallet_contracts::Determinism,
-        ) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance> {
+        ) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance>
+        {
             Contracts::bare_upload_code(
                 origin,
                 code,
@@ -2814,81 +2892,6 @@ impl_runtime_apis! {
             )
         }
     }
-
-    // For 1.1.0
-    // impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
-    // {
-    // 	fn call(
-    // 		origin: AccountId,
-    // 		dest: AccountId,
-    // 		value: Balance,
-    // 		gas_limit: Option<Weight>,
-    // 		storage_deposit_limit: Option<Balance>,
-    // 		input_data: Vec<u8>,
-    // 	) -> pallet_contracts_primitives::ContractExecResult<Balance, EventRecord> {
-    // 		let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
-    // 		Contracts::bare_call(
-    // 			origin,
-    // 			dest,
-    // 			value,
-    // 			gas_limit,
-    // 			storage_deposit_limit,
-    // 			input_data,
-    // 			pallet_contracts::DebugInfo::UnsafeDebug,
-    // 			pallet_contracts::CollectEvents::UnsafeCollect,
-    // 			pallet_contracts::Determinism::Enforced,
-    // 		)
-    // 	}
-    //
-    // 	fn instantiate(
-    // 		origin: AccountId,
-    // 		value: Balance,
-    // 		gas_limit: Option<Weight>,
-    // 		storage_deposit_limit: Option<Balance>,
-    // 		code: pallet_contracts_primitives::Code<Hash>,
-    // 		data: Vec<u8>,
-    // 		salt: Vec<u8>,
-    // 	) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance, EventRecord>
-    // 	{
-    // 		let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
-    // 		Contracts::bare_instantiate(
-    // 			origin,
-    // 			value,
-    // 			gas_limit,
-    // 			storage_deposit_limit,
-    // 			code,
-    // 			data,
-    // 			salt,
-    // 			pallet_contracts::DebugInfo::UnsafeDebug,
-    // 			pallet_contracts::CollectEvents::UnsafeCollect,
-    // 		)
-    // 	}
-    //
-    // 	fn upload_code(
-    // 		origin: AccountId,
-    // 		code: Vec<u8>,
-    // 		storage_deposit_limit: Option<Balance>,
-    // 		determinism: pallet_contracts::Determinism,
-    // 	) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance>
-    //     {
-    // 		Contracts::bare_upload_code(
-    // 			origin,
-    // 			code,
-    // 			storage_deposit_limit,
-    // 			determinism,
-    // 		)
-    // 	}
-    //
-    // 	fn get_storage(
-    // 		address: AccountId,
-    // 		key: Vec<u8>,
-    // 	) -> pallet_contracts_primitives::GetStorageResult {
-    // 		Contracts::get_storage(
-    // 			address,
-    // 			key
-    // 		)
-    // 	}
-    // }
 
     impl sp_api::Core<Block> for Runtime {
         fn version() -> RuntimeVersion {

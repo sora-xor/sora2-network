@@ -14,18 +14,18 @@ targets = ["x86_64-unknown-linux-gnu"]
 substrate-wasm-builder = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "=3.6.5", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
     "chain-error",
 ] }
 # Does not compile with newer version
-parity-scale-codec-derive = "=3.6.5"
+parity-scale-codec-derive = "3"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = "0.4.1"
-log = { version = "0.4.14" }
+hex-literal = "0.4"
+log = { version = "0.4" }
 serde = { features = [
     'derive',
-], default-features = false, optional = true, version = '1.0.101' }
+], default-features = false, optional = true, version = '1' }
 
 # bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "add_sora_substrate_commits", package = "pallet-multisig", default-features = false }
 bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
@@ -159,6 +159,8 @@ sp-npos-elections = { git = "https://github.com/sora-xor/polkadot-sdk.git", bran
 pallet-authorship = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 pallet-election-provider-multi-phase = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 frame-election-provider-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+pallet-contracts = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+pallet-contracts-primitives = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false}
 
 # Other
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
@@ -166,15 +168,15 @@ static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-pallet-contracts = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-contracts-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false}
 
 [dev-dependencies]
-env_logger = "0.10.0"
+env_logger = "0.11.4"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 tokio = { version = "1.19.2", features = ["macros"] }
 sp-tracing = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 frame-remote-externalities = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+wat = { version = "1.214", default-features = false }
 
 [features]
 default = ["std", "build-wasm-binary"]
