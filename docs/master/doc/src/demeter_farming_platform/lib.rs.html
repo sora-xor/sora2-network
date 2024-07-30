@@ -2325,13 +2325,13 @@
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>user = ensure_signed(origin)<span class="question-mark">?</span>;
 
-            <span class="kw">if </span>user != AuthorityAccount::&lt;T&gt;::get() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::Unauthorized.into());
-            }
-
             <span class="comment">// Get token info
             </span><span class="kw">let </span><span class="kw-2">mut </span>token_info =
                 &lt;TokenInfos&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>pool_asset).ok_or(Error::&lt;T&gt;::RewardTokenIsNotRegistered)<span class="question-mark">?</span>;
+
+            <span class="kw">if </span>user != AuthorityAccount::&lt;T&gt;::get() &amp;&amp; user != token_info.team_account {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::Unauthorized.into());
+            }
 
             <span class="comment">// Check if token_per_block is zero
             </span><span class="macro">ensure!</span>(token_per_block != <span class="number">0</span>, Error::&lt;T&gt;::TokenPerBlockCantBeZero);

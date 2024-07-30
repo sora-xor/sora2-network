@@ -1671,6 +1671,23 @@
 <a href="#1656" id="1656">1656</a>
 <a href="#1657" id="1657">1657</a>
 <a href="#1658" id="1658">1658</a>
+<a href="#1659" id="1659">1659</a>
+<a href="#1660" id="1660">1660</a>
+<a href="#1661" id="1661">1661</a>
+<a href="#1662" id="1662">1662</a>
+<a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
@@ -2086,6 +2103,11 @@
                 </span><span class="kw">let </span>num_of_pools = &lt;PoolsByBlock&lt;T&gt;&gt;::iter().count() <span class="kw">as </span>u32;
                 <span class="kw">let </span>block_number: BlockNumberFor&lt;T&gt; = num_of_pools.into();
                 &lt;PoolsByBlock&lt;T&gt;&gt;::insert(block_number, asset_id);
+
+                <span class="comment">// Register asset on PriceTools
+                </span><span class="kw">if </span>!T::PriceTools::is_asset_registered(<span class="kw-2">&amp;</span>asset_id) {
+                    T::PriceTools::register_asset(<span class="kw-2">&amp;</span>asset_id)<span class="question-mark">?</span>;
+                }
             }
 
             <span class="self">Self</span>::deposit_event(Event::PoolAdded(user, asset_id));
@@ -2569,7 +2591,13 @@
                 )
                 .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::CanNotTransferBorrowingRewards)<span class="question-mark">?</span>;
 
-                &lt;UserBorrowingInfo&lt;T&gt;&gt;::remove(borrowing_asset, user.clone());
+                borrow_user_info.remove(<span class="kw-2">&amp;</span>collateral_asset);
+                <span class="kw">if </span>borrow_user_info.is_empty() {
+                    &lt;UserBorrowingInfo&lt;T&gt;&gt;::remove(borrowing_asset, user.clone());
+                } <span class="kw">else </span>{
+                    &lt;UserBorrowingInfo&lt;T&gt;&gt;::insert(borrowing_asset, user.clone(), borrow_user_info);
+                }
+
                 <span class="self">Self</span>::distribute_protocol_interest(
                     borrowing_asset,
                     user_info.borrowing_interest,
@@ -2810,6 +2838,9 @@
             new_slope_rate_1: Balance,
             new_slope_rate_2: Balance,
             new_reserve_factor: Balance,
+            new_tl: Balance,
+            new_tb: Balance,
+            new_tc: Balance,
         ) -&gt; DispatchResult {
             <span class="kw">let </span>user = ensure_signed(origin)<span class="question-mark">?</span>;
 
@@ -2839,6 +2870,9 @@
             pool_info.slope_rate_1 = new_slope_rate_1;
             pool_info.slope_rate_2 = new_slope_rate_2;
             pool_info.reserve_factor = new_reserve_factor;
+            pool_info.total_liquidity = new_tl;
+            pool_info.total_borrowed = new_tb;
+            pool_info.total_collateral = new_tc;
 
             <span class="comment">// Saving new pool info
             </span>&lt;PoolData&lt;T&gt;&gt;::insert(asset_id, pool_info);
