@@ -1013,13 +1013,13 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            if user != AuthorityAccount::<T>::get() {
-                return Err(Error::<T>::Unauthorized.into());
-            }
-
             // Get token info
             let mut token_info =
                 <TokenInfos<T>>::get(&pool_asset).ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
+
+            if user != AuthorityAccount::<T>::get() && user != token_info.team_account {
+                return Err(Error::<T>::Unauthorized.into());
+            }
 
             // Check if token_per_block is zero
             ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);

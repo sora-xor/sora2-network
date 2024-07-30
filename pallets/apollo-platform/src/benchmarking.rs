@@ -747,6 +747,9 @@ benchmarks! {
             edit_parameter_value,
             edit_parameter_value,
             edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
+            edit_parameter_value,
         ).unwrap()
     }
     verify {
