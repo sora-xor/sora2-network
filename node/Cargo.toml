@@ -122,9 +122,9 @@ wip = [
     "beefy-light-client-rpc",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
+stage = [
+    "framenode-chain-spec/stage",
+    "framenode-runtime/stage",
 ]
 
 runtime-benchmarks = [

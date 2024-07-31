@@ -1,8 +1,8 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@feature/dops-3304-update-rustlib') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
       initSubmodules: true,
-      envImageName: 'docker.soramitsu.co.jp/sora2/env:latest',
+      envImageName: 'docker.soramitsu.co.jp/sora2/env:test',
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       codeCoverageCommand: './housekeeping/coverage.sh',
       cargoDoc: true,

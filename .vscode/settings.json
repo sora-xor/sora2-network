@@ -10,7 +10,7 @@
     "rust-analyzer.cargo.features": [
         "private-net",
         "wip",
-        "ready-to-test",
+        "stage",
         "runtime-benchmarks",
         "try-runtime",
     ]

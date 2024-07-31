@@ -9,6 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='Runtime Upgrade', description='Upgrade Runtime of a Substrate node')
     parser.add_argument('--node-url', help='URL of the node to connect to', dest='node_url', default='ws://127.0.0.1:9944', required=False)
     parser.add_argument('--wasm-file-path', help='Path to Compressed Wasm File', dest='wasm_file_path', required=True)
+    parser.add_argument('--unchecked', help='Call setCodeWithoutChecks', dest='unchecked', action='store_true', default=False)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--uri', help='URI of the keypair to use', dest='uri_keypair', type=str)
     group.add_argument('--seed', help='Seed of the keypair to use', dest='seed', type=str)
@@ -63,6 +64,11 @@ def main():
             url=args.node_url,
             ss58_format=ss58_format,
         )
+        
+        if args.unchecked:
+            call_function = 'set_code_without_checks'
+        else:
+            call_function = 'set_code'
           
         call = substrate.compose_call(
             call_module='Sudo',
@@ -70,7 +76,7 @@ def main():
             call_params={
                 'call': {
                     'call_module': 'System',
-                    'call_function':'set_code',
+                    'call_function': call_function,
                     'call_args': {
                         'code': get_new_code_from_wasm_file(args.wasm_file_path)
                     }
