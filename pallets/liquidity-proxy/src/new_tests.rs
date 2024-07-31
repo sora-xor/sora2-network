@@ -488,12 +488,20 @@ fn check_tbcd_swap_smooth_quote() {
 }
 
 #[test]
-fn check_xyk_swap_smooth_quote() {
+fn check_xyk_swap_small_quote_fluctuation() {
     ext().execute_with(|| {
         <Runtime as common::Config>::AssetManager::update_balance(
             RawOrigin::Root.into(),
             alice::<Runtime>(),
             XOR,
+            balance!(100000).try_into().unwrap(),
+        )
+        .unwrap();
+
+        <Runtime as common::Config>::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            alice::<Runtime>(),
+            DAI,
             balance!(100000).try_into().unwrap(),
         )
         .unwrap();
@@ -525,6 +533,14 @@ fn check_xyk_swap_smooth_quote() {
         assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
             RawOrigin::Signed(bob::<Runtime>()).into(),
             order_book_id,
+            balance!(78000),
+            balance!(1000),
+            common::PriceVariant::Buy,
+            None
+        ));
+        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
+            RawOrigin::Signed(bob::<Runtime>()).into(),
+            order_book_id,
             balance!(77000),
             balance!(1000),
             common::PriceVariant::Buy,
@@ -549,17 +565,26 @@ fn check_xyk_swap_smooth_quote() {
             balance!(1),
         ));
 
-        let amount = SwapAmount::WithDesiredInput {
-            desired_amount_in: balance!(0.01),
-            min_amount_out: balance!(0),
-        };
+        let amount = balance!(0.00001);
+
+        // xyk pool returns the chunks in not descending price order, but in the scope of accepted slippage
 
         assert_ok!(LiquidityProxyPallet::swap(
             RuntimeOrigin::signed(alice::<Runtime>()),
             DEX.into(),
             XOR,
             DAI,
-            amount,
+            SwapAmount::with_desired_input(amount, balance!(0)),
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice::<Runtime>()),
+            DEX.into(),
+            DAI,
+            XOR,
+            SwapAmount::with_desired_output(amount, balance!(10000000000)),
             Vec::new(),
             FilterMode::Disabled
         ));
