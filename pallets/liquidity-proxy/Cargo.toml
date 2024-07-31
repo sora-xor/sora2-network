@@ -52,6 +52,7 @@ vested-rewards = { path = "../vested-rewards" }
 pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+extended-assets = { path = "../extended-assets", features = ["test"] }
 hex-literal = "0.4.1"
 
 

@@ -47,10 +47,10 @@ use common::prelude::{
     SwapVariant,
 };
 use common::{
-    fixed_wrapper, AssetIdOf, AssetInfoProvider, DEXInfo, DexInfoProvider, EnsureTradingPairExists,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
-    XykPool,
+    fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
+    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
+    OnPoolReservesChanged, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    TradingPairSourceManager, XykPool,
 };
 
 mod aliases;
@@ -689,6 +689,22 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
+        T::AssetRegulator::check_permission(
+            &sender,
+            &receiver,
+            &input_asset_id,
+            &common::permissions::TRANSFER,
+        )
+        .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
+        T::AssetRegulator::check_permission(
+            &sender,
+            &receiver,
+            &output_asset_id,
+            &common::permissions::TRANSFER,
+        )
+        .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -712,6 +728,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             fee: Default::default(),
             fee_account: None,
             get_fee_from_destination: None,
+            base_chameleon_asset: None,
+            is_chameleon_pool: None,
             dex_id: *dex_id,
         });
         common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::prepare_and_validate(
@@ -902,8 +920,8 @@ use sp_runtime::traits::Zero;
 pub mod pallet {
     use super::*;
     use common::{
-        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-        EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
+        AccountIdOf, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
+        Description, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
@@ -966,6 +984,10 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+
+        /// Regulator of asset operations
+        type AssetRegulator: AssetRegulator<Self::AccountId, AssetIdOf<Self>>;
+
         /// Percent of reserve which is not involved in swap
         #[pallet::constant]
         type IrreducibleReserve: Get<Percent>;
@@ -1021,6 +1043,23 @@ pub mod pallet {
                 input_a_desired >= input_a_min && input_b_desired >= input_b_min,
                 Error::<T>::InvalidMinimumBoundValueOfBalance
             );
+
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &input_asset_a,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &input_asset_b,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
             Pallet::<T>::deposit_liquidity_unchecked(
                 source,
                 dex_id,
@@ -1060,6 +1099,23 @@ pub mod pallet {
                 output_b_min > 0,
                 Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
             );
+
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &output_asset_a,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
+            T::AssetRegulator::check_permission(
+                &source,
+                &source,
+                &output_asset_b,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+
             Pallet::<T>::withdraw_liquidity_unchecked(
                 source,
                 dex_id,
@@ -1266,6 +1322,8 @@ pub mod pallet {
         RestrictedChameleonPool,
         /// Output asset reserves is not enough
         NotEnoughOutputReserves,
+        /// Asset Regulations Check failed
+        AssetRegulationsCheckFailed,
     }
 
     /// Updated after last liquidity change operation.

@@ -133,6 +133,7 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }

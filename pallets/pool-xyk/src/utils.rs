@@ -41,7 +41,34 @@ use frame_support::ensure;
 use orml_traits::GetByKey;
 use sp_runtime::DispatchError;
 
+pub struct AdditionalSwapParams<AssetId> {
+    pub is_fee_from_destination: bool,
+    pub is_chameleon_pool: bool,
+    pub base_chameleon_asset: Option<AssetId>,
+}
+
 impl<T: Config> Pallet<T> {
+    pub fn get_additional_swap_params(
+        base_asset_id: &AssetIdOf<T>,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+    ) -> Result<AdditionalSwapParams<AssetIdOf<T>>, DispatchError> {
+        let (tpair, base_chameleon_asset, is_chameleon_pool) =
+            Self::get_pair_info(base_asset_id, asset_a, asset_b)?;
+        let is_fee_from_destination = if &tpair.target_asset_id == asset_a {
+            true
+        } else if &tpair.target_asset_id == asset_b {
+            false
+        } else {
+            return Err(Error::<T>::UnsupportedQuotePath.into());
+        };
+        Ok(AdditionalSwapParams {
+            is_chameleon_pool,
+            is_fee_from_destination,
+            base_chameleon_asset,
+        })
+    }
+
     pub fn decide_is_fee_from_destination(
         base_asset_id: &AssetIdOf<T>,
         asset_a: &AssetIdOf<T>,

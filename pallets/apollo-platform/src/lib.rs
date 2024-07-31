@@ -412,6 +412,11 @@ pub mod pallet {
                 let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
                 let block_number: BlockNumberFor<T> = num_of_pools.into();
                 <PoolsByBlock<T>>::insert(block_number, asset_id);
+
+                // Register asset on PriceTools
+                if !T::PriceTools::is_asset_registered(&asset_id) {
+                    T::PriceTools::register_asset(&asset_id)?;
+                }
             }
 
             Self::deposit_event(Event::PoolAdded(user, asset_id));
@@ -895,7 +900,13 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
 
-                <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
+                borrow_user_info.remove(&collateral_asset);
+                if borrow_user_info.is_empty() {
+                    <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
+                } else {
+                    <UserBorrowingInfo<T>>::insert(borrowing_asset, user.clone(), borrow_user_info);
+                }
+
                 Self::distribute_protocol_interest(
                     borrowing_asset,
                     user_info.borrowing_interest,
@@ -1136,6 +1147,9 @@ pub mod pallet {
             new_slope_rate_1: Balance,
             new_slope_rate_2: Balance,
             new_reserve_factor: Balance,
+            new_tl: Balance,
+            new_tb: Balance,
+            new_tc: Balance,
         ) -> DispatchResult {
             let user = ensure_signed(origin)?;
 
@@ -1165,6 +1179,9 @@ pub mod pallet {
             pool_info.slope_rate_1 = new_slope_rate_1;
             pool_info.slope_rate_2 = new_slope_rate_2;
             pool_info.reserve_factor = new_reserve_factor;
+            pool_info.total_liquidity = new_tl;
+            pool_info.total_borrowed = new_tb;
+            pool_info.total_collateral = new_tc;
 
             // Saving new pool info
             <PoolData<T>>::insert(asset_id, pool_info);

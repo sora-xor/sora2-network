@@ -164,6 +164,7 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -292,6 +293,13 @@ impl demeter_farming_platform::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
+impl extended_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxRegulatedAssetsPerSBT = ConstU32<1000>;
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -314,6 +322,7 @@ impl pool_xyk::Config for Runtime {
     type GetChameleonPool = common::mock::GetChameleonPool;
     type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type WeightInfo = ();
 }
@@ -371,6 +380,7 @@ pub struct ExtBuilder {
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    pub is_permissioned_xyk_pool: bool,
 }
 
 impl Default for ExtBuilder {
@@ -516,6 +526,7 @@ impl Default for ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
+            is_permissioned_xyk_pool: false,
         }
     }
 }
@@ -926,6 +937,32 @@ impl ExtBuilder {
         self
     }
 
+    pub fn with_permissioned_xyk_pool(mut self) -> Self {
+        self = self.with_xyk_pool();
+        self.is_permissioned_xyk_pool = true;
+        self
+    }
+
+    fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
+        use extended_assets::test_utils::register_sbt_asset;
+        use frame_support::assert_ok;
+
+        System::set_block_number(1);
+        let owner_origin = RuntimeOrigin::signed(owner.clone());
+        if !ExtendedAssets::is_asset_regulated(asset_id) {
+            assets::Pallet::<Runtime>::update_asset_type(asset_id, &common::AssetType::Regulated)
+                .expect("Failed to regulate Asset");
+        }
+
+        let sbt_asset_id = register_sbt_asset::<Runtime>(owner);
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            owner_origin,
+            sbt_asset_id,
+            *asset_id
+        ));
+        Assets::mint_to(&sbt_asset_id, &owner, &owner, 1).expect("Failed to mint SBT");
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::<Runtime>::default()
             .build_storage()
@@ -978,7 +1015,16 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        dex_api::GenesisConfig::<Runtime>::assimilate_storage(
+        technical::GenesisConfig::<Runtime> {
+            register_tech_accounts: vec![(
+                GetLiquidityProxyAccountId::get().into(),
+                GetLiquidityProxyTechAccountId::get(),
+            )],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
             &dex_api::GenesisConfig {
                 source_types: self.source_types,
                 phantom: PhantomData,
@@ -1026,6 +1072,9 @@ impl ExtBuilder {
                     asset.into(),
                 )
                 .unwrap();
+                if self.is_permissioned_xyk_pool {
+                    Self::prepare_asset_for_permissioned_pool(&owner, &asset.into());
+                }
                 assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
                     .unwrap();
                 pool_xyk::Pallet::<Runtime>::initialize_pool(

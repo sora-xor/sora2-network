@@ -46,15 +46,20 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+pub mod test_utils;
+
 pub mod weights;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
     permissions::{PermissionId, TRANSFER},
-    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol,
+    AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol, AssetType,
     BalancePrecision, ContentSource, Description, IsValid,
 };
 use frame_support::sp_runtime::DispatchError;
+use frame_support::BoundedBTreeSet;
+use sp_core::Get;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -63,17 +68,21 @@ type Timestamp<T> = pallet_timestamp::Pallet<T>;
 pub use pallet::*;
 
 #[derive(Clone, Eq, Encode, Decode, scale_info::TypeInfo, PartialEq, MaxEncodedLen)]
-pub struct SoulboundTokenMetadata<Moment> {
+#[scale_info(skip_type_params(MaxRegulatedAssetsPerSBT))]
+pub struct SoulboundTokenMetadata<Moment, AssetId, MaxRegulatedAssetsPerSBT: Get<u32>> {
     /// External link of issued place
     external_url: Option<ContentSource>,
     /// Issuance Timestamp
     issued_at: Moment,
+    /// List of regulated assets permissioned by this token
+    regulated_assets: BoundedBTreeSet<AssetId, MaxRegulatedAssetsPerSBT>,
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 
     use super::*;
+    use common::{Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -95,6 +104,10 @@ pub mod pallet {
             Description,
         >;
 
+        /// Max number of regulated assets per one Soulbound Token
+        #[pallet::constant]
+        type MaxRegulatedAssetsPerSBT: Get<u32>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -112,34 +125,57 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        /// Registers a new regulated asset, representing that the asset will only operate between KYC-verified wallets.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `asset_id`: The identifier of the asset.
+        /// - `symbol`: AssetSymbol should represent string with only uppercase latin chars with max length of 7.
+        /// - `name`: AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
+        /// - `initial_supply`: Balance type representing the total amount of the asset to be issued initially.
+        /// - `is_indivisible`: A boolean flag indicating whether the asset can be divided into smaller units or not.
+        /// - `opt_content_src`: An optional parameter of type `ContentSource`, which can include a URI or a reference to a content source that provides more details about the asset.
+        /// - `opt_desc`: An optional parameter of type `Description`, which is a string providing a short description or commentary about the asset.
+        ///
+        /// ## Events
+        ///
+        /// Emits `RegulatedAssetRegistered` event when the asset is successfully registered.
+        ///
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
-        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+        #[pallet::weight(<T as Config>::WeightInfo::register_regulated_asset())]
+        pub fn register_regulated_asset(
+            origin: OriginFor<T>,
+            symbol: AssetSymbol,
+            name: AssetName,
+            initial_supply: Balance,
+            is_mintable: bool,
+            is_indivisible: bool,
+            opt_content_src: Option<ContentSource>,
+            opt_desc: Option<Description>,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
-            ensure!(
-                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
-                <Error<T>>::OnlyAssetOwnerCanRegulate
-            );
-            ensure!(
-                !Self::regulated_asset(asset_id),
-                <Error<T>>::AssetAlreadyRegulated
-            );
-            ensure!(
-                Self::soulbound_asset(asset_id).is_none(),
-                <Error<T>>::NotAllowedToRegulateSoulboundAsset
-            );
 
-            <RegulatedAsset<T>>::set(asset_id, true);
-            Self::deposit_event(Event::AssetRegulated { asset_id });
+            let precision = if is_indivisible {
+                0
+            } else {
+                DEFAULT_BALANCE_PRECISION
+            };
 
-            Ok(())
+            let asset_id = T::AssetManager::register_from(
+                &who,
+                symbol,
+                name,
+                precision,
+                initial_supply,
+                is_mintable,
+                AssetType::Regulated,
+                opt_content_src,
+                opt_desc,
+            )?;
+
+            Self::deposit_event(Event::RegulatedAssetRegistered { asset_id });
+
+            Ok(().into())
         }
 
         /// Issues a new Soulbound Token (SBT).
@@ -175,16 +211,17 @@ pub mod pallet {
                 symbol,
                 name.clone(),
                 0,
-                0,
+                1,
                 true,
-                common::AssetType::Soulbound,
-                None,
+                AssetType::Soulbound,
+                image.clone(),
                 description.clone(),
             )?;
 
             let metadata = SoulboundTokenMetadata {
                 external_url: external_url.clone(),
                 issued_at: now_timestamp,
+                regulated_assets: Default::default(),
             };
 
             <SoulboundAsset<T>>::insert(sbt_asset_id, metadata);
@@ -274,7 +311,28 @@ pub mod pallet {
 
             Self::check_regulated_assets_for_binding(&regulated_asset_id, &who)?;
 
+            // In case the regulated asset is already bound to another SBT, we need to unbind it
+            // by removing it from the previous SBT's regulated assets list.
+            if <RegulatedAssetToSoulboundAsset<T>>::contains_key(regulated_asset_id) {
+                let previous_sbt = Self::regulated_asset_to_sbt(regulated_asset_id);
+                <SoulboundAsset<T>>::mutate(previous_sbt, |metadata| {
+                    if let Some(metadata) = metadata {
+                        metadata.regulated_assets.remove(&regulated_asset_id);
+                    }
+                });
+            }
+
+            // Bind the regulated asset to the SBT and update the SBT's metadata
             <RegulatedAssetToSoulboundAsset<T>>::set(regulated_asset_id, sbt_asset_id);
+            <SoulboundAsset<T>>::try_mutate(sbt_asset_id, |metadata| -> DispatchResult {
+                if let Some(metadata) = metadata {
+                    metadata
+                        .regulated_assets
+                        .try_insert(regulated_asset_id)
+                        .map_err(|_| Error::<T>::RegulatedAssetsPerSBTExceeded)?;
+                }
+                Ok(())
+            })?;
 
             Self::deposit_event(Event::RegulatedAssetBoundToSBT {
                 regulated_asset_id,
@@ -283,13 +341,42 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `asset_id`: The identifier of the asset.
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
+        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
+                <Error<T>>::OnlyAssetOwnerCanRegulate
+            );
+            ensure!(
+                !Self::is_asset_regulated(&asset_id),
+                <Error<T>>::AssetAlreadyRegulated
+            );
+            ensure!(
+                Self::soulbound_asset(asset_id).is_none(),
+                <Error<T>>::NotAllowedToRegulateSoulboundAsset
+            );
+
+            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
+            Self::deposit_event(Event::AssetRegulated { asset_id });
+            Ok(())
+        }
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Emits When an asset is regulated
-        AssetRegulated { asset_id: AssetIdOf<T> },
+        /// Emits When a new regulated asset is registered
+        RegulatedAssetRegistered { asset_id: AssetIdOf<T> },
         /// Emits When an SBT is issued
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
@@ -309,6 +396,8 @@ pub mod pallet {
             regulated_asset_id: AssetIdOf<T>,
             sbt_asset_id: AssetIdOf<T>,
         },
+        /// Emits When an asset is regulated
+        AssetRegulated { asset_id: AssetIdOf<T> },
     }
 
     #[pallet::error]
@@ -317,10 +406,6 @@ pub mod pallet {
         SoulboundAssetNotOperationable,
         /// SBT is not transferable
         SoulboundAssetNotTransferable,
-        /// Only asset owner can regulate
-        OnlyAssetOwnerCanRegulate,
-        /// Asset is already regulated
-        AssetAlreadyRegulated,
         /// All involved users of a regulated asset operation should hold valid SBT
         AllInvolvedUsersShouldHoldValidSBT,
         /// All Allowed assets must be owned by SBT issuer
@@ -335,24 +420,24 @@ pub mod pallet {
         NotAllowedToRegulateSoulboundAsset,
         /// Invalid External URL
         InvalidExternalUrl,
+        /// Regulated Assets per SBT exceeded
+        RegulatedAssetsPerSBTExceeded,
+        /// Only asset owner can regulate
+        OnlyAssetOwnerCanRegulate,
+        /// Asset is already regulated
+        AssetAlreadyRegulated,
     }
-
-    #[pallet::type_value]
-    pub fn DefaultRegulatedAsset<T: Config>() -> bool {
-        false
-    }
-
-    /// Mapping from asset id to whether it is regulated or not
-    #[pallet::storage]
-    #[pallet::getter(fn regulated_asset)]
-    pub type RegulatedAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, bool, ValueQuery, DefaultRegulatedAsset<T>>;
 
     /// Mapping from SBT (asset_id) to its metadata
     #[pallet::storage]
     #[pallet::getter(fn soulbound_asset)]
-    pub type SoulboundAsset<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, SoulboundTokenMetadata<T::Moment>, OptionQuery>;
+    pub type SoulboundAsset<T: Config> = StorageMap<
+        _,
+        Identity,
+        AssetIdOf<T>,
+        SoulboundTokenMetadata<T::Moment, AssetIdOf<T>, T::MaxRegulatedAssetsPerSBT>,
+        OptionQuery,
+    >;
 
     /// Mapping from Regulated asset id to SBT asset id
     #[pallet::storage]
@@ -379,8 +464,7 @@ impl<T: Config> Pallet<T> {
             return Err(Error::<T>::RegulatedAssetNoOwnedBySBTIssuer);
         }
 
-        let is_asset_regulated = Self::regulated_asset(regulated_asset_id);
-        if !is_asset_regulated {
+        if !Self::is_asset_regulated(regulated_asset_id) {
             return Err(Error::<T>::AssetNotRegulated);
         }
 
@@ -404,6 +488,11 @@ impl<T: Config> Pallet<T> {
         let is_expired = expires_at.map_or(false, |expiration_date| expiration_date < *now);
 
         is_holding && !is_expired
+    }
+
+    pub fn is_asset_regulated(asset_id: &AssetIdOf<T>) -> bool {
+        let asset_type = <T as Config>::AssetInfoProvider::get_asset_type(asset_id);
+        asset_type == AssetType::Regulated
     }
 }
 
@@ -438,7 +527,7 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         }
 
         // If asset is not regulated, then no need to check permissions
-        if !Self::regulated_asset(asset_id) {
+        if !Self::is_asset_regulated(asset_id) {
             return Ok(());
         }
 

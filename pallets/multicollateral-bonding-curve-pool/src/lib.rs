@@ -1178,6 +1178,97 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
+    /// Quote sell amounts for several steps
+    ///
+    /// Returns ordered pair: Vec<(input_amount, output_amount, fee_amount)>.
+    fn decide_step_sell_amounts(
+        main_asset_id: &AssetIdOf<T>,
+        collateral_asset_id: &AssetIdOf<T>,
+        amount: QuoteAmount<Balance>,
+        step_amount: Balance,
+        steps: usize,
+        deduce_fee: bool,
+    ) -> Result<Vec<(Balance, Balance, Balance)>, DispatchError> {
+        let mut res = Vec::new();
+        for step in 1..steps {
+            res.push(Self::decide_sell_amounts(
+                main_asset_id,
+                collateral_asset_id,
+                amount.copy_direction(
+                    step_amount
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                ),
+                deduce_fee,
+            )?);
+        }
+
+        res.push(Self::decide_sell_amounts(
+            main_asset_id,
+            collateral_asset_id,
+            amount,
+            deduce_fee,
+        )?);
+        Ok(res)
+    }
+
+    /// Quote buy amounts for several steps
+    ///
+    /// Returns ordered pair: Vec<(input_amount, output_amount, fee_amount)>.
+    fn decide_step_buy_amounts(
+        main_asset_id: &AssetIdOf<T>,
+        collateral_asset_id: &AssetIdOf<T>,
+        amount: QuoteAmount<Balance>,
+        step_amount: Balance,
+        steps: usize,
+        deduce_fee: bool,
+    ) -> Result<Vec<(Balance, Balance, Balance)>, DispatchError> {
+        let mut res = Vec::new();
+        if collateral_asset_id == &TBCD.into() {
+            let (step_input, step_output, step_fee) = Self::decide_buy_amounts(
+                main_asset_id,
+                collateral_asset_id,
+                amount.copy_direction(step_amount),
+                deduce_fee,
+            )?;
+            for step in 1..steps {
+                res.push((
+                    step_input
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                    step_output
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                    step_fee
+                        .checked_mul(step as u128)
+                        .ok_or(Error::<T>::PriceCalculationFailed)?,
+                ))
+            }
+        } else {
+            for step in 1..steps {
+                let (step_input, step_output, step_fee) = Self::decide_buy_amounts(
+                    main_asset_id,
+                    collateral_asset_id,
+                    amount.copy_direction(
+                        step_amount
+                            .checked_mul(step as u128)
+                            .ok_or(Error::<T>::PriceCalculationFailed)?,
+                    ),
+                    deduce_fee,
+                )?;
+                res.push((step_input, step_output, step_fee));
+            }
+        }
+
+        res.push(Self::decide_buy_amounts(
+            main_asset_id,
+            collateral_asset_id,
+            amount,
+            deduce_fee,
+        )?);
+        Ok(res)
+    }
+
     /// Decompose SwapAmount into particular buy quotation query.
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
@@ -1688,27 +1779,31 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             .checked_div(samples_count as Balance)
             .ok_or(Error::<T>::ArithmeticError)?;
 
-        let mut volumes = Vec::new();
-        for i in 1..=samples_count - 1 {
-            let volume = amount.copy_direction(
-                step.checked_mul(i as Balance)
-                    .ok_or(Error::<T>::ArithmeticError)?,
-            );
-            volumes.push(volume);
-        }
-        volumes.push(amount);
+        let amounts = if input_asset_id == base_asset_id {
+            Self::decide_step_sell_amounts(
+                &input_asset_id,
+                &output_asset_id,
+                amount,
+                step,
+                samples_count,
+                deduce_fee,
+            )?
+        } else {
+            Self::decide_step_buy_amounts(
+                &output_asset_id,
+                &input_asset_id,
+                amount,
+                step,
+                samples_count,
+                deduce_fee,
+            )?
+        };
 
         let mut sub_in = Balance::zero();
         let mut sub_out = Balance::zero();
         let mut sub_fee = Balance::zero();
 
-        for volume in volumes {
-            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, volume, deduce_fee)?
-            } else {
-                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, volume, deduce_fee)?
-            };
-
+        for (input_amount, output_amount, fee_amount) in amounts {
             let input_chunk = input_amount.saturating_sub(sub_in);
             let output_chunk = output_amount.saturating_sub(sub_out);
 

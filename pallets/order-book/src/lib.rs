@@ -1352,13 +1352,6 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
         }
 
-        // `max_lot_size` couldn't be more then total supply of `base` asset
-        let total_supply = <T as Config>::AssetInfoProvider::total_issuance(&order_book_id.base)?;
-        ensure!(
-            max_lot_size <= total_supply,
-            Error::<T>::MaxLotSizeIsMoreThanTotalSupply
-        );
-
         Ok(())
     }
 

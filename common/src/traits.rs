@@ -1085,6 +1085,8 @@ pub trait AssetInfoProvider<
     fn ensure_can_withdraw(asset_id: &AssetId, who: &AccountId, amount: Balance) -> DispatchResult;
 
     fn get_asset_owner(asset_id: &AssetId) -> Result<AccountId, DispatchError>;
+
+    fn get_asset_type(asset_id: &AssetId) -> AssetType;
 }
 
 impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
@@ -1158,6 +1160,10 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     fn get_asset_owner(_asset_id: &AssetId) -> Result<AccountId, DispatchError> {
         unimplemented!()
     }
+
+    fn get_asset_type(_asset_id: &AssetId) -> AssetType {
+        unimplemented!()
+    }
 }
 
 pub trait AssetManager<
@@ -1204,6 +1210,8 @@ pub trait AssetManager<
         currency_id: CurrencyIdOf<T>,
         amount: AmountOf<T>,
     ) -> DispatchResult;
+
+    fn gen_asset_id(account_id: &T::AccountId) -> Self::AssetId;
 
     fn gen_asset_id_from_any(value: &impl Encode) -> Self::AssetId;
 
@@ -1272,6 +1280,8 @@ pub trait AssetManager<
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo;
+
+    fn update_asset_type(asset_id: &Self::AssetId, asset_type: &AssetType) -> DispatchResult;
 }
 
 impl<
@@ -1309,6 +1319,10 @@ impl<
         _currency_id: CurrencyIdOf<T>,
         _amount: AmountOf<T>,
     ) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn gen_asset_id(_account_id: &<T>::AccountId) -> Self::AssetId {
         unimplemented!()
     }
 
@@ -1393,6 +1407,10 @@ impl<
         _opt_content_src: Option<ContentSource>,
         _opt_desc: Option<Description>,
     ) -> DispatchResultWithPostInfo {
+        unimplemented!()
+    }
+
+    fn update_asset_type(_asset_id: &Self::AssetId, _asset_type: &AssetType) -> DispatchResult {
         unimplemented!()
     }
 }
@@ -1513,6 +1531,25 @@ where
     ) -> Result<(), DispatchError> {
         A::check_permission(issuer, affected_account, asset_id, permission_id)?;
         B::check_permission(issuer, affected_account, asset_id, permission_id)?;
+        Ok(())
+    }
+}
+
+impl<AccountId, AssetId> AssetRegulator<AccountId, AssetId> for () {
+    fn assign_permission(
+        _owner: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn check_permission(
+        _issuer: &AccountId,
+        _affected_account: &AccountId,
+        _asset_id: &AssetId,
+        _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
         Ok(())
     }
 }

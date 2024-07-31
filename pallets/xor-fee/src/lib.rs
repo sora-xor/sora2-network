@@ -765,13 +765,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
             origin: OriginFor<T>,
-            new_period: BlockNumberFor<T>,
+            _new_period: BlockNumberFor<T>,
         ) -> DispatchResultWithPostInfo {
             T::PermittedSetPeriod::ensure_origin(origin)?;
             #[cfg(feature = "wip")] // Dynamic fee
             {
-                <UpdatePeriod<T>>::put(new_period);
-                Self::deposit_event(Event::PeriodUpdated(new_period));
+                <UpdatePeriod<T>>::put(_new_period);
+                Self::deposit_event(Event::PeriodUpdated(_new_period));
             }
             Ok(().into())
         }

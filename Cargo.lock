@@ -3731,7 +3731,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "3.5.0"
+version = "3.5.1"
 dependencies = [
  "ahash 0.8.7",
  "ansi_term",
@@ -3830,7 +3830,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "3.5.0"
+version = "3.5.1"
 dependencies = [
  "common 0.1.0",
  "faucet",
@@ -3859,7 +3859,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "3.5.0"
+version = "3.5.1"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -5812,6 +5812,7 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
+ "extended-assets",
  "fallible-iterator 0.2.0",
  "frame-support",
  "frame-system",
@@ -5855,6 +5856,7 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
+ "extended-assets",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -7756,6 +7758,7 @@ dependencies = [
  "common 0.1.0",
  "demeter-farming-platform",
  "dex-manager",
+ "extended-assets",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -7790,6 +7793,7 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
+ "extended-assets",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

@@ -503,8 +503,65 @@ fn test_swap_with_desired_output_returns_precise_amount() {
 }
 
 #[test]
+fn test_swap_for_permissioned_pool_with_desired_output_returns_precise_amount() {
+    let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&XOR, &alice()).unwrap();
+        let desired_amount_out = balance!(52.789948793749670063);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            XOR,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in: balance!(10000.0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&XOR, &alice()).unwrap(),
+            initial_balance + desired_amount_out
+        );
+    });
+}
+
+#[test]
 fn test_swap_with_multi_steps_desired_output_return_precise_amount() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&KSM, &alice()).unwrap();
+        let desired_amount_out = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            KSM,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in: balance!(10000.0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            initial_balance + desired_amount_out
+        );
+    });
+}
+
+#[test]
+fn test_swap_for_permissioned_pool_with_multi_steps_desired_output_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
     ext.execute_with(|| {
         let filter_mode = FilterMode::AllowSelected;
         let sources = [LiquiditySourceType::XYKPool].to_vec();
@@ -560,8 +617,64 @@ fn test_swap_with_desired_input_return_precise_amount() {
 }
 
 #[test]
+fn test_swap_for_permissioned_pool_with_desired_input_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&USDT, &alice()).unwrap();
+        let desired_amount_in = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            USDT,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out: balance!(0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            initial_balance - desired_amount_in
+        );
+    });
+}
+
+#[test]
 fn test_swap_with_multi_steps_desired_input_return_precise_amount() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let initial_balance = Assets::free_balance(&KSM, &alice()).unwrap();
+        let desired_amount_in = balance!(100.0);
+
+        assert_ok!(LiquidityProxy::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX_A_ID,
+            KSM,
+            USDT,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out: balance!(0)
+            },
+            sources.clone(),
+            filter_mode,
+        ));
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            initial_balance - desired_amount_in
+        );
+    });
+}
+
+#[test]
+fn test_swap_for_permissioned_pool_with_multi_steps_desired_input_return_precise_amount() {
+    let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
     ext.execute_with(|| {
         let filter_mode = FilterMode::AllowSelected;
         let sources = [LiquiditySourceType::XYKPool].to_vec();

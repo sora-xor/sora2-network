@@ -11,12 +11,12 @@ allfeatures="$featureList"
 
 # build func
 test() {
-    if  [[ -n ${TAG_NAME} ]]; then
+    if  [[ -n ${TAG_NAME} && ($specialLabels != 'true' || -z $specialLabels) ]]; then
         printf "⚡️ Testing with features: private-net runtime-benchmarks\n"
         cargo test --release --features "private-net runtime-benchmarks" -- --test-threads 2 -- -j 4
         if [[ ${TAG_NAME} =~ 'testnet'* ]]; then
             RUST_LOG="debug"
-            cargo test -j 3 --features try-runtime -- run_migrations 
+            cargo test -j 3 --features try-runtime -- run_migrations
         fi
     elif [[ -n $buildTag || $pr = true ]]; then
         printf "⚡️ Running Tests for code coverage only\n"
@@ -36,7 +36,7 @@ build() {
     if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
     elif [[ ${TAG_NAME} =~ 'testnet'* ]]; then
-        featureList='private-net include-real-files ready-to-test'
+        featureList='private-net include-real-files stage'
     elif [[ -n ${TAG_NAME} && ${TAG_NAME} != 'predev' ]]; then
         featureList='include-real-files'
         sudoCheckStatus=1

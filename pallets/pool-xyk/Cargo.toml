@@ -50,6 +50,7 @@ xst = { path = "../xst" }
 oracle-proxy = { path = "../oracle-proxy" }
 band = { path = "../band" }
 assets = { path = "../assets" }
+extended-assets = { path = "../extended-assets", features = ["test"] }
 
 [features]
 default = ['std']

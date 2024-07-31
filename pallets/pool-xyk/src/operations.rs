@@ -66,6 +66,8 @@ pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     pub fee: OutcomeFee<AssetId, Balance>,
     pub fee_account: Option<TechAccountId>,
     pub get_fee_from_destination: Option<bool>,
+    pub base_chameleon_asset: Option<AssetId>,
+    pub is_chameleon_pool: Option<bool>,
     pub dex_id: DEXId,
 }
 

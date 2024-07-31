@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.5.0"
+version = "3.5.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -48,7 +48,7 @@ substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git
 evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
-apollo-platform = { path = "../pallets/apollo-platform", default-features = false, optional = true }
+apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 band = { path = "../pallets/band", default-features = false }
@@ -319,11 +319,11 @@ wip = [
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "extended-assets/wip",
     "xor-fee/wip",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
+
+stage = ["framenode-chain-spec/stage"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
@@ -381,7 +381,7 @@ runtime-benchmarks = [
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
-    "extended-assets/runtime-benchmarks"
+    "extended-assets/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

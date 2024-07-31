@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "3.5.0"
+version = "3.5.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -148,9 +148,9 @@ wip = [
     "beefy-light-client-rpc",
 ]
 
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
+stage = [
+    "framenode-chain-spec/stage",
+    "framenode-runtime/stage",
 ]
 
 runtime-benchmarks = [

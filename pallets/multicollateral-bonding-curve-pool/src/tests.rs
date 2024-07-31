@@ -4963,10 +4963,13 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
             ),
         ])
+        .with_tbcd()
+        .with_tbcd_pool()
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000))]).unwrap();
+            let _ = bonding_curve_pool_init(vec![(VAL, balance!(7000)), (TBCD, balance!(10000))])
+                .unwrap();
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -4975,7 +4978,9 @@ mod tests {
             )
             .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
 
+            // VAL
             compare_quotes(
                 &DEXId::Polkaswap,
                 &VAL,
@@ -5033,6 +5038,67 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_output(balance!(100)),
+                true,
+            );
+
+            // TBCD
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(1)),
+                false,
+            );
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(1)),
+                false,
+            );
+
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(1)),
+                true,
+            );
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(1)),
+                true,
+            );
+
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &TBCD,
+                QuoteAmount::with_desired_input(balance!(1)),
+                false,
+            );
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &TBCD,
+                QuoteAmount::with_desired_output(balance!(1)),
+                false,
+            );
+
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &TBCD,
+                QuoteAmount::with_desired_input(balance!(1)),
+                true,
+            );
+            compare_quotes(
+                &DEXId::Polkaswap,
+                &XOR,
+                &TBCD,
+                QuoteAmount::with_desired_output(balance!(1)),
                 true,
             );
         });

@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "3.5.0"
+version = "3.5.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -54,3 +54,4 @@ wip = ["framenode-runtime/wip"]
 # wip = []
 # ready-to-test = []
 ready-to-test = ["framenode-runtime/ready-to-test"]
+stage = ["framenode-runtime/stage"]
