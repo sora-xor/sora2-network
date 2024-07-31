@@ -63,29 +63,36 @@ use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
 
 pub trait WeightInfo {
-    fn regulate_asset() -> Weight;
+    fn register_regulated_asset() -> Weight;
 	fn issue_sbt() -> Weight;
 	fn set_sbt_expiration() -> Weight;
 	fn bind_regulated_asset_to_sbt() -> Weight;
+	fn regulate_asset() -> Weight;
 }
 
 /// Weight functions for `extended_assets`.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: Assets AssetOwners (r:1 w:0)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Assets AssetOwners (r:1 w:1)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Storage: Permissions Owners (r:2 w:2)
+	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Permissions Permissions (r:2 w:1)
+	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	fn regulate_asset() -> Weight {
+	/// Storage: Assets AssetInfos (r:0 w:1)
+	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	fn register_regulated_asset() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1215`
-		//  Estimated: `331946`
-		// Minimum execution time: 22_000 nanoseconds.
-		Weight::from_parts(23_000_000, 331946)
-			.saturating_add(T::DbWeight::get().reads(3))
-			.saturating_add(T::DbWeight::get().writes(1))
+		//  Measured:  `2100`
+		//  Estimated: `25478`
+		// Minimum execution time: 77_000 nanoseconds.
+		Weight::from_parts(78_000_000, 25478)
+			.saturating_add(T::DbWeight::get().reads(6))
+			.saturating_add(T::DbWeight::get().writes(7))
 	}
 	/// Storage: Timestamp Now (r:1 w:0)
 	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
@@ -140,15 +147,31 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(5))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+
+	/// Storage: Assets AssetOwners (r:1 w:0)
+	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfosV2 (r:1 w:1)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	fn regulate_asset() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1215`
+		//  Estimated: `331946`
+		// Minimum execution time: 22_000 nanoseconds.
+		Weight::from_parts(23_000_000, 331946)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 }
 
 
 
 impl WeightInfo for () {
-    fn regulate_asset() -> Weight {
-        Weight::from_parts(23_000_000, 331946)
-            .saturating_add(RocksDbWeight::get().reads(3_u64))
-            .saturating_add(RocksDbWeight::get().writes(1_u64))
+    fn register_regulated_asset() -> Weight {
+		Weight::from_parts(78_000_000, 25478)
+			.saturating_add(RocksDbWeight::get().reads(6))
+			.saturating_add(RocksDbWeight::get().writes(7))
     }
 	
 	fn issue_sbt() -> Weight {
@@ -167,5 +190,11 @@ impl WeightInfo for () {
 			Weight::from_parts(28_000_000, 335594)
 			.saturating_add(RocksDbWeight::get().reads(5))
 			.saturating_add(RocksDbWeight::get().writes(2))
-		}
+	}
+		
+	fn regulate_asset() -> Weight {
+		Weight::from_parts(23_000_000, 331946)
+            .saturating_add(RocksDbWeight::get().reads(3_u64))
+            .saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
 }

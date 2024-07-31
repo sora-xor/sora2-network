@@ -82,6 +82,7 @@ pub struct SoulboundTokenMetadata<Moment, AssetId, MaxRegulatedAssetsPerSBT: Get
 pub mod pallet {
 
     use super::*;
+    use common::{Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -124,34 +125,57 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        /// Registers a new regulated asset, representing that the asset will only operate between KYC-verified wallets.
         ///
         /// ## Parameters
         ///
         /// - `origin`: The origin of the transaction.
-        /// - `asset_id`: The identifier of the asset.
+        /// - `symbol`: AssetSymbol should represent string with only uppercase latin chars with max length of 7.
+        /// - `name`: AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
+        /// - `initial_supply`: Balance type representing the total amount of the asset to be issued initially.
+        /// - `is_indivisible`: A boolean flag indicating whether the asset can be divided into smaller units or not.
+        /// - `opt_content_src`: An optional parameter of type `ContentSource`, which can include a URI or a reference to a content source that provides more details about the asset.
+        /// - `opt_desc`: An optional parameter of type `Description`, which is a string providing a short description or commentary about the asset.
+        ///
+        /// ## Events
+        ///
+        /// Emits `RegulatedAssetRegistered` event when the asset is successfully registered.
+        ///
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
-        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+        #[pallet::weight(<T as Config>::WeightInfo::register_regulated_asset())]
+        pub fn register_regulated_asset(
+            origin: OriginFor<T>,
+            symbol: AssetSymbol,
+            name: AssetName,
+            initial_supply: Balance,
+            is_mintable: bool,
+            is_indivisible: bool,
+            opt_content_src: Option<ContentSource>,
+            opt_desc: Option<Description>,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
-            ensure!(
-                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
-                <Error<T>>::OnlyAssetOwnerCanRegulate
-            );
-            ensure!(
-                !Self::is_asset_regulated(&asset_id),
-                <Error<T>>::AssetAlreadyRegulated
-            );
-            ensure!(
-                Self::soulbound_asset(asset_id).is_none(),
-                <Error<T>>::NotAllowedToRegulateSoulboundAsset
-            );
 
-            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
-            Self::deposit_event(Event::AssetRegulated { asset_id });
+            let precision = if is_indivisible {
+                0
+            } else {
+                DEFAULT_BALANCE_PRECISION
+            };
 
-            Ok(())
+            let asset_id = T::AssetManager::register_from(
+                &who,
+                symbol,
+                name,
+                precision,
+                initial_supply,
+                is_mintable,
+                AssetType::Regulated,
+                opt_content_src,
+                opt_desc,
+            )?;
+
+            Self::deposit_event(Event::RegulatedAssetRegistered { asset_id });
+
+            Ok(().into())
         }
 
         /// Issues a new Soulbound Token (SBT).
@@ -317,13 +341,42 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `asset_id`: The identifier of the asset.
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
+        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
+                <Error<T>>::OnlyAssetOwnerCanRegulate
+            );
+            ensure!(
+                !Self::is_asset_regulated(&asset_id),
+                <Error<T>>::AssetAlreadyRegulated
+            );
+            ensure!(
+                Self::soulbound_asset(asset_id).is_none(),
+                <Error<T>>::NotAllowedToRegulateSoulboundAsset
+            );
+
+            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
+            Self::deposit_event(Event::AssetRegulated { asset_id });
+            Ok(())
+        }
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Emits When an asset is regulated
-        AssetRegulated { asset_id: AssetIdOf<T> },
+        /// Emits When a new regulated asset is registered
+        RegulatedAssetRegistered { asset_id: AssetIdOf<T> },
         /// Emits When an SBT is issued
         SoulboundTokenIssued {
             asset_id: AssetIdOf<T>,
@@ -343,6 +396,8 @@ pub mod pallet {
             regulated_asset_id: AssetIdOf<T>,
             sbt_asset_id: AssetIdOf<T>,
         },
+        /// Emits When an asset is regulated
+        AssetRegulated { asset_id: AssetIdOf<T> },
     }
 
     #[pallet::error]
@@ -351,10 +406,6 @@ pub mod pallet {
         SoulboundAssetNotOperationable,
         /// SBT is not transferable
         SoulboundAssetNotTransferable,
-        /// Only asset owner can regulate
-        OnlyAssetOwnerCanRegulate,
-        /// Asset is already regulated
-        AssetAlreadyRegulated,
         /// All involved users of a regulated asset operation should hold valid SBT
         AllInvolvedUsersShouldHoldValidSBT,
         /// All Allowed assets must be owned by SBT issuer
@@ -371,6 +422,10 @@ pub mod pallet {
         InvalidExternalUrl,
         /// Regulated Assets per SBT exceeded
         RegulatedAssetsPerSBTExceeded,
+        /// Only asset owner can regulate
+        OnlyAssetOwnerCanRegulate,
+        /// Asset is already regulated
+        AssetAlreadyRegulated,
     }
 
     /// Mapping from SBT (asset_id) to its metadata
