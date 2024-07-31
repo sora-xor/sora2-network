@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::contracts::mock::{create_order_book, ExtBuilder, GAS_LIMIT};
+use crate::contracts::mock::{create_order_book, instantiate_contract, ExtBuilder, GAS_LIMIT};
 use crate::contracts::tests::compile_module;
-use crate::{Balances, Contracts, OrderBook, Runtime, RuntimeCall, RuntimeOrigin};
+use crate::{Contracts, OrderBook, Runtime, RuntimeCall};
 use codec::{Decode, Encode};
 use common::mock::{alice, bob};
 use common::{balance, LiquiditySource, PriceVariant};
@@ -40,323 +40,251 @@ use pallet_contracts::{CollectEvents, DebugInfo, Determinism};
 use pallet_contracts_primitives::{Code, ContractResult};
 use sp_core::crypto::AccountId32;
 
-pub fn expected_deposit(code_len: usize) -> u128 {
-    // Calculate deposit to be reserved.
-    // We add 2 storage items: one for code, other for code_info
-    <Runtime as pallet_contracts::Config>::DepositPerByte::get().saturating_mul(code_len as u128)
-        + <Runtime as pallet_contracts::Config>::DepositPerItem::get().saturating_mul(2)
-}
-
 #[test]
 fn call_place_limit_order_right() {
     let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
-    let expected_deposit = expected_deposit(code.len());
     ExtBuilder::default().build().execute_with(|| {
-        println!("Free Alice balance {}", Balances::free_balance(alice()));
-        println!(
-            "Reserved Alice balance {}",
-            Balances::reserved_balance(alice())
-        );
-        println!("Value {}", balance!(1));
-        println!("Expected Minimal Deposit {}", expected_deposit);
+        let contract_addr: AccountId32 = instantiate_contract(code);
 
-        // let contract_addr: AccountId32 = Contracts::bare_instantiate(
-        //     alice(),
-        //     min_balance,
-        //     GAS_LIMIT,
-        //     None,
-        //     Code::Upload(code),
-        //     vec![],
-        //     vec![0],
-        //     DebugInfo::UnsafeDebug,
-        //     CollectEvents::Skip,
-        // )
-        // .result
-        // .expect("Error while instantiate contract")
-        // .account_id;
+        let order_book_id1 = create_order_book();
 
-        let value = Contracts::bare_instantiate(
+        let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id: order_book_id1,
+            price: balance!(9).into(),
+            amount: balance!(153),
+            side: PriceVariant::Sell,
+            lifespan: Some(<Runtime as order_book::Config>::MIN_ORDER_LIFESPAN + 1000000),
+        });
+
+        let result = Contracts::bare_call(
             alice(),
+            contract_addr.clone(),
             0,
             GAS_LIMIT,
             None,
-            Code::Upload(code),
-            vec![],
-            vec![0],
+            call.encode(),
             DebugInfo::Skip,
             CollectEvents::Skip,
+            Determinism::Enforced,
         );
-        println!("Storage deposit: {:?}", value.storage_deposit);
-        println!("Debug message: {:?}", value.debug_message);
-        println!("Result: {:?}", value.result);
 
-        // let order_book_id1 = create_order_book();
-        //
-        // let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
-        //     order_book_id: order_book_id1,
-        //     price: balance!(9).into(),
-        //     amount: balance!(153),
-        //     side: PriceVariant::Sell,
-        //     lifespan: Some(<Runtime as order_book::Config>::MIN_ORDER_LIFESPAN + 1000000),
-        // });
-        //
-        // let result = Contracts::bare_call(
-        //     alice(),
-        //     contract_addr.clone(),
-        //     0,
-        //     GAS_LIMIT,
-        //     None,
-        //     call.encode(),
-        //     DebugInfo::Skip,
-        //     CollectEvents::Skip,
-        //     Determinism::Enforced,
-        // );
-        //
-        // let ContractResult {
-        //     gas_consumed,
-        //     gas_required,
-        //     storage_deposit: _storage_deposit,
-        //     debug_message: _debug_message,
-        //     result,
-        //     ..
-        // } = result;
-        //
-        // // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-        // assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
-        //
-        // let weight: Weight = OrderBook::exchange_weight();
-        //
-        // assert!(weight.ref_time() < gas_consumed.ref_time());
-        // assert!(weight.proof_size() < gas_consumed.proof_size());
-        // assert_ok!(
-        //     Contracts::bare_call(
-        //         alice(),
-        //         contract_addr.clone(),
-        //         0,
-        //         gas_required,
-        //         None,
-        //         call.encode(),
-        //         DebugInfo::Skip,
-        //         CollectEvents::Skip,
-        //         Determinism::Enforced,
-        //     )
-        //     .result
-        // );
-        assert!(false)
+        let ContractResult {
+            gas_consumed,
+            gas_required,
+            storage_deposit: _storage_deposit,
+            debug_message: _debug_message,
+            result,
+            ..
+        } = result;
+
+        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+
+        let weight: Weight = OrderBook::exchange_weight();
+
+        assert!(weight.ref_time() < gas_consumed.ref_time());
+        assert!(weight.proof_size() < gas_consumed.proof_size());
+        assert_ok!(
+            Contracts::bare_call(
+                alice(),
+                contract_addr.clone(),
+                0,
+                gas_required,
+                None,
+                call.encode(),
+                DebugInfo::Skip,
+                CollectEvents::Skip,
+                Determinism::Enforced,
+            )
+            .result
+        );
     });
 }
 
-// #[test]
-// fn call_cancel_limit_order_right() {
-//     let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
-//     ExtBuilder::default().build().execute_with(|| {
-//         let contract_addr: AccountId32 = Contracts::bare_instantiate(
-//             alice(),
-//             0,
-//             GAS_LIMIT,
-//             None,
-//             Code::Upload(code),
-//             vec![],
-//             vec![0],
-//             false,
-//         )
-//         .result
-//         .expect("Error while instantiate contract")
-//         .account_id;
-//
-//         let order_book_id1 = create_order_book();
-//
-//         let call = RuntimeCall::OrderBook(order_book::Call::cancel_limit_order {
-//             order_book_id: order_book_id1,
-//             order_id: 1,
-//         });
-//
-//         let result = Contracts::bare_call(
-//             alice(),
-//             contract_addr.clone(),
-//             0,
-//             GAS_LIMIT,
-//             None,
-//             call.encode(),
-//             false,
-//             Determinism::Deterministic,
-//         );
-//
-//         let ContractResult {
-//             gas_consumed,
-//             gas_required,
-//             storage_deposit: _storage_deposit,
-//             debug_message: _debug_message,
-//             result,
-//         } = result;
-//
-//         // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-//         assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
-//
-//         let weight: Weight =
-//             order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_first_expiration()
-//                 .max(
-//                 order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_last_expiration(
-//                 ),
-//             );
-//
-//         assert!(weight.ref_time() < gas_consumed.ref_time());
-//         assert!(weight.proof_size() < gas_consumed.proof_size());
-//         assert_ok!(
-//             Contracts::bare_call(
-//                 alice(),
-//                 contract_addr.clone(),
-//                 0,
-//                 gas_required,
-//                 None,
-//                 call.encode(),
-//                 false,
-//                 Determinism::Deterministic
-//             )
-//             .result
-//         );
-//     });
-// }
-//
-// #[test]
-// fn call_cancel_limit_order_batch_right() {
-//     let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
-//     ExtBuilder::default().build().execute_with(|| {
-//         let contract_addr: AccountId32 = Contracts::bare_instantiate(
-//             alice(),
-//             0,
-//             GAS_LIMIT,
-//             None,
-//             Code::Upload(code),
-//             vec![],
-//             vec![0],
-//             false,
-//         )
-//         .result
-//         .expect("Error while instantiate contract")
-//         .account_id;
-//
-//         let order_book_id1 = create_order_book();
-//         let limit_orders_to_cancel = vec![(order_book_id1, vec![1_u128, 2_u128])];
-//         let call = RuntimeCall::OrderBook(order_book::Call::cancel_limit_orders_batch {
-//             limit_orders_to_cancel: limit_orders_to_cancel.clone(),
-//         });
-//
-//         let result = Contracts::bare_call(
-//             alice(),
-//             contract_addr.clone(),
-//             0,
-//             GAS_LIMIT,
-//             None,
-//             call.encode(),
-//             false,
-//             Determinism::Deterministic,
-//         );
-//
-//         let ContractResult {
-//             gas_consumed,
-//             gas_required,
-//             storage_deposit: _storage_deposit,
-//             debug_message: _debug_message,
-//             result,
-//         } = result;
-//
-//         // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-//         assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
-//         let limit_orders_count: u64 = limit_orders_to_cancel
-//             .iter()
-//             .fold(0, |count, (_, order_ids)| {
-//                 count.saturating_add(order_ids.len() as u64)
-//             });
-//         let weight: Weight =
-//             order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_first_expiration()
-//                 .max(
-//                 order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_last_expiration(
-//                 ),
-//             ) * limit_orders_count;
-//
-//         assert!(weight.ref_time() < gas_consumed.ref_time());
-//         assert!(weight.proof_size() < gas_consumed.proof_size());
-//         assert_ok!(
-//             Contracts::bare_call(
-//                 alice(),
-//                 contract_addr.clone(),
-//                 0,
-//                 gas_required,
-//                 None,
-//                 call.encode(),
-//                 false,
-//                 Determinism::Deterministic
-//             )
-//             .result
-//         );
-//     });
-// }
-//
-// #[test]
-// fn call_execute_market_order_right() {
-//     let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
-//     ExtBuilder::default().build().execute_with(|| {
-//         let contract_addr: AccountId32 = Contracts::bare_instantiate(
-//             alice(),
-//             0,
-//             GAS_LIMIT,
-//             None,
-//             Code::Upload(code),
-//             vec![],
-//             vec![0],
-//             false,
-//         )
-//         .result
-//         .expect("Error while instantiate contract")
-//         .account_id;
-//
-//         let order_book_id1 = create_order_book();
-//
-//         let call = RuntimeCall::OrderBook(order_book::Call::execute_market_order {
-//             order_book_id: order_book_id1,
-//             direction: PriceVariant::Buy,
-//             amount: 20,
-//         });
-//
-//         let result = Contracts::bare_call(
-//             bob(),
-//             contract_addr.clone(),
-//             0,
-//             GAS_LIMIT,
-//             None,
-//             call.encode(),
-//             false,
-//             Determinism::Deterministic,
-//         );
-//
-//         let ContractResult {
-//             gas_consumed,
-//             gas_required,
-//             storage_deposit: _storage_deposit,
-//             debug_message: _debug_message,
-//             result,
-//         } = result;
-//
-//         // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-//         assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
-//         let weight: Weight =
-//             order_book::weights::SubstrateWeight::<Runtime>::execute_market_order();
-//
-//         assert!(weight.ref_time() < gas_consumed.ref_time());
-//         assert!(weight.proof_size() < gas_consumed.proof_size());
-//         assert_ok!(
-//             Contracts::bare_call(
-//                 alice(),
-//                 contract_addr.clone(),
-//                 0,
-//                 gas_required,
-//                 None,
-//                 call.encode(),
-//                 false,
-//                 Determinism::Deterministic
-//             )
-//             .result
-//         );
-//     });
-// }
+#[test]
+fn call_cancel_limit_order_right() {
+    let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
+    ExtBuilder::default().build().execute_with(|| {
+        let contract_addr: AccountId32 = instantiate_contract(code);
+
+        let order_book_id1 = create_order_book();
+
+        let call = RuntimeCall::OrderBook(order_book::Call::cancel_limit_order {
+            order_book_id: order_book_id1,
+            order_id: 1,
+        });
+
+        let result = Contracts::bare_call(
+            alice(),
+            contract_addr.clone(),
+            0,
+            GAS_LIMIT,
+            None,
+            call.encode(),
+            DebugInfo::Skip,
+            CollectEvents::Skip,
+            Determinism::Enforced,
+        );
+
+        let ContractResult {
+            gas_consumed,
+            gas_required,
+            storage_deposit: _storage_deposit,
+            debug_message: _debug_message,
+            result,
+            ..
+        } = result;
+
+        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+
+        let weight: Weight =
+            order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_first_expiration()
+                .max(
+                order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_last_expiration(
+                ),
+            );
+
+        assert!(weight.ref_time() < gas_consumed.ref_time());
+        assert!(weight.proof_size() < gas_consumed.proof_size());
+        assert_ok!(
+            Contracts::bare_call(
+                alice(),
+                contract_addr.clone(),
+                0,
+                gas_required,
+                None,
+                call.encode(),
+                DebugInfo::Skip,
+                CollectEvents::Skip,
+                Determinism::Enforced,
+            )
+            .result
+        );
+    });
+}
+
+#[test]
+fn call_cancel_limit_order_batch_right() {
+    let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
+    ExtBuilder::default().build().execute_with(|| {
+        let contract_addr: AccountId32 = instantiate_contract(code);
+
+        let order_book_id1 = create_order_book();
+        let limit_orders_to_cancel = vec![(order_book_id1, vec![1_u128, 2_u128])];
+        let call = RuntimeCall::OrderBook(order_book::Call::cancel_limit_orders_batch {
+            limit_orders_to_cancel: limit_orders_to_cancel.clone(),
+        });
+
+        let result = Contracts::bare_call(
+            alice(),
+            contract_addr.clone(),
+            0,
+            GAS_LIMIT,
+            None,
+            call.encode(),
+            DebugInfo::Skip,
+            CollectEvents::Skip,
+            Determinism::Enforced,
+        );
+
+        let ContractResult {
+            gas_consumed,
+            gas_required,
+            storage_deposit: _storage_deposit,
+            debug_message: _debug_message,
+            result,
+            ..
+        } = result;
+
+        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+        let limit_orders_count: u64 = limit_orders_to_cancel
+            .iter()
+            .fold(0, |count, (_, order_ids)| {
+                count.saturating_add(order_ids.len() as u64)
+            });
+        let weight: Weight =
+            order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_first_expiration()
+                .max(
+                order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_last_expiration(
+                ),
+            ) * limit_orders_count;
+
+        assert!(weight.ref_time() < gas_consumed.ref_time());
+        assert!(weight.proof_size() < gas_consumed.proof_size());
+        assert_ok!(
+            Contracts::bare_call(
+                alice(),
+                contract_addr.clone(),
+                0,
+                gas_required,
+                None,
+                call.encode(),
+                DebugInfo::Skip,
+                CollectEvents::Skip,
+                Determinism::Enforced,
+            )
+            .result
+        );
+    });
+}
+
+#[test]
+fn call_execute_market_order_right() {
+    let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
+    ExtBuilder::default().build().execute_with(|| {
+        let contract_addr: AccountId32 = instantiate_contract(code);
+
+        let order_book_id1 = create_order_book();
+
+        let call = RuntimeCall::OrderBook(order_book::Call::execute_market_order {
+            order_book_id: order_book_id1,
+            direction: PriceVariant::Buy,
+            amount: 20,
+        });
+
+        let result = Contracts::bare_call(
+            bob(),
+            contract_addr.clone(),
+            0,
+            GAS_LIMIT,
+            None,
+            call.encode(),
+            DebugInfo::Skip,
+            CollectEvents::Skip,
+            Determinism::Enforced,
+        );
+
+        let ContractResult {
+            gas_consumed,
+            gas_required,
+            storage_deposit: _storage_deposit,
+            debug_message: _debug_message,
+            result,
+            ..
+        } = result;
+
+        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+        let weight: Weight =
+            order_book::weights::SubstrateWeight::<Runtime>::execute_market_order();
+
+        assert!(weight.ref_time() < gas_consumed.ref_time());
+        assert!(weight.proof_size() < gas_consumed.proof_size());
+        assert_ok!(
+            Contracts::bare_call(
+                alice(),
+                contract_addr.clone(),
+                0,
+                gas_required,
+                None,
+                call.encode(),
+                DebugInfo::Skip,
+                CollectEvents::Skip,
+                Determinism::Enforced,
+            )
+            .result
+        );
+    });
+}

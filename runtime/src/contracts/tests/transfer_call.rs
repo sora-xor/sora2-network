@@ -45,7 +45,7 @@ fn call_transfer_right() {
     ExtBuilder::default().build().execute_with(|| {
         let contract_addr: AccountId32 = Contracts::bare_instantiate(
             alice(),
-            1_u128,
+            0,
             GAS_LIMIT,
             None,
             Code::Upload(code),

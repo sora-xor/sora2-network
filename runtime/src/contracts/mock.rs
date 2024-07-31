@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{AccountId, AssetId, OrderBook, Runtime, TradingPair, Weight};
+use crate::{AssetId, OrderBook, Runtime, TradingPair, Weight};
 use assets::AssetIdOf;
 use common::mock::{alice, bob, charlie};
 use common::{
@@ -37,13 +37,13 @@ use common::{
 };
 use frame_system::RawOrigin;
 use order_book::OrderBookId;
+use sp_core::crypto::AccountId32;
 use sp_runtime::BuildStorage;
 
 pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000_000, 1024 * 1024);
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(u32, DEXInfo<AssetId>)>,
-    // endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -57,14 +57,6 @@ impl Default for ExtBuilder {
                     is_public: true,
                 },
             )],
-            // endowed_accounts: [XOR, PSWAP, VAL, XST]
-            //     .into_iter()
-            //     .flat_map(|asset| {
-            //         [alice(), bob(), charlie()]
-            //             .into_iter()
-            //             .map(move |account| (account, asset, balance!(100000000000000000000)))
-            //     })
-            //     .collect(),
         }
     }
 }
@@ -90,12 +82,6 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        // tokens::GenesisConfig::<Runtime> {
-        //     balances: self.endowed_accounts,
-        // }
-        // .assimilate_storage(&mut t)
-        // .unwrap();
-
         assets::GenesisConfig::<Runtime> {
             endowed_assets: vec![
                 (
@@ -115,7 +101,7 @@ impl ExtBuilder {
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    0,
+                    balance!(10000000000000000000),
                     true,
                     None,
                     None,
@@ -126,7 +112,7 @@ impl ExtBuilder {
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    0,
+                    balance!(10000000000000000000),
                     true,
                     None,
                     None,
@@ -137,7 +123,7 @@ impl ExtBuilder {
                     AssetSymbol(b"XST".to_vec()),
                     AssetName(b"XST".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    0,
+                    balance!(10000000000000000000),
                     true,
                     None,
                     None,
@@ -147,70 +133,13 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        // tokens::GenesisConfig::<Runtime> {
-        //     balances: self.endowed_accounts,
-        // }
-        // .assimilate_storage(&mut t)
-        // .unwrap();
-
-        // assets::GenesisConfig::<Runtime> {
-        //     endowed_assets: vec![
-        //         (
-        //             XOR.into(),
-        //             alice(),
-        //             AssetSymbol(b"XOR".to_vec()),
-        //             AssetName(b"SORA".to_vec()),
-        //             DEFAULT_BALANCE_PRECISION,
-        //             0,
-        //             true,
-        //             None,
-        //             None,
-        //         ),
-        //         (
-        //             PSWAP.into(),
-        //             alice(),
-        //             AssetSymbol(b"PSWAP".to_vec()),
-        //             AssetName(b"PSWAP".to_vec()),
-        //             DEFAULT_BALANCE_PRECISION,
-        //             balance!(10000000000000000000),
-        //             true,
-        //             None,
-        //             None,
-        //         ),
-        //         (
-        //             VAL.into(),
-        //             alice(),
-        //             AssetSymbol(b"VAL".to_vec()),
-        //             AssetName(b"VAL".to_vec()),
-        //             DEFAULT_BALANCE_PRECISION,
-        //             balance!(10000000000000000000),
-        //             true,
-        //             None,
-        //             None,
-        //         ),
-        //         (
-        //             XST.into(),
-        //             alice(),
-        //             AssetSymbol(b"XST".to_vec()),
-        //             AssetName(b"XST".to_vec()),
-        //             DEFAULT_BALANCE_PRECISION,
-        //             balance!(10000000000000000000),
-        //             true,
-        //             None,
-        //             None,
-        //         ),
-        //     ],
-        // }
-        // .assimilate_storage(&mut t)
-        // .unwrap();
-
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        let mut ext = sp_io::TestExternalities::new(t);
+        let ext = sp_io::TestExternalities::new(t);
         ext
     }
 }
@@ -254,4 +183,21 @@ pub fn create_order_book() -> OrderBookId<AssetIdOf<Runtime>, u32> {
     .expect("Error while place new limit order");
 
     order_book_id1
+}
+
+pub fn instantiate_contract(code: Vec<u8>) -> AccountId32 {
+    crate::Contracts::bare_instantiate(
+        alice(),
+        0,
+        GAS_LIMIT,
+        None,
+        pallet_contracts_primitives::Code::Upload(code),
+        vec![],
+        vec![0],
+        pallet_contracts::DebugInfo::Skip,
+        pallet_contracts::CollectEvents::Skip,
+    )
+    .result
+    .expect("Error while instantiate contract")
+    .account_id
 }

@@ -903,6 +903,7 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const MaxLocks: u32 = 50;
+    pub const MaxHolds: u32 = 2;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -919,7 +920,7 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = RuntimeHoldReason;
     type FreezeIdentifier = ();
-    type MaxHolds = ();
+    type MaxHolds = MaxHolds;
     type MaxFreezes = ();
 }
 

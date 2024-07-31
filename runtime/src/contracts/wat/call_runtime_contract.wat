@@ -33,21 +33,11 @@
 	(import "seal0" "call_runtime" (func $call_runtime (param i32 i32) (result i32)))
 	(import "seal0" "seal_input" (func $seal_input (param i32 i32)))
 	(import "seal0" "seal_return" (func $seal_return (param i32 i32 i32)))
-    (import "seal0" "seal_debug_message" (func $seal_debug_message (param i32 i32) (result i32)))
 	(import "env" "memory" (memory 1 1))
 
 	;; 0x1000 = 4k in little endian
 	;; size of input buffer
 	(data (i32.const 0) "\00\10")
-
-	(func $assert_eq (param i32 i32)
-        (block $ok
-            (br_if $ok
-                (i32.eq (local.get 0) (local.get 1))
-            )
-            (unreachable)
-        )
-    )
 
 	(func (export "call")
 		;; Receive the encoded call
