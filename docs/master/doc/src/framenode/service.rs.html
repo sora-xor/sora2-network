@@ -1067,8 +1067,8 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
             </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_wip_rpc(rpc, client.clone())<span class="question-mark">?</span>;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-            </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_ready_for_test_rpc(rpc)<span class="question-mark">?</span>;
+            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)]
+            </span><span class="kw">let </span>rpc = <span class="kw">crate</span>::rpc::add_stage_rpc(rpc)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(rpc)
         }

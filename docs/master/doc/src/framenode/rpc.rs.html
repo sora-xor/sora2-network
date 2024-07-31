@@ -339,8 +339,8 @@
     <span class="prelude-val">Ok</span>(rpc)
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ready-to-test&quot;</span>)]
-</span><span class="kw">pub fn </span>add_ready_for_test_rpc(
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)]
+</span><span class="kw">pub fn </span>add_stage_rpc(
     rpc: RpcExtension,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;RpcExtension, Box&lt;<span class="kw">dyn </span>std::error::Error + Send + Sync&gt;&gt; {
     <span class="prelude-val">Ok</span>(rpc)
