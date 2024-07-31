@@ -114,9 +114,9 @@ pub fn test_ext() -> sp_io::TestExternalities {
 
     pallet_balances::GenesisConfig::<Runtime> {
         balances: vec![
-            (ALICE, 0u128.into()),
-            (BOB, 0u128.into()),
-            (MINTING_ACCOUNT, 0u128.into()),
+            (ALICE, 1u128.into()),
+            (BOB, 1u128.into()),
+            (MINTING_ACCOUNT, 1u128.into()),
         ],
     }
     .assimilate_storage(&mut t)

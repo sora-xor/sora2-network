@@ -41,6 +41,10 @@ std = [
     "sp-std/std",
 ]
 
+test = [
+    "common/test"
+]
+
 try-runtime = [
     "frame-support/try-runtime",
 ]
