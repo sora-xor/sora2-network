@@ -388,7 +388,7 @@ impl ExtBuilder {
                 (alice(), 1),
                 (bob(), 1),
                 (eve(), 1),
-                (initial_assets_owner(), 1),
+                (initial_assets_owner(), 1400000000000000000),
             ],
         }
         .assimilate_storage(&mut t)
