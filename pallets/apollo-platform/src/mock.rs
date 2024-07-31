@@ -298,7 +298,7 @@ pub struct MockPriceTools;
 
 impl PriceToolsProvider<AssetId> for MockPriceTools {
     fn is_asset_registered(_asset_id: &AssetId) -> bool {
-        unimplemented!()
+        false
     }
 
     fn get_average_price(
@@ -343,7 +343,7 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
     }
 
     fn register_asset(_asset_id: &AssetId) -> frame_support::pallet_prelude::DispatchResult {
-        todo!()
+        Ok(())
     }
 }
 
