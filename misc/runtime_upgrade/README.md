@@ -44,12 +44,13 @@ docker run --rm -v /host/path/to/wasm-file:/container/path/to/wasm-file runtime-
 
 ```
 usage: Runtime Upgrade [-h] [--node-url NODE_URL] --wasm-file-path WASM_FILE_PATH
-      (--uri URI_KEYPAIR | --seed SEED | --mnemonic MNEMONIC)
+     [--unchecked] (--uri URI_KEYPAIR | --seed SEED | --mnemonic MNEMONIC)
 
 options:
 -h, --help show this help message and exit
 --node-url NODE_URL URL of the node to connect to
 --wasm-file-path WASM_FILE_PATH Path to Compressed Wasm File
+--unchecked Call setCodeWithoutChecks
 --uri URI_KEYPAIR URI of the keypair to use
 --seed SEED Seed of the keypair to use
 --mnemonic MNEMONIC Seed phrase of the keypair to use
