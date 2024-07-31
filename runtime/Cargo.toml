@@ -317,7 +317,8 @@ wip = [
     "xor-fee/wip",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test"]
+
+stage = ["framenode-chain-spec/stage"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
