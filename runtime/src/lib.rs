@@ -37,7 +37,8 @@
 extern crate alloc;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
-use bridge_types::{SubNetworkId, H256};
+use bridge_types::types::GenericAdditionalInboundData;
+use bridge_types::{GenericNetworkId, SubNetworkId, H256};
 use sp_runtime::traits::Keccak256;
 
 mod bags_thresholds;
@@ -59,7 +60,7 @@ use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 #[cfg(feature = "wip")] // Trustless bridges
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
-use bridge_types::{evm::AdditionalEVMInboundData, U256};
+use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId};
@@ -2118,7 +2119,7 @@ parameter_types! {
 impl dispatch::Config<dispatch::Instance1> for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OriginOutput =
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
@@ -2126,9 +2127,6 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type CallFilter = SubstrateBridgeCallFilter;
     type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
-
-#[cfg(feature = "wip")] // EVM bridge
-use bridge_types::EVMChainId;
 
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u32 = 256;
@@ -2158,8 +2156,7 @@ parameter_types! {
 impl bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
-    type EVMMessageDispatch = Dispatch;
-    type SubstrateMessageDispatch = SubstrateDispatch;
+    type MessageDispatch = Dispatch;
     type WeightInfo = ();
     type ThisNetworkId = ThisNetworkId;
     type UnsignedPriority = DataSignerPriority;
@@ -2212,7 +2209,7 @@ impl evm_fungible_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
     type MessageStatusNotifier = BridgeProxy;
@@ -2222,6 +2219,20 @@ impl evm_fungible_app::Config for Runtime {
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = BaseFeeLifetime;
     type PriorityFee = EVMBridgePriorityFee;
+    type WeightInfo = ();
+}
+
+#[cfg(feature = "wip")] // TON bridge
+impl jetton_app::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type CallOrigin = dispatch::EnsureAccount<
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
+    >;
+    type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeProxy;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2517,6 +2528,8 @@ construct_runtime! {
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
         EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
+        #[cfg(feature = "wip")] // TON bridge
+        JettonApp: jetton_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
 
         // Trustless substrate bridge
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -3303,6 +3316,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")] // TON bridge
+            list_benchmark!(list, extra, jetton_app, JettonApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
@@ -3399,6 +3414,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")] // TON bridge
+            add_benchmark!(params, batches, jetton_app, JettonApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
