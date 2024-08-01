@@ -90,6 +90,11 @@ ahash = "=0.8.5"
 bumpalo = "=3.14.0"
 cargo-platform = "=0.1.7"
 substrate-bip39 = "=0.4.5"
+schnellru = "=0.2.1"
+bstr = "=1.9.1"
+predicates-tree = "=1.0.9"
+predicates-core = "=1.0.6"
+predicates = "=3.1.0"
 
 [build-dependencies]
 substrate-build-script-utils = "3"
@@ -122,10 +127,7 @@ wip = [
     "beefy-light-client-rpc",
 ]
 
-stage = [
-    "framenode-chain-spec/stage",
-    "framenode-runtime/stage",
-]
+stage = ["framenode-chain-spec/stage", "framenode-runtime/stage"]
 
 runtime-benchmarks = [
     "frame-benchmarking-cli",

@@ -1215,6 +1215,8 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
+        #[cfg(feature = "wip")] // TON bridge
+        jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -2215,6 +2217,8 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        #[cfg(feature = "wip")] // TON bridge
+        jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),

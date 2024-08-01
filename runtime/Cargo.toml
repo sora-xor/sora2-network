@@ -46,6 +46,7 @@ substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", d
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
@@ -208,6 +209,7 @@ std = [
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
     "evm-fungible-app/std",
+    "jetton-app/std",
     "parachain-bridge-app/std",
     "substrate-bridge-channel/std",
     "bridge-channel/std",
@@ -311,6 +313,7 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
+    "jetton-app",
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
@@ -338,6 +341,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
     "evm-fungible-app/runtime-benchmarks",
+    "jetton-app/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
     "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
@@ -403,6 +407,7 @@ try-runtime = [
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
     "evm-fungible-app/try-runtime",
+    "jetton-app/try-runtime",
     "parachain-bridge-app/try-runtime",
     "bridge-channel/try-runtime",
     "substrate-bridge-app/try-runtime",
