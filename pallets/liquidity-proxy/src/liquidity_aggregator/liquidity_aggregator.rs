@@ -69,7 +69,7 @@ where
         &mut self,
         source: LiquiditySourceType,
         discrete_quotation: DiscreteQuotation<AssetIdOf<T>, Balance>,
-    ) -> Result<(), DispatchError> {
+    ) {
         self.selector.add_source(source, discrete_quotation)
     }
 
