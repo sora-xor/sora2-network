@@ -2956,6 +2956,9 @@
 <a href="#2941" id="2941">2941</a>
 <a href="#2942" id="2942">2942</a>
 <a href="#2943" id="2943">2943</a>
+<a href="#2944" id="2944">2944</a>
+<a href="#2945" id="2945">2945</a>
+<a href="#2946" id="2946">2946</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4570,7 +4573,10 @@
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation)<span class="question-mark">?</span>;
+                <span class="comment">// skip the source if it returns bad liquidity
+                </span><span class="kw">if </span>discrete_quotation.verify() {
+                    aggregator.add_source(source.clone(), discrete_quotation);
+                }
                 total_weight = total_weight.saturating_add(weight);
             } <span class="kw">else </span>{
                 <span class="comment">// skip the source if it returns an error
