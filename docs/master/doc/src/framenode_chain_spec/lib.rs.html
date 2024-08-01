@@ -2619,6 +2619,10 @@
 <a href="#2604" id="2604">2604</a>
 <a href="#2605" id="2605">2605</a>
 <a href="#2606" id="2606">2606</a>
+<a href="#2607" id="2607">2607</a>
+<a href="#2608" id="2608">2608</a>
+<a href="#2609" id="2609">2609</a>
+<a href="#2610" id="2610">2610</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3836,6 +3840,8 @@
         TBCD.into(),
     ];
     GenesisConfig {
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+        </span>jetton_app: Default::default(),
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -4836,6 +4842,8 @@
         )
     }));
     GenesisConfig {
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+        </span>jetton_app: Default::default(),
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
