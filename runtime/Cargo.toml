@@ -92,7 +92,7 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
-extended-assets = { path = "../pallets/extended-assets", default-features = false, optional = true }
+extended-assets = { path = "../pallets/extended-assets", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -316,7 +316,6 @@ wip = [
     "pallet-beefy-mmr",
     "xor-fee/wip",
 ]
-
 
 stage = ["framenode-chain-spec/stage"]
 
