@@ -42,11 +42,12 @@ leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch =
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
 bridge-proxy = { path = "../pallets/bridge-proxy", default-features = false }
 bridge-proxy-runtime-api = { path = "../pallets/bridge-proxy/runtime-api", default-features = false }
-parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
@@ -93,7 +94,7 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
-extended-assets = { path = "../pallets/extended-assets", default-features = false, optional = true }
+extended-assets = { path = "../pallets/extended-assets", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -211,6 +212,7 @@ std = [
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
     "evm-fungible-app/std",
+    "jetton-app/std",
     "parachain-bridge-app/std",
     "substrate-bridge-channel/std",
     "bridge-channel/std",
@@ -316,12 +318,12 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
+    "jetton-app",
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
     "xor-fee/wip",
 ]
-
 
 stage = ["framenode-chain-spec/stage"]
 
@@ -344,6 +346,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
     "evm-fungible-app/runtime-benchmarks",
+    "jetton-app/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
     "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
@@ -411,6 +414,7 @@ try-runtime = [
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
     "evm-fungible-app/try-runtime",
+    "jetton-app/try-runtime",
     "parachain-bridge-app/try-runtime",
     "bridge-channel/try-runtime",
     "substrate-bridge-app/try-runtime",

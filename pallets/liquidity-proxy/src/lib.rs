@@ -1614,7 +1614,10 @@ impl<T: Config> Pallet<T> {
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation)?;
+                // skip the source if it returns bad liquidity
+                if discrete_quotation.verify() {
+                    aggregator.add_source(source.clone(), discrete_quotation);
+                }
                 total_weight = total_weight.saturating_add(weight);
             } else {
                 // skip the source if it returns an error

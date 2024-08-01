@@ -350,6 +350,23 @@ pallet-beefy-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branc
 pallet-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", package = "pallet-insecure-randomness-collective-flip" }
 
+# [patch."https://github.com/sora-xor/sora2-common.git"]
+# beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# dispatch = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# parachain-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# evm-fungible-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
+# jetton-app = { git = "https://github.com/sora-xor//sora2-common.git", tag = "1.0.26" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0" }

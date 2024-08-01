@@ -31,13 +31,12 @@
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::traits::{AppRegistry, BalancePrecisionConverter};
-use bridge_types::types::{AssetKind, CallOriginOutput, MessageId};
-use bridge_types::H160;
+use bridge_types::types::{AssetKind, CallOriginOutput, GenericAdditionalInboundData, MessageId};
 use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
+use bridge_types::{GenericNetworkId, H160};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
@@ -136,7 +135,7 @@ pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type OriginOutput = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
+    type OriginOutput = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = MessageId;
     type Hashing = Keccak256;
@@ -246,7 +245,7 @@ impl evm_fungible_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
     >;
     type MessageStatusNotifier = BridgeProxy;
     type AppRegistry = AppRegistryImpl;
