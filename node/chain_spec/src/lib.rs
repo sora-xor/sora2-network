@@ -1215,6 +1215,8 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
+        #[cfg(feature = "wip")] // TON bridge
+        jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -1704,7 +1706,7 @@ fn testnet_genesis(
         feature = "test",
         feature = "runtime-benchmarks",
         feature = "wip",
-        feature = "ready-to-test"
+        feature = "stage"
     ),
     not(feature = "private-net")
 ))]
@@ -1799,7 +1801,7 @@ pub fn main_net_coded() -> ChainSpec {
         feature = "test",
         feature = "runtime-benchmarks",
         feature = "wip",
-        feature = "ready-to-test"
+        feature = "stage"
     ),
     not(feature = "private-net")
 ))]
@@ -2215,6 +2217,8 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        #[cfg(feature = "wip")] // TON bridge
+        jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),

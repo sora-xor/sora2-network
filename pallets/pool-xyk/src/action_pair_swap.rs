@@ -35,7 +35,7 @@ use frame_support::{dispatch, ensure};
 
 use crate::to_fixed_wrapper;
 use common::prelude::{AssetIdOf, Balance, FixedWrapper};
-use common::{balance, AssetInfoProvider, DexInfoProvider};
+use common::{balance, AssetInfoProvider, AssetManager, DexInfoProvider};
 use sp_runtime::traits::Zero;
 
 use crate::bounds::*;
@@ -122,17 +122,19 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         } else if balance_st <= 0 || balance_tt <= 0 {
             Err(Error::<T>::PoolIsInvalid)?;
         }
+        let additional_swap_params = Pallet::<T>::get_additional_swap_params(
+            base_asset_id,
+            &self.source.asset,
+            &self.destination.asset,
+        )?;
 
-        match self.get_fee_from_destination {
-            None => {
-                let is_fee_from_d = Pallet::<T>::decide_is_fee_from_destination(
-                    base_asset_id,
-                    &self.source.asset,
-                    &self.destination.asset,
-                )?;
-                self.get_fee_from_destination = Some(is_fee_from_d);
-            }
-            _ => (),
+        if self.get_fee_from_destination.is_none() {
+            self.get_fee_from_destination = Some(additional_swap_params.is_fee_from_destination);
+        }
+
+        if self.is_chameleon_pool.is_none() {
+            self.is_chameleon_pool = Some(additional_swap_params.is_chameleon_pool);
+            self.base_chameleon_asset = additional_swap_params.base_chameleon_asset;
         }
 
         // Recommended fee, will be used if fee is not specified or for checking if specified.
@@ -375,12 +377,23 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                     self.destination.amount.unwrap(),
                 )?;
             } else {
-                technical::Pallet::<T>::transfer_in(
-                    &self.source.asset,
-                    &source,
-                    &self.pool_account,
-                    self.source.amount.unwrap() - fee,
-                )?;
+                if self.is_chameleon_pool.unwrap()
+                    && self.base_chameleon_asset.unwrap() == self.source.asset
+                {
+                    T::AssetManager::burn_from(
+                        &self.source.asset,
+                        &source,
+                        &source,
+                        self.source.amount.unwrap() - fee,
+                    )?;
+                } else {
+                    technical::Pallet::<T>::transfer_in(
+                        &self.source.asset,
+                        &source,
+                        &self.pool_account,
+                        self.source.amount.unwrap() - fee,
+                    )?;
+                }
                 technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
                     &source,

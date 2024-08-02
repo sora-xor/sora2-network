@@ -35,7 +35,7 @@ use codec::Decode;
 use common::prelude::{OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, DexIdOf, FilterMode, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    TBCD, VAL, XOR,
+    DAI, TBCD, VAL, XOR,
 };
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
@@ -434,7 +434,7 @@ fn check_rounding() {
 }
 
 #[test]
-fn check_tbcd_swap() {
+fn check_tbcd_swap_smooth_quote() {
     ext().execute_with(|| {
         let pair = AssetPairInput::new(DEX.into(), TBCD, XOR, balance!(0.3), None);
         assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
@@ -479,6 +479,110 @@ fn check_tbcd_swap() {
             TBCD,
             XOR,
             amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+    });
+}
+
+#[test]
+fn check_xyk_swap_small_quote_fluctuation() {
+    ext().execute_with(|| {
+        <Runtime as common::Config>::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            alice::<Runtime>(),
+            XOR,
+            balance!(100000).try_into().unwrap(),
+        )
+        .unwrap();
+
+        <Runtime as common::Config>::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            alice::<Runtime>(),
+            DAI,
+            balance!(100000).try_into().unwrap(),
+        )
+        .unwrap();
+
+        <Runtime as common::Config>::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            bob::<Runtime>(),
+            XOR,
+            balance!(1000000000).try_into().unwrap(),
+        )
+        .unwrap();
+
+        <Runtime as common::Config>::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            bob::<Runtime>(),
+            DAI,
+            balance!(1000000000).try_into().unwrap(),
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: DAI,
+            quote: XOR,
+        };
+
+        create_empty_order_book::<Runtime>(order_book_id);
+
+        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
+            RawOrigin::Signed(bob::<Runtime>()).into(),
+            order_book_id,
+            balance!(78000),
+            balance!(1000),
+            common::PriceVariant::Buy,
+            None
+        ));
+        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
+            RawOrigin::Signed(bob::<Runtime>()).into(),
+            order_book_id,
+            balance!(77000),
+            balance!(1000),
+            common::PriceVariant::Buy,
+            None
+        ));
+
+        assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
+            RuntimeOrigin::signed(bob::<Runtime>()),
+            DEX.into(),
+            XOR,
+            DAI,
+        ));
+
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(bob::<Runtime>()),
+            DEX.into(),
+            XOR,
+            DAI,
+            balance!(99536258.840678562847701235),
+            balance!(1293.714132065792292136),
+            balance!(1),
+            balance!(1),
+        ));
+
+        let amount = balance!(0.00001);
+
+        // xyk pool returns the chunks in not descending price order, but in the scope of accepted slippage
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice::<Runtime>()),
+            DEX.into(),
+            XOR,
+            DAI,
+            SwapAmount::with_desired_input(amount, balance!(0)),
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice::<Runtime>()),
+            DEX.into(),
+            DAI,
+            XOR,
+            SwapAmount::with_desired_output(amount, balance!(10000000000)),
             Vec::new(),
             FilterMode::Disabled
         ));

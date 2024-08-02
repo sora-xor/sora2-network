@@ -502,7 +502,6 @@ fn test_swap_with_desired_output_returns_precise_amount() {
     });
 }
 
-#[cfg(feature = "wip")] // DEFI-R
 #[test]
 fn test_swap_for_permissioned_pool_with_desired_output_returns_precise_amount() {
     let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
@@ -560,7 +559,6 @@ fn test_swap_with_multi_steps_desired_output_return_precise_amount() {
     });
 }
 
-#[cfg(feature = "wip")] // DEFI-R
 #[test]
 fn test_swap_for_permissioned_pool_with_multi_steps_desired_output_return_precise_amount() {
     let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
@@ -618,7 +616,6 @@ fn test_swap_with_desired_input_return_precise_amount() {
     });
 }
 
-#[cfg(feature = "wip")] // DEFI-R
 #[test]
 fn test_swap_for_permissioned_pool_with_desired_input_return_precise_amount() {
     let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
@@ -675,7 +672,6 @@ fn test_swap_with_multi_steps_desired_input_return_precise_amount() {
     });
 }
 
-#[cfg(feature = "wip")] // DEFI-R
 #[test]
 fn test_swap_for_permissioned_pool_with_multi_steps_desired_input_return_precise_amount() {
     let mut ext = ExtBuilder::default().with_permissioned_xyk_pool().build();
