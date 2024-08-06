@@ -42,12 +42,12 @@ leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch =
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
 bridge-proxy = { path = "../pallets/bridge-proxy", default-features = false }
 bridge-proxy-runtime-api = { path = "../pallets/bridge-proxy/runtime-api", default-features = false }
-parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }

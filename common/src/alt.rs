@@ -485,7 +485,7 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
         for chunk in &self.chunks {
             // chunk should not contain zeros
             if chunk.input.is_zero() || chunk.output.is_zero() {
-                frame_support::log::trace!(
+                log::trace!(
                     "DiscreteQuotation verify failed: chunk has zero, input = {}, output = {}",
                     chunk.input,
                     chunk.output
@@ -517,7 +517,7 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
                 };
 
                 if chunk.input % input_precision != 0 || chunk.output % output_precision != 0 {
-                    frame_support::log::trace!(
+                    log::trace!(
                         "DiscreteQuotation verify failed: chunk doesn't meet the precision requirements, input = {}, input precision = {input_precision}, output = {}, output precision = {output_precision}",
                         chunk.input,
                         chunk.output
@@ -536,7 +536,7 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
 
             // chunks should go to reduce the price, from the best to the worst (or don't exceed the epsilon)
             if price > prev_price && price.abs_diff(prev_price) > price_epsilon * prev_price {
-                frame_support::log::trace!(
+                log::trace!(
                     "DiscreteQuotation verify failed: price = {price}, prev_price = {prev_price}"
                 );
                 return false;
