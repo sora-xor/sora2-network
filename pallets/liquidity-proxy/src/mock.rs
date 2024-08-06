@@ -1024,13 +1024,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-            &dex_api::GenesisConfig {
-                source_types: self.source_types,
-                phantom: PhantomData,
-            },
-            &mut t,
-        )
+        dex_api::GenesisConfig::<Runtime> {
+            source_types: self.source_types,
+            phantom: PhantomData,
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         assets::GenesisConfig::<Runtime> {
