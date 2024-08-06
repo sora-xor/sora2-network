@@ -206,6 +206,7 @@ sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externali
 sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/merkle-mountain-range"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
 sp-transaction-storage-proof = { path = "../sora-polkadot-sdk/substrate/primitives/transaction-storage-proof" }
+sp-weights = { path = "../sora-polkadot-sdk/substrate/primitives/weights" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
 # mmr-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 # pallet-mmr = { path = "../sora-polkadot-sdk/substrate/frame/mmr" }
@@ -321,6 +322,7 @@ sp-externalities = { path = "../sora-polkadot-sdk/substrate/primitives/externali
 sp-mmr-primitives = { path = "../sora-polkadot-sdk/substrate/primitives/merkle-mountain-range"}
 sp-maybe-compressed-blob = { path = "../sora-polkadot-sdk/substrate/primitives/maybe-compressed-blob" }
 sp-transaction-storage-proof = { path = "../sora-polkadot-sdk/substrate/primitives/transaction-storage-proof" }
+sp-weights = { path = "../sora-polkadot-sdk/substrate/primitives/weights" }
 substrate-frame-rpc-system = { path = "../sora-polkadot-sdk/substrate/utils/frame/rpc/system" }
 # mmr-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
 # pallet-mmr = { path = "../sora-polkadot-sdk/substrate/frame/mmr" }
@@ -413,12 +415,13 @@ members = [
     "pallets/qa-tools",
     "pallets/extended-assets",
     "node/",
-    "contracts",
+#    "contracts/transfer-contract",
     "contract-extrinsics",
     # "utils/parse",
     # "utils/generate-bags",
     # "utils/remote-ext",
 ]
+exclude = ["contracts/flipper", "contracts/transfer-contract"]
 
 resolver = "2"
 

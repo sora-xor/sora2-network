@@ -28,23 +28,47 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::primitives::{AssetId32, Balance};
-use scale::Encode;
-use sp_core::crypto::AccountId32;
-// use common::{AssetId32, Balance, PredefinedAssetId};
+#![cfg_attr(not(feature = "std"), no_std)]
 
-/// It is a part of a pallet dispatchables API.
-/// The indexes can be found in your pallet code's #[pallet::call] section and check #[pallet::call_index(x)] attribute of the call.
-/// If these attributes are missing, use source-code order (0-based).
-/// You may found list of callable extrinsic in `pallet_contracts::Config::CallFilter`
-#[derive(Encode)]
-pub enum AssetsCall {
-    /// Transfer amount of asset from caller to another account.
-    /// `assets::pallet::transfer`
-    #[codec(index = 1)]
-    Transfer {
-        asset_id: AssetId32,
-        to: AccountId32,
-        amount: Balance,
-    },
+#[ink::contract]
+mod asset_contract {
+    use contract_extrinsics::{RuntimeCall, assets::AssetsCall, primitives::AssetId32};
+    use scale::{Decode, Encode};
+    use sp_runtime::AccountId32;
+
+    #[ink(storage)]
+    #[derive(Default)]
+    pub struct AssetContract;
+
+    #[derive(Debug, PartialEq, Eq, Encode, Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum RuntimeError {
+        CallRuntimeFailed,
+    }
+
+    impl AssetContract {
+        #[ink(constructor)]
+        pub fn new() -> Self {
+            Default::default()
+        }
+
+        #[ink(message)]
+        pub fn transfer(
+            &self,
+            asset_id: AssetId32,
+            to: AccountId32,
+            amount: Balance,
+        ) -> Result<(), RuntimeError> {
+            self.env()
+                .call_runtime(&RuntimeCall::Assets(AssetsCall::Transfer {
+                    asset_id,
+                    to,
+                    amount,
+                }))
+                .map_err(|_| RuntimeError::CallRuntimeFailed)
+        }
+    }
 }
+
+#[cfg(test)]
+mod tests {}

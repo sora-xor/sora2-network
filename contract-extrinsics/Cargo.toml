@@ -12,16 +12,23 @@ edition = "2021"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+rustc-hex = "2.1.0"
+serde = { version = "1.0", features = ["derive"], default-features = false }
+#orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 
-common = { path = "../common", default-features = false }
-order-book = {path="../pallets/order-book", default-features = false}
+#common = { path = "../common", default-features = false }
+#order-book = { path="../pallets/order-book" }
 
 [features]
+default = ["std"]
+
 std = [
-    "common/std",
-    "scale-info/std",
+    "sp-core/std",
     "frame-support/std",
-    "sp-std/std",
+#    "sp-std/std",
+#    "serde/std"
+#    "common/std"
 ]

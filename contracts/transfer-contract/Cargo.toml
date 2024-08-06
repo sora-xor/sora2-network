@@ -1,0 +1,41 @@
+[package]
+name = "transfer-contract"
+authors = ["Soramitsu"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = 'https://github.com/sora-xor/sora2-network'
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# TODO Update versions
+ink = { version = "5.0.0", default-features = false}
+
+# add to another project: git = "https://github.com/sora-xor/sora2-network.git" branch = "release-x.x.x"
+contract-extrinsics = { path = "../../contract-extrinsics" }
+
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+sp-io = {git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false, features = ["disable_allocator", "disable_oom", "disable_panic_handler"]}
+
+getrandom = {version = "0.2", features = ["js"]}
+
+#orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+
+#orml-currencies = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v1.1.0" }
+#common = {path = "../../common"}
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale-info/std",
+    "sp-runtime/std",
+    "sp-io/std",
+#    "orml-currencies/std"
+]
+
+[lib]
+path = "lib.rs"
