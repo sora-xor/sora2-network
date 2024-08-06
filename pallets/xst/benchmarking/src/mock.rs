@@ -120,7 +120,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
@@ -134,7 +134,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
+        DEXApi: dex_api::{Pallet, Call, Storage, Config<T>, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -405,8 +405,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {

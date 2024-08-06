@@ -7,7 +7,7 @@ use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
-    Fixed, PSWAP, TBCD, XST,
+    Fixed, PSWAP, TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -30,6 +30,7 @@ pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from(hex!(
@@ -89,7 +90,7 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
-    pub const GetBuyBackDexId: DEXId = 0;
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
 impl assets::Config for Runtime {
@@ -108,6 +109,7 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
+    type AssetRegulator = ();
 }
 
 impl pallet_balances::Config for Runtime {
