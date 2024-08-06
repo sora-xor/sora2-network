@@ -2216,6 +2216,7 @@ impl evm_fungible_app::Config for Runtime {
     type AssetRegistry = BridgeProxy;
     type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type AccountIdConverter = sp_runtime::traits::Identity;
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = BaseFeeLifetime;
     type PriorityFee = EVMBridgePriorityFee;

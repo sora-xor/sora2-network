@@ -257,6 +257,7 @@ impl evm_fungible_app::Config for Test {
     type AppRegistry = AppRegistryImpl;
     type AssetRegistry = BridgeProxy;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type AccountIdConverter = sp_runtime::traits::Identity;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = ConstU64<100>;
