@@ -50,10 +50,17 @@ mod tests {
         GetStorageVersion, OnFinalize, OnInitialize, OnRuntimeUpgrade, StorageVersion,
     };
     use sp_arithmetic::traits::Zero;
+    use sp_runtime::traits::Saturating;
     use sp_runtime::DispatchError;
     use sp_std::collections::vec_deque::VecDeque;
 
     type MBCPool = Pallet<Runtime>;
+
+    /// This constant is used in addition/subtraction of Balance/Supply and other places where
+    /// without accounting for existential deposit we will have broken asserts. Current number (4)
+    /// is choosen because that's how much accounts [`ExtBuilder::build()`] created with a balance
+    /// of 1
+    pub const EXISTENTIAL_DEPOSITS_ACCOUNTING: u128 = 4;
 
     pub fn run_to_block(n: u64) {
         while System::block_number() < n {
@@ -514,7 +521,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                0,
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -592,7 +599,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                0,
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -962,7 +969,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                0,
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -1317,7 +1324,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -1434,7 +1441,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -1491,7 +1498,10 @@ mod tests {
             let val_balance_a = Assets::free_balance(&VAL, &alice()).unwrap();
             let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
-            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_eq!(
+                exchange_outcome_a.amount,
+                xor_balance_a - <Runtime as pallet_balances::Config>::ExistentialDeposit::get()
+            );
             assert_eq!(val_balance_a, amount_a.clone());
 
             // Buy with desired output
@@ -1577,7 +1587,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -1620,7 +1630,10 @@ mod tests {
             let tbcd_balance_a = Assets::free_balance(&TBCD, &alice()).unwrap();
             let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
-            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_eq!(
+                exchange_outcome_a.amount,
+                xor_balance_a - <Runtime as pallet_balances::Config>::ExistentialDeposit::get()
+            );
             assert_eq!(tbcd_balance_a, amount_a.clone());
 
             // Buy with desired output
@@ -1810,7 +1823,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -1889,7 +1902,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -2038,7 +2051,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -2191,7 +2204,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -2239,6 +2252,8 @@ mod tests {
         ])
         .build()
         .execute_with(|| {
+            let BALANCE_CORRECTION = EXISTENTIAL_DEPOSITS_ACCOUNTING + 1;
+
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -2252,7 +2267,10 @@ mod tests {
             MBCPool::set_reference_asset(RuntimeOrigin::signed(alice()), DAI).unwrap();
 
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(100000));
+            assert_eq!(
+                xor_supply,
+                balance!(100000).saturating_add(BALANCE_CORRECTION)
+            );
 
             // Depositing collateral #1: under 5% collateralized
             MBCPool::exchange(
@@ -2265,7 +2283,12 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(100724.916324262414168899));
+            assert_eq!(
+                xor_supply,
+                balance!(100724.916324262414168899)
+                    // NOTE(i3ima): we have to add +1 to EXISTENTIAL_DEPOSITS_ACCOUNTING because of account creation in `bonding_curve_pool_init()`)
+                    .saturating_add(BALANCE_CORRECTION)
+            );
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2288,7 +2311,12 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(107896.889465954935399866));
+            assert_eq!(
+                xor_supply,
+                balance!(107896.889465954935399866)
+                    // NOTE(i3ima): we have to add +1 to EXISTENTIAL_DEPOSITS_ACCOUNTING because of account creation in `bonding_curve_pool_init()`)
+                    .saturating_add(BALANCE_CORRECTION)
+            );
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2311,7 +2339,10 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(114934.359190755661026458));
+            assert_eq!(
+                xor_supply,
+                balance!(114934.359190755661026458).saturating_add(BALANCE_CORRECTION)
+            );
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2334,7 +2365,10 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(128633.975165230400000080));
+            assert_eq!(
+                xor_supply,
+                balance!(128633.975165230400000080).saturating_add(BALANCE_CORRECTION)
+            );
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2357,7 +2391,10 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(151530.994236602104619871));
+            assert_eq!(
+                xor_supply,
+                balance!(151530.994236602104619871).saturating_add(BALANCE_CORRECTION)
+            );
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2373,7 +2410,7 @@ mod tests {
 
     #[test]
     fn sequential_rewards_adequacy_check() {
-        ExtBuilder::new(vec![
+        let endowed_accounts = vec![
             (
                 alice(),
                 XOR,
@@ -2422,9 +2459,12 @@ mod tests {
                 AssetName(b"SORA Synthetic USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
             ),
-        ])
-        .build()
-        .execute_with(|| {
+        ];
+
+        let mut ext = ExtBuilder::new(endowed_accounts).build();
+
+        ext.execute_with(|| {
+            log::info!(target: "runtime", "Issuance: {:?}", Assets::total_issuance(&XOR).unwrap());
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(
@@ -2434,6 +2474,7 @@ mod tests {
                 VAL,
             )
             .expect("Failed to register trading pair.");
+
             TradingPair::register(
                 RuntimeOrigin::signed(alice()),
                 DEXId::Polkaswap.into(),
@@ -2445,7 +2486,10 @@ mod tests {
             MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
 
             // XOR total supply in network is 350000
-            let xor_total_supply: FixedWrapper = Assets::total_issuance(&XOR).unwrap().into();
+            let xor_total_supply: FixedWrapper = Assets::total_issuance(&XOR)
+                .unwrap()
+                .saturating_sub(EXISTENTIAL_DEPOSITS_ACCOUNTING)
+                .into();
             assert_eq!(xor_total_supply.clone().into_balance(), balance!(350000));
             // initial XOR price is $264
             let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(
@@ -2532,7 +2576,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                0,
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -2955,7 +2999,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                0,
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -3531,7 +3575,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -3726,7 +3770,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -3921,7 +3965,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -4036,7 +4080,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -4179,7 +4223,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -4510,7 +4554,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -4897,7 +4941,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -5082,7 +5126,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -5176,7 +5220,7 @@ mod tests {
             (
                 alice(),
                 XOR,
-                balance!(0),
+                1,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,

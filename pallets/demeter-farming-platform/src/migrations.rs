@@ -1,8 +1,7 @@
 use crate::{AssetIdOf, Config, PoolData, Pools, UserInfo, UserInfos};
 use codec::{Decode, Encode};
 use common::{Balance, XOR};
-use frame_support::dispatch::Weight;
-use frame_support::log;
+use frame_support::pallet_prelude::Weight;
 use frame_support::traits::Get;
 use sp_std::vec::Vec;
 

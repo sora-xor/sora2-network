@@ -1,7 +1,8 @@
 use crate::{Config, LockInfo, LockerData, Timestamp, Weight};
 use common::{convert_block_number_to_timestamp, AssetIdOf, Balance};
-use frame_support::log;
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::BlockNumberFor;
+use log::info;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
@@ -15,7 +16,7 @@ pub fn migrate_locker_data<T: Config>() -> Weight {
     let current_timestamp = Timestamp::<T>::get();
     let current_block = frame_system::Pallet::<T>::block_number();
     LockerData::<T>::translate_values::<
-        Vec<(Balance, T::BlockNumber, AssetIdOf<T>, AssetIdOf<T>)>,
+        Vec<(Balance, BlockNumberFor<T>, AssetIdOf<T>, AssetIdOf<T>)>,
         _,
     >(|v| {
         Some(
@@ -39,7 +40,7 @@ pub fn migrate_locker_data<T: Config>() -> Weight {
         )
     });
 
-    log::info!(
+    info!(
         target: "runtime",
         "LockInfo migrated to new version with unlocking_timestamp field"
     );

@@ -498,14 +498,13 @@ fn should_cancel_outgoing_prepared_requests() {
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_before =
-                    frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_before = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 println!("{:?}", request);
                 request.validate().unwrap();
                 request.prepare().unwrap();
                 request.cancel().unwrap();
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_after = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
                 TransactionOutcome::Rollback(DispatchResult::Ok(()))
             })
@@ -657,12 +656,11 @@ fn should_cancel_incoming_prepared_requests() {
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_before =
-                    frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_before = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 request.prepare().unwrap();
                 request.cancel().unwrap();
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_after = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
                 TransactionOutcome::Rollback(DispatchResult::Ok(()))
             })

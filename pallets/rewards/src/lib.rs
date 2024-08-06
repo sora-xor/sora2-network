@@ -39,13 +39,13 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::DispatchErrorWithPostInfo;
+use codec::{Decode, Encode};
 use frame_support::storage::StorageMap as StorageMapTrait;
-use frame_support::RuntimeDebug;
-#[cfg(feature = "std")]
+use frame_system::pallet_prelude::BlockNumberFor;
 use serde::{Deserialize, Serialize};
+use sp_core::RuntimeDebug;
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
+use sp_runtime::DispatchError;
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
@@ -75,8 +75,18 @@ mod tests;
 
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Encode,
+    Decode,
+    Clone,
+    RuntimeDebug,
+    Default,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
+)]
 pub struct RewardInfo {
     claimable: Balance,
     pub total: Balance,
@@ -135,7 +145,7 @@ impl<T: Config> Pallet<T> {
     /// Used in `on_initialize` hook.
     ///
     /// - `elapsed`: elapsed time in blocks
-    fn current_vesting_ratio(elapsed: T::BlockNumber) -> Perbill {
+    fn current_vesting_ratio(elapsed: BlockNumberFor<T>) -> Perbill {
         let max_percentage = T::MAX_VESTING_RATIO.deconstruct() as u32;
         if elapsed >= T::TIME_TO_SATURATION {
             Perbill::from_percent(max_percentage)
@@ -166,7 +176,7 @@ impl<T: Config> Pallet<T> {
         reserves_acc: &T::TechAccountId,
         claimed: &mut bool,
         is_eligible: &mut bool,
-    ) -> Result<(), DispatchErrorWithPostInfo> {
+    ) -> Result<(), DispatchError> {
         if let Ok(balance) = M::try_get(eth_address) {
             *is_eligible = true;
             if balance > 0 {
@@ -196,7 +206,7 @@ impl<T: Config> Pallet<T> {
         reserves_acc: &T::TechAccountId,
         claimed: &mut bool,
         is_eligible: &mut bool,
-    ) -> Result<(), DispatchErrorWithPostInfo> {
+    ) -> Result<(), DispatchError> {
         if let Ok(RewardInfo {
             claimable: amount,
             total,
@@ -239,7 +249,7 @@ impl<T: Config> Pallet<T> {
         reserves_acc: &T::TechAccountId,
         claimed: &mut bool,
         is_eligible: &mut bool,
-    ) -> Result<(), DispatchErrorWithPostInfo> {
+    ) -> Result<(), DispatchError> {
         if let Ok(rewards) = UmiNftReceivers::<T>::try_get(eth_address) {
             *is_eligible = true;
             let mut updated_balances = rewards.clone();
@@ -274,7 +284,7 @@ impl<T: Config> Pallet<T> {
     /// Used in `claim` extrinsic.
     ///
     /// - `receiver`: The ETH address added to the list of UMI NFT receivers
-    fn add_umi_nft_receiver(receiver: &EthAddress) -> Result<(), DispatchErrorWithPostInfo> {
+    fn add_umi_nft_receiver(receiver: &EthAddress) -> Result<(), DispatchError> {
         if !UmiNftClaimed::<T>::get(receiver) {
             UmiNftReceivers::<T>::insert(receiver, vec![1; UmiNfts::<T>::get().len()]);
         }
@@ -292,6 +302,7 @@ impl<T: Config> OnValBurned for Pallet<T> {
 
 #[frame_support::pallet]
 pub mod pallet {
+    use common::balance;
     use common::PSWAP;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -325,14 +336,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let mut consumed_weight: Weight = Weight::zero();
 
             if (now % T::BLOCKS_PER_DAY).is_zero() {
@@ -558,7 +568,6 @@ pub mod pallet {
         pub umi_nfts: Vec<AssetIdOf<T>>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -572,7 +581,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ReservesAcc::<T>::put(&self.reserves_account_id);
 

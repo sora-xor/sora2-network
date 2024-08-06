@@ -33,24 +33,23 @@ use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
-use frame_support::dispatch::TypeInfo;
 use frame_support::traits::ConstU32;
-use frame_support::{ensure, BoundedVec, RuntimeDebug};
+use frame_support::{ensure, BoundedVec};
 use hex_literal::hex;
-use sp_core::H256;
+use rustc_hex::ToHex;
+use scale_info::prelude::fmt::Display;
+use scale_info::prelude::fmt::Formatter;
+use scale_info::prelude::string::String;
+use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
+use sp_core::{RuntimeDebug, H256};
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
 
 #[cfg(feature = "std")]
-use {
-    rustc_hex::ToHex,
-    serde::{Deserialize, Serialize},
-    sp_std::convert::TryInto,
-    sp_std::fmt::Display,
-    static_assertions::_core::fmt::Formatter,
-};
+use sp_std::convert::TryInto;
 
 pub type Balance = u128;
 
@@ -89,8 +88,18 @@ impl From<BalanceWrapper> for Balance {
 }
 
 /// Information about state of particular DEX.
-#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Encode,
+    Decode,
+    RuntimeDebug,
+    Clone,
+    PartialEq,
+    Eq,
+    Default,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
+)]
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
@@ -115,8 +124,9 @@ pub struct DEXInfo<AssetId> {
     Hash,
     scale_info::TypeInfo,
     MaxEncodedLen,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
     /// Base token of exchange.
     pub base_asset_id: AssetId,
@@ -147,9 +157,8 @@ mod _allowed_deprecated {
     #![allow(deprecated)]
 
     use codec::{Decode, Encode, MaxEncodedLen};
-    use frame_support::RuntimeDebug;
+    use sp_core::RuntimeDebug;
 
-    #[cfg(feature = "std")]
     use serde::{Deserialize, Serialize};
 
     /// Asset identifier.
@@ -168,8 +177,10 @@ mod _allowed_deprecated {
         RuntimeDebug,
         scale_info::TypeInfo,
         MaxEncodedLen,
+        Serialize,
+        Deserialize,
     )]
-    #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+    #[cfg_attr(feature = "std", derive(Hash))]
     #[repr(u8)]
     pub enum PredefinedAssetId {
         XOR = 0,
@@ -323,7 +334,6 @@ impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<AssetId> FromStr for AssetId32<AssetId> {
     type Err = &'static str;
 
@@ -339,7 +349,6 @@ impl<AssetId> FromStr for AssetId32<AssetId> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<AssetId> Display for AssetId32<AssetId> {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         write!(f, "0x{}", self.code.to_hex::<String>())
@@ -485,7 +494,7 @@ pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION a
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetSymbol(pub Vec<u8>);
 
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 impl FromStr for AssetSymbol {
     type Err = &'static str;
 
@@ -495,7 +504,7 @@ impl FromStr for AssetSymbol {
     }
 }
 
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 impl Display for AssetSymbol {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
@@ -538,7 +547,6 @@ impl IsValid for AssetSymbol {
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetName(pub Vec<u8>);
 
-#[cfg(feature = "std")]
 impl FromStr for AssetName {
     type Err = &'static str;
 
@@ -548,7 +556,6 @@ impl FromStr for AssetName {
     }
 }
 
-#[cfg(feature = "std")]
 impl Display for AssetName {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
@@ -608,7 +615,6 @@ impl MaxEncodedLen for AssetName {
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct ContentSource(pub Vec<u8>);
 
-#[cfg(feature = "std")]
 impl FromStr for ContentSource {
     type Err = &'static str;
 
@@ -618,7 +624,6 @@ impl FromStr for ContentSource {
     }
 }
 
-#[cfg(feature = "std")]
 impl Display for ContentSource {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
@@ -653,7 +658,6 @@ impl MaxEncodedLen for ContentSource {
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct Description(pub Vec<u8>);
 
-#[cfg(feature = "std")]
 impl FromStr for Description {
     type Err = &'static str;
 
@@ -663,7 +667,6 @@ impl FromStr for Description {
     }
 }
 
-#[cfg(feature = "std")]
 impl Display for Description {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
@@ -718,7 +721,6 @@ impl FromStr for SymbolName {
     }
 }
 
-#[cfg(feature = "std")]
 impl Display for SymbolName {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         let s: String = self.0.iter().map(|un| *un as char).collect();
@@ -785,9 +787,20 @@ impl IsValid for CrowdloanTag {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Debug,
+    Copy,
+    Clone,
+    Hash,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
     Wrapped(AssetId),
     Escaped(AssetId32Code),
@@ -829,8 +842,9 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     scale_info::TypeInfo,
     MaxEncodedLen,
     strum::EnumIter,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum LiquiditySourceType {
     XYKPool,
@@ -914,8 +928,19 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 }
 
 /// Code of purpose for technical account.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
+)]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
 pub enum TechPurpose<AssetId> {
@@ -930,9 +955,19 @@ pub enum TechPurpose<AssetId> {
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    Default,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
     /// First field is used as name or tag of binary format, second field is used as binary data.
@@ -1214,8 +1249,20 @@ impl PriceVariant {
 }
 
 /// List of available oracles
-#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    RuntimeDebug,
+    Encode,
+    Decode,
+    TypeInfo,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+)]
 pub enum Oracle {
     BandChainFeed,
 }

@@ -72,9 +72,9 @@ where
 {
     fn reward_doubling_assets(&self, at: Option<Block::Hash>) -> RpcResult<Vec<AssetId>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
-        api.reward_doubling_assets(&at)
+        api.reward_doubling_assets(at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

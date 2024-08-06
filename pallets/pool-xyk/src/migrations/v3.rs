@@ -30,14 +30,12 @@
 
 use crate::pallet::{Config, Pallet};
 use common::{AssetIdOf, Balance, EnabledSourcesManager, ToFeeAccount};
+use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;
-use frame_support::{
-    log::{error, info},
-    weights::Weight,
-};
-use sp_runtime::DispatchResult;
+use log::{error, info};
+use sp_runtime::{DispatchResult, TryRuntimeError};
 use sp_std::prelude::Vec;
 
 use crate::{PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
@@ -216,7 +214,8 @@ where
     L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)>>,
 {
     fn on_runtime_upgrade() -> Weight {
-        let mut weight_meter = WeightMeter::max_limit();
+        // new() returns max limit
+        let mut weight_meter = WeightMeter::new();
 
         if let Err(err) =
             frame_support::storage::with_storage_layer(|| Self::migrate(&mut weight_meter))
@@ -225,23 +224,23 @@ where
         } else {
             info!("Successfully migrated PoolXYK to v3");
         };
-        weight_meter.consumed
+        weight_meter.consumed()
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(3),
-            "should be upgraded to version 3"
+            TryRuntimeError::Other("should be upgraded to version 3")
         );
         Ok(())
     }

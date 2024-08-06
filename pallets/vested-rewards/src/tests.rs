@@ -38,6 +38,8 @@ use common::{
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
+use sp_runtime::traits::Saturating;
+use sp_runtime::TokenError;
 use traits::currency::MultiCurrency;
 
 fn deposit_rewards_to_reserves(amount: Balance) {
@@ -48,8 +50,8 @@ fn deposit_rewards_to_reserves(amount: Balance) {
 pub fn assert_balances(balances: Vec<(AccountId, AssetId32<PredefinedAssetId>, Balance)>) {
     for (account, asset, balance) in balances {
         assert_eq!(
-            Assets::total_balance(&asset, &account),
             Ok(balance),
+            Assets::total_balance(&asset, &account),
             "balance assert failed, account: {}, asset: {}, balance: {}",
             account,
             asset,
@@ -131,6 +133,7 @@ fn register_crowdloan_fails() {
 #[test]
 fn can_claim_crowdloan_reward() {
     ExtBuilder::default().build().execute_with(|| {
+        let ed = ExistentialDeposit::get();
         const BLOCKS_PER_DAY: u64 = 14400;
         let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
         assert_eq!(CrowdloanUserInfos::<Runtime>::get(alice(), &tag), None);
@@ -166,29 +169,20 @@ fn can_claim_crowdloan_reward() {
                 ))
             }
         );
-        assert_balances(vec![
-            (alice(), XOR, balance!(0)),
-            (alice(), PSWAP, balance!(0)),
-        ]);
+        assert_balances(vec![(alice(), XOR, ed), (alice(), PSWAP, balance!(0))]);
         // Too early claim
         assert_err!(
             VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
             Error::<Runtime>::CrowdloanRewardsDistributionNotStarted
         );
-        assert_balances(vec![
-            (alice(), XOR, balance!(0)),
-            (alice(), PSWAP, balance!(0)),
-        ]);
+        assert_balances(vec![(alice(), XOR, ed), (alice(), PSWAP, balance!(0))]);
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 2);
         // Empty crowdloan tech account
         assert_err!(
             VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            TokenError::FundsUnavailable
         );
-        assert_balances(vec![
-            (alice(), XOR, balance!(0)),
-            (alice(), PSWAP, balance!(0)),
-        ]);
+        assert_balances(vec![(alice(), XOR, ed), (alice(), PSWAP, balance!(0))]);
         assert_eq!(
             CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
             CrowdloanUserInfo {
@@ -203,7 +197,11 @@ fn can_claim_crowdloan_reward() {
             tag.clone()
         ),);
         assert_balances(vec![
-            (alice(), XOR, balance!(1.351351351351351350)),
+            (
+                alice(),
+                XOR,
+                balance!(1.351351351351351350).saturating_add(ed),
+            ),
             (alice(), PSWAP, balance!(13.513513513513513500)),
         ]);
         assert_eq!(
@@ -222,7 +220,11 @@ fn can_claim_crowdloan_reward() {
             tag.clone()
         ),);
         assert_balances(vec![
-            (alice(), XOR, balance!(2.702702702702702700)),
+            (
+                alice(),
+                XOR,
+                balance!(2.702702702702702700).saturating_add(ed),
+            ),
             (alice(), PSWAP, balance!(27.027027027027027000)),
         ]);
         assert_eq!(
@@ -249,11 +251,23 @@ fn can_claim_crowdloan_reward() {
             tag.clone()
         ),);
         assert_balances(vec![
-            (alice(), XOR, balance!(13.513513513513513500)),
+            (
+                alice(),
+                XOR,
+                balance!(13.513513513513513500).saturating_add(ed),
+            ),
             (alice(), PSWAP, balance!(135.135135135135135000)),
-            (bob(), XOR, balance!(40.540540540540540500)),
+            (
+                bob(),
+                XOR,
+                balance!(40.540540540540540500).saturating_add(ed),
+            ),
             (bob(), PSWAP, balance!(405.40540540540540500)),
-            (charlie(), XOR, balance!(45.945945945945945900)),
+            (
+                charlie(),
+                XOR,
+                balance!(45.945945945945945900).saturating_add(ed),
+            ),
             (charlie(), PSWAP, balance!(459.45945945945945900)),
             // It's ok to have some dust after distribution because of calculations precision
             (
@@ -271,7 +285,7 @@ fn can_claim_crowdloan_reward() {
             Assets::total_balance(&XOR, &alice()).unwrap()
                 + Assets::total_balance(&XOR, &bob()).unwrap()
                 + Assets::total_balance(&XOR, &charlie()).unwrap(),
-            balance!(99.999999999999999900)
+            balance!(99.999999999999999900).saturating_add(ed * 3)
         );
         assert_eq!(
             Assets::total_balance(&PSWAP, &alice()).unwrap()

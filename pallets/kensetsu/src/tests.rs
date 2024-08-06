@@ -45,6 +45,7 @@ use sp_arithmetic::{ArithmeticError, Percent};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::DispatchError::BadOrigin;
+use sp_runtime::TokenError;
 
 type KensetsuError = Error<TestRuntime>;
 type KensetsuPallet = Pallet<TestRuntime>;
@@ -404,7 +405,7 @@ fn test_close_cdp_outstanding_debt() {
         let debt = balance!(1);
         let more_than_debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
-        assert_balance(&alice_account_id(), &XOR, balance!(0));
+        assert_balance(&alice_account_id(), &XOR, 0);
         add_balance(alice_account_id(), more_than_debt, KUSD);
 
         // close with transfer amount more than debt
@@ -556,7 +557,7 @@ fn test_deposit_collateral_not_enough_balance() {
 
         assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
-            pallet_balances::Error::<TestRuntime>::InsufficientBalance
+            TokenError::FundsUnavailable
         );
     });
 }

@@ -48,7 +48,7 @@ use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{AccountId32, Perbill, Percent};
+use sp_runtime::{AccountId32, BuildStorage, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -131,12 +131,8 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -360,21 +356,21 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let mut vec = self
             .endowed_accounts
             .iter()
-            .map(|(acc, ..)| (acc.clone(), 0))
+            .map(|(acc, ..)| (acc.clone(), 1))
             .chain(vec![
-                (alice(), 0),
-                (fees_account_a(), 0),
-                (fees_account_b(), 0),
-                (liquidity_provider_a(), 0),
-                (liquidity_provider_b(), 0),
-                (liquidity_provider_c(), 0),
-                (GetPswapDistributionAccountId::get(), 0),
-                (GetParliamentAccountId::get(), 0),
+                (alice(), 1),
+                (fees_account_a(), 1),
+                (fees_account_b(), 1),
+                (liquidity_provider_a(), 1),
+                (liquidity_provider_b(), 1),
+                (liquidity_provider_c(), 1),
+                (GetPswapDistributionAccountId::get(), 1),
+                (GetParliamentAccountId::get(), 1),
             ])
             .collect::<Vec<_>>();
 

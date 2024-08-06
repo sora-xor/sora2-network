@@ -111,11 +111,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<TradingPair>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_pairs(&at, dex_id)
+        );
+        api.list_enabled_pairs(at, dex_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -127,11 +127,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.is_pair_enabled(&at, dex_id, base_asset_id, target_asset_id)
+        );
+        api.is_pair_enabled(at, dex_id, base_asset_id, target_asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -143,11 +143,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<LiquiditySourceType>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_sources_for_pair(&at, dex_id, base_asset_id, target_asset_id)
+        );
+        api.list_enabled_sources_for_pair(at, dex_id, base_asset_id, target_asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -160,11 +160,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.is_source_enabled_for_pair(&at, dex_id, base_asset_id, target_asset_id, source_type)
+        );
+        api.is_source_enabled_for_pair(at, dex_id, base_asset_id, target_asset_id, source_type)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

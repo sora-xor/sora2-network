@@ -50,7 +50,7 @@ fn should_approve_outgoing_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR.into(), &alice, &alice, 99999u32.into()).unwrap();
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             100000u32.into()

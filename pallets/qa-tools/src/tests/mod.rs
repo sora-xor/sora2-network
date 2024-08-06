@@ -82,7 +82,8 @@ pub(crate) fn register_custom_asset() -> AssetIdOf<Runtime> {
         .expect("must've produced an event")
         .event
         .clone();
-    let RuntimeEvent::Assets(assets::Event::AssetRegistered(asset_id, _account)) = register_event else {
+    let RuntimeEvent::Assets(assets::Event::AssetRegistered(asset_id, _account)) = register_event
+    else {
         panic!("Expected asset register event")
     };
     asset_id

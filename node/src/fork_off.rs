@@ -83,74 +83,74 @@ fn get_pallet_prefix(pallet: &str) -> Vec<u8> {
 
 impl ForkOffCmd {
     pub async fn run(&self, mut cfg: Configuration) -> Result<(), sc_cli::Error> {
-        let transport: Transport = self.url.clone().into();
-        let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());
-        let ext: RemoteExternalities<framenode_runtime::Block> =
-            Builder::<framenode_runtime::Block>::default()
-                .mode(if let Some(state_snapshot) = maybe_state_snapshot {
-                    Mode::OfflineOrElseOnline(
-                        OfflineConfig {
-                            state_snapshot: state_snapshot.clone(),
-                        },
-                        OnlineConfig {
-                            transport,
-                            state_snapshot: Some(state_snapshot),
-                            ..Default::default()
-                        },
-                    )
-                } else {
-                    Mode::Online(OnlineConfig {
-                        transport,
-                        ..Default::default()
-                    })
-                })
-                .build()
-                .await
-                .unwrap();
-        let skipped_prefixes = SKIPPED_PALLETS
-            .iter()
-            .cloned()
-            .map(get_pallet_prefix)
-            .collect::<std::collections::BTreeSet<_>>();
-        let included_prefixes = INCLUDED_PREFIXES
-            .iter()
-            .map(|(p, s)| get_storage_prefix(p, s))
-            .collect::<std::collections::BTreeSet<_>>();
-        let mut storage = cfg.chain_spec.as_storage_builder().build_storage()?;
-        storage.top = storage
-            .top
-            .into_iter()
-            .filter(|(k, _)| {
-                if k.len() < 32 || skipped_prefixes.contains(&k[..16]) {
-                    true
-                } else {
-                    false
-                }
-            })
-            .collect();
-        let kv = ext.as_backend().essence().pairs();
-        for (k, v) in kv {
-            if k.len() >= 32
-                && (!skipped_prefixes.contains(&k[..16]) || included_prefixes.contains(&k[..32]))
-            {
-                storage.top.insert(k, v);
-            } else {
-                log::debug!("Skipped {}", to_hex(&k, false));
-            }
-        }
-        // Delete System.LastRuntimeUpgrade to ensure that the on_runtime_upgrade event is triggered
-        storage
-            .top
-            .remove(&get_storage_prefix("System", "LastRuntimeUpgrade"));
-        // To prevent the validator set from changing mid-test, set Staking.ForceEra to ForceNone ('0x02')
-        storage
-            .top
-            .insert(get_storage_prefix("Staking", "ForceEra"), vec![2]);
-        cfg.chain_spec.set_storage(storage);
-        let json = sc_service::chain_ops::build_spec(&*cfg.chain_spec, self.raw)?;
-        if std::io::stdout().write_all(json.as_bytes()).is_err() {
-            let _ = std::io::stderr().write_all(b"Error writing to stdout\n");
-        }
+        // let transport: Transport = self.url.clone().into();
+        // let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());
+        // let ext: RemoteExternalities<framenode_runtime::Block> =
+        //     Builder::<framenode_runtime::Block>::default()
+        //         .mode(if let Some(state_snapshot) = maybe_state_snapshot {
+        //             Mode::OfflineOrElseOnline(
+        //                 OfflineConfig {
+        //                     state_snapshot: state_snapshot.clone(),
+        //                 },
+        //                 OnlineConfig {
+        //                     transport,
+        //                     state_snapshot: Some(state_snapshot),
+        //                     ..Default::default()
+        //                 },
+        //             )
+        //         } else {
+        //             Mode::Online(OnlineConfig {
+        //                 transport,
+        //                 ..Default::default()
+        //             })
+        //         })
+        //         .build()
+        //         .await
+        //         .unwrap();
+        // let skipped_prefixes = SKIPPED_PALLETS
+        //     .iter()
+        //     .cloned()
+        //     .map(get_pallet_prefix)
+        //     .collect::<std::collections::BTreeSet<_>>();
+        // let included_prefixes = INCLUDED_PREFIXES
+        //     .iter()
+        //     .map(|(p, s)| get_storage_prefix(p, s))
+        //     .collect::<std::collections::BTreeSet<_>>();
+        // let mut storage = cfg.chain_spec.as_storage_builder().build_storage()?;
+        // storage.top = storage
+        //     .top
+        //     .into_iter()
+        //     .filter(|(k, _)| {
+        //         if k.len() < 32 || skipped_prefixes.contains(&k[..16]) {
+        //             true
+        //         } else {
+        //             false
+        //         }
+        //     })
+        //     .collect();
+        // let kv = ext.as_backend().essence().pairs();
+        // for (k, v) in kv {
+        //     if k.len() >= 32
+        //         && (!skipped_prefixes.contains(&k[..16]) || included_prefixes.contains(&k[..32]))
+        //     {
+        //         storage.top.insert(k, v);
+        //     } else {
+        //         log::debug!("Skipped {}", to_hex(&k, false));
+        //     }
+        // }
+        // // Delete System.LastRuntimeUpgrade to ensure that the on_runtime_upgrade event is triggered
+        // storage
+        //     .top
+        //     .remove(&get_storage_prefix("System", "LastRuntimeUpgrade"));
+        // // To prevent the validator set from changing mid-test, set Staking.ForceEra to ForceNone ('0x02')
+        // storage
+        //     .top
+        //     .insert(get_storage_prefix("Staking", "ForceEra"), vec![2]);
+        // cfg.chain_spec.set_storage(storage);
+        // let json = sc_service::chain_ops::build_spec(&*cfg.chain_spec, self.raw)?;
+        // if std::io::stdout().write_all(json.as_bytes()).is_err() {
+        //     let _ = std::io::stderr().write_all(b"Error writing to stdout\n");
+        // }
         Ok(())
     }
 }

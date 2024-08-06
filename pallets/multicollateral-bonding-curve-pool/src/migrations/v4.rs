@@ -2,12 +2,13 @@ use crate::Config;
 use crate::Pallet;
 use common::AssetIdOf;
 use common::Balance;
-use frame_support::log::{error, info};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_system::pallet_prelude::BlockNumberFor;
+use log::{error, info};
 use sp_runtime::traits::One;
+use sp_runtime::TryRuntimeError;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::Vec;
 
@@ -50,39 +51,40 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         let state = old_storage::PendingFreeReserves::<T>::get().encode();
         ensure!(
             Pallet::<T>::on_chain_storage_version() == 3,
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(state)
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
         ensure!(
             !old_storage::PendingFreeReserves::<T>::exists(),
-            "Old storage value still present"
+            TryRuntimeError::Other("Old storage value still present")
         );
         let pending_free_reserves = Vec::<(AssetIdOf<T>, Balance)>::decode(&mut &state[..])
             .map_err(|_| "Failed to decode state")?;
         if pending_free_reserves.is_empty() {
             ensure!(
                 crate::PendingFreeReserves::<T>::iter().count() == 0,
-                "Pending free reserves not empty"
+                TryRuntimeError::Other("Pending free reserves not empty")
             );
         } else {
             ensure!(
                 crate::PendingFreeReserves::<T>::iter().count() == 1,
-                "Pending free reserves have more than one entry"
+                TryRuntimeError::Other("Pending free reserves have more than one entry")
             );
             let (block_number, value) = crate::PendingFreeReserves::<T>::iter()
                 .next()
                 .ok_or("Empty pending free reserves")?;
             ensure!(
-                block_number == frame_system::Pallet::<T>::block_number() + T::BlockNumber::one(),
-                "Pending free reserves have wrong block number"
+                block_number
+                    == frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::one(),
+                TryRuntimeError::Other("Pending free reserves have wrong block number")
             );
 
             ensure!(
@@ -90,12 +92,12 @@ where
                     == pending_free_reserves
                         .into_iter()
                         .collect::<BTreeMap<AssetIdOf<T>, Balance>>(),
-                "Pending free reserves have wrong value"
+                TryRuntimeError::Other("Pending free reserves have wrong value")
             );
         }
         ensure!(
             Pallet::<T>::on_chain_storage_version() == 4,
-            "should be upgraded to version 4"
+            TryRuntimeError::Other("should be upgraded to version 4")
         );
         Ok(())
     }

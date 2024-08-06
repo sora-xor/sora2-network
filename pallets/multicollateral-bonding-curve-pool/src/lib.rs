@@ -67,7 +67,6 @@ use sp_runtime::{traits::One, DispatchError, DispatchResult, Saturating};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
-#[cfg(feature = "std")]
 use {
     common::USDT,
     serde::{Deserialize, Serialize},
@@ -84,8 +83,7 @@ pub const TECH_ACCOUNT_FREE_RESERVES: &[u8] = b"free_reserves";
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo, Serialize, Deserialize)]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
     TechAccount(TechAccountId),
@@ -97,8 +95,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo, Serialize, Deserialize)]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
     pub coefficient: Fixed,
@@ -122,8 +119,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo, Serialize, Deserialize)]
 pub struct DistributionAccounts<DistributionAccountData> {
     pub xor_allocation: DistributionAccountData,
     pub val_holders: DistributionAccountData,
@@ -226,14 +222,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             let elems =
                 Pallet::<T>::free_reserves_distribution_routine(block_number).unwrap_or_default();
             <T as Config>::WeightInfo::on_initialize(elems)
@@ -567,7 +562,6 @@ pub mod pallet {
         pub free_reserves_account_id: Option<T::AccountId>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -582,7 +576,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             frame_system::Pallet::<T>::inc_consumers(&self.incentives_account_id.as_ref().unwrap())
                 .unwrap();
@@ -864,7 +858,7 @@ impl<T: Config> Pallet<T> {
             Ok(())
         })
         .map_err(|err| {
-            frame_support::log::error!("Reserves distribution failed, will try next time: {err:?}");
+            log::error!("Reserves distribution failed, will try next time: {err:?}");
             err
         })
     }

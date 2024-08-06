@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as kensetsu;
+use crate::test_utils::alice_account_id;
 use std::collections::BTreeSet;
 
 use common::mock::ExistentialDeposits;
@@ -55,7 +56,7 @@ use sp_runtime::{
     testing::{Header, TestXt},
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
-use sp_runtime::{DispatchError, MultiSignature};
+use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
@@ -271,14 +272,10 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
 }
 
 frame_support::construct_runtime!(
-    pub enum TestRuntime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum TestRuntime {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -363,8 +360,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         )
         .unwrap();
 
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
+    let mut storage = frame_system::GenesisConfig::<TestRuntime>::default()
+        .build_storage()
         .unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![
@@ -377,6 +374,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_tech_account_id,
             ),
         ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    BalancesConfig {
+        balances: vec![(assets_and_permissions_account_id.clone(), balance!(1))],
     }
     .assimilate_storage(&mut storage)
     .unwrap();

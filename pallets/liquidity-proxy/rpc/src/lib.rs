@@ -154,10 +154,10 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<SwapOutcomeInfo<Balance, AssetId>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
+        );
 
         let version = api
             .api_version::<dyn LiquidityProxyRuntimeAPI<
@@ -168,14 +168,14 @@ where
                 SwapVariant,
                 LiquiditySourceType,
                 FilterMode,
-            >>(&at)
+            >>(at)
             .map_err(|e| RpcError::Custom(format!("Runtime API error: {}", e)))?;
 
         let outcome = if version == Some(1) {
             #[allow(deprecated)]
             {
                 api.quote_before_version_2(
-                    &at,
+                    at,
                     dex_id,
                     input_asset_id,
                     output_asset_id,
@@ -191,7 +191,7 @@ where
             #[allow(deprecated)]
             {
                 api.quote_before_version_3(
-                    &at,
+                    at,
                     dex_id,
                     input_asset_id,
                     output_asset_id,
@@ -205,7 +205,7 @@ where
             }
         } else if version == Some(3) {
             api.quote(
-                &at,
+                at,
                 dex_id,
                 input_asset_id,
                 output_asset_id,
@@ -231,11 +231,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.is_path_available(&at, dex_id, input_asset_id, output_asset_id)
+        );
+        api.is_path_available(at, dex_id, input_asset_id, output_asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -247,11 +247,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<LiquiditySourceType>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_sources_for_path(&at, dex_id, input_asset_id, output_asset_id)
+        );
+        api.list_enabled_sources_for_path(at, dex_id, input_asset_id, output_asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

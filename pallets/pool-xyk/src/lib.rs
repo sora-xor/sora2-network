@@ -32,12 +32,13 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
@@ -935,7 +936,7 @@ pub mod pallet {
         + ceres_liquidity_locker::Config
         + demeter_farming_platform::Config
         + permissions::Config
-        + orml_tokens::Config
+        + tokens::Config
     {
         /// The minimum amount of XOR to deposit as liquidity
         const MIN_XOR: Balance;
@@ -998,7 +999,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);

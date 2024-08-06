@@ -33,7 +33,7 @@ use core::convert::TryFrom;
 use codec::{Decode, Encode};
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingDiv;
-use frame_support::RuntimeDebug;
+use sp_core::RuntimeDebug;
 use sp_std::iter::once;
 use sp_std::vec::Vec;
 
