@@ -125,10 +125,9 @@ impl AssetType {
         synthetic_assets: &BTreeSet<AssetIdOf<T>>,
         asset_id: AssetIdOf<T>,
     ) -> Self {
-        let base_chameleon_asset_id =
-            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
-                &dex_info.base_asset_id,
-            );
+        let (base_chameleon_asset_id, chameleon_targets) =
+            <T::GetChameleonPools as traits::GetByKey<_, _>>::get(&dex_info.base_asset_id).unzip();
+        let chameleon_targets = chameleon_targets.unwrap_or_default();
         if asset_id == dex_info.base_asset_id {
             AssetType::Base
         } else if asset_id == dex_info.synthetic_base_asset_id {
@@ -138,10 +137,7 @@ impl AssetType {
         } else if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
             if asset_id == base_chameleon_asset_id {
                 AssetType::ChameleonBase
-            } else if <T::GetChameleonPool as traits::GetByKey<_, _>>::get(&common::TradingPair {
-                base_asset_id: dex_info.base_asset_id,
-                target_asset_id: asset_id,
-            }) {
+            } else if chameleon_targets.contains(&asset_id) {
                 AssetType::ChameleonPoolAsset
             } else {
                 AssetType::Basic
@@ -303,10 +299,8 @@ impl<T: Config> ExchangePath<T> {
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
-        let base_chameleon_asset_id =
-            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
-                &dex_info.base_asset_id,
-            );
+        let (base_chameleon_asset_id, _) =
+            <T::GetChameleonPools as traits::GetByKey<_, _>>::get(&dex_info.base_asset_id).unzip();
 
         let mut path_builder = PathBuilder::<T> {
             input_asset_id,
@@ -2551,8 +2545,11 @@ pub mod pallet {
         type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
         type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
-        type GetChameleonPool: traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
+        /// base_asset_id => (chameleon_base_asset_id, target_assets)
+        type GetChameleonPools: traits::GetByKey<
+            AssetIdOf<Self>,
+            Option<(AssetIdOf<Self>, BTreeSet<AssetIdOf<Self>>)>,
+        >;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
