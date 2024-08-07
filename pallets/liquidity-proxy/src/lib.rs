@@ -35,6 +35,8 @@
 extern crate core;
 
 #[cfg(test)]
+mod alt_test_utils;
+#[cfg(test)]
 mod alt_tests;
 pub mod liquidity_aggregator;
 #[cfg(test)]

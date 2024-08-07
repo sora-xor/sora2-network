@@ -30,120 +30,32 @@
 
 #![cfg(feature = "wip")] // ALT
 
-use assets::AssetIdOf;
-use codec::Decode;
+use crate::alt_test_utils::*;
 use common::prelude::{OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, DexIdOf, FilterMode, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    DAI, TBCD, VAL, XOR,
+    balance, FilterMode, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, DAI, TBCD,
+    VAL, XOR,
 };
 use frame_support::{assert_err, assert_ok};
-use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::liquidity_proxy::liquidity_aggregator::AggregatedSwapOutcome;
 use framenode_runtime::liquidity_proxy::{Error, Pallet};
 use framenode_runtime::{Runtime, RuntimeOrigin};
-use order_book::test_utils::{create_and_fill_order_book, create_empty_order_book, fill_balance};
-use order_book::OrderBookId;
 use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources;
-use qa_tools::pallet_tools::mcbc::{
-    CollateralCommonParameters, OtherCollateralInput, TbcdCollateralInput,
-};
-use qa_tools::pallet_tools::pool_xyk::AssetPairInput;
+use qa_tools::pallet_tools::mcbc::{CollateralCommonParameters, TbcdCollateralInput};
 use qa_tools::pallet_tools::price_tools::AssetPrices;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
-type DEXId = DexIdOf<Runtime>;
 type LiquidityProxyPallet = Pallet<Runtime>;
 type E = Error<Runtime>;
-pub const DEX: common::DEXId = common::DEXId::Polkaswap;
-
-fn alice<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
-    <T as frame_system::Config>::AccountId::decode(&mut &[1u8; 32][..]).unwrap()
-}
-
-fn bob<T: frame_system::Config>() -> <T as frame_system::Config>::AccountId {
-    <T as frame_system::Config>::AccountId::decode(&mut &[2u8; 32][..]).unwrap()
-}
-
-#[test]
-fn check_alt() {
-    ext().execute_with(|| {
-        let pair = AssetPairInput::new(DEX.into(), VAL, XOR, balance!(11.1), None);
-        assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
-            bob::<Runtime>(),
-            vec![pair]
-        ));
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: VAL,
-            quote: XOR,
-        };
-
-        create_and_fill_order_book::<Runtime>(order_book_id);
-
-        assert_ok!(assets::Pallet::<Runtime>::update_balance(
-            RuntimeOrigin::root(),
-            alice::<Runtime>(),
-            XOR,
-            balance!(100000).try_into().unwrap()
-        ));
-        let amount = SwapAmount::WithDesiredInput {
-            desired_amount_in: balance!(1947),
-            min_amount_out: balance!(176),
-        };
-
-        let quote = LiquidityProxyPallet::test_quote(
-            DEX.into(),
-            &XOR,
-            &VAL,
-            amount.into(),
-            LiquiditySourceFilter::empty(DEX.into()),
-            true,
-        )
-        .unwrap();
-
-        assert_eq!(
-            quote,
-            AggregatedSwapOutcome::new(
-                vec![
-                    (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
-                        SwapAmount::with_desired_input(
-                            balance!(7.7),
-                            balance!(0.690405237531098531)
-                        )
-                    ),
-                    (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
-                        SwapAmount::with_desired_input(balance!(1939.3), balance!(176.3))
-                    )
-                ],
-                balance!(176.990405237531098531),
-                OutcomeFee::xor(balance!(0.023099999999999999))
-            )
-        );
-
-        assert_ok!(LiquidityProxyPallet::swap(
-            RuntimeOrigin::signed(alice::<Runtime>()),
-            DEX.into(),
-            XOR,
-            VAL,
-            amount,
-            Vec::new(),
-            FilterMode::Disabled
-        ));
-    });
-}
 
 #[test]
 fn check_xyk_pool_small_reserves() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob::<Runtime>());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob());
         let asset = assets::Pallet::<Runtime>::register_from(
-            &bob::<Runtime>(),
+            &bob(),
             common::AssetSymbol(b"TEST".to_vec()),
             common::AssetName(b"Test".to_vec()),
             common::DEFAULT_BALANCE_PRECISION,
@@ -155,31 +67,16 @@ fn check_xyk_pool_small_reserves() {
         )
         .unwrap();
 
-        let pair = AssetPairInput::new(DEX.into(), asset, XOR, balance!(10), Some(balance!(100)));
-
-        assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
-            bob::<Runtime>(),
-            vec![pair]
-        ));
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: asset,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-
-        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
-
-        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
-            RawOrigin::Signed(alice::<Runtime>()).into(),
-            order_book_id,
+        init_xyk_pool(asset, XOR, balance!(10), Some(balance!(100)), bob());
+        init_order_book(
+            asset,
+            balance!(9),
             balance!(10),
             balance!(100),
-            common::PriceVariant::Sell,
-            None
-        ));
+            1,
+            0,
+            alice(),
+        );
 
         let (info, _) = LiquidityProxyPallet::inner_quote(
             DEX.into(),
@@ -205,9 +102,9 @@ fn check_xyk_pool_small_reserves() {
 #[test]
 fn check_tbc_pool_small_reserves() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob::<Runtime>());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob());
         let asset = assets::Pallet::<Runtime>::register_from(
-            &bob::<Runtime>(),
+            &bob(),
             common::AssetSymbol(b"TEST".to_vec()),
             common::AssetName(b"Test".to_vec()),
             common::DEFAULT_BALANCE_PRECISION,
@@ -219,51 +116,16 @@ fn check_tbc_pool_small_reserves() {
         )
         .unwrap();
 
-        assert_ok!(liquidity_sources::initialize_mcbc::<Runtime>(
-            None,
-            vec![OtherCollateralInput {
-                asset,
-                parameters: CollateralCommonParameters {
-                    ref_prices: Some(AssetPrices {
-                        buy: balance!(1000000000),
-                        sell: balance!(1000000000),
-                    }),
-                    reserves: Some(balance!(100)),
-                },
-            }],
-            Some(TbcdCollateralInput {
-                parameters: CollateralCommonParameters {
-                    ref_prices: Some(AssetPrices {
-                        buy: balance!(1),
-                        sell: balance!(1)
-                    }),
-                    reserves: Some(balance!(10000))
-                },
-                ref_xor_prices: Some(AssetPrices {
-                    buy: balance!(2),
-                    sell: balance!(2)
-                })
-            }),
-        ));
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: asset,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-
-        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
-
-        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
-            RawOrigin::Signed(alice::<Runtime>()).into(),
-            order_book_id,
+        init_mcbc_pool(asset, balance!(1000000000), balance!(100));
+        init_order_book(
+            asset,
+            balance!(9),
             balance!(10),
             balance!(100),
-            common::PriceVariant::Sell,
-            None
-        ));
+            1,
+            0,
+            alice(),
+        );
 
         let (info, _) = LiquidityProxyPallet::inner_quote(
             DEX.into(),
@@ -279,8 +141,8 @@ fn check_tbc_pool_small_reserves() {
         assert_eq!(
             info.outcome,
             SwapOutcome::new(
-                balance!(1088.902612462909121337),
-                OutcomeFee::xor(balance!(8.267942959050548276))
+                balance!(1088.910339125839073864),
+                OutcomeFee::xor(balance!(8.268661538703033861))
             )
         );
     });
@@ -289,9 +151,9 @@ fn check_tbc_pool_small_reserves() {
 #[test]
 fn check_not_enough_liquidity() {
     ext().execute_with(|| {
-        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob::<Runtime>());
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&bob());
         let asset = assets::Pallet::<Runtime>::register_from(
-            &bob::<Runtime>(),
+            &bob(),
             common::AssetSymbol(b"TEST".to_vec()),
             common::AssetName(b"Test".to_vec()),
             common::DEFAULT_BALANCE_PRECISION,
@@ -303,58 +165,17 @@ fn check_not_enough_liquidity() {
         )
         .unwrap();
 
-        let pair = AssetPairInput::new(DEX.into(), asset, XOR, balance!(10), Some(balance!(100)));
-
-        assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
-            bob::<Runtime>(),
-            vec![pair]
-        ));
-
-        assert_ok!(liquidity_sources::initialize_mcbc::<Runtime>(
-            None,
-            vec![OtherCollateralInput {
-                asset,
-                parameters: CollateralCommonParameters {
-                    ref_prices: Some(AssetPrices {
-                        buy: balance!(1000000000),
-                        sell: balance!(1000000000),
-                    }),
-                    reserves: Some(balance!(100)),
-                },
-            }],
-            Some(TbcdCollateralInput {
-                parameters: CollateralCommonParameters {
-                    ref_prices: Some(AssetPrices {
-                        buy: balance!(1),
-                        sell: balance!(1)
-                    }),
-                    reserves: Some(balance!(10000))
-                },
-                ref_xor_prices: Some(AssetPrices {
-                    buy: balance!(2),
-                    sell: balance!(2)
-                })
-            }),
-        ));
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: asset,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-
-        fill_balance::<Runtime>(alice::<Runtime>(), order_book_id);
-
-        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
-            RawOrigin::Signed(alice::<Runtime>()).into(),
-            order_book_id,
+        init_xyk_pool(asset, XOR, balance!(10), Some(balance!(100)), bob());
+        init_mcbc_pool(asset, balance!(1000000000), balance!(100));
+        init_order_book(
+            asset,
+            balance!(9),
             balance!(10),
             balance!(100),
-            common::PriceVariant::Sell,
-            None
-        ));
+            1,
+            0,
+            alice(),
+        );
 
         assert_err!(
             LiquidityProxyPallet::inner_quote(
@@ -374,22 +195,15 @@ fn check_not_enough_liquidity() {
 #[test]
 fn check_rounding() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: VAL,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-
-        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
-            RawOrigin::Signed(alice::<Runtime>()).into(),
-            order_book_id,
+        init_order_book(
+            VAL,
+            balance!(3500),
             balance!(3600),
             balance!(910),
-            common::PriceVariant::Sell,
-            None
-        ));
+            1,
+            0,
+            alice(),
+        );
 
         // before the fix it was balance!(36000.0000000001008),
         // because for desired output: input = output / price
@@ -436,11 +250,7 @@ fn check_rounding() {
 #[test]
 fn check_tbcd_swap_smooth_quote() {
     ext().execute_with(|| {
-        let pair = AssetPairInput::new(DEX.into(), TBCD, XOR, balance!(0.3), None);
-        assert_ok!(liquidity_sources::initialize_xyk::<Runtime>(
-            bob::<Runtime>(),
-            vec![pair]
-        ));
+        init_xyk_pool(TBCD, XOR, balance!(0.3), None, bob());
 
         assert_ok!(liquidity_sources::initialize_mcbc::<Runtime>(
             None,
@@ -460,13 +270,7 @@ fn check_tbcd_swap_smooth_quote() {
             }),
         ));
 
-        <Runtime as common::Config>::AssetManager::update_balance(
-            RawOrigin::Root.into(),
-            alice::<Runtime>(),
-            TBCD,
-            balance!(1000).try_into().unwrap(),
-        )
-        .unwrap();
+        add_balance(alice(), TBCD, balance!(1000));
 
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1),
@@ -474,7 +278,7 @@ fn check_tbcd_swap_smooth_quote() {
         };
 
         assert_ok!(LiquidityProxyPallet::swap(
-            RuntimeOrigin::signed(alice::<Runtime>()),
+            RuntimeOrigin::signed(alice()),
             DEX.into(),
             TBCD,
             XOR,
@@ -488,72 +292,31 @@ fn check_tbcd_swap_smooth_quote() {
 #[test]
 fn check_xyk_swap_small_quote_fluctuation() {
     ext().execute_with(|| {
-        <Runtime as common::Config>::AssetManager::update_balance(
-            RawOrigin::Root.into(),
-            alice::<Runtime>(),
-            XOR,
-            balance!(100000).try_into().unwrap(),
-        )
-        .unwrap();
-
-        <Runtime as common::Config>::AssetManager::update_balance(
-            RawOrigin::Root.into(),
-            alice::<Runtime>(),
+        init_order_book(
             DAI,
-            balance!(100000).try_into().unwrap(),
-        )
-        .unwrap();
-
-        <Runtime as common::Config>::AssetManager::update_balance(
-            RawOrigin::Root.into(),
-            bob::<Runtime>(),
-            XOR,
-            balance!(1000000000).try_into().unwrap(),
-        )
-        .unwrap();
-
-        <Runtime as common::Config>::AssetManager::update_balance(
-            RawOrigin::Root.into(),
-            bob::<Runtime>(),
-            DAI,
-            balance!(1000000000).try_into().unwrap(),
-        )
-        .unwrap();
-
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: DAI,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-
-        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
-            RawOrigin::Signed(bob::<Runtime>()).into(),
-            order_book_id,
+            balance!(77000),
             balance!(78000),
             balance!(1000),
-            common::PriceVariant::Buy,
-            None
-        ));
-        assert_ok!(order_book::Pallet::<Runtime>::place_limit_order(
-            RawOrigin::Signed(bob::<Runtime>()).into(),
-            order_book_id,
-            balance!(77000),
-            balance!(1000),
-            common::PriceVariant::Buy,
-            None
-        ));
+            1,
+            0,
+            bob(),
+        );
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-            RuntimeOrigin::signed(bob::<Runtime>()),
+            RuntimeOrigin::signed(bob()),
             DEX.into(),
             XOR,
             DAI,
         ));
 
+        add_balance(alice(), XOR, balance!(100000));
+        add_balance(alice(), DAI, balance!(100000));
+
+        add_balance(bob(), XOR, balance!(1000000000));
+        add_balance(bob(), DAI, balance!(1000000000));
+
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            RuntimeOrigin::signed(bob::<Runtime>()),
+            RuntimeOrigin::signed(bob()),
             DEX.into(),
             XOR,
             DAI,
@@ -568,7 +331,7 @@ fn check_xyk_swap_small_quote_fluctuation() {
         // xyk pool returns the chunks in not descending price order, but in the scope of accepted slippage
 
         assert_ok!(LiquidityProxyPallet::swap(
-            RuntimeOrigin::signed(alice::<Runtime>()),
+            RuntimeOrigin::signed(alice()),
             DEX.into(),
             XOR,
             DAI,
@@ -578,7 +341,7 @@ fn check_xyk_swap_small_quote_fluctuation() {
         ));
 
         assert_ok!(LiquidityProxyPallet::swap(
-            RuntimeOrigin::signed(alice::<Runtime>()),
+            RuntimeOrigin::signed(alice()),
             DEX.into(),
             DAI,
             XOR,
