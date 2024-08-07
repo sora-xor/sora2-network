@@ -1012,7 +1012,7 @@ parameter_type_with_key! {
 parameter_type_with_key! {
     pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
         if *base == common::XOR {
-            Some((common::KXOR, [common::ETH].into_iter().collect()))
+            Some((common::KXOR, [common::ETH, common::VAL, common::PSWAP].into_iter().collect()))
         } else {
             None
         }
