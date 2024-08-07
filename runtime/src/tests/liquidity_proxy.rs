@@ -32,6 +32,7 @@ use crate::{AccountId, AssetId, Currencies, LiquidityProxy, PoolXYK, Runtime, Ru
 use common::mock::{alice, bob};
 use common::prelude::{FixedWrapper, SwapAmount};
 use common::{balance, Balance, XykPool, ETH, KXOR, XOR};
+use frame_support::traits::OnInitialize;
 use frame_support::{assert_noop, assert_ok};
 use framenode_chain_spec::ext;
 use pool_xyk::to_fixed_wrapper;
@@ -354,6 +355,30 @@ fn chameleon_pool_swaps_burn_kxor() {
         );
 
         assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), alice()).unwrap()
+            ),
+            Ok(balance!(5000000))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(5000000.0000000000025))
+        );
+
+        assert_eq!(
             PoolXYK::pool_providers(pool_account.clone(), alice()),
             Some(balance!(61237.243569579452452030)),
         );
@@ -403,6 +428,30 @@ fn chameleon_pool_swaps_burn_kxor() {
         assert_eq!(
             PoolXYK::reserves(XOR, ETH),
             (balance!(10000000), balance!(751.126690035052578869))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), alice()).unwrap()
+            ),
+            Ok(balance!(5000000))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(5000000.0000000000025))
         );
 
         assert_eq!(
@@ -464,6 +513,30 @@ fn chameleon_pool_swaps_burn_kxor() {
             .try_into_balance()
             .unwrap();
         assert_eq!(real_issuance, balance!(61329.237425718029497827));
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), alice()).unwrap()
+            ),
+            Ok(balance!(5000000))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(5000000.0000000000025))
+        );
 
         assert_eq!(
             PoolXYK::pool_providers(pool_account.clone(), alice()),
@@ -528,6 +601,18 @@ fn chameleon_pool_swaps_burn_kxor() {
             .unwrap();
         assert_eq!(real_issuance, balance!(30664.618712859014750133));
 
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(5000000.000000000000081650))
+        );
+
         assert_eq!(PoolXYK::pool_providers(pool_account.clone(), alice()), None);
 
         assert_eq!(
@@ -588,6 +673,30 @@ fn chameleon_pool_swaps_burn_kxor() {
             .try_into_balance()
             .unwrap();
         assert_eq!(real_issuance, balance!(61329.237425718029498079));
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), alice()).unwrap()
+            ),
+            Ok(balance!(5000000.000000000000040825))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(5000000.000000000002540825))
+        );
 
         assert_eq!(
             PoolXYK::pool_providers(pool_account.clone(), alice()),
@@ -684,6 +793,30 @@ fn chameleon_pool_swaps_burn_kxor() {
         assert_eq!(real_issuance, balance!(61329.237425718029498246));
 
         assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), alice()).unwrap()
+            ),
+            Ok(balance!(4985000.000000000000040825))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(4985000.000000000002533325))
+        );
+
+        assert_eq!(
             PoolXYK::pool_providers(pool_account.clone(), alice()),
             Some(balance!(61237.243569579452452727))
         );
@@ -696,6 +829,47 @@ fn chameleon_pool_swaps_burn_kxor() {
         assert_eq!(
             PoolXYK::total_issuance(&pool_account).unwrap(),
             balance!(122474.487139158904905757),
+        );
+
+        PoolXYK::on_initialize(1 * crate::HOURS);
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), alice()).unwrap()
+            ),
+            Ok(balance!(4985000.000000000000040825))
+        );
+
+        assert_eq!(
+            PoolXYK::get_base_asset_part_from_pool_account(
+                &pool_account,
+                &common::TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: ETH,
+                },
+                PoolXYK::pool_providers(pool_account.clone(), bob()).unwrap()
+            ),
+            Ok(balance!(4985000.000000000002533325))
+        );
+
+        assert_eq!(
+            PoolXYK::pool_providers(pool_account.clone(), alice()),
+            Some(balance!(30664.618712859014763841))
+        );
+
+        assert_eq!(
+            PoolXYK::pool_providers(pool_account.clone(), bob()),
+            Some(balance!(30664.618712859014763993)),
+        );
+
+        assert_eq!(
+            PoolXYK::total_issuance(&pool_account).unwrap(),
+            balance!(61329.237425718029527834),
         );
     });
 }

@@ -185,18 +185,12 @@ impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedF
 }
 
 parameter_type_with_key! {
-    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId32<PredefinedAssetId>| -> Option<AssetId32<PredefinedAssetId>> {
-        if base_asset_id == &crate::XOR {
-            Some(crate::KXOR)
+    pub GetChameleonPools: |base: AssetId32<PredefinedAssetId>| -> Option<(AssetId32<PredefinedAssetId>, sp_std::collections::btree_set::BTreeSet<AssetId32<PredefinedAssetId>>)> {
+        if *base == crate::XOR {
+            Some((crate::KXOR, [crate::ETH].into_iter().collect()))
         } else {
             None
         }
-    };
-}
-
-parameter_type_with_key! {
-    pub GetChameleonPool: |tpair: crate::TradingPair<AssetId32<PredefinedAssetId>>| -> bool {
-        tpair.base_asset_id == crate::XOR && tpair.target_asset_id == crate::ETH
     };
 }
 

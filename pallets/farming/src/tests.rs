@@ -198,12 +198,12 @@ fn test() {
                     PoolFarmer {
                         account: ALICE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.199999999999998996),
+                        weight: balance!(2.199999999999999500),
                     },
                     PoolFarmer {
                         account: BOB(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.199999999999999996),
+                        weight: balance!(2.200000000000000500),
                     }
                 ]
             );
@@ -214,7 +214,7 @@ fn test() {
                 vec![PoolFarmer {
                     account: ALICE(),
                     block: REFRESH_FREQUENCY,
-                    weight: balance!(2.199999999999999000),
+                    weight: balance!(2.2),
                 },]
             );
 
@@ -224,7 +224,7 @@ fn test() {
                 vec![PoolFarmer {
                     account: DAVE(),
                     block: REFRESH_FREQUENCY,
-                    weight: balance!(2.275862068965516962),
+                    weight: balance!(2.275862068965517242),
                 }]
             );
 
@@ -235,12 +235,12 @@ fn test() {
                     PoolFarmer {
                         account: ALICE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.275862068965517238),
+                        weight: balance!(2.275862068965518128),
                     },
                     PoolFarmer {
                         account: EVE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.275862068965515470),
+                        weight: balance!(2.275862068965516358),
                     },
                 ]
             );
@@ -251,7 +251,7 @@ fn test() {
                 vec![PoolFarmer {
                     account: EVE(),
                     block: REFRESH_FREQUENCY,
-                    weight: balance!(9.999999999999999430),
+                    weight: balance!(10),
                 },]
             );
         }
@@ -289,12 +289,12 @@ fn test() {
                     PoolFarmer {
                         account: ALICE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.199999999999998996),
+                        weight: balance!(2.199999999999999500),
                     },
                     PoolFarmer {
                         account: BOB(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.199999999999999996),
+                        weight: balance!(2.200000000000000500),
                     }
                 ]
             );
@@ -305,7 +305,7 @@ fn test() {
                 vec![PoolFarmer {
                     account: CHARLIE(),
                     block: REFRESH_FREQUENCY * 2,
-                    weight: balance!(19.999999999999999962),
+                    weight: balance!(20.000000000000000942),
                 },]
             );
         }
@@ -330,31 +330,31 @@ fn test() {
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(alice_reward, balance!(157125.633737642261546569));
+        assert_eq!(alice_reward, balance!(157125.633737642270157117));
 
         let bob_reward = *Rewards::<Runtime>::get(&BOB())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(bob_reward, balance!(37993.673033658484304183));
+        assert_eq!(bob_reward, balance!(37993.673033658488758777));
 
         let charlie_reward = *Rewards::<Runtime>::get(&CHARLIE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(charlie_reward, balance!(176843.278120301308642127));
+        assert_eq!(charlie_reward, balance!(176843.278120301293662255));
 
         let dave_reward = *Rewards::<Runtime>::get(&DAVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(dave_reward, balance!(39303.799689991530733799));
+        assert_eq!(dave_reward, balance!(39303.799689991531173596));
 
         let eve_reward = *Rewards::<Runtime>::get(&EVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(eve_reward, balance!(212002.313479348242273320));
+        assert_eq!(eve_reward, balance!(212002.313479348243748252));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -386,7 +386,7 @@ fn test() {
             vec![PoolFarmer {
                 account: ALICE(),
                 block: REFRESH_FREQUENCY,
-                weight: balance!(3.199999999999998996),
+                weight: balance!(3.199999999999999822),
             }]
         );
 
@@ -398,32 +398,32 @@ fn test() {
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(alice_reward, balance!(386271.068658756410678920));
+        assert_eq!(alice_reward, balance!(386271.068658756425841800));
 
         // BOB's rewards didn't change
         let bob_reward = *Rewards::<Runtime>::get(&BOB())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(bob_reward, balance!(37993.673033658484304183));
+        assert_eq!(bob_reward, balance!(37993.673033658488758777));
 
         let charlie_reward = *Rewards::<Runtime>::get(&CHARLIE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(charlie_reward, balance!(377066.713911616292463328));
+        assert_eq!(charlie_reward, balance!(377066.713911616265057332));
 
         let dave_reward = *Rewards::<Runtime>::get(&DAVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(dave_reward, balance!(69629.365104687830670448));
+        assert_eq!(dave_reward, balance!(69629.365104687832138789));
 
         let eve_reward = *Rewards::<Runtime>::get(&EVE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(eve_reward, balance!(375576.575413164636883116));
+        assert_eq!(eve_reward, balance!(375576.575413164643203297));
     });
 }
 
