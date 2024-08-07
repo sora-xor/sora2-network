@@ -421,7 +421,7 @@ members = [
     # "utils/generate-bags",
     # "utils/remote-ext",
 ]
-exclude = ["contracts/flipper", "contracts/transfer-contract"]
+exclude = ["contracts/flipper", "contracts/transfer_contract"]
 
 resolver = "2"
 

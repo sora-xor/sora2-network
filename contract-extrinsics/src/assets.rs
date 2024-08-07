@@ -30,7 +30,6 @@
 
 use crate::primitives::{AssetId32, Balance};
 use sp_core::crypto::AccountId32;
-// use common::{AssetId32, Balance, PredefinedAssetId};
 
 /// It is a part of a pallet dispatchables API.
 /// The indexes can be found in your pallet code's #[pallet::call] section and check #[pallet::call_index(x)] attribute of the call.

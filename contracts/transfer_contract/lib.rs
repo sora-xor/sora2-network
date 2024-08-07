@@ -28,20 +28,19 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
 mod asset_contract {
     use contract_extrinsics::{RuntimeCall, assets::AssetsCall, primitives::AssetId32};
-    use scale::{Decode, Encode};
     use sp_runtime::AccountId32;
 
     #[ink(storage)]
     #[derive(Default)]
     pub struct AssetContract;
 
-    #[derive(Debug, PartialEq, Eq, Encode, Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    #[derive(Debug, PartialEq, Eq)]
     pub enum RuntimeError {
         CallRuntimeFailed,
     }

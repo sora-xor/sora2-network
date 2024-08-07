@@ -32,7 +32,6 @@
 
 use crate::assets::AssetsCall;
 use crate::order_book::OrderBookCall;
-// use scale::Encode;
 
 pub mod assets;
 pub mod order_book;

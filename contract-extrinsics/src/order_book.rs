@@ -29,10 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::primitives::{AssetId32, Balance, DEXId, OrderBookId, OrderId, PriceVariant};
-// use scale::Encode;
 use sp_std::vec::Vec;
-// use common::{AssetId32, Balance, PredefinedAssetId, PriceVariant};
-// use crate::primitives::{OrderId, OrderBookId, DEXId};
+
 /// It is a part of a pallet dispatchables API.
 /// The indexes can be found in your pallet code's #[pallet::call] section and check #[pallet::call_index(x)] attribute of the call.
 /// If these attributes are missing, use source-code order (0-based).

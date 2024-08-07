@@ -1,12 +1,3 @@
-use crate::utils;
-use frame_support::__private::RuntimeDebug;
-// use frame_support::pallet_prelude::{Decode, Encode, MaxEncodedLen};
-use frame_support::sp_runtime::testing::H256;
-use frame_support::{Deserialize, Serialize};
-use rustc_hex::ToHex;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
-
 pub const ASSET_ID_PREFIX_PREDEFINED: u8 = 2;
 
 pub type OrderId = u128;
@@ -26,33 +17,6 @@ pub struct AssetId32 {
     pub code: AssetId32Code,
 }
 
-// More readable representation of AssetId
-impl core::fmt::Debug for AssetId32 {
-    fn fmt(&self, fmt: &mut Formatter) -> core::fmt::Result {
-        fmt.debug_tuple("AssetId")
-            .field(&H256::from(self.code))
-            .finish()
-    }
-}
-
-impl FromStr for AssetId32 {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let vec: Vec<u8> = utils::parse_hex_string(s).ok_or("error parsing hex string")?;
-        let code: [u8; 32] = vec
-            .try_into()
-            .map_err(|_| "expected hex string representing 32-byte object")?;
-        Ok(AssetId32 { code })
-    }
-}
-
-impl Display for AssetId32 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
-        write!(f, "0x{}", self.code.to_hex::<String>())
-    }
-}
-
 impl AssetId32 {
     pub const fn new(code: AssetId32Code) -> Self {
         Self { code }
@@ -62,6 +26,7 @@ impl AssetId32 {
         Self { code: bytes }
     }
 
+    // TODO: should use?
     // pub const fn from_asset_id(asset_id: PredefinedAssetId) -> Self {
     //     let mut bytes = [0u8; 32];
     //     bytes[0] = ASSET_ID_PREFIX_PREDEFINED;
@@ -70,7 +35,7 @@ impl AssetId32 {
     // }
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, RuntimeDebug)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum PriceVariant {
     Buy,
@@ -88,7 +53,6 @@ impl PriceVariant {
 
 #[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, Hash)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OrderBookId<AssetId, DEXId> {
     /// DEX id
     pub dex_id: DEXId,
