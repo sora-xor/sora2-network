@@ -2956,9 +2956,6 @@
 <a href="#2941" id="2941">2941</a>
 <a href="#2942" id="2942">2942</a>
 <a href="#2943" id="2943">2943</a>
-<a href="#2944" id="2944">2944</a>
-<a href="#2945" id="2945">2945</a>
-<a href="#2946" id="2946">2946</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3086,10 +3083,9 @@
         synthetic_assets: <span class="kw-2">&amp;</span>BTreeSet&lt;AssetIdOf&lt;T&gt;&gt;,
         asset_id: AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>base_chameleon_asset_id =
-            &lt;T::GetChameleonPoolBaseAssetId <span class="kw">as </span>traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(
-                <span class="kw-2">&amp;</span>dex_info.base_asset_id,
-            );
+        <span class="kw">let </span>(base_chameleon_asset_id, chameleon_targets) =
+            &lt;T::GetChameleonPools <span class="kw">as </span>traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(<span class="kw-2">&amp;</span>dex_info.base_asset_id).unzip();
+        <span class="kw">let </span>chameleon_targets = chameleon_targets.unwrap_or_default();
         <span class="kw">if </span>asset_id == dex_info.base_asset_id {
             AssetType::Base
         } <span class="kw">else if </span>asset_id == dex_info.synthetic_base_asset_id {
@@ -3099,10 +3095,7 @@
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(base_chameleon_asset_id) = base_chameleon_asset_id {
             <span class="kw">if </span>asset_id == base_chameleon_asset_id {
                 AssetType::ChameleonBase
-            } <span class="kw">else if </span>&lt;T::GetChameleonPool <span class="kw">as </span>traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(<span class="kw-2">&amp;</span>common::TradingPair {
-                base_asset_id: dex_info.base_asset_id,
-                target_asset_id: asset_id,
-            }) {
+            } <span class="kw">else if </span>chameleon_targets.contains(<span class="kw-2">&amp;</span>asset_id) {
                 AssetType::ChameleonPoolAsset
             } <span class="kw">else </span>{
                 AssetType::Basic
@@ -3264,10 +3257,8 @@
         <span class="kw">let </span>synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         <span class="kw">let </span>input_type = AssetType::determine::&lt;T&gt;(dex_info, <span class="kw-2">&amp;</span>synthetic_assets, input_asset_id);
         <span class="kw">let </span>output_type = AssetType::determine::&lt;T&gt;(dex_info, <span class="kw-2">&amp;</span>synthetic_assets, output_asset_id);
-        <span class="kw">let </span>base_chameleon_asset_id =
-            &lt;T::GetChameleonPoolBaseAssetId <span class="kw">as </span>traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(
-                <span class="kw-2">&amp;</span>dex_info.base_asset_id,
-            );
+        <span class="kw">let </span>(base_chameleon_asset_id, <span class="kw">_</span>) =
+            &lt;T::GetChameleonPools <span class="kw">as </span>traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(<span class="kw-2">&amp;</span>dex_info.base_asset_id).unzip();
 
         <span class="kw">let </span><span class="kw-2">mut </span>path_builder = PathBuilder::&lt;T&gt; {
             input_asset_id,
@@ -5512,8 +5503,11 @@
         <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer: Get&lt;u32&gt;;
         <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch: Get&lt;u32&gt;;
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
-        <span class="kw">type </span>GetChameleonPoolBaseAssetId: traits::GetByKey&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
-        <span class="kw">type </span>GetChameleonPool: traits::GetByKey&lt;TradingPair&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;, bool&gt;;
+        <span class="doccomment">/// base_asset_id =&gt; (chameleon_base_asset_id, target_assets)
+        </span><span class="kw">type </span>GetChameleonPools: traits::GetByKey&lt;
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
+            <span class="prelude-ty">Option</span>&lt;(AssetIdOf&lt;<span class="self">Self</span>&gt;, BTreeSet&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;)&gt;,
+        &gt;;
         <span class="doccomment">/// To retrieve asset info
         </span><span class="kw">type </span>AssetInfoProvider: AssetInfoProvider&lt;
             AssetIdOf&lt;<span class="self">Self</span>&gt;,

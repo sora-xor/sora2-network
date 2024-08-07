@@ -269,6 +269,15 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -506,23 +515,32 @@
         <span class="prelude-val">Ok</span>(max_output)
     }
 
+    <span class="kw">pub fn </span>get_base_asset_part(
+        base_reserves: Balance,
+        total_liquidity: Balance,
+        liq_amount: Balance,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+        <span class="kw">let </span>fxw_liq_in_pool = <span class="macro">to_fixed_wrapper!</span>(total_liquidity);
+        <span class="kw">let </span>fxw_piece = fxw_liq_in_pool / <span class="macro">to_fixed_wrapper!</span>(liq_amount);
+        <span class="kw">let </span>fxw_value = <span class="macro">to_fixed_wrapper!</span>(base_reserves) / fxw_piece;
+        <span class="kw">let </span>value = <span class="macro">to_balance!</span>(fxw_value);
+        <span class="prelude-val">Ok</span>(value)
+    }
+
     <span class="kw">pub fn </span>get_base_asset_part_from_pool_account(
         pool_acc: <span class="kw-2">&amp;</span>T::AccountId,
         trading_pair: <span class="kw-2">&amp;</span>TradingPair&lt;AssetIdOf&lt;T&gt;&gt;,
         liq_amount: Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>(b_in_pool, t_in_pool, _max_output_available) = <span class="self">Self</span>::get_actual_reserves(
+        <span class="kw">let </span>(b_in_pool, _t_in_pool, _max_output_available) = <span class="self">Self</span>::get_actual_reserves(
             pool_acc,
             <span class="kw-2">&amp;</span>trading_pair.base_asset_id,
             <span class="kw-2">&amp;</span>trading_pair.base_asset_id,
             <span class="kw-2">&amp;</span>trading_pair.target_asset_id,
         )<span class="question-mark">?</span>;
-        <span class="kw">let </span>fxw_liq_in_pool =
-            <span class="macro">to_fixed_wrapper!</span>(b_in_pool).multiply_and_sqrt(<span class="kw-2">&amp;</span><span class="macro">to_fixed_wrapper!</span>(t_in_pool));
-        <span class="kw">let </span>fxw_piece = fxw_liq_in_pool / <span class="macro">to_fixed_wrapper!</span>(liq_amount);
-        <span class="kw">let </span>fxw_value = <span class="macro">to_fixed_wrapper!</span>(b_in_pool) / fxw_piece;
-        <span class="kw">let </span>value = <span class="macro">to_balance!</span>(fxw_value);
-        <span class="prelude-val">Ok</span>(value)
+        <span class="kw">let </span>liq_in_pool =
+            <span class="kw">crate</span>::TotalIssuances::&lt;T&gt;::get(pool_acc).ok_or(Error::&lt;T&gt;::PoolIsEmpty)<span class="question-mark">?</span>;
+        <span class="self">Self</span>::get_base_asset_part(b_in_pool, liq_in_pool, liq_amount)
     }
 }
 </code></pre></div>

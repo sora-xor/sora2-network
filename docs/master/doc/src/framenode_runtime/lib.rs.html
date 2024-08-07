@@ -3491,10 +3491,6 @@
 <a href="#3476" id="3476">3476</a>
 <a href="#3477" id="3477">3477</a>
 <a href="#3478" id="3478">3478</a>
-<a href="#3479" id="3479">3479</a>
-<a href="#3480" id="3480">3480</a>
-<a href="#3481" id="3481">3481</a>
-<a href="#3482" id="3482">3482</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4491,7 +4487,9 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub </span>GetFee: Fixed = <span class="macro">fixed!</span>(<span class="number">0.003</span>);
+    <span class="kw">pub </span>GetXykMaxIssuanceRatio: Fixed = <span class="macro">fixed!</span>(<span class="number">1.5</span>);
     <span class="kw">pub </span>GetXykIrreducibleReservePercent: Percent = Percent::from_percent(<span class="number">1</span>);
+    <span class="kw">pub </span>GetXykPoolAdjustPeriod: BlockNumber = <span class="number">1 </span>* HOURS;
 }
 
 <span class="macro">parameter_type_with_key! </span>{
@@ -4505,18 +4503,12 @@
 }
 
 <span class="macro">parameter_type_with_key! </span>{
-    <span class="kw">pub </span>GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;AssetId&gt; {
-        <span class="kw">if </span>base_asset_id == <span class="kw-2">&amp;</span>common::XOR {
-            <span class="prelude-val">Some</span>(common::KXOR)
+    <span class="kw">pub </span>GetChameleonPools: |base: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;(AssetId, sp_std::collections::btree_set::BTreeSet&lt;AssetId&gt;)&gt; {
+        <span class="kw">if </span><span class="kw-2">*</span>base == common::XOR {
+            <span class="prelude-val">Some</span>((common::KXOR, [common::ETH].into_iter().collect()))
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
-    };
-}
-
-<span class="macro">parameter_type_with_key! </span>{
-    <span class="kw">pub </span>GetChameleonPool: |tpair: common::TradingPair&lt;AssetId&gt;| -&gt; bool {
-        tpair.base_asset_id == common::XOR &amp;&amp; tpair.target_asset_id == common::ETH
     };
 }
 
@@ -4535,15 +4527,16 @@
     <span class="kw">type </span>EnsureTradingPairExists = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>EnabledSourcesManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>GetFee = GetFee;
+    <span class="kw">type </span>GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     <span class="kw">type </span>OnPoolCreated = (PswapDistribution, Farming);
     <span class="kw">type </span>OnPoolReservesChanged = PriceTools;
     <span class="kw">type </span>XSTMarketInfo = XSTPool;
     <span class="kw">type </span>GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    <span class="kw">type </span>GetChameleonPool = GetChameleonPool;
-    <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    <span class="kw">type </span>GetChameleonPools = GetChameleonPools;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>AssetRegulator = extended_assets::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>IrreducibleReserve = GetXykIrreducibleReservePercent;
+    <span class="kw">type </span>PoolAdjustPeriod = GetXykPoolAdjustPeriod;
     <span class="kw">type </span>WeightInfo = pool_xyk::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
@@ -4604,8 +4597,7 @@
     &gt;;
     <span class="kw">type </span>MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     <span class="kw">type </span>MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
-    <span class="kw">type </span>GetChameleonPool = GetChameleonPool;
-    <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    <span class="kw">type </span>GetChameleonPools = GetChameleonPools;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
     <span class="kw">type </span>WeightInfo = liquidity_proxy::weights::SubstrateWeight&lt;Runtime&gt;;
@@ -5156,7 +5148,7 @@
     <span class="kw">type </span>PoolXykPallet = PoolXYK;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
-    <span class="kw">type </span>GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    <span class="kw">type </span>GetChameleonPools = GetChameleonPools;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
 }
 

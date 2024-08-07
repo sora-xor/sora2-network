@@ -280,6 +280,70 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -310,9 +374,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
+</span><span class="kw">use </span>common::prelude::FixedWrapper;
+<span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::ensure;
-<span class="kw">use </span>orml_traits::GetByKey;
+<span class="kw">use </span>frame_support::weights::Weight;
+<span class="kw">use </span>sp_core::Get;
 
 <span class="kw">use </span><span class="kw">crate</span>::aliases::{TechAccountIdOf, TechAssetIdOf};
 <span class="kw">use </span><span class="kw">crate</span>::bounds::<span class="kw-2">*</span>;
@@ -416,7 +482,7 @@
     <span class="kw">pub fn </span>ensure_trading_pair_is_not_restricted(
         tpair: <span class="kw-2">&amp;</span>common::TradingPair&lt;AssetIdOf&lt;T&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">if </span>T::GetTradingPairRestrictedFlag::get(tpair) {
+        <span class="kw">if </span>&lt;T::GetTradingPairRestrictedFlag <span class="kw">as </span>orml_traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(tpair) {
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::TargetAssetIsRestricted.into())
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
@@ -509,32 +575,43 @@
         asset_b: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(TradingPair&lt;AssetIdOf&lt;T&gt;&gt;, <span class="prelude-ty">Option</span>&lt;AssetIdOf&lt;T&gt;&gt;, bool), DispatchError&gt; {
         <span class="macro">ensure!</span>(asset_a != asset_b, Error::&lt;T&gt;::AssetsMustNotBeSame);
-        <span class="kw">let </span>base_chameleon_asset_id =
-            &lt;T::GetChameleonPoolBaseAssetId <span class="kw">as </span>GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(<span class="kw-2">&amp;</span>base_asset_id);
-        <span class="kw">let </span>(ta, is_chameleon_pool) = <span class="kw">if </span>base_asset_id == asset_a {
-            (asset_b, <span class="bool-val">false</span>)
+        <span class="kw">let </span>chameleon_pools =
+            &lt;T::GetChameleonPools <span class="kw">as </span>orml_traits::GetByKey&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::get(base_asset_id);
+        <span class="kw">let </span>ta = <span class="kw">if </span>base_asset_id == asset_a {
+            asset_b
         } <span class="kw">else if </span>base_asset_id == asset_b {
-            (asset_a, <span class="bool-val">false</span>)
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(base_chameleon_asset_id) = base_chameleon_asset_id {
-            <span class="kw">if </span><span class="kw-2">&amp;</span>base_chameleon_asset_id == asset_a {
-                (asset_b, <span class="bool-val">true</span>)
-            } <span class="kw">else if </span><span class="kw-2">&amp;</span>base_chameleon_asset_id == asset_b {
-                (asset_a, <span class="bool-val">true</span>)
+            asset_a
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>((base_chameleon_asset_id, targets)) = <span class="kw-2">&amp;</span>chameleon_pools {
+            <span class="kw">if </span>base_chameleon_asset_id == asset_a {
+                <span class="macro">ensure!</span>(
+                    targets.contains(asset_b),
+                    Error::&lt;T&gt;::RestrictedChameleonPool
+                );
+                asset_b
+            } <span class="kw">else if </span>base_chameleon_asset_id == asset_b {
+                <span class="macro">ensure!</span>(
+                    targets.contains(asset_a),
+                    Error::&lt;T&gt;::RestrictedChameleonPool
+                );
+                asset_a
             } <span class="kw">else </span>{
                 <span class="prelude-val">Err</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)<span class="question-mark">?
             </span>}
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::BaseAssetIsNotMatchedWithAnyAssetArguments)<span class="question-mark">?
         </span>};
+        <span class="kw">let </span>(base_chameleon_asset_id, is_allowed_target) = chameleon_pools
+            .map(|(asset_id, targets)| (asset_id, targets.contains(ta)))
+            .unzip();
         <span class="kw">let </span>tpair = common::TradingPair::&lt;AssetIdOf&lt;T&gt;&gt; {
             base_asset_id: <span class="kw-2">*</span>base_asset_id,
             target_asset_id: <span class="kw-2">*</span>ta,
         };
-        <span class="kw">let </span>is_allowed_chameleon_pool = T::GetChameleonPool::get(<span class="kw-2">&amp;</span>tpair);
-        <span class="kw">if </span>is_chameleon_pool &amp;&amp; !is_allowed_chameleon_pool {
-            <span class="prelude-val">Err</span>(Error::&lt;T&gt;::RestrictedChameleonPool)<span class="question-mark">?
-        </span>}
-        <span class="prelude-val">Ok</span>((tpair, base_chameleon_asset_id, is_allowed_chameleon_pool))
+        <span class="prelude-val">Ok</span>((
+            tpair,
+            base_chameleon_asset_id,
+            is_allowed_target.unwrap_or(<span class="bool-val">false</span>),
+        ))
     }
 
     <span class="doccomment">/// Get trading pair from assets
@@ -545,6 +622,57 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;TradingPair&lt;AssetIdOf&lt;T&gt;&gt;, DispatchError&gt; {
         <span class="kw">let </span>(tpair, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="self">Self</span>::get_pair_info(base_asset_id, asset_a, asset_b)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(tpair)
+    }
+
+    <span class="kw">pub fn </span>adjust_liquidity_in_pool(
+        dex_id: T::DEXId,
+        base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        target_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        weight: <span class="kw-2">&amp;mut </span>Weight,
+    ) -&gt; DispatchResult {
+        <span class="comment">// get dex info + 3 * get balance + get current issuance
+        </span><span class="kw-2">*</span>weight = weight.saturating_add(T::DbWeight::get().reads(<span class="number">5</span>));
+
+        <span class="kw">let </span>(<span class="kw">_</span>, pool_acc) =
+            <span class="self">Self</span>::tech_account_from_dex_and_asset_pair(dex_id, <span class="kw-2">*</span>base_asset_id, <span class="kw-2">*</span>target_asset_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>pool_acc = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>pool_acc)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>(b_in_pool, t_in_pool, _max_output_available) =
+            <span class="self">Self</span>::get_actual_reserves(<span class="kw-2">&amp;</span>pool_acc, base_asset_id, base_asset_id, target_asset_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>fxw_real_issuance =
+            <span class="macro">to_fixed_wrapper!</span>(b_in_pool).multiply_and_sqrt(<span class="kw-2">&amp;</span><span class="macro">to_fixed_wrapper!</span>(t_in_pool));
+        <span class="kw">let </span>current_issuance =
+            TotalIssuances::&lt;T&gt;::get(<span class="kw-2">&amp;</span>pool_acc).ok_or(Error::&lt;T&gt;::PoolIsEmpty)<span class="question-mark">?</span>;
+        <span class="kw">let </span>fxw_current_issuance = <span class="macro">to_fixed_wrapper!</span>(current_issuance);
+        <span class="kw">let </span>fxw_issuance_ratio = fxw_current_issuance / fxw_real_issuance;
+        <span class="comment">// We handle only case when current issuance is larger than real issuance
+        </span><span class="kw">if </span>fxw_issuance_ratio &lt; <span class="macro">to_fixed_wrapper!</span>(T::GetMaxIssuanceRatio::get()) {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+        <span class="kw">let </span><span class="kw-2">mut </span>new_issuance: Balance = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>providers = <span class="number">0</span>;
+        <span class="kw">for </span>(account, share) <span class="kw">in </span>PoolProviders::&lt;T&gt;::iter_prefix(<span class="kw-2">&amp;</span>pool_acc) {
+            providers += <span class="number">1</span>;
+            <span class="kw-2">*</span>weight = weight.saturating_add(T::DbWeight::get().reads_writes(<span class="number">1</span>, <span class="number">1</span>));
+            <span class="kw">let </span>fxw_real_share = <span class="macro">to_fixed_wrapper!</span>(share) / fxw_issuance_ratio.clone();
+            <span class="kw">let </span>real_share = <span class="macro">to_balance!</span>(fxw_real_share);
+            <span class="comment">// Safe, because we don&#39;t remove either add keys
+            </span>PoolProviders::&lt;T&gt;::insert(<span class="kw-2">&amp;</span>pool_acc, <span class="kw-2">&amp;</span>account, real_share);
+            <span class="comment">// To ensure that issuance = sum of shares
+            </span>new_issuance = new_issuance
+                .checked_add(real_share)
+                <span class="comment">// Should not happen, because real issuance always less than current issuance
+                </span>.ok_or(Error::&lt;T&gt;::PoolIsInvalid)<span class="question-mark">?</span>;
+        }
+        <span class="kw-2">*</span>weight = weight.saturating_add(T::DbWeight::get().writes(<span class="number">1</span>));
+        TotalIssuances::&lt;T&gt;::insert(<span class="kw-2">&amp;</span>pool_acc, new_issuance);
+        <span class="self">Self</span>::deposit_event(<span class="kw">crate</span>::Event::&lt;T&gt;::PoolAdjusted {
+            pool: pool_acc,
+            old_issuance: current_issuance,
+            new_issuance,
+            providers,
+        });
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
