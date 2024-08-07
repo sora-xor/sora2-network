@@ -166,15 +166,13 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-        let base_chameleon_asset_id =
-            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
-                &dex_info.base_asset_id,
-            );
+        let chameleon_pools =
+            <T::GetChameleonPools as traits::GetByKey<_, _>>::get(&dex_info.base_asset_id);
         let base_total = <T as Config>::AssetInfoProvider::free_balance(
             &dex_info.base_asset_id,
             &fees_account_id,
         )?;
-        let chameleon_total = if let Some(asset_id) = base_chameleon_asset_id {
+        let chameleon_total = if let Some((asset_id, _)) = chameleon_pools {
             <T as Config>::AssetInfoProvider::free_balance(&asset_id, &fees_account_id)?
         } else {
             0
@@ -189,8 +187,8 @@ impl<T: Config> Pallet<T> {
         for (asset_id, balance) in Some((dex_info.base_asset_id, base_total))
             .into_iter()
             .chain(
-                base_chameleon_asset_id
-                    .map(|x| (x, chameleon_total))
+                chameleon_pools
+                    .map(|(x, _)| (x, chameleon_total))
                     .into_iter(),
             )
         {
@@ -497,7 +495,14 @@ pub mod pallet {
         type PoolXykPallet: XykPool<Self::AccountId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
+        /// base_asset_id => (chameleon_base_asset_id, target_assets)
+        type GetChameleonPools: traits::GetByKey<
+            AssetIdOf<Self>,
+            Option<(
+                AssetIdOf<Self>,
+                sp_std::collections::btree_set::BTreeSet<AssetIdOf<Self>>,
+            )>,
+        >;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
