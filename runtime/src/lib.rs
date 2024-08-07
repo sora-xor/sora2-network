@@ -994,7 +994,9 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
 }
 
 parameter_type_with_key! {
@@ -1008,18 +1010,12 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
-        if base_asset_id == &common::XOR {
-            Some(common::KXOR)
+    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+        if *base == common::XOR {
+            Some((common::KXOR, [common::ETH].into_iter().collect()))
         } else {
             None
         }
-    };
-}
-
-parameter_type_with_key! {
-    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
-        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
     };
 }
 
@@ -1038,15 +1034,16 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = GetXykPoolAdjustPeriod;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1107,8 +1104,7 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
-    type GetChameleonPool = GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
@@ -1659,7 +1655,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 

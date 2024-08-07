@@ -28,9 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use common::prelude::FixedWrapper;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
-use orml_traits::GetByKey;
+use frame_support::weights::Weight;
+use sp_core::Get;
 
 use crate::aliases::{TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
@@ -134,7 +136,7 @@ impl<T: Config> Pallet<T> {
     pub fn ensure_trading_pair_is_not_restricted(
         tpair: &common::TradingPair<AssetIdOf<T>>,
     ) -> Result<(), DispatchError> {
-        if T::GetTradingPairRestrictedFlag::get(tpair) {
+        if <T::GetTradingPairRestrictedFlag as orml_traits::GetByKey<_, _>>::get(tpair) {
             Err(Error::<T>::TargetAssetIsRestricted.into())
         } else {
             Ok(())
@@ -227,32 +229,43 @@ impl<T: Config> Pallet<T> {
         asset_b: &AssetIdOf<T>,
     ) -> Result<(TradingPair<AssetIdOf<T>>, Option<AssetIdOf<T>>, bool), DispatchError> {
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let base_chameleon_asset_id =
-            <T::GetChameleonPoolBaseAssetId as GetByKey<_, _>>::get(&base_asset_id);
-        let (ta, is_chameleon_pool) = if base_asset_id == asset_a {
-            (asset_b, false)
+        let chameleon_pools =
+            <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(base_asset_id);
+        let ta = if base_asset_id == asset_a {
+            asset_b
         } else if base_asset_id == asset_b {
-            (asset_a, false)
-        } else if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
-            if &base_chameleon_asset_id == asset_a {
-                (asset_b, true)
-            } else if &base_chameleon_asset_id == asset_b {
-                (asset_a, true)
+            asset_a
+        } else if let Some((base_chameleon_asset_id, targets)) = &chameleon_pools {
+            if base_chameleon_asset_id == asset_a {
+                ensure!(
+                    targets.contains(asset_b),
+                    Error::<T>::RestrictedChameleonPool
+                );
+                asset_b
+            } else if base_chameleon_asset_id == asset_b {
+                ensure!(
+                    targets.contains(asset_a),
+                    Error::<T>::RestrictedChameleonPool
+                );
+                asset_a
             } else {
                 Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
             }
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
+        let (base_chameleon_asset_id, is_allowed_target) = chameleon_pools
+            .map(|(asset_id, targets)| (asset_id, targets.contains(ta)))
+            .unzip();
         let tpair = common::TradingPair::<AssetIdOf<T>> {
             base_asset_id: *base_asset_id,
             target_asset_id: *ta,
         };
-        let is_allowed_chameleon_pool = T::GetChameleonPool::get(&tpair);
-        if is_chameleon_pool && !is_allowed_chameleon_pool {
-            Err(Error::<T>::RestrictedChameleonPool)?
-        }
-        Ok((tpair, base_chameleon_asset_id, is_allowed_chameleon_pool))
+        Ok((
+            tpair,
+            base_chameleon_asset_id,
+            is_allowed_target.unwrap_or(false),
+        ))
     }
 
     /// Get trading pair from assets
@@ -263,5 +276,56 @@ impl<T: Config> Pallet<T> {
     ) -> Result<TradingPair<AssetIdOf<T>>, DispatchError> {
         let (tpair, _, _) = Self::get_pair_info(base_asset_id, asset_a, asset_b)?;
         Ok(tpair)
+    }
+
+    pub fn adjust_liquidity_in_pool(
+        dex_id: T::DEXId,
+        base_asset_id: &AssetIdOf<T>,
+        target_asset_id: &AssetIdOf<T>,
+        weight: &mut Weight,
+    ) -> DispatchResult {
+        // get dex info + 3 * get balance + get current issuance
+        *weight = weight.saturating_add(T::DbWeight::get().reads(5));
+
+        let (_, pool_acc) =
+            Self::tech_account_from_dex_and_asset_pair(dex_id, *base_asset_id, *target_asset_id)?;
+        let pool_acc = technical::Pallet::<T>::tech_account_id_to_account_id(&pool_acc)?;
+
+        let (b_in_pool, t_in_pool, _max_output_available) =
+            Self::get_actual_reserves(&pool_acc, base_asset_id, base_asset_id, target_asset_id)?;
+        let fxw_real_issuance =
+            to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
+        let current_issuance =
+            TotalIssuances::<T>::get(&pool_acc).ok_or(Error::<T>::PoolIsEmpty)?;
+        let fxw_current_issuance = to_fixed_wrapper!(current_issuance);
+        let fxw_issuance_ratio = fxw_current_issuance / fxw_real_issuance;
+        // We handle only case when current issuance is larger than real issuance
+        if fxw_issuance_ratio < to_fixed_wrapper!(T::GetMaxIssuanceRatio::get()) {
+            return Ok(());
+        }
+        let mut new_issuance: Balance = 0;
+        let mut providers = 0;
+        for (account, share) in PoolProviders::<T>::iter_prefix(&pool_acc) {
+            providers += 1;
+            *weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+            let fxw_real_share = to_fixed_wrapper!(share) / fxw_issuance_ratio.clone();
+            let real_share = to_balance!(fxw_real_share);
+            // Safe, because we don't remove either add keys
+            PoolProviders::<T>::insert(&pool_acc, &account, real_share);
+            // To ensure that issuance = sum of shares
+            new_issuance = new_issuance
+                .checked_add(real_share)
+                // Should not happen, because real issuance always less than current issuance
+                .ok_or(Error::<T>::PoolIsInvalid)?;
+        }
+        *weight = weight.saturating_add(T::DbWeight::get().writes(1));
+        TotalIssuances::<T>::insert(&pool_acc, new_issuance);
+        Self::deposit_event(crate::Event::<T>::PoolAdjusted {
+            pool: pool_acc,
+            old_issuance: current_issuance,
+            new_issuance,
+            providers,
+        });
+        Ok(())
     }
 }
