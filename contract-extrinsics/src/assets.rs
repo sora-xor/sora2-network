@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::primitives::{AssetId32, Balance};
-use scale::Encode;
 use sp_core::crypto::AccountId32;
 // use common::{AssetId32, Balance, PredefinedAssetId};
 
@@ -37,7 +36,7 @@ use sp_core::crypto::AccountId32;
 /// The indexes can be found in your pallet code's #[pallet::call] section and check #[pallet::call_index(x)] attribute of the call.
 /// If these attributes are missing, use source-code order (0-based).
 /// You may found list of callable extrinsic in `pallet_contracts::Config::CallFilter`
-#[derive(Encode)]
+#[ink::scale_derive(Encode)]
 pub enum AssetsCall {
     /// Transfer amount of asset from caller to another account.
     /// `assets::pallet::transfer`

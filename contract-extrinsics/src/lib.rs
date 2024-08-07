@@ -32,7 +32,7 @@
 
 use crate::assets::AssetsCall;
 use crate::order_book::OrderBookCall;
-use scale::Encode;
+// use scale::Encode;
 
 pub mod assets;
 pub mod order_book;
@@ -49,7 +49,7 @@ pub mod utils;
 //     #[codec(index = 57)]
 //     OrderBook(OrderBookCall<AssetId, OrderId>),
 // }
-#[derive(Encode)]
+#[ink::scale_derive(Encode)]
 pub enum RuntimeCall {
     #[codec(index = 21)]
     Assets(AssetsCall),

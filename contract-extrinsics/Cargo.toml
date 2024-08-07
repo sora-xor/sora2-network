@@ -9,8 +9,9 @@ edition = "2021"
 
 [dependencies]
 # TODO Update versions
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+ink = { version = "5.0.0", default-features = false}
+#scale-info = { version = "2", default-features = false, features = ["derive"] }
+#scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 
 frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
@@ -26,7 +27,7 @@ serde = { version = "1.0", features = ["derive"], default-features = false }
 default = ["std"]
 
 std = [
-    "sp-core/std",
+#    "sp-core/std",
     "frame-support/std",
 #    "sp-std/std",
 #    "serde/std"

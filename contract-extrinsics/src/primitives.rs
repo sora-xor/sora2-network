@@ -1,6 +1,6 @@
 use crate::utils;
 use frame_support::__private::RuntimeDebug;
-use frame_support::pallet_prelude::{Decode, Encode, MaxEncodedLen};
+// use frame_support::pallet_prelude::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_runtime::testing::H256;
 use frame_support::{Deserialize, Serialize};
 use rustc_hex::ToHex;
@@ -18,9 +18,8 @@ pub type AssetId32Code = [u8; 32];
 
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
-#[derive(
-    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo, MaxEncodedLen,
-)]
+#[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetId32 {
     /// Internal data representing given AssetId.
@@ -29,7 +28,7 @@ pub struct AssetId32 {
 
 // More readable representation of AssetId
 impl core::fmt::Debug for AssetId32 {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter) -> core::fmt::Result {
         fmt.debug_tuple("AssetId")
             .field(&H256::from(self.code))
             .finish()
@@ -71,9 +70,8 @@ impl AssetId32 {
     // }
 }
 
-#[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
-)]
+#[derive(PartialEq, Eq, Copy, Clone, RuntimeDebug)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum PriceVariant {
     Buy,
     Sell,
@@ -88,20 +86,8 @@ impl PriceVariant {
     }
 }
 
-#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    Debug,
-    Hash,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
+#[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, Hash)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OrderBookId<AssetId, DEXId> {
     /// DEX id
