@@ -4505,7 +4505,7 @@
 <span class="macro">parameter_type_with_key! </span>{
     <span class="kw">pub </span>GetChameleonPools: |base: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;(AssetId, sp_std::collections::btree_set::BTreeSet&lt;AssetId&gt;)&gt; {
         <span class="kw">if </span><span class="kw-2">*</span>base == common::XOR {
-            <span class="prelude-val">Some</span>((common::KXOR, [common::ETH].into_iter().collect()))
+            <span class="prelude-val">Some</span>((common::KXOR, [common::ETH, common::VAL, common::PSWAP].into_iter().collect()))
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
