@@ -3491,6 +3491,31 @@
 <a href="#3476" id="3476">3476</a>
 <a href="#3477" id="3477">3477</a>
 <a href="#3478" id="3478">3478</a>
+<a href="#3479" id="3479">3479</a>
+<a href="#3480" id="3480">3480</a>
+<a href="#3481" id="3481">3481</a>
+<a href="#3482" id="3482">3482</a>
+<a href="#3483" id="3483">3483</a>
+<a href="#3484" id="3484">3484</a>
+<a href="#3485" id="3485">3485</a>
+<a href="#3486" id="3486">3486</a>
+<a href="#3487" id="3487">3487</a>
+<a href="#3488" id="3488">3488</a>
+<a href="#3489" id="3489">3489</a>
+<a href="#3490" id="3490">3490</a>
+<a href="#3491" id="3491">3491</a>
+<a href="#3492" id="3492">3492</a>
+<a href="#3493" id="3493">3493</a>
+<a href="#3494" id="3494">3494</a>
+<a href="#3495" id="3495">3495</a>
+<a href="#3496" id="3496">3496</a>
+<a href="#3497" id="3497">3497</a>
+<a href="#3498" id="3498">3498</a>
+<a href="#3499" id="3499">3499</a>
+<a href="#3500" id="3500">3500</a>
+<a href="#3501" id="3501">3501</a>
+<a href="#3502" id="3502">3502</a>
+<a href="#3503" id="3503">3503</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3651,6 +3676,8 @@
 </span><span class="kw">pub use </span>order_book_benchmarking;
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="kw">pub use </span>qa_tools;
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="kw">pub use </span>soratopia;
 <span class="kw">pub use </span>{
     assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
     multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
@@ -4470,6 +4497,20 @@
 }
 
 <span class="kw">impl </span>dex_manager::Config <span class="kw">for </span>Runtime {}
+
+<span class="macro">parameter_types! </span>{
+    <span class="comment">// Soratopia admin account
+    </span><span class="kw">pub </span>AdminAccount: AccountId = <span class="macro">hex!</span>(<span class="string">&quot;881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e&quot;</span>).into();
+    <span class="kw">pub const </span>CheckInTransferAmount: Balance = <span class="macro">balance!</span>(<span class="number">1000</span>);
+}
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Soratopia
+</span><span class="kw">impl </span>soratopia::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    <span class="kw">type </span>AdminAccount = AdminAccount;
+    <span class="kw">type </span>CheckInTransferAmount = CheckInTransferAmount;
+    <span class="kw">type </span>WeightInfo = soratopia::weights::SubstrateWeight&lt;Runtime&gt;;
+}
 
 <span class="kw">pub type </span>TechAccountId = common::TechAccountId&lt;AccountId, TechAssetId, DEXId&gt;;
 <span class="kw">pub type </span>TechAssetId = common::TechAssetId&lt;PredefinedAssetId&gt;;
@@ -6055,6 +6096,9 @@
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">115</span>,
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+        </span>Soratopia: soratopia::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">116</span>,
     }
 }
 
@@ -6821,6 +6865,9 @@
             <span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
             <span class="macro">list_benchmark!</span>(list, extra, extended_assets, ExtendedAssets);
 
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Soratopia
+            </span><span class="macro">list_benchmark!</span>(list, extra, soratopia, Soratopia);
+
             <span class="kw">let </span>storage_info = AllPalletsWithSystem::storage_info();
 
             <span class="kw">return </span>(list, storage_info)
@@ -6918,6 +6965,9 @@
             <span class="macro">add_benchmark!</span>(params, batches, bridge_data_signer, BridgeDataSigner);
             <span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
             <span class="macro">add_benchmark!</span>(params, batches, extended_assets, ExtendedAssets);
+
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Soratopia
+            </span><span class="macro">add_benchmark!</span>(params, batches, soratopia, Soratopia);
 
             <span class="kw">if </span>batches.is_empty() { <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Benchmark not found for this pallet.&quot;</span>.into()) }
             <span class="prelude-val">Ok</span>(batches)

@@ -66,6 +66,7 @@ var sourcesIndex = JSON.parse('{\
 "rewards":["",[],["lib.rs","weights.rs"]],\
 "rewards_rpc":["",[],["lib.rs"]],\
 "rewards_runtime_api":["",[],["lib.rs"]],\
+"soratopia":["",[],["lib.rs","weights.rs"]],\
 "technical":["",[],["lib.rs"]],\
 "trading_pair":["",[],["lib.rs","weights.rs"]],\
 "trading_pair_rpc":["",[],["lib.rs"]],\

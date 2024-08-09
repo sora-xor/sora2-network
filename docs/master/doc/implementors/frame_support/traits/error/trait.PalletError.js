@@ -30,6 +30,7 @@
 "qa_tools":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"qa_tools/pallet/enum.Error.html\" title=\"enum qa_tools::pallet::Error\">Error</a>&lt;T&gt;"]],
 "referrals":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"referrals/pallet/enum.Error.html\" title=\"enum referrals::pallet::Error\">Error</a>&lt;T&gt;"]],
 "rewards":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"rewards/pallet/enum.Error.html\" title=\"enum rewards::pallet::Error\">Error</a>&lt;T&gt;"]],
+"soratopia":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"soratopia/pallet/enum.Error.html\" title=\"enum soratopia::pallet::Error\">Error</a>&lt;T&gt;"]],
 "technical":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"technical/pallet/enum.Error.html\" title=\"enum technical::pallet::Error\">Error</a>&lt;T&gt;"]],
 "trading_pair":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"trading_pair/pallet/enum.Error.html\" title=\"enum trading_pair::pallet::Error\">Error</a>&lt;T&gt;"]],
 "vested_rewards":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"vested_rewards/pallet/enum.Error.html\" title=\"enum vested_rewards::pallet::Error\">Error</a>&lt;T&gt;"]],
