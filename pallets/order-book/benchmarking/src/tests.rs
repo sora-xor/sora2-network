@@ -125,7 +125,6 @@ fn test_benchmark_quote() {
     })
 }
 
-#[test]
 fn test_benchmark_exchange(executed_orders: u32) {
     ext().execute_with(|| {
         use common::prelude::SwapAmount;
