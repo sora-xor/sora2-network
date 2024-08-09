@@ -351,3 +351,549 @@ fn check_xyk_swap_small_quote_fluctuation() {
         ));
     });
 }
+
+#[test]
+fn check_alt_without_limits_select_only_xyk_pool_source() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(10000));
+
+        init_xyk_pool(VAL, XOR, balance!(0.1), None, bob());
+        init_order_book(
+            VAL,
+            balance!(100),
+            balance!(110),
+            balance!(200),
+            1,
+            0,
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(10));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![(
+                    LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                    SwapAmount::with_desired_input(balance!(100), balance!(906.610893880149131581))
+                )],
+                balance!(906.610893880149131581),
+                OutcomeFee::xor(balance!(0.3))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_without_limits_select_only_order_book_source() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(10000));
+
+        init_xyk_pool(VAL, XOR, balance!(10), None, bob());
+        init_order_book(
+            VAL,
+            balance!(0.09),
+            balance!(0.1),
+            balance!(1000),
+            1,
+            0,
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(100));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![(
+                    LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
+                    SwapAmount::with_desired_input(balance!(100), balance!(1000))
+                )],
+                balance!(1000),
+                Default::default()
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_without_limits_select_xyk_pool_and_order_book_sources() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(10000));
+
+        init_xyk_pool(VAL, XOR, balance!(0.1), None, bob());
+        init_order_book(
+            VAL,
+            balance!(0.09),
+            balance!(0.1),
+            balance!(400),
+            5,
+            balance!(0.02),
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(10));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        SwapAmount::with_desired_input(
+                            balance!(60),
+                            balance!(564.435470174180521220)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
+                        SwapAmount::with_desired_input(balance!(40), balance!(400))
+                    )
+                ],
+                balance!(964.435470174180521220),
+                OutcomeFee::xor(balance!(0.18))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_without_limits_select_xyk_pool_and_tbc_pool_sources() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(10000));
+
+        init_xyk_pool(VAL, XOR, balance!(0.1), None, bob());
+        init_order_book(VAL, balance!(0.9), balance!(1), balance!(1000), 1, 0, bob());
+        init_mcbc_pool(VAL, balance!(1), balance!(100));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        SwapAmount::with_desired_input(
+                            balance!(90),
+                            balance!(823.414974351444853312)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(
+                            DEX.into(),
+                            LiquiditySourceType::MulticollateralBondingCurvePool
+                        ),
+                        SwapAmount::with_desired_input(
+                            balance!(10),
+                            balance!(99.999919891886930800)
+                        )
+                    )
+                ],
+                balance!(923.414894243331784112),
+                OutcomeFee::xor(balance!(1.2))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_without_limits_select_order_book_and_tbc_pool_sources() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(10000));
+
+        init_xyk_pool(VAL, XOR, balance!(10), None, bob());
+        init_order_book(
+            VAL,
+            balance!(0.09),
+            balance!(0.1),
+            balance!(400),
+            5,
+            balance!(0.01),
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(100));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![
+                    (
+                        LiquiditySourceId::new(
+                            DEX.into(),
+                            LiquiditySourceType::MulticollateralBondingCurvePool
+                        ),
+                        SwapAmount::with_desired_input(
+                            balance!(10),
+                            balance!(99.999919892229211299)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
+                        SwapAmount::with_desired_input(balance!(90), balance!(850))
+                    )
+                ],
+                balance!(949.999919892229211299),
+                OutcomeFee::xor(balance!(0.93))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_without_limits_select_all_sources() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(10000));
+
+        init_xyk_pool(VAL, XOR, balance!(0.1), None, bob());
+        init_order_book(
+            VAL,
+            balance!(0.09),
+            balance!(0.1),
+            balance!(400),
+            3,
+            balance!(0.01),
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(100));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        SwapAmount::with_desired_input(
+                            balance!(50),
+                            balance!(474.829737581559270371)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(
+                            DEX.into(),
+                            LiquiditySourceType::MulticollateralBondingCurvePool
+                        ),
+                        SwapAmount::with_desired_input(
+                            balance!(10),
+                            balance!(99.999919891884172481)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
+                        SwapAmount::with_desired_input(balance!(40), balance!(400))
+                    )
+                ],
+                balance!(974.829657473443442852),
+                OutcomeFee::xor(balance!(1.08))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_with_min_limits() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(1000000));
+
+        init_xyk_pool(VAL, XOR, balance!(0.1), Some(balance!(150)), bob());
+        init_order_book(
+            VAL,
+            balance!(0.09),
+            balance!(0.111),
+            balance!(400),
+            3,
+            balance!(0.001),
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(10));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(1.001),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        // Order Book doesn't exceed the min amount
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        SwapAmount::with_desired_input(
+                            balance!(0.9009),
+                            balance!(8.474520252682988152)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(
+                            DEX.into(),
+                            LiquiditySourceType::MulticollateralBondingCurvePool
+                        ),
+                        SwapAmount::with_desired_input(
+                            balance!(0.1001),
+                            balance!(9.999919975929423109)
+                        )
+                    ),
+                ],
+                balance!(18.474440228612411261),
+                OutcomeFee::xor(balance!(0.012012))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
+
+#[test]
+fn check_alt_with_max_limits() {
+    ext().execute_with(|| {
+        add_balance(alice(), XOR, balance!(1000000));
+
+        init_xyk_pool(VAL, XOR, balance!(0.1), None, bob());
+        init_order_book(
+            VAL,
+            balance!(0.09),
+            balance!(0.1),
+            balance!(400),
+            3,
+            balance!(0.01),
+            bob(),
+        );
+        init_mcbc_pool(VAL, balance!(1), balance!(1000));
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(300),
+            min_amount_out: balance!(0),
+        };
+
+        let quote = LiquidityProxyPallet::test_quote(
+            DEX.into(),
+            &XOR,
+            &VAL,
+            amount.into(),
+            LiquiditySourceFilter::empty(DEX.into()),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            quote,
+            AggregatedSwapOutcome::new(
+                vec![
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        SwapAmount::with_desired_input(
+                            balance!(162),
+                            balance!(1389.183811480589129619)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(
+                            DEX.into(),
+                            LiquiditySourceType::MulticollateralBondingCurvePool
+                        ),
+                        SwapAmount::with_desired_input(
+                            balance!(30),
+                            balance!(999.997329849388122151)
+                        )
+                    ),
+                    (
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::OrderBook),
+                        SwapAmount::with_desired_input(balance!(108), balance!(1000)) // max amount
+                    )
+                ],
+                balance!(3389.181141329977251770),
+                OutcomeFee::xor(balance!(3.276))
+            )
+        );
+
+        assert_ok!(LiquidityProxyPallet::swap(
+            RuntimeOrigin::signed(alice()),
+            DEX.into(),
+            XOR,
+            VAL,
+            amount,
+            Vec::new(),
+            FilterMode::Disabled
+        ));
+
+        assert!(free_balance(&VAL, &alice()) >= quote.amount);
+    });
+}
