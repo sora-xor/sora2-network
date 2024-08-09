@@ -3817,6 +3817,7 @@ dependencies = [
  "rewards-runtime-api",
  "scale-info",
  "serde",
+ "soratopia",
  "sp-api",
  "sp-beefy",
  "sp-block-builder",
@@ -10425,6 +10426,30 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "sha-1",
+]
+
+[[package]]
+name = "soratopia"
+version = "0.0.1"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]
