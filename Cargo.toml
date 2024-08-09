@@ -261,6 +261,7 @@ members = [
     "pallets/iroha-migration",
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",
+    "pallets/soratopia",
     "pallets/technical",
     "pallets/pool-xyk",
     "pallets/rewards",

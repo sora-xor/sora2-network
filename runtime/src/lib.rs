@@ -159,6 +159,8 @@ use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp,
 pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
+#[cfg(feature = "wip")]
+pub use soratopia;
 pub use {
     assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
     multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
@@ -978,6 +980,20 @@ impl trading_pair::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {}
+
+parameter_types! {
+    // Soratopia admin account
+    pub AdminAccount: AccountId = hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into();
+    pub const CheckInTransferAmount: Balance = balance!(1000);
+}
+
+#[cfg(feature = "wip")] // Soratopia
+impl soratopia::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AdminAccount = AdminAccount;
+    type CheckInTransferAmount = CheckInTransferAmount;
+    type WeightInfo = soratopia::weights::SubstrateWeight<Runtime>;
+}
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<PredefinedAssetId>;
@@ -2563,6 +2579,9 @@ construct_runtime! {
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
+
+        #[cfg(feature = "wip")]
+        Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
     }
 }
 
@@ -3329,6 +3348,9 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
+            #[cfg(feature = "wip")] // Soratopia
+            list_benchmark!(list, extra, soratopia, Soratopia);
+
             let storage_info = AllPalletsWithSystem::storage_info();
 
             return (list, storage_info)
@@ -3426,6 +3448,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
+
+            #[cfg(feature = "wip")] // Soratopia
+            add_benchmark!(params, batches, soratopia, Soratopia);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
