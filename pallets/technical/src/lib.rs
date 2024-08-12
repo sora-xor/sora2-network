@@ -37,11 +37,13 @@ use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult, RawOrigin};
 use frame_support::{ensure, Parameter};
+use pallet_identity::Data;
 use pallet_identity::IdentityInfo;
 use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
 use sp_std::boxed::Box;
+use sp_std::vec;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
 use sp_core::H256;
@@ -211,46 +213,43 @@ impl<T: Config> Pallet<T> {
         tech_account_id: &T::TechAccountId,
     ) -> Option<IdentityInfo<T::MaxAdditionalFields>> {
         use common::TechAccountId;
-        use pallet_identity::Data;
-        use sp_std::vec;
-        // use sp_core::bounded::BoundedVec;
-        let common_tech_account_id: common::TechAccountId<T::AccountId, T::TechAssetId, T::DEXId> =
+
+        let common_tech_account_id: TechAccountId<T::AccountId, T::TechAssetId, T::DEXId> =
             tech_account_id.clone().into();
-        let (display_name, additional) = match common_tech_account_id {
+
+        let (display_name, additional_data) = match common_tech_account_id {
             TechAccountId::Pure(dex_id, purpose) => (
                 b"Pure Tech Account".to_vec(),
-                BoundedVec::truncate_from(vec![(
-                    Data::Raw(BoundedVec::truncate_from(b"Purpose".encode())),
-                    Data::Raw(BoundedVec::truncate_from(purpose.encode())),
-                )]),
+                vec![
+                    (b"Purpose".encode(), purpose.encode()),
+                    (b"DEX ID".encode(), dex_id.encode()),
+                ],
             ),
-            TechAccountId::Generic(tag, data) => (
-                tag.to_vec(),
-                BoundedVec::truncate_from(vec![(
-                    Data::Raw(BoundedVec::truncate_from(b"Data".encode())),
-                    Data::Raw(BoundedVec::truncate_from(data.encode())),
-                )]),
-            ),
+            TechAccountId::Generic(tag, data) => {
+                (tag.to_vec(), vec![(b"Data".encode(), data.encode())])
+            }
             TechAccountId::Wrapped(account_id) => (
                 b"Wrapper Tech Account".to_vec(),
-                BoundedVec::truncate_from(vec![(
-                    Data::Raw(BoundedVec::truncate_from(b"AccountId".encode())),
-                    Data::Raw(BoundedVec::truncate_from(account_id.encode())),
-                )]),
+                vec![(b"AccountId".encode(), account_id.encode())],
             ),
             TechAccountId::WrappedRepr(account_id) => (
                 b"WrapperRepr Tech Account".to_vec(),
-                BoundedVec::truncate_from(vec![(
-                    Data::Raw(BoundedVec::truncate_from(b"AccountId".encode())),
-                    Data::Raw(BoundedVec::truncate_from(account_id.encode())),
-                )]),
+                vec![(b"AccountId".encode(), account_id.encode())],
             ),
             TechAccountId::None => return None,
         };
 
+        let mut additional = vec![];
+        for (key, value) in additional_data {
+            additional.push((
+                Data::Raw(BoundedVec::truncate_from(key)),
+                Data::Raw(BoundedVec::truncate_from(value)),
+            ));
+        }
+
         Some(IdentityInfo {
             display: Data::Raw(BoundedVec::truncate_from(display_name)),
-            additional: additional.into(),
+            additional: BoundedVec::truncate_from(additional),
             legal: Default::default(),
             web: Default::default(),
             riot: Default::default(),
