@@ -37,8 +37,11 @@
 extern crate alloc;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
+#[cfg(feature = "wip")]
 use bridge_types::types::GenericAdditionalInboundData;
-use bridge_types::{GenericNetworkId, SubNetworkId, H256};
+#[cfg(feature = "wip")]
+use bridge_types::GenericNetworkId;
+use bridge_types::{SubNetworkId, H256};
 use sp_runtime::traits::Keccak256;
 
 mod bags_thresholds;
@@ -256,10 +259,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 91,
+    spec_version: 92,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 91,
+    transaction_version: 92,
     state_version: 0,
 };
 
@@ -1025,10 +1028,22 @@ parameter_type_with_key! {
     };
 }
 
+#[cfg(not(feature = "wip"))] // Chameleon pools
 parameter_type_with_key! {
     pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
         if *base == common::XOR {
-            Some((common::KXOR, [common::ETH, common::VAL, common::PSWAP].into_iter().collect()))
+            Some((common::KXOR, [common::ETH].into_iter().collect()))
+        } else {
+            None
+        }
+    };
+}
+
+#[cfg(feature = "wip")] // Chameleon pools
+parameter_type_with_key! {
+    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+        if *base == common::XOR {
+            Some((common::KXOR, [common::ETH, common::PSWAP, common::VAL].into_iter().collect()))
         } else {
             None
         }
