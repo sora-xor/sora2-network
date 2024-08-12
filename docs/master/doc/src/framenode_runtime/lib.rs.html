@@ -3516,6 +3516,21 @@
 <a href="#3501" id="3501">3501</a>
 <a href="#3502" id="3502">3502</a>
 <a href="#3503" id="3503">3503</a>
+<a href="#3504" id="3504">3504</a>
+<a href="#3505" id="3505">3505</a>
+<a href="#3506" id="3506">3506</a>
+<a href="#3507" id="3507">3507</a>
+<a href="#3508" id="3508">3508</a>
+<a href="#3509" id="3509">3509</a>
+<a href="#3510" id="3510">3510</a>
+<a href="#3511" id="3511">3511</a>
+<a href="#3512" id="3512">3512</a>
+<a href="#3513" id="3513">3513</a>
+<a href="#3514" id="3514">3514</a>
+<a href="#3515" id="3515">3515</a>
+<a href="#3516" id="3516">3516</a>
+<a href="#3517" id="3517">3517</a>
+<a href="#3518" id="3518">3518</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3555,8 +3570,11 @@
 </span><span class="kw">extern crate </span>alloc;
 <span class="kw">use </span>alloc::string::String;
 <span class="kw">use </span>bridge_types::traits::Verifier;
-<span class="kw">use </span>bridge_types::types::GenericAdditionalInboundData;
-<span class="kw">use </span>bridge_types::{GenericNetworkId, SubNetworkId, H256};
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="kw">use </span>bridge_types::types::GenericAdditionalInboundData;
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+</span><span class="kw">use </span>bridge_types::GenericNetworkId;
+<span class="kw">use </span>bridge_types::{SubNetworkId, H256};
 <span class="kw">use </span>sp_runtime::traits::Keccak256;
 
 <span class="kw">mod </span>bags_thresholds;
@@ -3774,10 +3792,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">91</span>,
+    spec_version: <span class="number">92</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">91</span>,
+    transaction_version: <span class="number">92</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4543,10 +4561,22 @@
     };
 }
 
-<span class="macro">parameter_type_with_key! </span>{
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Chameleon pools
+</span><span class="macro">parameter_type_with_key! </span>{
     <span class="kw">pub </span>GetChameleonPools: |base: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;(AssetId, sp_std::collections::btree_set::BTreeSet&lt;AssetId&gt;)&gt; {
         <span class="kw">if </span><span class="kw-2">*</span>base == common::XOR {
-            <span class="prelude-val">Some</span>((common::KXOR, [common::ETH, common::VAL, common::PSWAP].into_iter().collect()))
+            <span class="prelude-val">Some</span>((common::KXOR, [common::ETH].into_iter().collect()))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    };
+}
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Chameleon pools
+</span><span class="macro">parameter_type_with_key! </span>{
+    <span class="kw">pub </span>GetChameleonPools: |base: AssetId| -&gt; <span class="prelude-ty">Option</span>&lt;(AssetId, sp_std::collections::btree_set::BTreeSet&lt;AssetId&gt;)&gt; {
+        <span class="kw">if </span><span class="kw-2">*</span>base == common::XOR {
+            <span class="prelude-val">Some</span>((common::KXOR, [common::ETH, common::PSWAP, common::VAL].into_iter().collect()))
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
