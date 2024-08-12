@@ -234,6 +234,7 @@ std = [
     "liquidity-proxy-runtime-api/std",
     "liquidity-proxy/std",
     "liquidity-proxy-benchmarking/std",
+    "pool-xyk-benchmarking/std",
     "mock-liquidity-source/std",
     "multicollateral-bonding-curve-pool/std",
     "oracle-proxy/std",
