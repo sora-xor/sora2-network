@@ -11560,6 +11560,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-identity",
  "parity-scale-codec",
  "permissions",
  "scale-info",
