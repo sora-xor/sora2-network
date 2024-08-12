@@ -108,11 +108,7 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Runtime {
         System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -623,7 +619,7 @@ impl ExtBuilder {
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
-                (alice(), 0),
+                (alice(), 1),
                 (
                     if let DistributionAccount::TechAccount(account_id) =
                         &accounts.val_holders.account
@@ -632,11 +628,11 @@ impl ExtBuilder {
                     } else {
                         panic!("not a tech account")
                     },
-                    0,
+                    1,
                 ),
-                (GetMbcReservesAccountId::get(), 0),
-                (GetMbcRewardsAccountId::get(), 0),
-                (GetLiquidityProxyAccountId::get(), 0),
+                (GetMbcReservesAccountId::get(), 1),
+                (GetMbcRewardsAccountId::get(), 1),
+                (GetLiquidityProxyAccountId::get(), 1),
             ],
         }
         .assimilate_storage(&mut t)
