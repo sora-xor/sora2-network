@@ -81,11 +81,7 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Runtime {
         System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -264,7 +260,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), 0)],
+            balances: vec![(alice(), 1)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

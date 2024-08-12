@@ -15,12 +15,12 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-common = { path = "../../../common", default-features = false }
+common = { path = "../../../common", features = ["test"], default-features = false }
 assets = { path = "../../assets", default-features = false }
 pool-xyk = { path = "../../pool-xyk", default-features = false }
 technical = { path = "../../technical", default-features = false }
@@ -59,9 +59,13 @@ std = [
     'trading-pair/std',
     'permissions/std',
     'pool-xyk/std',
+    'dex-manager/std',
+    'dex-api/std',
+    'pswap-distribution/std'
 ]
 
 runtime-benchmarks = [
-    "frame-system/runtime-benchmarks",
+    "frame-benchmarking",
     "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
 ]
