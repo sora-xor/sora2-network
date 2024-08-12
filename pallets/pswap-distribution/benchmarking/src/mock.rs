@@ -339,13 +339,13 @@ impl ExtBuilder {
         let mut vec = self
             .endowed_accounts
             .iter()
-            .map(|(acc, ..)| (acc.clone(), 0))
+            .map(|(acc, ..)| (acc.clone(), 1))
             .chain(vec![
-                (alice(), 0),
-                (fees_account_a(), 0),
-                (fees_account_b(), 0),
-                (GetPswapDistributionAccountId::get(), 0),
-                (GetParliamentAccountId::get(), 0),
+                (alice(), 1),
+                (fees_account_a(), 1),
+                (fees_account_b(), 1),
+                (GetPswapDistributionAccountId::get(), 1),
+                (GetParliamentAccountId::get(), 1),
             ])
             .collect::<Vec<_>>();
 
