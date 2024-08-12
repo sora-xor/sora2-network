@@ -36,6 +36,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult, RawOrigin};
+use frame_support::traits::Currency;
 use frame_support::{ensure, Parameter};
 use pallet_identity::Data;
 use pallet_identity::IdentityInfo;
@@ -46,7 +47,7 @@ use sp_std::boxed::Box;
 use sp_std::vec;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
-use sp_core::H256;
+use sp_core::{Get, H256};
 
 #[cfg(test)]
 mod mock;
@@ -54,11 +55,12 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
+
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TechAccountIdOf<T> = <T as Config>::TechAccountId;
 type TechAssetIdOf<T> = <T as Config>::TechAssetId;
 type DEXIdOf<T> = <T as common::Config>::DEXId;
-type Identity<T> = pallet_identity::Pallet<T>;
 
 /// Pending atomic swap operation.
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
@@ -199,13 +201,16 @@ impl<T: Config> Pallet<T> {
         account_id: T::AccountId,
         identity_info: IdentityInfo<T::MaxAdditionalFields>,
     ) -> DispatchResult {
+        type BalanceOf<T> = <<T as pallet_identity::Config>::Currency as Currency<
+            <T as frame_system::Config>::AccountId,
+        >>::Balance;
+        let extra_fields_count = <BalanceOf<T>>::from(identity_info.additional.len() as u32);
+        let basic_deposit = T::BasicDeposit::get();
+        let fields_deposit = T::FieldDeposit::get() * extra_fields_count;
+        T::Currency::make_free_balance_be(&account_id, basic_deposit + fields_deposit);
         let origin = RawOrigin::Signed(account_id.clone());
         let boxed_identity_info = Box::new(identity_info);
-        if let Err(_) =
-            pallet_identity::Pallet::<T>::set_identity(origin.into(), boxed_identity_info)
-        {
-            return Err(Error::<T>::IdentityCouldNotBeSet)?;
-        }
+        pallet_identity::Pallet::<T>::set_identity(origin.into(), boxed_identity_info).unwrap();
         Ok(())
     }
 

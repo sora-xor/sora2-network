@@ -389,3 +389,33 @@ macro_rules! mock_pallet_timestamp_config {
         }
     };
 }
+
+/// Mock of pallet `pallet_identity::Config`.
+#[macro_export]
+macro_rules! mock_pallet_identity_config {
+    ($runtime:ty) => {
+        parameter_types! {
+            pub const BasicDeposit: Balance = balance!(0.01);
+            pub const FieldDeposit: Balance = balance!(0.01);
+            pub const SubAccountDeposit: Balance = balance!(0.01);
+            pub const MaxSubAccounts: u32 = 100;
+            pub const MaxAdditionalFields: u32 = 100;
+            pub const MaxRegistrars: u32 = 20;
+            pub const MaxAdditionalDataLengthSwapTransferBatch: u32 = 2000;
+        }
+        impl pallet_identity::Config for $runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type Currency = Balances;
+            type BasicDeposit = BasicDeposit;
+            type FieldDeposit = FieldDeposit;
+            type SubAccountDeposit = SubAccountDeposit;
+            type MaxSubAccounts = MaxSubAccounts;
+            type MaxAdditionalFields = MaxAdditionalFields;
+            type MaxRegistrars = MaxRegistrars;
+            type Slashed = ();
+            type ForceOrigin = EnsureRoot<AccountId>;
+            type RegistrarOrigin = EnsureRoot<AccountId>;
+            type WeightInfo = ();
+        }
+    };
+}

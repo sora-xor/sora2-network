@@ -40,8 +40,9 @@ use bridge_types::{GenericNetworkId, H160};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
+    mock_pallet_balances_config, mock_pallet_identity_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
+    PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -95,6 +96,7 @@ mock_currencies_config!(Test);
 mock_common_config!(Test);
 mock_tokens_config!(Test);
 mock_assets_config!(Test);
+mock_pallet_identity_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
