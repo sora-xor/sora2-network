@@ -35,10 +35,13 @@
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::{DispatchError, DispatchResult, RawOrigin};
 use frame_support::{ensure, Parameter};
+use pallet_identity::IdentityInfo;
+use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
+use sp_std::boxed::Box;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
 use sp_core::H256;
@@ -53,6 +56,7 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TechAccountIdOf<T> = <T as Config>::TechAccountId;
 type TechAssetIdOf<T> = <T as Config>::TechAssetId;
 type DEXIdOf<T> = <T as common::Config>::DEXId;
+type Identity<T> = pallet_identity::Pallet<T>;
 
 /// Pending atomic swap operation.
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
@@ -163,6 +167,10 @@ impl<T: Config> Pallet<T> {
         if let Err(_) = Self::lookup_tech_account_id(&account_id) {
             frame_system::Pallet::<T>::inc_providers(&account_id);
         }
+        let identity_info_opt = Self::gen_tech_account_identity_info(&tech_account_id);
+        if let Some(identity_info) = identity_info_opt {
+            Self::set_identity(account_id.clone(), identity_info)?;
+        }
         TechAccounts::<T>::insert(account_id, tech_account_id);
         Ok(())
     }
@@ -174,9 +182,83 @@ impl<T: Config> Pallet<T> {
         let account_id = Self::tech_account_id_to_account_id(tech_account_id)?;
         if let Err(_) = Self::lookup_tech_account_id(&account_id) {
             frame_system::Pallet::<T>::inc_providers(&account_id);
-            TechAccounts::<T>::insert(account_id, tech_account_id.clone());
+            let identity_info_opt = Self::gen_tech_account_identity_info(&tech_account_id);
+            if let Some(identity_info) = identity_info_opt {
+                Self::set_identity(account_id.clone(), identity_info)?;
+            }
+
+            TechAccounts::<T>::insert(account_id, tech_account_id);
         }
         Ok(())
+    }
+
+    /// Set `IdentityInfo` for a specific `AccountId` using identity pallet
+    pub fn set_identity(
+        account_id: T::AccountId,
+        identity_info: IdentityInfo<T::MaxAdditionalFields>,
+    ) -> DispatchResult {
+        let origin = RawOrigin::Signed(account_id.clone());
+        let boxed_identity_info = Box::new(identity_info);
+        if let Err(_) =
+            pallet_identity::Pallet::<T>::set_identity(origin.into(), boxed_identity_info)
+        {
+            return Err(Error::<T>::IdentityCouldNotBeSet)?;
+        }
+        Ok(())
+    }
+
+    pub fn gen_tech_account_identity_info(
+        tech_account_id: &T::TechAccountId,
+    ) -> Option<IdentityInfo<T::MaxAdditionalFields>> {
+        use common::TechAccountId;
+        use pallet_identity::Data;
+        use sp_std::vec;
+        // use sp_core::bounded::BoundedVec;
+        let common_tech_account_id: common::TechAccountId<T::AccountId, T::TechAssetId, T::DEXId> =
+            tech_account_id.clone().into();
+        let (display_name, additional) = match common_tech_account_id {
+            TechAccountId::Pure(dex_id, purpose) => (
+                b"Pure Tech Account".to_vec(),
+                BoundedVec::truncate_from(vec![(
+                    Data::Raw(BoundedVec::truncate_from(b"Purpose".encode())),
+                    Data::Raw(BoundedVec::truncate_from(purpose.encode())),
+                )]),
+            ),
+            TechAccountId::Generic(tag, data) => (
+                tag.to_vec(),
+                BoundedVec::truncate_from(vec![(
+                    Data::Raw(BoundedVec::truncate_from(b"Data".encode())),
+                    Data::Raw(BoundedVec::truncate_from(data.encode())),
+                )]),
+            ),
+            TechAccountId::Wrapped(account_id) => (
+                b"Wrapper Tech Account".to_vec(),
+                BoundedVec::truncate_from(vec![(
+                    Data::Raw(BoundedVec::truncate_from(b"AccountId".encode())),
+                    Data::Raw(BoundedVec::truncate_from(account_id.encode())),
+                )]),
+            ),
+            TechAccountId::WrappedRepr(account_id) => (
+                b"WrapperRepr Tech Account".to_vec(),
+                BoundedVec::truncate_from(vec![(
+                    Data::Raw(BoundedVec::truncate_from(b"AccountId".encode())),
+                    Data::Raw(BoundedVec::truncate_from(account_id.encode())),
+                )]),
+            ),
+            TechAccountId::None => return None,
+        };
+
+        Some(IdentityInfo {
+            display: Data::Raw(BoundedVec::truncate_from(display_name)),
+            additional: additional.into(),
+            legal: Default::default(),
+            web: Default::default(),
+            riot: Default::default(),
+            email: Default::default(),
+            pgp_fingerprint: None,
+            image: Default::default(),
+            twitter: Default::default(),
+        })
     }
 
     /// Deregister `TechAccountId` in storage map.
@@ -262,7 +344,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config {
+    pub trait Config: frame_system::Config + common::Config + pallet_identity::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -410,6 +492,8 @@ pub mod pallet {
         AssociatedAccountIdNotFound,
         /// Operation with abstract checking is impossible.
         OperationWithAbstractCheckingIsImposible,
+        /// Raised when identity::set_identity fails
+        IdentityCouldNotBeSet,
     }
 
     /// Registered technical account identifiers. Map from repr `AccountId` into pure `TechAccountId`.
