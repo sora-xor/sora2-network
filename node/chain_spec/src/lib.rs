@@ -1001,6 +1001,10 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let kensetsu_depository_tech_account_id =
+        framenode_runtime::KensetsuDepositoryTechAccountId::get();
+    let kensetsu_depository_account_id = framenode_runtime::KensetsuDepositoryAccountId::get();
+
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
@@ -1063,6 +1067,10 @@ fn testnet_genesis(
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
         ),
+        (
+            kensetsu_depository_account_id.clone(),
+            kensetsu_depository_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     for account in &accounts.accounts() {
@@ -1087,6 +1095,7 @@ fn testnet_genesis(
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
         (xst_pool_permissioned_account_id.clone(), 0),
+        (kensetsu_depository_account_id.clone(), 0),
         (kensetsu_treasury_account_id.clone(), 0),
     ]
     .into_iter()
@@ -1933,6 +1942,9 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let kensetsu_depository_tech_account_id =
+        framenode_runtime::KensetsuDepositoryTechAccountId::get();
+    let kensetsu_depository_account_id = framenode_runtime::KensetsuDepositoryAccountId::get();
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
@@ -1994,6 +2006,10 @@ fn mainnet_genesis(
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
+        ),
+        (
+            kensetsu_depository_account_id.clone(),
+            kensetsu_depository_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -2380,6 +2396,7 @@ fn mainnet_genesis(
                 (mbc_pool_free_reserves_account_id.clone(), 0),
                 (market_maker_rewards_account_id.clone(), 0),
                 (xst_pool_permissioned_account_id.clone(), 0),
+                (kensetsu_depository_account_id.clone(), 0),
                 (kensetsu_treasury_account_id.clone(), 0),
             ]
             .into_iter()
