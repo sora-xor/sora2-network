@@ -9,7 +9,7 @@ use std::env::var;
 async fn run_migrations() {
     sp_tracing::try_init_simple();
     let transport: Transport = var("WS")
-        .unwrap_or("wss://ws.framenode-0.a1.sora2.soramitsu.co.jp:443".to_string())
+        .unwrap_or("wss://ws.framenode-8.s5.stg1.sora2.soramitsu.co.jp:443".to_string())
         .into();
     let maybe_state_snapshot: Option<SnapshotConfig> = var("SNAP").map(|s| s.into()).ok();
     let mut ext = Builder::<Block>::default()
