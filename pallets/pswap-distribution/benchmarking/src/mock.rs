@@ -32,15 +32,17 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, XOR,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_technical_config, mock_tokens_config, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD,
+    XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_core::H256;
@@ -141,6 +143,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -151,6 +154,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 
 impl Config for Runtime {}
 

@@ -31,7 +31,7 @@
 use crate as soratopia;
 
 use common::mock::ExistentialDeposits;
-use common::Amount;
+use common::{balance, mock_pallet_identity_config, Amount};
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
@@ -41,6 +41,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
 use frame_support::traits::Everything;
 use frame_system::offchain::SendTransactionTypes;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -73,6 +74,7 @@ frame_support::construct_runtime!(
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Soratopia: soratopia::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -99,6 +101,7 @@ mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
+mock_pallet_identity_config!(TestRuntime);
 
 parameter_types! {
     pub AdminAccount: AccountId = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48").into();

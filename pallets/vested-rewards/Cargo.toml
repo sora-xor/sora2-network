@@ -40,6 +40,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }

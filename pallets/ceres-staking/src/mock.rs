@@ -15,6 +15,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;

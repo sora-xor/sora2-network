@@ -38,6 +38,7 @@ demeter-farming-platform = { path = "../demeter-farming-platform", default-featu
 dex-manager = { path = "../dex-manager", default-features = false }
 ceres-liquidity-locker = { path = ".", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }

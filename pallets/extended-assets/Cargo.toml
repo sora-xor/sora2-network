@@ -30,6 +30,7 @@ technical = { path = "../technical", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 hex-literal = { version = "0.4.1"}

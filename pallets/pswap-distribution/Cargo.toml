@@ -39,7 +39,7 @@ ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features 
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 hex-literal = { version = '0.4.1' }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-
+pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }

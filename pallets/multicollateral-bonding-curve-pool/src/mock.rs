@@ -37,10 +37,10 @@ use common::prelude::{
 use common::{
     self, balance, fixed, fixed_wrapper, hash, mock_assets_config, mock_common_config,
     mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP,
-    TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    mock_pallet_identity_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -48,6 +48,7 @@ use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, Blake2_128Concat};
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use orml_traits::MultiCurrency;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
@@ -155,6 +156,7 @@ construct_runtime! {
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -165,7 +167,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-
+mock_pallet_identity_config!(Runtime);
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {

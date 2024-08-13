@@ -81,6 +81,7 @@ frame_support::construct_runtime!(
         BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
         FungibleApp: evm_fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         BridgeProxy: proxy::{Pallet, Call, Storage, Event},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 );
 

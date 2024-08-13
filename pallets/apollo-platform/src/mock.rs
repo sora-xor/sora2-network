@@ -1,3 +1,4 @@
+use common::mock_pallet_identity_config;
 use {
     crate as apollo_platform,
     common::{
@@ -84,6 +85,7 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Storage, Event<T>},
     }
 }
 
@@ -96,6 +98,7 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where

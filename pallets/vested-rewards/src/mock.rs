@@ -34,16 +34,17 @@ use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
-    KSM, PSWAP, TBCD, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_technical_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXId, Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -75,6 +76,7 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -138,6 +140,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

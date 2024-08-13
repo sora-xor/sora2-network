@@ -35,18 +35,20 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
-    PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
-    DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
+    DataFeed, FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PredefinedAssetId, PriceToolsProvider, PriceVariant, Rate, SymbolName,
+    TradingPairSourceManager, DAI, DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD,
+    XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
+use frame_system::EnsureRoot;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
@@ -284,6 +286,7 @@ frame_support::construct_runtime!(
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Kensetsu: kensetsu::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -331,6 +334,7 @@ mock_permissions_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
+mock_pallet_identity_config!(TestRuntime);
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;

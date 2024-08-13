@@ -38,10 +38,11 @@ use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
     mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider,
-    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    mock_pallet_identity_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
+    FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD,
+    USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -134,11 +135,13 @@ construct_runtime! {
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
 mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);

@@ -5,9 +5,9 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_technical_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -15,6 +15,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -49,6 +50,7 @@ construct_runtime! {
         CeresGovernancePlatform: ceres_governance_platform::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -77,6 +79,7 @@ pub struct OldHermesVotingInfo {
     pub hermes_withdrawn: bool,
 }
 
+mock_pallet_identity_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);

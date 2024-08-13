@@ -5,8 +5,8 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -16,6 +16,7 @@ use frame_system;
 
 use common::prelude::Balance;
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -43,6 +44,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -80,6 +82,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
