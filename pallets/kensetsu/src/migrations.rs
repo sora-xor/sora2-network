@@ -440,3 +440,45 @@ pub mod v1_to_v2 {
         }
     }
 }
+
+/// V3 introduces depository tech account for collaterals.
+pub mod v2_to_v3 {
+    use crate::{CDPDepository, Config, Pallet};
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::log::error;
+    use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use sp_core::Get;
+
+    pub struct UpgradeToV3<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV3<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+
+            let version = Pallet::<T>::on_chain_storage_version();
+            if version == 2 {
+                let treasury_acc = T::TreasuryTechAccount::get();
+                let depository_acc = T::DepositoryTechAccount::get();
+                for (_, cdp) in CDPDepository::<T>::iter() {
+                    technical::Pallet::<T>::transfer(
+                        &cdp.collateral_asset_id,
+                        &treasury_acc,
+                        &depository_acc,
+                        cdp.collateral_amount,
+                    )
+                    .unwrap_or_else(|err| {
+                        error!("Error while transfer to depository tech acc: {:?}", err);
+                    });
+                }
+
+                StorageVersion::new(3).put::<Pallet<T>>();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            }
+
+            weight
+        }
+    }
+}
