@@ -28,12 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#[cfg(feature = "wip")]
 use crate::*;
 
-pub type Migrations = (
-    assets::migration::asset_infos_v2::AssetInfosUpdate<Runtime>,
-    WipMigrations,
-);
+pub type Migrations = (WipMigrations,);
 
 #[cfg(feature = "wip")] // dex-kusd
 pub type WipMigrations = (dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,);
