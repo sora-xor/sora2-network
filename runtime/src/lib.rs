@@ -37,11 +37,9 @@
 extern crate alloc;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // EVM bridge
 use bridge_types::types::GenericAdditionalInboundData;
-#[cfg(feature = "wip")]
-use bridge_types::GenericNetworkId;
-use bridge_types::{SubNetworkId, H256};
+use bridge_types::{GenericNetworkId, SubNetworkId, H256};
 use sp_runtime::traits::Keccak256;
 
 mod bags_thresholds;
@@ -2176,7 +2174,7 @@ impl Convert<U256, Balance> for FeeConverter {
 
 parameter_types! {
     pub const FeeCurrency: AssetId = XOR;
-    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2343,7 +2341,7 @@ impl Verifier for MultiVerifier {
     type Proof = MultiProof;
 
     fn verify(
-        network_id: bridge_types::GenericNetworkId,
+        network_id: GenericNetworkId,
         message: H256,
         proof: &Self::Proof,
     ) -> frame_support::pallet_prelude::DispatchResult {
@@ -3284,7 +3282,7 @@ impl_runtime_apis! {
             BridgeProxy::list_apps()
         }
 
-        fn list_supported_assets(network_id: bridge_types::GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        fn list_supported_assets(network_id: GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
             BridgeProxy::list_supported_assets(network_id)
         }
     }
