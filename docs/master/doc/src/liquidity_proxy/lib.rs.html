@@ -2956,6 +2956,8 @@
 <a href="#2941" id="2941">2941</a>
 <a href="#2942" id="2942">2942</a>
 <a href="#2943" id="2943">2943</a>
+<a href="#2944" id="2944">2944</a>
+<a href="#2945" id="2945">2945</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2992,11 +2994,13 @@
 
 </span><span class="kw">extern crate </span>core;
 
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>alt_test_utils;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>alt_tests;
 <span class="kw">pub mod </span>liquidity_aggregator;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>mock;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>new_tests;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_utils;
 <span class="attr">#[cfg(test)]

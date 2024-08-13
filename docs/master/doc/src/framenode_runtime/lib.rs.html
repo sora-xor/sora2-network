@@ -3529,8 +3529,6 @@
 <a href="#3514" id="3514">3514</a>
 <a href="#3515" id="3515">3515</a>
 <a href="#3516" id="3516">3516</a>
-<a href="#3517" id="3517">3517</a>
-<a href="#3518" id="3518">3518</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3570,11 +3568,9 @@
 </span><span class="kw">extern crate </span>alloc;
 <span class="kw">use </span>alloc::string::String;
 <span class="kw">use </span>bridge_types::traits::Verifier;
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">use </span>bridge_types::types::GenericAdditionalInboundData;
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
-</span><span class="kw">use </span>bridge_types::GenericNetworkId;
-<span class="kw">use </span>bridge_types::{SubNetworkId, H256};
+<span class="kw">use </span>bridge_types::{GenericNetworkId, SubNetworkId, H256};
 <span class="kw">use </span>sp_runtime::traits::Keccak256;
 
 <span class="kw">mod </span>bags_thresholds;
@@ -5709,7 +5705,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>FeeCurrency: AssetId = XOR;
-    <span class="kw">pub const </span>ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+    <span class="kw">pub const </span>ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
@@ -5876,7 +5872,7 @@
     <span class="kw">type </span>Proof = MultiProof;
 
     <span class="kw">fn </span>verify(
-        network_id: bridge_types::GenericNetworkId,
+        network_id: GenericNetworkId,
         message: H256,
         proof: <span class="kw-2">&amp;</span><span class="self">Self</span>::Proof,
     ) -&gt; frame_support::pallet_prelude::DispatchResult {
@@ -6817,7 +6813,7 @@
             BridgeProxy::list_apps()
         }
 
-        <span class="kw">fn </span>list_supported_assets(network_id: bridge_types::GenericNetworkId) -&gt; Vec&lt;bridge_types::types::BridgeAssetInfo&gt; {
+        <span class="kw">fn </span>list_supported_assets(network_id: GenericNetworkId) -&gt; Vec&lt;bridge_types::types::BridgeAssetInfo&gt; {
             BridgeProxy::list_supported_assets(network_id)
         }
     }
