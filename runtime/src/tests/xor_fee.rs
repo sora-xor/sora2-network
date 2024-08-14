@@ -603,6 +603,12 @@ fn reminting_for_sora_parliament_works() {
             Balances::free_balance(sora_parliament_account()),
             0_u128.into()
         );
+        increase_balance(
+            alice(),
+            XOR.into(),
+            pallet_balances::Pallet::<Runtime>::minimum_balance(),
+        );
+
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::register {
                 symbol: AssetSymbol(b"ALIC".to_vec()),
@@ -804,6 +810,12 @@ fn withdraw_fee_set_referrer() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         increase_balance(bob(), XOR.into(), balance!(1000));
+
+        increase_balance(
+            crate::ReferralsReservesAcc::get(),
+            XOR.into(),
+            pallet_balances::Pallet::<Runtime>::minimum_balance(),
+        );
 
         Referrals::reserve(RuntimeOrigin::signed(bob()), SMALL_FEE).unwrap();
 

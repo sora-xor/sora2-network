@@ -601,13 +601,13 @@ mod test {
             assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, Weight::from_parts(248_828_000, 0), "u32::MIN");
-        t(1, Weight::from_parts(248_829_705, 0), "1");
-        t(500_000, Weight::from_parts(1_101_328_000, 0), "500_000");
-        t(1_000_000, Weight::from_parts(1_953_828_000, 0), "1_000_000");
+        t(u32::MIN, Weight::from_parts(248_381_775, 0), "u32::MIN");
+        t(1, Weight::from_parts(248_383_445, 0), "1");
+        t(500_000, Weight::from_parts(1_083_381_775, 0), "500_000");
+        t(1_000_000, Weight::from_parts(1_918_381_775, 0), "1_000_000");
         t(
             5 * MEBIBYTE,
-            Weight::from_parts(9_187_938_400, 0),
+            Weight::from_parts(9_003_991_375, 0),
             "5 * MEBIBYTE",
         );
     }
