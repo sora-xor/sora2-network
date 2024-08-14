@@ -475,4 +475,144 @@ benchmarks! {
             ).into()
         );
     }
+
+    update_hard_cap {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_hard_cap(
+            RawOrigin::Root.into(),
+            XOR.into(),
+            KUSD.into(),
+            balance!(42000),
+        ).unwrap();
+    }
+    verify {
+        let new_info = CollateralInfos::<T>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        })
+        .expect("Must succeed");
+        assert_eq!(new_info.risk_parameters.hard_cap, balance!(42000));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::HardCapUpdated {
+                    old_hard_cap: Balance::MAX,
+                    new_hard_cap: balance!(42000),
+                }
+            ).into()
+        );
+    }
+
+    update_liquidation_ratio {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_liquidation_ratio(
+            RawOrigin::Root.into(),
+            XOR.into(),
+            KUSD.into(),
+            Perbill::from_percent(42),
+        ).unwrap();
+    }
+    verify {
+        let new_info = CollateralInfos::<T>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        })
+        .expect("Must succeed");
+        assert_eq!(new_info.risk_parameters.liquidation_ratio, Perbill::from_percent(42));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::LiquidationRatioUpdated {
+                    old_liquidation_ratio: Perbill::from_percent(50),
+                    new_liquidation_ratio: Perbill::from_percent(42),
+                }
+            ).into()
+        );
+    }
+
+    update_max_liquidation_lot {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_max_liquidation_lot(
+            RawOrigin::Root.into(),
+            XOR.into(),
+            KUSD.into(),
+            balance!(42),
+        ).unwrap();
+    }
+    verify {
+        let new_info = CollateralInfos::<T>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        })
+        .expect("Must succeed");
+        assert_eq!(new_info.risk_parameters.max_liquidation_lot, balance!(42));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::MaxLiquidationLotUpdated {
+                    old_max_liquidation_lot: balance!(100),
+                    new_max_liquidation_lot: balance!(42),
+                }
+            ).into()
+        );
+    }
+
+    update_stability_fee_rate {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_stability_fee_rate(
+            RawOrigin::Root.into(),
+            XOR.into(),
+            KUSD.into(),
+            FixedU128::from_perbill(Perbill::from_percent(42)),
+        ).unwrap();
+    }
+    verify {
+        let new_info = CollateralInfos::<T>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        })
+        .expect("Must succeed");
+        assert_eq!(new_info.risk_parameters.stability_fee_rate, FixedU128::from_perbill(Perbill::from_percent(42)));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::StabilityFeeRateUpdated {
+                    old_stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(10)),
+                    new_stability_fee_rate: FixedU128::from_perbill(Perbill::from_percent(42)),
+                }
+            ).into()
+        );
+    }
+
+    update_minimal_collateral_deposit {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_minimal_collateral_deposit(
+            RawOrigin::Root.into(),
+            XOR.into(),
+            KUSD.into(),
+            balance!(42),
+        ).unwrap();
+    }
+    verify {
+        let new_info = CollateralInfos::<T>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR.into(),
+            stablecoin_asset_id: KUSD.into(),
+        })
+        .expect("Must succeed");
+        assert_eq!(new_info.risk_parameters.minimal_collateral_deposit, balance!(42));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::MinimalCollateralDepositUpdated {
+                    old_minimal_collateral_deposit: balance!(0),
+                    new_minimal_collateral_deposit: balance!(42),
+                }
+            ).into()
+        );
+    }
 }
