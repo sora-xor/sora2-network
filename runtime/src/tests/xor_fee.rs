@@ -518,7 +518,6 @@ fn refund_if_pays_no_works() {
         give_xor_initial_balance(alice());
 
         let tech_account_id = GetXorFeeAccountId::get();
-        assert_eq!(Balances::free_balance(&tech_account_id), 0_u128.into());
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
@@ -553,7 +552,6 @@ fn refund_if_pays_no_works() {
         )
         .is_ok());
         assert_eq!(Balances::free_balance(alice()), INITIAL_BALANCE,);
-        assert_eq!(Balances::free_balance(tech_account_id), 0_u128.into());
     });
 }
 

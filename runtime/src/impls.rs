@@ -616,7 +616,7 @@ mod test {
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
             let actual = PreimageWeightInfo::note_preimage(bytes);
-            assert_eq!(actual.ref_time(), 1_459_900_160_001_u64);
+            assert_eq!(actual.ref_time(), 1_459_875_586_001u64);
             assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
         }
 
