@@ -44,7 +44,7 @@ use common::{
 };
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
-use frame_support::traits::{OnFinalize, OnInitialize};
+use frame_support::traits::{Currency, OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_support::{assert_err, assert_ok};
@@ -53,7 +53,7 @@ use framenode_chain_spec::ext;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_runtime::traits::{Dispatchable, SignedExtension};
+use sp_runtime::traits::{Dispatchable, Saturating, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 use xor_fee::extension::ChargeTransactionPayment;
@@ -1131,8 +1131,11 @@ fn withdraw_fee_place_limit_order_with_crossing_spread() {
 #[test]
 fn fee_payment_postponed_xorless_transfer() {
     ext().execute_with(|| {
+        let ed = pallet_balances::Pallet::<Runtime>::minimum_balance();
+
         set_weight_to_fee_multiplier(1);
         increase_balance(alice(), VAL.into(), balance!(1000));
+        increase_balance(alice(), XOR.into(), ed);
 
         increase_balance(bob(), XOR.into(), balance!(1000));
         increase_balance(bob(), VAL.into(), balance!(1000));
@@ -1193,10 +1196,8 @@ fn fee_payment_postponed_xorless_transfer() {
 
         assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
 
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice()).unwrap(),
-            balance!(0)
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), ed);
+
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice()).unwrap(),
             balance!(1000)
@@ -1206,7 +1207,7 @@ fn fee_payment_postponed_xorless_transfer() {
 
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice()).unwrap(),
-            SMALL_FEE
+            SMALL_FEE.saturating_add(ed)
         );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice()).unwrap(),
@@ -1226,7 +1227,7 @@ fn fee_payment_postponed_xorless_transfer() {
             quoted_fee
         ));
 
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), ed);
     });
 }
 
