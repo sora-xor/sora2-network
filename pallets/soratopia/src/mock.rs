@@ -48,6 +48,7 @@ use sp_runtime::MultiSignature;
 use sp_runtime::{
     testing::{Header, TestXt},
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+    BuildStorage,
 };
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -114,8 +115,8 @@ impl soratopia::Config for TestRuntime {
 
 // Builds testing externalities
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
+    let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::<TestRuntime>::default()
+        .build_storage()
         .unwrap()
         .into();
     ext.execute_with(|| {

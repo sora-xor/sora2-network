@@ -61,7 +61,6 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
 }
 
 construct_runtime! {

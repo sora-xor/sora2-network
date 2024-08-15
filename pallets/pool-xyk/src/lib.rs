@@ -1022,7 +1022,7 @@ pub mod pallet {
             for dex_id in T::DexInfoProvider::list_dex_ids() {
                 weight = weight.saturating_add(T::DbWeight::get().reads(2));
                 let Ok(dex_info) = T::DexInfoProvider::get_dex_info(&dex_id) else {
-                    frame_support::log::warn!("Failed to get DEX info for {:?}", dex_id);
+                    log::warn!("Failed to get DEX info for {:?}", dex_id);
                     continue;
                 };
                 let Some((_, targets)) = <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(
@@ -1037,7 +1037,7 @@ pub mod pallet {
                         &target,
                         &mut weight,
                     ) {
-                        frame_support::log::warn!(
+                        log::warn!(
                             "Failed to adjust liquidity for [{:?}] {:?} -> {:?}: {:?}",
                             dex_id,
                             dex_info.base_asset_id,

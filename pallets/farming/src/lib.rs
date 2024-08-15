@@ -136,7 +136,7 @@ impl<T: Config> Pallet<T> {
         let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
         let Some(pool_total_liquidity) = pool_xyk::TotalIssuances::<T>::get(&pool) else {
-            frame_support::log::warn!("Failed to get total issuance for pool {:?}", pool);
+            log::warn!("Failed to get total issuance for pool {:?}", pool);
             return 0;
         };
         let Ok((pool_base_reserves, _, _)) = pool_xyk::Pallet::<T>::get_actual_reserves(
@@ -146,7 +146,7 @@ impl<T: Config> Pallet<T> {
             &trading_pair.target_asset_id,
         )
         .map_err(|e| {
-            frame_support::log::warn!("Failed to get base reserves for pool {:?}: {:?}", pool, e);
+            log::warn!("Failed to get base reserves for pool {:?}: {:?}", pool, e);
             e
         }) else {
             return 0;

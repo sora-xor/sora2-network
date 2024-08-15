@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::prelude::FixedWrapper;
-use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_core::Get;
@@ -43,7 +42,6 @@ use common::{
     TradingPair,
 };
 use frame_support::dispatch::DispatchResult;
-use frame_support::ensure;
 use orml_traits::GetByKey;
 use sp_runtime::DispatchError;
 

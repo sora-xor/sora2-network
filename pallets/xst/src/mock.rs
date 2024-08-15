@@ -95,7 +95,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
     pub const GetBandRateStaleBlockPeriod: u64 = 600;
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {

@@ -52,7 +52,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId::new([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
