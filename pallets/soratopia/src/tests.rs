@@ -28,13 +28,51 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "wip")]
-use crate::*;
+use super::*;
 
-pub type Migrations = (WipMigrations,);
+use crate::mock::{new_test_ext, RuntimeOrigin, TestRuntime};
+use common::{AssetInfoProvider, XOR};
+use frame_support::assert_ok;
+use frame_system::pallet_prelude::OriginFor;
+use hex_literal::hex;
+use sp_runtime::AccountId32;
 
-#[cfg(feature = "wip")] // dex-kusd
-pub type WipMigrations = (dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,);
+type SoratopiaPallet = Pallet<TestRuntime>;
 
-#[cfg(not(feature = "wip"))] // dex-kusd
-pub type WipMigrations = ();
+/// Predefined AccountId `Alice`
+pub fn alice_account_id() -> AccountId32 {
+    AccountId32::from(hex!(
+        "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+    ))
+}
+
+/// Predefined AccountId `Admin`
+pub fn admin_account_id() -> AccountId32 {
+    AccountId32::from(hex!(
+        "8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48"
+    ))
+}
+
+/// Regular client account Alice
+pub fn alice() -> OriginFor<TestRuntime> {
+    RuntimeOrigin::signed(alice_account_id())
+}
+
+#[test]
+fn test_check_in() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
+            RuntimeOrigin::root(),
+            alice_account_id(),
+            XOR,
+            1000,
+        ));
+
+        assert_ok!(SoratopiaPallet::check_in(alice()));
+
+        assert_eq!(
+            assets::Pallet::<TestRuntime>::free_balance(&XOR, &admin_account_id()).unwrap(),
+            1000
+        );
+    });
+}

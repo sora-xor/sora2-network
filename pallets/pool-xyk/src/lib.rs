@@ -966,14 +966,16 @@ pub mod pallet {
         >;
         type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>>;
         type GetFee: Get<Fixed>;
+        /// Maximum allowed ratio between real and current issuance in pool
+        type GetMaxIssuanceRatio: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         type OnPoolReservesChanged: OnPoolReservesChanged<AssetIdOf<Self>>;
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
-        type GetChameleonPoolBaseAssetId: orml_traits::GetByKey<
+        /// base_asset_id => (chameleon_base_asset_id, target_assets)
+        type GetChameleonPools: GetByKey<
             AssetIdOf<Self>,
-            Option<AssetIdOf<Self>>,
+            Option<(AssetIdOf<Self>, BTreeSet<AssetIdOf<Self>>)>,
         >;
-        type GetChameleonPool: orml_traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
@@ -991,6 +993,9 @@ pub mod pallet {
         /// Percent of reserve which is not involved in swap
         #[pallet::constant]
         type IrreducibleReserve: Get<Percent>;
+        /// How often to check and adjust Chameleon pool issuance
+        #[pallet::constant]
+        type PoolAdjustPeriod: Get<BlockNumberFor<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -1007,6 +1012,42 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
             migrations::migrate::<T>()
+        }
+
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            if now % T::PoolAdjustPeriod::get() != Zero::zero() {
+                return Default::default();
+            }
+            let mut weight = Weight::default();
+            for dex_id in T::DexInfoProvider::list_dex_ids() {
+                weight = weight.saturating_add(T::DbWeight::get().reads(2));
+                let Ok(dex_info) = T::DexInfoProvider::get_dex_info(&dex_id) else {
+                    frame_support::log::warn!("Failed to get DEX info for {:?}", dex_id);
+                    continue;
+                };
+                let Some((_, targets)) = <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(
+                    &dex_info.base_asset_id,
+                ) else {
+                    continue;
+                };
+                for target in targets {
+                    if let Err(err) = Self::adjust_liquidity_in_pool(
+                        dex_id,
+                        &dex_info.base_asset_id,
+                        &target,
+                        &mut weight,
+                    ) {
+                        frame_support::log::warn!(
+                            "Failed to adjust liquidity for [{:?}] {:?} -> {:?}: {:?}",
+                            dex_id,
+                            dex_info.base_asset_id,
+                            target,
+                            err
+                        );
+                    }
+                }
+            }
+            weight
         }
     }
 
@@ -1189,6 +1230,16 @@ pub mod pallet {
     pub enum Event<T: Config> {
         // New pool for particular pair was initialized. [Reserves Account Id]
         PoolIsInitialized(AccountIdOf<T>),
+        PoolAdjusted {
+            /// Pool account
+            pool: AccountIdOf<T>,
+            /// Issuance before adjustment
+            old_issuance: Balance,
+            /// Issuance after adjustment
+            new_issuance: Balance,
+            /// Amount of processed pool providers
+            providers: u32,
+        },
     }
 
     #[pallet::error]

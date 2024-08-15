@@ -28,13 +28,34 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "wip")]
-use crate::*;
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "runtime-benchmarks")]
 
-pub type Migrations = (WipMigrations,);
+use super::*;
+use codec::Decode;
+use common::{balance, AssetManager, XOR};
+use frame_benchmarking::benchmarks;
+use frame_system::RawOrigin;
+use hex_literal::hex;
 
-#[cfg(feature = "wip")] // dex-kusd
-pub type WipMigrations = (dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,);
+/// Client account id
+fn caller<T: Config>() -> T::AccountId {
+    let bytes = hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
 
-#[cfg(not(feature = "wip"))] // dex-kusd
-pub type WipMigrations = ();
+benchmarks! {
+    check_in {
+        T::AssetManager::update_balance(
+            RawOrigin::Root.into(),
+            caller::<T>(),
+            XOR.into(),
+            balance!(1000).try_into().unwrap(),
+        )
+        .expect("Shall mint");
+    }: {
+        Pallet::<T>::check_in(
+            RawOrigin::Signed(caller::<T>()).into(),
+        ).unwrap();
+    }
+}

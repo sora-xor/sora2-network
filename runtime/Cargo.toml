@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.5.1"
+version = "3.5.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -94,9 +94,10 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
-extended-assets = { path = "../pallets/extended-assets", default-features = false}
+extended-assets = { path = "../pallets/extended-assets", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
+soratopia = { path = "../pallets/soratopia", default-features = false, optional = true }
 technical = { path = "../pallets/technical", default-features = false }
 trading-pair = { path = "../pallets/trading-pair", default-features = false }
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
@@ -290,6 +291,7 @@ std = [
     "sp-npos-elections/std",
     "sp-consensus-aura/std",
     "substrate-bridge-app/std",
+    "soratopia/std",
     "technical/std",
     "trading-pair-runtime-api/std",
     "trading-pair/std",
@@ -324,6 +326,7 @@ wip = [
     "pallet-beefy",
     "pallet-beefy-mmr",
     "xor-fee/wip",
+    "soratopia",
 ]
 
 stage = ["framenode-chain-spec/stage"]
@@ -372,6 +375,7 @@ runtime-benchmarks = [
     "pool-xyk-benchmarking/runtime-benchmarks",
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
+    "soratopia/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
@@ -460,6 +464,7 @@ try-runtime = [
     "pswap-distribution/try-runtime",
     "referrals/try-runtime",
     "rewards/try-runtime",
+    "soratopia/try-runtime",
     "technical/try-runtime",
     "trading-pair/try-runtime",
     "vested-rewards/try-runtime",

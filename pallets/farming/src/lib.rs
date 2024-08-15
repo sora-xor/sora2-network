@@ -135,11 +135,32 @@ impl<T: Config> Pallet<T> {
         let mut read_count = 0;
         let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
+        let Some(pool_total_liquidity) = pool_xyk::TotalIssuances::<T>::get(&pool) else {
+            frame_support::log::warn!("Failed to get total issuance for pool {:?}", pool);
+            return 0;
+        };
+        let Ok((pool_base_reserves, _, _)) = pool_xyk::Pallet::<T>::get_actual_reserves(
+            &pool,
+            &trading_pair.base_asset_id,
+            &trading_pair.base_asset_id,
+            &trading_pair.target_asset_id,
+        )
+        .map_err(|e| {
+            frame_support::log::warn!("Failed to get base reserves for pool {:?}: {:?}", pool, e);
+            e
+        }) else {
+            return 0;
+        };
         for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
             read_count += 1;
 
-            let weight =
-                Self::get_account_weight(&pool, &trading_pair, multiplier.clone(), pool_tokens);
+            let weight = Self::get_account_weight(
+                &trading_pair,
+                multiplier.clone(),
+                pool_base_reserves,
+                pool_total_liquidity,
+                pool_tokens,
+            );
             if weight == 0 {
                 continue;
             }
@@ -169,17 +190,15 @@ impl<T: Config> Pallet<T> {
     }
 
     fn get_account_weight(
-        pool: &T::AccountId,
         trading_pair: &TradingPair<AssetIdOf<T>>,
         multiplier: FixedWrapper,
+        base_reserves: Balance,
+        total_liquidity: Balance,
         pool_tokens: Balance,
     ) -> Balance {
-        let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part_from_pool_account(
-            pool,
-            &trading_pair,
-            pool_tokens,
-        )
-        .unwrap_or(0);
+        let base_asset_amt =
+            pool_xyk::Pallet::<T>::get_base_asset_part(base_reserves, total_liquidity, pool_tokens)
+                .unwrap_or(0);
 
         let base_asset_amt = (FixedWrapper::from(base_asset_amt) * multiplier)
             .try_into_balance()

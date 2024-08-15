@@ -235,22 +235,31 @@ impl<T: Config> Pallet<T> {
         Ok(max_output)
     }
 
+    pub fn get_base_asset_part(
+        base_reserves: Balance,
+        total_liquidity: Balance,
+        liq_amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let fxw_liq_in_pool = to_fixed_wrapper!(total_liquidity);
+        let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);
+        let fxw_value = to_fixed_wrapper!(base_reserves) / fxw_piece;
+        let value = to_balance!(fxw_value);
+        Ok(value)
+    }
+
     pub fn get_base_asset_part_from_pool_account(
         pool_acc: &T::AccountId,
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let (b_in_pool, t_in_pool, _max_output_available) = Self::get_actual_reserves(
+        let (b_in_pool, _t_in_pool, _max_output_available) = Self::get_actual_reserves(
             pool_acc,
             &trading_pair.base_asset_id,
             &trading_pair.base_asset_id,
             &trading_pair.target_asset_id,
         )?;
-        let fxw_liq_in_pool =
-            to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
-        let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);
-        let fxw_value = to_fixed_wrapper!(b_in_pool) / fxw_piece;
-        let value = to_balance!(fxw_value);
-        Ok(value)
+        let liq_in_pool =
+            crate::TotalIssuances::<T>::get(pool_acc).ok_or(Error::<T>::PoolIsEmpty)?;
+        Self::get_base_asset_part(b_in_pool, liq_in_pool, liq_amount)
     }
 }
