@@ -3714,7 +3714,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "3.5.1"
+version = "3.5.2"
 dependencies = [
  "ahash 0.8.7",
  "ansi_term",
@@ -3818,7 +3818,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "3.5.1"
+version = "3.5.2"
 dependencies = [
  "common 0.1.0",
  "faucet",
@@ -3847,7 +3847,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "3.5.1"
+version = "3.5.2"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -3960,6 +3960,7 @@ dependencies = [
  "rewards-runtime-api",
  "scale-info",
  "serde",
+ "soratopia",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
@@ -10428,6 +10429,30 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "sha-1",
+]
+
+[[package]]
+name = "soratopia"
+version = "0.0.1"
+dependencies = [
+ "assets",
+ "common 0.1.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]
