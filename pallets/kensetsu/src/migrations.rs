@@ -460,8 +460,21 @@ pub mod v2_to_v3 {
 
             let version = Pallet::<T>::on_chain_storage_version();
             if version == 2 {
-                let treasury_acc = T::TreasuryTechAccount::get();
                 let depository_acc = T::DepositoryTechAccount::get();
+                weight += match technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+                    &depository_acc,
+                ) {
+                    Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
+                    Err(err) => {
+                        error!(
+                            "Failed to register technical account: {:?}, error: {:?}",
+                            depository_acc, err
+                        );
+                        <T as frame_system::Config>::DbWeight::get().reads(1)
+                    }
+                };
+
+                let treasury_acc = T::TreasuryTechAccount::get();
                 for (_, cdp) in CDPDepository::<T>::iter() {
                     technical::Pallet::<T>::transfer(
                         &cdp.collateral_asset_id,
