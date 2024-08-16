@@ -32,13 +32,14 @@ use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
     balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, TBCD,
+    mock_pallet_balances_config, mock_pallet_identity_config, mock_technical_config, DEXInfo,
+    GetMarketInfo, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
@@ -113,6 +114,7 @@ construct_runtime! {
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -121,6 +123,7 @@ mock_currencies_config!(Runtime);
 mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 
 parameter_types! {
     pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);

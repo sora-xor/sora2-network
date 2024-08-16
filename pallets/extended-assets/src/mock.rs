@@ -31,19 +31,19 @@
 use crate::{self as extended_assets};
 use common::mock::ExistentialDeposits;
 use common::{
-    mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType,
-    PredefinedAssetId, XOR, XST,
+    balance, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_pallet_identity_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId,
+    LiquiditySourceType, PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::MultiSignature;
 
@@ -66,6 +66,7 @@ mock_frame_system_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
+mock_pallet_identity_config!(TestRuntime);
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
@@ -123,6 +124,7 @@ construct_runtime! {
         ExtendedAssets: extended_assets::{Pallet, Storage, Event<T>, Call},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 

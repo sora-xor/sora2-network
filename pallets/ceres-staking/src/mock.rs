@@ -5,9 +5,9 @@ pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, CERES_ASSET_ID, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_technical_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXId, Description, CERES_ASSET_ID, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -15,6 +15,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -40,6 +41,7 @@ construct_runtime! {
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -64,6 +66,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_identity_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

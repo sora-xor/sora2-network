@@ -35,19 +35,27 @@
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::{DispatchError, DispatchResult, RawOrigin};
+use frame_support::traits::Currency;
 use frame_support::{ensure, Parameter};
+use pallet_identity::Data;
+use pallet_identity::IdentityInfo;
+use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
+use sp_std::boxed::Box;
+use sp_std::vec;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
-use sp_core::H256;
+use sp_core::{Get, H256};
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub mod migrations;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TechAccountIdOf<T> = <T as Config>::TechAccountId;
@@ -163,6 +171,10 @@ impl<T: Config> Pallet<T> {
         if let Err(_) = Self::lookup_tech_account_id(&account_id) {
             frame_system::Pallet::<T>::inc_providers(&account_id);
         }
+        let identity_info_opt = Self::gen_tech_account_identity_info(&tech_account_id);
+        if let Some(identity_info) = identity_info_opt {
+            Self::set_identity(account_id.clone(), identity_info)?;
+        }
         TechAccounts::<T>::insert(account_id, tech_account_id);
         Ok(())
     }
@@ -174,9 +186,83 @@ impl<T: Config> Pallet<T> {
         let account_id = Self::tech_account_id_to_account_id(tech_account_id)?;
         if let Err(_) = Self::lookup_tech_account_id(&account_id) {
             frame_system::Pallet::<T>::inc_providers(&account_id);
-            TechAccounts::<T>::insert(account_id, tech_account_id.clone());
+            let identity_info_opt = Self::gen_tech_account_identity_info(&tech_account_id);
+            if let Some(identity_info) = identity_info_opt {
+                Self::set_identity(account_id.clone(), identity_info)?;
+            }
+
+            TechAccounts::<T>::insert(account_id, tech_account_id);
         }
         Ok(())
+    }
+
+    /// Set `IdentityInfo` for a specific `AccountId` using identity pallet
+    pub fn set_identity(
+        account_id: T::AccountId,
+        identity_info: IdentityInfo<T::MaxAdditionalFields>,
+    ) -> DispatchResult {
+        type BalanceOf<T> = <<T as pallet_identity::Config>::Currency as Currency<
+            <T as frame_system::Config>::AccountId,
+        >>::Balance;
+        let extra_fields_count = <BalanceOf<T>>::from(identity_info.additional.len() as u32);
+        let basic_deposit = T::BasicDeposit::get();
+        let fields_deposit = T::FieldDeposit::get() * extra_fields_count;
+        T::Currency::make_free_balance_be(&account_id, basic_deposit + fields_deposit);
+        let origin = RawOrigin::Signed(account_id.clone());
+        let boxed_identity_info = Box::new(identity_info);
+        pallet_identity::Pallet::<T>::set_identity(origin.into(), boxed_identity_info).unwrap();
+        Ok(())
+    }
+
+    pub fn gen_tech_account_identity_info(
+        tech_account_id: &T::TechAccountId,
+    ) -> Option<IdentityInfo<T::MaxAdditionalFields>> {
+        use common::TechAccountId;
+
+        let common_tech_account_id: TechAccountId<T::AccountId, T::TechAssetId, T::DEXId> =
+            tech_account_id.clone().into();
+
+        let (display_name, additional_data) = match common_tech_account_id {
+            TechAccountId::Pure(dex_id, purpose) => (
+                b"Pure Tech Account".to_vec(),
+                vec![
+                    (b"Purpose".encode(), purpose.encode()),
+                    (b"DEX ID".encode(), dex_id.encode()),
+                ],
+            ),
+            TechAccountId::Generic(tag, data) => {
+                (tag.to_vec(), vec![(b"Data".encode(), data.encode())])
+            }
+            TechAccountId::Wrapped(account_id) => (
+                b"Wrapper Tech Account".to_vec(),
+                vec![(b"AccountId".encode(), account_id.encode())],
+            ),
+            TechAccountId::WrappedRepr(account_id) => (
+                b"WrapperRepr Tech Account".to_vec(),
+                vec![(b"AccountId".encode(), account_id.encode())],
+            ),
+            TechAccountId::None => return None,
+        };
+
+        let mut additional = vec![];
+        for (key, value) in additional_data {
+            additional.push((
+                Data::Raw(BoundedVec::truncate_from(key)),
+                Data::Raw(BoundedVec::truncate_from(value)),
+            ));
+        }
+
+        Some(IdentityInfo {
+            display: Data::Raw(BoundedVec::truncate_from(display_name)),
+            additional: BoundedVec::truncate_from(additional),
+            legal: Default::default(),
+            web: Default::default(),
+            riot: Default::default(),
+            email: Default::default(),
+            pgp_fingerprint: None,
+            image: Default::default(),
+            twitter: Default::default(),
+        })
     }
 
     /// Deregister `TechAccountId` in storage map.
@@ -262,7 +348,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config {
+    pub trait Config: frame_system::Config + common::Config + pallet_identity::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -410,6 +496,8 @@ pub mod pallet {
         AssociatedAccountIdNotFound,
         /// Operation with abstract checking is impossible.
         OperationWithAbstractCheckingIsImposible,
+        /// Raised when identity::set_identity fails
+        IdentityCouldNotBeSet,
     }
 
     /// Registered technical account identifiers. Map from repr `AccountId` into pure `TechAccountId`.

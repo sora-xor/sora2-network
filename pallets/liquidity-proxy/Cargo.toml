@@ -21,6 +21,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", default-features = false }
@@ -37,6 +38,7 @@ demeter-farming-platform = { path = "../demeter-farming-platform", default-featu
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 dex-api = { path = "../dex-api" }
 dex-manager = { path = "../dex-manager" }
 framenode-chain-spec = { path = "../../node/chain_spec", features = ["test", "private-net"] }

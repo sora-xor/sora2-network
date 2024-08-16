@@ -32,15 +32,16 @@ use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
-    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, DEXId, XST,
+    balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_identity_config,
+    mock_tokens_config, DEXId, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
-use frame_system;
+use frame_system::EnsureRoot;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -82,6 +83,7 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -105,6 +107,8 @@ impl permissions::Config for Runtime {
 parameter_types! {
     pub GetBuyBackAssetId: AssetId = XST.into();
 }
+
+mock_pallet_identity_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
