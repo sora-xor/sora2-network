@@ -31,7 +31,6 @@
 use crate::*;
 
 pub type Migrations = (
-    assets::migration::asset_infos_v2::AssetInfosUpdate<Runtime>,
     WipMigrations,
     kensetsu::migrations::v2_to_v3::UpgradeToV3<Runtime>,
 );
