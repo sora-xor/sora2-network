@@ -49,6 +49,7 @@ use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill, Percent};
+use sp_std::collections::btree_set::BTreeSet;
 
 pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
@@ -79,6 +80,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
@@ -152,7 +154,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -241,18 +243,12 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
-        if base_asset_id == &GoldenTicket.into() {
-            Some(Potato.into())
+    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, BTreeSet<AssetId>)> {
+        if base == &GoldenTicket.into() {
+            Some((Potato.into(), [BlackPepper.into()].into_iter().collect()))
         } else {
             None
         }
-    };
-}
-
-parameter_type_with_key! {
-    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
-        tpair.base_asset_id == GoldenTicket.into() && tpair.target_asset_id == BlackPepper.into()
     };
 }
 
@@ -270,15 +266,16 @@ impl Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
+    type GetMaxIssuanceRatio = GetMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
 

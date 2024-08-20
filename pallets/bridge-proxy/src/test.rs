@@ -163,7 +163,7 @@ fn mint_successfull() {
         let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
         let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
-            BASE_EVM_NETWORK_ID,
+            BASE_EVM_NETWORK_ID.into(),
             MessageId::basic(
                 BASE_EVM_NETWORK_ID.into(),
                 bridge_types::SubNetworkId::Mainnet.into(),
@@ -177,7 +177,7 @@ fn mint_successfull() {
                 amount: 1000u64.into(),
             })
             .encode(),
-            AdditionalEVMInboundData { source },
+            AdditionalEVMInboundData { source }.into(),
         );
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
@@ -216,7 +216,7 @@ fn mint_failed() {
         let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
         let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
         Dispatch::dispatch(
-            BASE_EVM_NETWORK_ID,
+            BASE_EVM_NETWORK_ID.into(),
             MessageId::basic(
                 BASE_EVM_NETWORK_ID.into(),
                 bridge_types::SubNetworkId::Mainnet.into(),
@@ -230,7 +230,7 @@ fn mint_failed() {
                 amount: 1000u64.into(),
             })
             .encode(),
-            AdditionalEVMInboundData { source },
+            AdditionalEVMInboundData { source }.into(),
         );
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
@@ -248,7 +248,7 @@ fn mint_not_enough_locked() {
         let source = FungibleApp::app_address(BASE_EVM_NETWORK_ID).unwrap();
         let token = FungibleApp::token_address(BASE_EVM_NETWORK_ID, XOR).unwrap();
         Dispatch::dispatch(
-            BASE_EVM_NETWORK_ID,
+            BASE_EVM_NETWORK_ID.into(),
             MessageId::basic(
                 BASE_EVM_NETWORK_ID.into(),
                 bridge_types::SubNetworkId::Mainnet.into(),
@@ -262,7 +262,7 @@ fn mint_not_enough_locked() {
                 amount: 1000u64.into(),
             })
             .encode(),
-            AdditionalEVMInboundData { source },
+            AdditionalEVMInboundData { source }.into(),
         );
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),

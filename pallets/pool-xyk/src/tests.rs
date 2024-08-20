@@ -38,6 +38,7 @@ use common::{
 };
 use frame_support::assert_ok;
 use frame_support::{assert_err, assert_noop};
+use sp_runtime::TokenError;
 
 use crate::mock::*;
 use crate::{PoolProviders, TotalIssuances};
@@ -2634,7 +2635,7 @@ fn withdraw_all_liquidity_chameleon() {
                         1,
                         1
                     ),
-                    pallet_balances::Error::<Runtime>::InsufficientBalance
+                    TokenError::FundsUnavailable
                 );
 
                 assert_noop!(
@@ -2647,7 +2648,7 @@ fn withdraw_all_liquidity_chameleon() {
                         1,
                         1
                     ),
-                    pallet_balances::Error::<Runtime>::InsufficientBalance
+                    TokenError::FundsUnavailable
                 );
 
                 assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(

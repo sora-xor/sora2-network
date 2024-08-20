@@ -404,8 +404,8 @@ pub fn new_partial(
             #[cfg(feature = "wip")]
             let rpc = crate::rpc::add_wip_rpc(rpc, client.clone())?;
 
-            #[cfg(feature = "ready-to-test")]
-            let rpc = crate::rpc::add_ready_for_test_rpc(rpc)?;
+            #[cfg(feature = "stage")]
+            let rpc = crate::rpc::add_stage_rpc(rpc)?;
 
             Ok(rpc)
         }

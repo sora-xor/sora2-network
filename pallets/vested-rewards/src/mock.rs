@@ -153,6 +153,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub const CrowdloanVestingPeriod: u64 = 14400;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
@@ -194,7 +195,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -221,17 +222,19 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = ();
     type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
+
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
@@ -389,7 +392,7 @@ impl ExtBuilder {
                 (alice(), 1),
                 (bob(), 1),
                 (eve(), 1),
-                (initial_assets_owner(), 1),
+                (initial_assets_owner(), 1400000000000000000),
             ],
         }
         .assimilate_storage(&mut t)

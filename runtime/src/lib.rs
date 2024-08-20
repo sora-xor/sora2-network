@@ -37,7 +37,9 @@
 extern crate alloc;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
-use bridge_types::{SubNetworkId, H256};
+#[cfg(feature = "wip")] // EVM bridge
+use bridge_types::types::GenericAdditionalInboundData;
+use bridge_types::{GenericNetworkId, SubNetworkId, H256};
 use sp_runtime::traits::Keccak256;
 
 mod bags_thresholds;
@@ -52,7 +54,6 @@ pub mod mock;
 
 #[cfg(test)]
 pub mod tests;
-
 pub mod weights;
 
 use crate::impls::PreimageWeightInfo;
@@ -60,7 +61,7 @@ use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 #[cfg(feature = "wip")] // Trustless bridges
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
-use bridge_types::{evm::AdditionalEVMInboundData, U256};
+use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId};
@@ -164,6 +165,8 @@ use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp,
 pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
+#[cfg(feature = "wip")]
+pub use soratopia;
 pub use {
     assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
     multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
@@ -266,10 +269,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 91,
+    spec_version: 92,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 91,
+    transaction_version: 92,
     state_version: 0,
 };
 
@@ -1007,13 +1010,10 @@ impl assets::Config for Runtime {
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
-    #[cfg(feature = "ready-to-test")] // DeFi-R
     type AssetRegulator = (
         permissions::Pallet<Runtime>,
         extended_assets::Pallet<Runtime>,
     );
-    #[cfg(not(feature = "ready-to-test"))] // DeFi-R
-    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 impl trading_pair::Config for Runtime {
@@ -1025,6 +1025,20 @@ impl trading_pair::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {}
+
+parameter_types! {
+    // Soratopia admin account
+    pub AdminAccount: AccountId = hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into();
+    pub const CheckInTransferAmount: Balance = balance!(1000);
+}
+
+#[cfg(feature = "wip")] // Soratopia
+impl soratopia::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AdminAccount = AdminAccount;
+    type CheckInTransferAmount = CheckInTransferAmount;
+    type WeightInfo = soratopia::weights::SubstrateWeight<Runtime>;
+}
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<PredefinedAssetId>;
@@ -1042,7 +1056,9 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
 }
 
 parameter_type_with_key! {
@@ -1055,19 +1071,25 @@ parameter_type_with_key! {
     };
 }
 
+#[cfg(not(feature = "wip"))] // Chameleon pools
 parameter_type_with_key! {
-    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
-        if base_asset_id == &common::XOR {
-            Some(common::KXOR)
+    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+        if *base == common::XOR {
+            Some((common::KXOR, [common::ETH].into_iter().collect()))
         } else {
             None
         }
     };
 }
 
+#[cfg(feature = "wip")] // Chameleon pools
 parameter_type_with_key! {
-    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
-        tpair.base_asset_id == common::XOR && tpair.target_asset_id == common::ETH
+    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+        if *base == common::XOR {
+            Some((common::KXOR, [common::ETH, common::PSWAP, common::VAL].into_iter().collect()))
+        } else {
+            None
+        }
     };
 }
 
@@ -1086,18 +1108,16 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
     type XSTMarketInfo = XSTPool;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    #[cfg(feature = "ready-to-test")] // DeFi-R
     type AssetRegulator = extended_assets::Pallet<Runtime>;
-    #[cfg(not(feature = "ready-to-test"))] // DeFi-R
-    type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = GetXykPoolAdjustPeriod;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1158,8 +1178,7 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
-    type GetChameleonPool = GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
@@ -1711,7 +1730,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -2189,7 +2208,7 @@ parameter_types! {
 impl dispatch::Config<dispatch::Instance1> for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OriginOutput =
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
@@ -2197,9 +2216,6 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type CallFilter = SubstrateBridgeCallFilter;
     type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
-
-#[cfg(feature = "wip")] // EVM bridge
-use bridge_types::EVMChainId;
 
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u32 = 256;
@@ -2222,15 +2238,14 @@ impl Convert<U256, Balance> for FeeConverter {
 
 parameter_types! {
     pub const FeeCurrency: AssetId = XOR;
-    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 #[cfg(feature = "wip")] // EVM bridge
 impl bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
-    type EVMMessageDispatch = Dispatch;
-    type SubstrateMessageDispatch = SubstrateDispatch;
+    type MessageDispatch = Dispatch;
     type WeightInfo = ();
     type ThisNetworkId = ThisNetworkId;
     type UnsignedPriority = DataSignerPriority;
@@ -2283,7 +2298,7 @@ impl evm_fungible_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
     type MessageStatusNotifier = BridgeProxy;
@@ -2293,6 +2308,20 @@ impl evm_fungible_app::Config for Runtime {
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = BaseFeeLifetime;
     type PriorityFee = EVMBridgePriorityFee;
+    type WeightInfo = ();
+}
+
+#[cfg(feature = "wip")] // TON bridge
+impl jetton_app::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type CallOrigin = dispatch::EnsureAccount<
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
+    >;
+    type MessageStatusNotifier = BridgeProxy;
+    type AssetRegistry = BridgeProxy;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type BridgeAssetLocker = BridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2376,7 +2405,7 @@ impl Verifier for MultiVerifier {
     type Proof = MultiProof;
 
     fn verify(
-        network_id: bridge_types::GenericNetworkId,
+        network_id: GenericNetworkId,
         message: H256,
         proof: &Self::Proof,
     ) -> frame_support::pallet_prelude::DispatchResult {
@@ -2492,7 +2521,6 @@ impl multisig_verifier::Config for Runtime {
     type ThisNetworkId = ThisNetworkId;
 }
 
-#[cfg(feature = "ready-to-test")] // DeFi-R
 impl extended_assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AssetInfoProvider = Assets;
@@ -2628,6 +2656,8 @@ construct_runtime! {
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
         EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
+        #[cfg(feature = "wip")] // TON bridge
+        JettonApp: jetton_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
 
         // Trustless substrate bridge
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -2663,11 +2693,13 @@ construct_runtime! {
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
-        #[cfg(feature = "ready-to-test")] // DeFi-R
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
+
+        #[cfg(feature = "wip")]
+        Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
         // Ink! contracts
         #[cfg(feature = "wip")] // Contracts pallet
-        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason} = 116
+        Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason} = 117
     }
 }
 
@@ -3467,7 +3499,7 @@ impl_runtime_apis! {
             BridgeProxy::list_apps()
         }
 
-        fn list_supported_assets(network_id: bridge_types::GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        fn list_supported_assets(network_id: GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
             BridgeProxy::list_supported_assets(network_id)
         }
     }
@@ -3529,6 +3561,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")] // TON bridge
+            list_benchmark!(list, extra, jetton_app, JettonApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
@@ -3541,8 +3575,10 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, substrate_bridge_app, SubstrateBridgeApp);
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
-            #[cfg(feature = "ready-to-test")] // DeFi-R
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
+
+            #[cfg(feature = "wip")] // Soratopia
+            list_benchmark!(list, extra, soratopia, Soratopia);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3627,6 +3663,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")] // TON bridge
+            add_benchmark!(params, batches, jetton_app, JettonApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
@@ -3639,8 +3677,10 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, substrate_bridge_app, SubstrateBridgeApp);
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
-            #[cfg(feature = "ready-to-test")] // DeFi-R
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
+
+            #[cfg(feature = "wip")] // Soratopia
+            add_benchmark!(params, batches, soratopia, Soratopia);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

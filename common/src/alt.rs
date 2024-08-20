@@ -34,9 +34,9 @@ use crate::fixed_wrapper::FixedWrapper;
 use crate::outcome_fee::OutcomeFee;
 use crate::swap_amount::SwapVariant;
 use crate::{Balance, Fixed, Price};
-use fixnum::ops::Bounded;
 use fixnum::ArithmeticError;
 use sp_runtime::traits::{Saturating, Zero};
+use sp_runtime::Permill;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::ops::Add;
 
@@ -479,11 +479,17 @@ impl<AssetId: Ord + Clone, AmountType> DiscreteQuotation<AssetId, AmountType> {
 
 impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
     pub fn verify(&self) -> bool {
-        let mut prev_price = Price::MAX;
+        let price_epsilon = Permill::from_rational(1u32, 1000); // 0.1%
+        let mut prev_price = Balance::MAX;
 
         for chunk in &self.chunks {
             // chunk should not contain zeros
             if chunk.input.is_zero() || chunk.output.is_zero() {
+                log::trace!(
+                    "DiscreteQuotation verify failed: chunk has zero, input = {}, output = {}",
+                    chunk.input,
+                    chunk.output
+                );
                 return false;
             }
 
@@ -511,6 +517,11 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
                 };
 
                 if chunk.input % input_precision != 0 || chunk.output % output_precision != 0 {
+                    log::trace!(
+                        "DiscreteQuotation verify failed: chunk doesn't meet the precision requirements, input = {}, input precision = {input_precision}, output = {}, output precision = {output_precision}",
+                        chunk.input,
+                        chunk.output
+                    );
                     return false;
                 }
             }
@@ -519,8 +530,15 @@ impl<AssetId: Ord + Clone> DiscreteQuotation<AssetId, Balance> {
                 return false;
             };
 
-            // chunks should go to reduce the price, from the best to the worst
-            if price > prev_price {
+            let Ok(price): Result<Balance, _> = price.into_bits().try_into() else {
+                return false;
+            };
+
+            // chunks should go to reduce the price, from the best to the worst (or don't exceed the epsilon)
+            if price > prev_price && price.abs_diff(prev_price) > price_epsilon * prev_price {
+                log::trace!(
+                    "DiscreteQuotation verify failed: price = {price}, prev_price = {prev_price}"
+                );
                 return false;
             }
             prev_price = price;
@@ -886,8 +904,6 @@ mod tests {
                 .unwrap(),
             (chunk5, Zero::zero())
         );
-
-        // todo
     }
 
     #[test]
@@ -1338,8 +1354,6 @@ mod tests {
         };
         assert!(!wrong.verify());
 
-        //todo
-
         let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::<u8, _>::new(balance!(1), balance!(10), Default::default()),
@@ -1398,5 +1412,32 @@ mod tests {
             limits: Default::default(),
         };
         assert!(correct.verify());
+    }
+
+    #[test]
+    fn check_discrete_quotation_verification_with_slippage() {
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4.003), Default::default()), // inside the scope of slippage
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(correct.verify());
+
+        let correct: DiscreteQuotation<_, Balance> = DiscreteQuotation {
+            chunks: VecDeque::from([
+                SwapChunk::<u8, _>::new(balance!(1), balance!(5), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(4.005), Default::default()), // outside the scope of slippage
+                SwapChunk::<u8, _>::new(balance!(1), balance!(2), Default::default()),
+                SwapChunk::<u8, _>::new(balance!(1), balance!(1), Default::default()),
+            ]),
+            limits: Default::default(),
+        };
+        assert!(!correct.verify());
     }
 }

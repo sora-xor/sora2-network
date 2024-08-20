@@ -112,6 +112,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into(), DOT.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
@@ -192,17 +193,19 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
+
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
@@ -220,7 +223,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 

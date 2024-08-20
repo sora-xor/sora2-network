@@ -30,6 +30,7 @@
 
 use crate::{self as permissions, Config, Scope, BURN, INIT_DEX, MINT, SLASH};
 use common::prelude::Balance;
+use common::{mock_frame_system_config, mock_pallet_balances_config};
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
@@ -67,25 +68,7 @@ impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
-}
+mock_pallet_balances_config!(Runtime);
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = frame_support::traits::Everything;
@@ -142,7 +125,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(ALICE, 0), (BOB, 0), (JOHN, 0)],
+            balances: vec![(ALICE, 1u128), (BOB, 1u128), (JOHN, 1u128)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

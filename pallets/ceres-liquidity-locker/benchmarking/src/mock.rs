@@ -7,7 +7,7 @@ use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
-    Fixed, PSWAP, TBCD, XST,
+    Fixed, PSWAP, TBCD, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -30,6 +30,7 @@ pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from(hex!(
@@ -59,6 +60,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
 }
 
 construct_runtime! {
@@ -80,6 +82,37 @@ construct_runtime! {
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
+
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
+impl assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type ExtraAccountId = [u8; 32];
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
+    type GetTotalBalance = ();
+    type WeightInfo = ();
+    type AssetRegulator = ();
+}
+
+mock_pallet_balances_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -128,15 +161,16 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
 
@@ -157,7 +191,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -211,7 +245,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), 0)],
+            balances: vec![(alice(), 1)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

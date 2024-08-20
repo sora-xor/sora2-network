@@ -341,6 +341,35 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Marks an asset as regulated, representing that the asset will only operate between KYC-verified wallets.
+        ///
+        /// ## Parameters
+        ///
+        /// - `origin`: The origin of the transaction.
+        /// - `asset_id`: The identifier of the asset.
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::regulate_asset())]
+        pub fn regulate_asset(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            <T as Config>::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                <T as Config>::AssetInfoProvider::is_asset_owner(&asset_id, &who),
+                <Error<T>>::OnlyAssetOwnerCanRegulate
+            );
+            ensure!(
+                !Self::is_asset_regulated(&asset_id),
+                <Error<T>>::AssetAlreadyRegulated
+            );
+            ensure!(
+                Self::soulbound_asset(asset_id).is_none(),
+                <Error<T>>::NotAllowedToRegulateSoulboundAsset
+            );
+
+            T::AssetManager::update_asset_type(&asset_id, &AssetType::Regulated)?;
+            Self::deposit_event(Event::AssetRegulated { asset_id });
+            Ok(())
+        }
     }
 
     #[pallet::event]
@@ -367,6 +396,8 @@ pub mod pallet {
             regulated_asset_id: AssetIdOf<T>,
             sbt_asset_id: AssetIdOf<T>,
         },
+        /// Emits When an asset is regulated
+        AssetRegulated { asset_id: AssetIdOf<T> },
     }
 
     #[pallet::error]
@@ -391,6 +422,10 @@ pub mod pallet {
         InvalidExternalUrl,
         /// Regulated Assets per SBT exceeded
         RegulatedAssetsPerSBTExceeded,
+        /// Only asset owner can regulate
+        OnlyAssetOwnerCanRegulate,
+        /// Asset is already regulated
+        AssetAlreadyRegulated,
     }
 
     /// Mapping from SBT (asset_id) to its metadata

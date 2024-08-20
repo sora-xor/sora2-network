@@ -1219,6 +1219,8 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     RuntimeGenesisConfig {
+        #[cfg(feature = "wip")] // TON bridge
+        jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -1713,7 +1715,7 @@ fn testnet_genesis(
         feature = "test",
         feature = "runtime-benchmarks",
         feature = "wip",
-        feature = "ready-to-test"
+        feature = "stage"
     ),
     not(feature = "private-net")
 ))]
@@ -1808,7 +1810,7 @@ pub fn main_net_coded() -> ChainSpec {
         feature = "test",
         feature = "runtime-benchmarks",
         feature = "wip",
-        feature = "ready-to-test"
+        feature = "stage"
     ),
     not(feature = "private-net")
 ))]
@@ -2224,6 +2226,8 @@ fn mainnet_genesis(
         )
     }));
     RuntimeGenesisConfig {
+        #[cfg(feature = "wip")] // TON bridge
+        jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -2375,20 +2379,20 @@ fn mainnet_genesis(
         },
         balances: BalancesConfig {
             balances: vec![
-                (eth_bridge_account_id.clone(), 0),
-                (trustless_eth_bridge_account_id.clone(), 0),
-                (trustless_eth_bridge_fees_account_id.clone(), 0),
-                (assets_and_permissions_account_id.clone(), 0),
-                (xor_fee_account_id.clone(), 0),
-                (dex_root_account_id.clone(), 0),
-                (iroha_migration_account_id.clone(), 0),
-                (pswap_distribution_account_id.clone(), 0),
-                (mbc_reserves_account_id.clone(), 0),
-                (mbc_pool_rewards_account_id.clone(), 0),
-                (mbc_pool_free_reserves_account_id.clone(), 0),
-                (market_maker_rewards_account_id.clone(), 0),
-                (xst_pool_permissioned_account_id.clone(), 0),
-                (kensetsu_treasury_account_id.clone(), 0),
+                (eth_bridge_account_id.clone(), 1),
+                (trustless_eth_bridge_account_id.clone(), 1),
+                (trustless_eth_bridge_fees_account_id.clone(), 1),
+                (assets_and_permissions_account_id.clone(), 1),
+                (xor_fee_account_id.clone(), 1),
+                (dex_root_account_id.clone(), 1),
+                (iroha_migration_account_id.clone(), 1),
+                (pswap_distribution_account_id.clone(), 1),
+                (mbc_reserves_account_id.clone(), 1),
+                (mbc_pool_rewards_account_id.clone(), 1),
+                (mbc_pool_free_reserves_account_id.clone(), 1),
+                (market_maker_rewards_account_id.clone(), 1),
+                (xst_pool_permissioned_account_id.clone(), 1),
+                (kensetsu_treasury_account_id.clone(), 1),
             ]
             .into_iter()
             .chain(

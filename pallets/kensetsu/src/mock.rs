@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as kensetsu;
+use crate::test_utils::alice_account_id;
 use std::collections::BTreeSet;
 
 use common::mock::ExistentialDeposits;
@@ -274,7 +275,7 @@ frame_support::construct_runtime!(
     pub enum TestRuntime {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -373,6 +374,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_tech_account_id,
             ),
         ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    BalancesConfig {
+        balances: vec![(assets_and_permissions_account_id.clone(), balance!(1))],
     }
     .assimilate_storage(&mut storage)
     .unwrap();

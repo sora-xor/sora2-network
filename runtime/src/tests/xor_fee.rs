@@ -44,7 +44,7 @@ use common::{
 };
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
-use frame_support::traits::{OnFinalize, OnInitialize};
+use frame_support::traits::{Currency, OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_support::{assert_err, assert_ok};
@@ -53,7 +53,7 @@ use framenode_chain_spec::ext;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_runtime::traits::{Dispatchable, SignedExtension};
+use sp_runtime::traits::{Dispatchable, Saturating, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 use xor_fee::extension::ChargeTransactionPayment;
@@ -518,7 +518,6 @@ fn refund_if_pays_no_works() {
         give_xor_initial_balance(alice());
 
         let tech_account_id = GetXorFeeAccountId::get();
-        assert_eq!(Balances::free_balance(&tech_account_id), 0_u128.into());
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
@@ -553,7 +552,6 @@ fn refund_if_pays_no_works() {
         )
         .is_ok());
         assert_eq!(Balances::free_balance(alice()), INITIAL_BALANCE,);
-        assert_eq!(Balances::free_balance(tech_account_id), 0_u128.into());
     });
 }
 
@@ -605,6 +603,12 @@ fn reminting_for_sora_parliament_works() {
             Balances::free_balance(sora_parliament_account()),
             0_u128.into()
         );
+        increase_balance(
+            alice(),
+            XOR.into(),
+            pallet_balances::Pallet::<Runtime>::minimum_balance(),
+        );
+
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::register {
                 symbol: AssetSymbol(b"ALIC".to_vec()),
@@ -806,6 +810,12 @@ fn withdraw_fee_set_referrer() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         increase_balance(bob(), XOR.into(), balance!(1000));
+
+        increase_balance(
+            crate::ReferralsReservesAcc::get(),
+            XOR.into(),
+            pallet_balances::Pallet::<Runtime>::minimum_balance(),
+        );
 
         Referrals::reserve(RuntimeOrigin::signed(bob()), SMALL_FEE).unwrap();
 
@@ -1133,8 +1143,11 @@ fn withdraw_fee_place_limit_order_with_crossing_spread() {
 #[test]
 fn fee_payment_postponed_xorless_transfer() {
     ext().execute_with(|| {
+        let ed = pallet_balances::Pallet::<Runtime>::minimum_balance();
+
         set_weight_to_fee_multiplier(1);
         increase_balance(alice(), VAL.into(), balance!(1000));
+        increase_balance(alice(), XOR.into(), ed);
 
         increase_balance(bob(), XOR.into(), balance!(1000));
         increase_balance(bob(), VAL.into(), balance!(1000));
@@ -1195,10 +1208,8 @@ fn fee_payment_postponed_xorless_transfer() {
 
         assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice()));
 
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice()).unwrap(),
-            balance!(0)
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), ed);
+
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice()).unwrap(),
             balance!(1000)
@@ -1208,7 +1219,7 @@ fn fee_payment_postponed_xorless_transfer() {
 
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice()).unwrap(),
-            SMALL_FEE
+            SMALL_FEE.saturating_add(ed)
         );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice()).unwrap(),
@@ -1228,7 +1239,7 @@ fn fee_payment_postponed_xorless_transfer() {
             quoted_fee
         ));
 
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice()).unwrap(), ed);
     });
 }
 

@@ -56,7 +56,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent, Permill};
+use sp_runtime::{AccountId32, BuildStorage, DispatchError, DispatchResult, Percent, Permill};
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -102,18 +102,15 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -123,7 +120,7 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
@@ -160,8 +157,7 @@ impl liquidity_proxy::Config for Runtime {
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
     type MaxAdditionalDataLengthSwapTransferBatch = ConstU32<2000>;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
     type WeightInfo = ();
@@ -258,17 +254,19 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
+
 impl vested_rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
     type RuntimeEvent = RuntimeEvent;
@@ -465,7 +463,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -603,8 +601,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         let accounts = bonding_curve_distribution_accounts();
@@ -623,7 +621,7 @@ impl ExtBuilder {
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
-                (alice(), 0),
+                (alice(), 1),
                 (
                     if let DistributionAccount::TechAccount(account_id) =
                         &accounts.val_holders.account
@@ -632,11 +630,11 @@ impl ExtBuilder {
                     } else {
                         panic!("not a tech account")
                     },
-                    0,
+                    1,
                 ),
-                (GetMbcReservesAccountId::get(), 0),
-                (GetMbcRewardsAccountId::get(), 0),
-                (GetLiquidityProxyAccountId::get(), 0),
+                (GetMbcReservesAccountId::get(), 1),
+                (GetMbcRewardsAccountId::get(), 1),
+                (GetLiquidityProxyAccountId::get(), 1),
             ],
         }
         .assimilate_storage(&mut t)
@@ -667,12 +665,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-            &dex_api::GenesisConfig {
-                source_types: self.source_types,
-            },
-            &mut t,
-        )
+        dex_api::GenesisConfig::<Runtime> {
+            source_types: self.source_types,
+            phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         trading_pair::GenesisConfig::<Runtime> {

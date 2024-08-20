@@ -126,6 +126,7 @@ parameter_types! {
     pub const TransactionByteFee: u128 = 1;
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
@@ -173,7 +174,7 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type PoolXykPallet = PoolXYK;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -210,17 +211,19 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = ();
     type EnabledSourcesManager = ();
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
+
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
     type OnTimestampSet = ();
@@ -361,16 +364,16 @@ impl ExtBuilder {
         let mut vec = self
             .endowed_accounts
             .iter()
-            .map(|(acc, ..)| (acc.clone(), 0))
+            .map(|(acc, ..)| (acc.clone(), 1))
             .chain(vec![
-                (alice(), 0),
-                (fees_account_a(), 0),
-                (fees_account_b(), 0),
-                (liquidity_provider_a(), 0),
-                (liquidity_provider_b(), 0),
-                (liquidity_provider_c(), 0),
-                (GetPswapDistributionAccountId::get(), 0),
-                (GetParliamentAccountId::get(), 0),
+                (alice(), 1),
+                (fees_account_a(), 1),
+                (fees_account_b(), 1),
+                (liquidity_provider_a(), 1),
+                (liquidity_provider_b(), 1),
+                (liquidity_provider_c(), 1),
+                (GetPswapDistributionAccountId::get(), 1),
+                (GetParliamentAccountId::get(), 1),
             ])
             .collect::<Vec<_>>();
 

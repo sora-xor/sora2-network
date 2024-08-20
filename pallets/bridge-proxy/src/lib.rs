@@ -242,7 +242,10 @@ pub mod pallet {
                 GenericAccount::Parachain(recipient) => {
                     T::ParachainApp::transfer(network_id, asset_id, sender, recipient, amount)?;
                 }
-                GenericAccount::Sora(_) | GenericAccount::Unknown | GenericAccount::Root => {
+                GenericAccount::Sora(_)
+                | GenericAccount::Unknown
+                | GenericAccount::Root
+                | GenericAccount::TON(_) => {
                     frame_support::fail!(Error::<T>::WrongAccountKind);
                 }
                 GenericAccount::Liberland(recipient) => {

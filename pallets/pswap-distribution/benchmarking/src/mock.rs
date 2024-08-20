@@ -46,7 +46,7 @@ use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{AccountId32, Perbill, Percent};
+use sp_runtime::{AccountId32, BuildStorage, Perbill, Percent};
 use sp_std::vec;
 
 use crate::Config;
@@ -115,18 +115,15 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -170,7 +167,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -215,17 +212,19 @@ impl pool_xyk::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
+
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
     type OnTimestampSet = ();
@@ -338,18 +337,18 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let mut vec = self
             .endowed_accounts
             .iter()
-            .map(|(acc, ..)| (acc.clone(), 0))
+            .map(|(acc, ..)| (acc.clone(), 1))
             .chain(vec![
-                (alice(), 0),
-                (fees_account_a(), 0),
-                (fees_account_b(), 0),
-                (GetPswapDistributionAccountId::get(), 0),
-                (GetParliamentAccountId::get(), 0),
+                (alice(), 1),
+                (fees_account_a(), 1),
+                (fees_account_b(), 1),
+                (GetPswapDistributionAccountId::get(), 1),
+                (GetParliamentAccountId::get(), 1),
             ])
             .collect::<Vec<_>>();
 

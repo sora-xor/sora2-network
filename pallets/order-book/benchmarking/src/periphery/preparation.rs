@@ -71,7 +71,6 @@ use order_book_imported::Pallet as OrderBookPallet;
 /// Returns:
 /// - iterators in the same way as `fill_order_book_worst_case`
 /// - price variant of the order
-/// - expected count of executed orders
 fn prepare_order_execute_worst_case<T: Config>(
     data: &mut impl DataLayer<T>,
     order_book: &mut OrderBook<T>,

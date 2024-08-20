@@ -30,6 +30,7 @@
 
 use core::marker::PhantomData;
 
+use bridge_types::ton::TonBalance;
 use bridge_types::{GenericAccount, GenericAssetId, GenericBalance};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
@@ -326,6 +327,17 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 post_info: Default::default(),
                 error: DispatchError::Other("Unavailable"),
             }),
+            #[cfg(feature = "wip")] // TON bridge
+            bridge_types::substrate::BridgeCall::JettonApp(msg) => {
+                let call: jetton_app::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            #[cfg(not(feature = "wip"))] // TON bridge
+            bridge_types::substrate::BridgeCall::JettonApp(_) => Err(DispatchErrorWithPostInfo {
+                post_info: Default::default(),
+                error: DispatchError::Other("Unavailable"),
+            }),
         }
     }
 }
@@ -361,6 +373,13 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
             }
             #[cfg(not(feature = "wip"))] // EVM bridge
             bridge_types::substrate::BridgeCall::FAApp(_) => Default::default(),
+            #[cfg(feature = "wip")] // TON bridge
+            bridge_types::substrate::BridgeCall::JettonApp(msg) => {
+                let call: jetton_app::Call<crate::Runtime> = msg.clone().into();
+                call.get_dispatch_info()
+            }
+            #[cfg(not(feature = "wip"))] // TON bridge
+            bridge_types::substrate::BridgeCall::JettonApp(_) => Default::default(),
         }
     }
 }
@@ -456,6 +475,30 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
     }
 }
 
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, TonBalance>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: TonBalance,
+    ) -> Option<(crate::Balance, TonBalance)> {
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
+        Self::convert_precision(sidechain_precision, thischain_precision, amount.balance())
+            .map(|(a, b)| (b, TonBalance::new(a)))
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<(crate::Balance, TonBalance)> {
+        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount)
+            .map(|(a, b)| (a, TonBalance::new(b)))
+    }
+}
+
 pub struct GenericBalancePrecisionConverter;
 impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, GenericBalance>
     for GenericBalancePrecisionConverter
@@ -473,6 +516,12 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
                 val,
             )
             .map(|(a, b)| (b, GenericBalance::Substrate(a))),
+            GenericBalance::TON(val) => BalancePrecisionConverter::convert_precision(
+                sidechain_precision,
+                thischain_precision,
+                val.balance(),
+            )
+            .map(|(a, b)| (b, GenericBalance::TON(TonBalance::new(a)))),
             GenericBalance::EVM(_) => None,
         }
     }
@@ -506,6 +555,10 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::FAApp(_) => true,
             #[cfg(not(feature = "wip"))] // EVM bridge
             bridge_types::substrate::BridgeCall::FAApp(_) => false,
+            #[cfg(feature = "wip")] // TON bridge
+            bridge_types::substrate::BridgeCall::JettonApp(_) => true,
+            #[cfg(not(feature = "wip"))] // TON bridge
+            bridge_types::substrate::BridgeCall::JettonApp(_) => false,
         }
     }
 }
@@ -567,13 +620,13 @@ mod test {
             assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, Weight::from_parts(248_828_000, 0), "u32::MIN");
-        t(1, Weight::from_parts(248_829_705, 0), "1");
-        t(500_000, Weight::from_parts(1_101_328_000, 0), "500_000");
-        t(1_000_000, Weight::from_parts(1_953_828_000, 0), "1_000_000");
+        t(u32::MIN, Weight::from_parts(248_381_775, 0), "u32::MIN");
+        t(1, Weight::from_parts(248_383_445, 0), "1");
+        t(500_000, Weight::from_parts(1_083_381_775, 0), "500_000");
+        t(1_000_000, Weight::from_parts(1_918_381_775, 0), "1_000_000");
         t(
             5 * MEBIBYTE,
-            Weight::from_parts(9_187_938_400, 0),
+            Weight::from_parts(9_003_991_375, 0),
             "5 * MEBIBYTE",
         );
     }
@@ -582,7 +635,7 @@ mod test {
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
             let actual = PreimageWeightInfo::note_preimage(bytes);
-            assert_eq!(actual.ref_time(), 1_459_900_160_001_u64);
+            assert_eq!(actual.ref_time(), 1_459_875_586_001u64);
             assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
         }
 

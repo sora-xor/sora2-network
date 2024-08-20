@@ -17,16 +17,16 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 ] }
 log = { version = "0.4.20" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 hex-literal = { version = "0.4.1", optional = true }
-pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-sp-arithmetic = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-arithmetic = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 
 common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
@@ -43,9 +43,9 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 env_logger = "0.10.0"
 hex-literal = { version = "0.4.1" }
-pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
-pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits" }
+pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
 log = "0.4.14"
 
