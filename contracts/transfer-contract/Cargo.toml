@@ -1,5 +1,5 @@
 [package]
-name = "transfer_contract"
+name = "transfer-contract"
 authors = ["Soramitsu"]
 license = "BSD-4-Clause"
 homepage = "https://sora.org"
@@ -16,6 +16,9 @@ contract-extrinsics = { path = "../../contract-extrinsics", default-features = f
 sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
 sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 
+[dev-dependencies]
+ink_e2e = { version = "5.0.0" }
+
 [features]
 default = ["std"]
 std = [
@@ -24,6 +27,7 @@ std = [
     "sp-io/std",
     "contract-extrinsics/std"
 ]
+e2e-tests = []
 
 [lib]
 path = "lib.rs"

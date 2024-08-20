@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{AssetId, OrderBook, Runtime, TradingPair, Weight};
+use crate::{AssetId, Assets, OrderBook, Runtime, RuntimeOrigin, TradingPair, Weight};
 use assets::AssetIdOf;
 use common::mock::{alice, bob, charlie};
 use common::{
@@ -90,7 +90,7 @@ impl ExtBuilder {
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    0,
+                    balance!(10000000000000000000),
                     true,
                     None,
                     None,
@@ -122,7 +122,7 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XST".to_vec()),
                     AssetName(b"XST".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    0,
                     balance!(10000000000000000000),
                     true,
                     None,
@@ -144,7 +144,23 @@ impl ExtBuilder {
     }
 }
 
-pub fn create_order_book() -> OrderBookId<AssetIdOf<Runtime>, u32> {
+pub fn create_order_book(caller: AccountId32) -> OrderBookId<AssetIdOf<Runtime>, u32> {
+    Assets::transfer(
+        RuntimeOrigin::signed(alice()),
+        XST,
+        caller.clone(),
+        balance!(1000000000000000000),
+    )
+    .expect("Error while transfer XST to contract");
+
+    Assets::transfer(
+        RuntimeOrigin::signed(alice()),
+        XOR,
+        caller.clone(),
+        balance!(1000000000000000000),
+    )
+    .expect("Error while transfer XST to contract");
+
     let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, u32> {
         dex_id: DEXId::Polkaswap.into(),
         base: XST,
@@ -163,20 +179,20 @@ pub fn create_order_book() -> OrderBookId<AssetIdOf<Runtime>, u32> {
     .expect("Error while create order book");
 
     OrderBook::place_limit_order(
-        RawOrigin::Signed(alice()).into(),
+        RawOrigin::Signed(caller.clone()).into(),
         order_book_id1,
-        balance!(10),
-        balance!(168),
+        balance!(1),
+        balance!(16),
         PriceVariant::Sell,
         Some(<Runtime as order_book::Config>::MIN_ORDER_LIFESPAN + 1000000),
     )
     .expect("Error while place new limit order");
 
     OrderBook::place_limit_order(
-        RawOrigin::Signed(alice()).into(),
+        RawOrigin::Signed(caller).into(),
         order_book_id1,
-        balance!(11),
-        balance!(167),
+        balance!(1),
+        balance!(10),
         PriceVariant::Sell,
         Some(<Runtime as order_book::Config>::MIN_ORDER_LIFESPAN + 1000000),
     )
@@ -185,10 +201,12 @@ pub fn create_order_book() -> OrderBookId<AssetIdOf<Runtime>, u32> {
     order_book_id1
 }
 
+pub fn place_limit_orders(caller: AccountId32) {}
+
 pub fn instantiate_contract(code: Vec<u8>) -> AccountId32 {
     crate::Contracts::bare_instantiate(
         alice(),
-        0,
+        balance!(10),
         GAS_LIMIT,
         None,
         pallet_contracts_primitives::Code::Upload(code),

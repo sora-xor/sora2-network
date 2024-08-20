@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::contracts::mock::{ExtBuilder, GAS_LIMIT};
-use crate::contracts::tests::compile_module;
+use crate::tests::contracts::mock::{instantiate_contract, ExtBuilder, GAS_LIMIT};
+use crate::tests::contracts::tests::compile_module;
 use crate::{assets::WeightInfo, Contracts, Runtime, RuntimeCall};
 use codec::{Decode, Encode};
 use common::mock::{alice, bob};
@@ -43,25 +43,12 @@ use sp_core::crypto::AccountId32;
 fn call_transfer_right() {
     let (code, _hash) = compile_module::<Runtime>("call_runtime_contract").unwrap();
     ExtBuilder::default().build().execute_with(|| {
-        let contract_addr: AccountId32 = Contracts::bare_instantiate(
-            alice(),
-            0,
-            GAS_LIMIT,
-            None,
-            Code::Upload(code),
-            vec![],
-            vec![0],
-            DebugInfo::Skip,
-            CollectEvents::Skip,
-        )
-        .result
-        .expect("Error while instantiate contract")
-        .account_id;
+        let contract_addr: AccountId32 = instantiate_contract(code);
 
         let call = RuntimeCall::Assets(assets::Call::transfer {
             asset_id: XOR,
             to: bob(),
-            amount: balance!(1000000000),
+            amount: balance!(1),
         });
 
         let result = Contracts::bare_call(
@@ -85,8 +72,7 @@ fn call_transfer_right() {
             ..
         } = result;
 
-        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 0);
 
         let weight: Weight = <() as WeightInfo>::transfer();
 

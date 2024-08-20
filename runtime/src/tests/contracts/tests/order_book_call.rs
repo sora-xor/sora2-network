@@ -28,16 +28,21 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::contracts::mock::{create_order_book, instantiate_contract, ExtBuilder, GAS_LIMIT};
-use crate::contracts::tests::compile_module;
+use crate::tests::contracts::mock::{
+    create_order_book, instantiate_contract, ExtBuilder, GAS_LIMIT,
+};
+use crate::tests::contracts::tests::compile_module;
+use crate::{Assets, RuntimeOrigin, TradingPair};
 use crate::{Contracts, OrderBook, Runtime, RuntimeCall};
+use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::mock::{alice, bob};
-use common::{balance, LiquiditySource, PriceVariant};
+use common::{balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_support::{assert_ok, weights::Weight};
-use order_book::WeightInfo;
+use frame_system::RawOrigin;
+use order_book::{OrderBookId, WeightInfo};
 use pallet_contracts::{CollectEvents, DebugInfo, Determinism};
-use pallet_contracts_primitives::{Code, ContractResult};
+use pallet_contracts_primitives::ContractResult;
 use sp_core::crypto::AccountId32;
 
 #[test]
@@ -46,7 +51,22 @@ fn call_place_limit_order_right() {
     ExtBuilder::default().build().execute_with(|| {
         let contract_addr: AccountId32 = instantiate_contract(code);
 
-        let order_book_id1 = create_order_book();
+        let order_book_id1 = OrderBookId::<AssetIdOf<Runtime>, u32> {
+            dex_id: DEXId::Polkaswap.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        TradingPair::register_pair(DEXId::Polkaswap.into(), XOR, VAL)
+            .expect("Error while register pair");
+        OrderBook::create_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id1,
+            balance!(0.00001),
+            balance!(0.00001),
+            balance!(1),
+            balance!(1000),
+        )
+        .expect("Error while create order book");
 
         let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
             order_book_id: order_book_id1,
@@ -77,27 +97,43 @@ fn call_place_limit_order_right() {
             ..
         } = result;
 
-        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
         assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
 
         let weight: Weight = OrderBook::exchange_weight();
 
         assert!(weight.ref_time() < gas_consumed.ref_time());
         assert!(weight.proof_size() < gas_consumed.proof_size());
-        assert_ok!(
-            Contracts::bare_call(
-                alice(),
-                contract_addr.clone(),
-                0,
-                gas_required,
-                None,
-                call.encode(),
-                DebugInfo::Skip,
-                CollectEvents::Skip,
-                Determinism::Enforced,
-            )
-            .result
-        );
+
+        Assets::transfer(
+            RuntimeOrigin::signed(alice()),
+            VAL,
+            contract_addr.clone(),
+            balance!(10000),
+        )
+        .expect("Error while transfer XST to contract");
+
+        Assets::transfer(
+            RuntimeOrigin::signed(alice()),
+            XOR,
+            contract_addr.clone(),
+            balance!(20000),
+        )
+        .expect("Error while transfer XST to contract");
+
+        let result = Contracts::bare_call(
+            alice(),
+            contract_addr.clone(),
+            0,
+            gas_required,
+            None,
+            call.encode(),
+            DebugInfo::Skip,
+            CollectEvents::Skip,
+            Determinism::Enforced,
+        )
+        .result;
+
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 0);
     });
 }
 
@@ -107,7 +143,7 @@ fn call_cancel_limit_order_right() {
     ExtBuilder::default().build().execute_with(|| {
         let contract_addr: AccountId32 = instantiate_contract(code);
 
-        let order_book_id1 = create_order_book();
+        let order_book_id1 = create_order_book(contract_addr.clone());
 
         let call = RuntimeCall::OrderBook(order_book::Call::cancel_limit_order {
             order_book_id: order_book_id1,
@@ -135,8 +171,7 @@ fn call_cancel_limit_order_right() {
             ..
         } = result;
 
-        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 0);
 
         let weight: Weight =
             order_book::weights::SubstrateWeight::<Runtime>::cancel_limit_order_first_expiration()
@@ -170,7 +205,8 @@ fn call_cancel_limit_order_batch_right() {
     ExtBuilder::default().build().execute_with(|| {
         let contract_addr: AccountId32 = instantiate_contract(code);
 
-        let order_book_id1 = create_order_book();
+        let order_book_id1 = create_order_book(contract_addr.clone());
+
         let limit_orders_to_cancel = vec![(order_book_id1, vec![1_u128, 2_u128])];
         let call = RuntimeCall::OrderBook(order_book::Call::cancel_limit_orders_batch {
             limit_orders_to_cancel: limit_orders_to_cancel.clone(),
@@ -197,8 +233,7 @@ fn call_cancel_limit_order_batch_right() {
             ..
         } = result;
 
-        // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 0);
         let limit_orders_count: u64 = limit_orders_to_cancel
             .iter()
             .fold(0, |count, (_, order_ids)| {
@@ -236,12 +271,13 @@ fn call_execute_market_order_right() {
     ExtBuilder::default().build().execute_with(|| {
         let contract_addr: AccountId32 = instantiate_contract(code);
 
-        let order_book_id1 = create_order_book();
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+        let order_book_id1 = create_order_book(contract_addr.clone());
 
         let call = RuntimeCall::OrderBook(order_book::Call::execute_market_order {
             order_book_id: order_book_id1,
             direction: PriceVariant::Buy,
-            amount: 20,
+            amount: balance!(1),
         });
 
         let result = Contracts::bare_call(
@@ -266,7 +302,7 @@ fn call_execute_market_order_right() {
         } = result;
 
         // TODO: Should be equal 0, but now equal 10, means that extrinsic return Error
-        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 10);
+        assert_eq!(u32::decode(&mut result.unwrap().data.as_ref()).unwrap(), 0);
         let weight: Weight =
             order_book::weights::SubstrateWeight::<Runtime>::execute_market_order();
 

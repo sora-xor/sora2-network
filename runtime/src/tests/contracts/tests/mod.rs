@@ -28,46 +28,19 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+use sp_runtime::traits::Hash;
 
-#[ink::contract]
-mod asset_contract {
-    use contract_extrinsics::{RuntimeCall, assets::AssetsCall, primitives::AssetId32};
-    use sp_runtime::AccountId32;
+mod order_book_call;
+mod transfer_call;
 
-    #[ink(storage)]
-    #[derive(Default)]
-    pub struct AssetContract;
-
-    #[ink::scale_derive(Encode, Decode, TypeInfo)]
-    #[derive(Debug, PartialEq, Eq)]
-    pub enum RuntimeError {
-        CallRuntimeFailed,
-    }
-
-    impl AssetContract {
-        #[ink(constructor)]
-        pub fn new() -> Self {
-            Default::default()
-        }
-
-        #[ink(message)]
-        pub fn transfer(
-            &self,
-            asset_id: AssetId32,
-            to: AccountId32,
-            amount: Balance,
-        ) -> Result<(), RuntimeError> {
-            self.env()
-                .call_runtime(&RuntimeCall::Assets(AssetsCall::Transfer {
-                    asset_id,
-                    to,
-                    amount,
-                }))
-                .map_err(|_| RuntimeError::CallRuntimeFailed)
-        }
-    }
+/// Load a given wasm module represented by a .wat file and returns a wasm binary contents along
+/// with it's hash.
+pub fn compile_module<T>(wat_name: &str) -> wat::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+where
+    T: frame_system::Config,
+{
+    let wat_path = ["src/tests/contracts/wat/", wat_name, ".wat"].concat();
+    let wasm_binary = wat::parse_file(wat_path)?;
+    let code_hash = T::Hashing::hash(&wasm_binary);
+    Ok((wasm_binary, code_hash))
 }
-
-#[cfg(test)]
-mod tests {}
