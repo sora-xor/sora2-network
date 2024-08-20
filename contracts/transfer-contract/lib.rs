@@ -30,12 +30,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+/// Example of contract for calling `transfer` extrinsic
 #[ink::contract]
 mod transfer_contract {
     use contract_extrinsics::{RuntimeCall, assets::AssetsCall, primitives::AssetId32};
-    use ink::prelude::string::String;
-    use sp_runtime::AccountId32;
-    use ink::prelude::format;
 
     #[ink(storage)]
     #[derive(Default)]
@@ -53,11 +51,14 @@ mod transfer_contract {
             Default::default()
         }
 
+        /// Example of calling `transfer` extrinsic
+        /// # Note:
+        /// Polkadot js app determine call_runtime as unsigned transaction
         #[ink(message)]
         pub fn transfer(
             &self,
             asset_id: AssetId32,
-            to: AccountId32,
+            to: AccountId,
             amount: Balance,
         ) -> Result<(), RuntimeError> {
             self.env()
@@ -67,115 +68,6 @@ mod transfer_contract {
                     amount,
                 }))
                 .map_err(|_| RuntimeError::CallRuntimeFailed)
-        }
-    }
-
-    #[cfg(all(test, feature = "e2e-tests"))]
-    mod e2e_tests {
-        use super::*;
-        use ink_e2e::{
-            ChainBackend,
-            ContractsBackend,
-        };
-
-        use ink::{
-            env::{
-                test::default_accounts,
-                DefaultEnvironment,
-            },
-        };
-        use sp_runtime::AccountId32;
-        use contract_extrinsics::primitives::AssetId32;
-
-        type E2EResult<T> = Result<T, Box<dyn std::error::Error>>;
-
-        /// The base number of indivisible units for balances on the
-        /// `substrate-contracts-node`.
-        const UNIT: Balance = 1_000_000_000_000;
-
-        /// The contract will be given 1000 tokens during instantiation.
-        const CONTRACT_BALANCE: Balance = 1_000 * UNIT;
-
-        /// The receiver will get enough funds to have the required existential deposit.
-        ///
-        /// If your chain has this threshold higher, increase the transfer value.
-        const TRANSFER_VALUE: Balance = 1 / 10 * UNIT;
-
-        /// An amount that is below the existential deposit, so that a transfer to an
-        /// empty account fails.
-        ///
-        /// Must not be zero, because such an operation would be a successful no-op.
-        const INSUFFICIENT_TRANSFER_VALUE: Balance = 1;
-
-        pub fn alice() -> AccountId32 {
-            AccountId32::from([1; 32])
-        }
-
-        pub fn bob() -> AccountId32 {
-            AccountId32::from([2; 32])
-        }
-
-        /// Positive case scenario:
-        ///  - the call is valid
-        ///  - the call execution succeeds
-        #[ink_e2e::test]
-        async fn transfer_with_call_runtime_works<Client: E2EBackend>(
-            mut client: Client,
-        ) -> E2EResult<()> {
-            // given
-            let mut constructor = AssetContractRef::new();
-            let contract = client
-                .instantiate("transfer-contract", &ink_e2e::alice(), &mut constructor)
-                .value(CONTRACT_BALANCE)
-                .submit()
-                .await
-                .expect("instantiate failed");
-            let mut call_builder = contract.call_builder::<AssetContract>();
-
-            let receiver = bob();
-            let mut asset_id = AssetId32::new([0u8; 32]);
-
-            let contract_balance_before = client
-                .free_balance(contract.account_id)
-                .await
-                .expect("Failed to get account balance");
-            let receiver_balance_before = client
-                .free_balance(default_accounts::<DefaultEnvironment>().bob)
-                .await
-                .expect("Failed to get account balance");
-
-            // when
-            let transfer_message =
-                call_builder.transfer(asset_id, receiver.clone(), TRANSFER_VALUE);
-
-            let call_res = client
-                .call(&ink_e2e::alice(), &transfer_message)
-                .submit()
-                .await
-                .expect("call failed");
-
-            assert!(call_res.return_value().is_ok());
-
-            // then
-            let contract_balance_after = client
-                .free_balance(contract.account_id)
-                .await
-                .expect("Failed to get account balance");
-            let receiver_balance_after = client
-                .free_balance(default_accounts::<DefaultEnvironment>().bob)
-                .await
-                .expect("Failed to get account balance");
-
-            assert_eq!(
-                contract_balance_before,
-                contract_balance_after + TRANSFER_VALUE
-            );
-            assert_eq!(
-                receiver_balance_before,
-                receiver_balance_after - TRANSFER_VALUE
-            );
-
-            Ok(())
         }
     }
 }

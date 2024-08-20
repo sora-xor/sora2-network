@@ -1944,7 +1944,7 @@ name = "contract-extrinsics"
 version = "0.1.0"
 dependencies = [
  "ink",
- "sp-core",
+ "sp-runtime",
  "sp-std",
 ]
 

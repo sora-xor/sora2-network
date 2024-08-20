@@ -36,18 +36,10 @@ use crate::order_book::OrderBookCall;
 pub mod assets;
 pub mod order_book;
 pub mod primitives;
-pub mod utils;
 
 /// It is a part of the runtime dispatchables API.
 /// `Ink!` doesn't expose the real enum, so we need a partial definition matching our targets.
 /// You should get or count index of the pallet, using `construct_runtime!`, it is zero based
-// #[derive(Encode)]
-// pub enum RuntimeCall<AssetId: AssetIdBounds, AccountId: AccountIdBounds, OrderId: OrderIdBounds> {
-//     #[codec(index = 21)]
-//     Assets(AssetsCall<AssetId, AccountId>),
-//     #[codec(index = 57)]
-//     OrderBook(OrderBookCall<AssetId, OrderId>),
-// }
 #[ink::scale_derive(Encode)]
 pub enum RuntimeCall {
     #[codec(index = 21)]

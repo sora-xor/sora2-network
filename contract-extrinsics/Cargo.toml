@@ -8,16 +8,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# TODO Update versions
 ink = { version = "5.0.0", default-features = false}
 
 sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "add_sora_substrate_commits", default-features = false }
 
 [features]
 default = ["std"]
 
 std = [
-    "sp-core/std",
+    "sp-runtime/std",
     "ink/std"
 ]
