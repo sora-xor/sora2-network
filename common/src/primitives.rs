@@ -250,7 +250,7 @@ pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
 ));
 #[cfg(feature = "private-net")]
 pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
-    "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+    "00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
 ));
 // `private-net` is not used in prod
 #[allow(deprecated)]
