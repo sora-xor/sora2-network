@@ -53,7 +53,8 @@ mod transfer_contract {
 
         /// Example of calling `transfer` extrinsic
         /// # Note:
-        /// Polkadot js app determine call_runtime as unsigned transaction
+        /// - Polkadot js app determine call_runtime as unsigned transaction;
+        /// - Caller of the extrinsic is the contract.
         #[ink(message)]
         pub fn transfer(
             &self,

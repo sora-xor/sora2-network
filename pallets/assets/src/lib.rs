@@ -346,20 +346,7 @@ pub mod pallet {
             to: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            log::error!(
-                "TRANSFER PARAMETERS: {:?} \n {:?} \n {:?}",
-                asset_id,
-                to,
-                amount
-            );
             let from = ensure_signed(origin.clone())?;
-            log::error!(
-                "TRANSFER PARAMETERS: {:?} \n {:?} \n {:?} \n {:?}",
-                from,
-                asset_id,
-                to,
-                amount
-            );
             Self::transfer_from(&asset_id, &from, &to, amount)?;
             Ok(().into())
         }
