@@ -3529,6 +3529,18 @@
 <a href="#3514" id="3514">3514</a>
 <a href="#3515" id="3515">3515</a>
 <a href="#3516" id="3516">3516</a>
+<a href="#3517" id="3517">3517</a>
+<a href="#3518" id="3518">3518</a>
+<a href="#3519" id="3519">3519</a>
+<a href="#3520" id="3520">3520</a>
+<a href="#3521" id="3521">3521</a>
+<a href="#3522" id="3522">3522</a>
+<a href="#3523" id="3523">3523</a>
+<a href="#3524" id="3524">3524</a>
+<a href="#3525" id="3525">3525</a>
+<a href="#3526" id="3526">3526</a>
+<a href="#3527" id="3527">3527</a>
+<a href="#3528" id="3528">3528</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5539,6 +5551,17 @@
 }
 
 <span class="macro">parameter_types! </span>{
+    <span class="kw">pub </span>KensetsuDepositoryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_DEPOSITORY_MAIN.to_vec(),
+        )
+    };
+    <span class="kw">pub </span>KensetsuDepositoryAccountId: AccountId = {
+        <span class="kw">let </span>tech_account_id = KensetsuDepositoryTechAccountId::get();
+        technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_account_id)
+                .expect(<span class="string">&quot;Failed to get ordinary account id for technical account id.&quot;</span>)
+    };
     <span class="kw">pub </span>KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -5575,6 +5598,7 @@
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>Oracle = OracleProxy;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>DepositoryTechAccount = KensetsuDepositoryTechAccountId;
     <span class="kw">type </span>TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     <span class="kw">type </span>KenAssetId = KenAssetId;
     <span class="kw">type </span>KarmaAssetId = KarmaAssetId;

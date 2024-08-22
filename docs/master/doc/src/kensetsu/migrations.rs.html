@@ -455,6 +455,61 @@
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -894,6 +949,61 @@
                     xor_kusd_collateral_info.interest_coefficient
                 );
             });
+        }
+    }
+}
+
+<span class="doccomment">/// V3 introduces depository tech account for collaterals.
+</span><span class="kw">pub mod </span>v2_to_v3 {
+    <span class="kw">use crate</span>::{CDPDepository, Config, Pallet};
+    <span class="kw">use </span>core::marker::PhantomData;
+    <span class="kw">use </span>frame_support::dispatch::Weight;
+    <span class="kw">use </span>frame_support::log::error;
+    <span class="kw">use </span>frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    <span class="kw">use </span>sp_core::Get;
+
+    <span class="kw">pub struct </span>UpgradeToV3&lt;T&gt;(PhantomData&lt;T&gt;);
+
+    <span class="kw">impl</span>&lt;T: Config + permissions::Config + technical::Config + pallet_timestamp::Config&gt;
+        OnRuntimeUpgrade <span class="kw">for </span>UpgradeToV3&lt;T&gt;
+    {
+        <span class="kw">fn </span>on_runtime_upgrade() -&gt; Weight {
+            <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::zero();
+
+            <span class="kw">let </span>version = Pallet::&lt;T&gt;::on_chain_storage_version();
+            <span class="kw">if </span>version == <span class="number">2 </span>{
+                <span class="kw">let </span>depository_acc = T::DepositoryTechAccount::get();
+                weight += <span class="kw">match </span>technical::Pallet::&lt;T&gt;::register_tech_account_id_if_not_exist(
+                    <span class="kw-2">&amp;</span>depository_acc,
+                ) {
+                    <span class="prelude-val">Ok</span>(()) =&gt; &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().writes(<span class="number">1</span>),
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="macro">error!</span>(
+                            <span class="string">&quot;Failed to register technical account: {:?}, error: {:?}&quot;</span>,
+                            depository_acc, err
+                        );
+                        &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().reads(<span class="number">1</span>)
+                    }
+                };
+
+                <span class="kw">let </span>treasury_acc = T::TreasuryTechAccount::get();
+                <span class="kw">for </span>(<span class="kw">_</span>, cdp) <span class="kw">in </span>CDPDepository::&lt;T&gt;::iter() {
+                    technical::Pallet::&lt;T&gt;::transfer(
+                        <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
+                        <span class="kw-2">&amp;</span>treasury_acc,
+                        <span class="kw-2">&amp;</span>depository_acc,
+                        cdp.collateral_amount,
+                    )
+                    .unwrap_or_else(|err| {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error while transfer to depository tech acc: {:?}&quot;</span>, err);
+                    });
+                }
+
+                StorageVersion::new(<span class="number">3</span>).put::&lt;Pallet&lt;T&gt;&gt;();
+                weight += &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().writes(<span class="number">1</span>);
+            }
+
+            weight
         }
     }
 }

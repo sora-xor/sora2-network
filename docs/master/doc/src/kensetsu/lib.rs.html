@@ -2374,6 +2374,10 @@
 <a href="#2359" id="2359">2359</a>
 <a href="#2360" id="2360">2360</a>
 <a href="#2361" id="2361">2361</a>
+<a href="#2362" id="2362">2362</a>
+<a href="#2363" id="2363">2363</a>
+<a href="#2364" id="2364">2364</a>
+<a href="#2365" id="2365">2365</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2437,7 +2441,10 @@
 <span class="kw">pub mod </span>weights;
 
 <span class="kw">pub const </span>TECH_ACCOUNT_PREFIX: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;kensetsu&quot;</span>;
-<span class="kw">pub const </span>TECH_ACCOUNT_TREASURY_MAIN: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;treasury&quot;</span>;
+<span class="doccomment">/// Tech account for fees.
+</span><span class="kw">pub const </span>TECH_ACCOUNT_TREASURY_MAIN: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;treasury&quot;</span>;
+<span class="doccomment">/// Tech account for collaterals.
+</span><span class="kw">pub const </span>TECH_ACCOUNT_DEPOSITORY_MAIN: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;depository&quot;</span>;
 
 <span class="doccomment">/// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
 </span><span class="kw">const </span>VALIDATION_ERROR_ACCRUE: u8 = <span class="number">1</span>;
@@ -2599,7 +2606,7 @@
     </span><span class="kw">pub type </span>CdpId = u128;
 
     <span class="doccomment">/// The current storage version.
-    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">2</span>);
+    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">3</span>);
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -2720,6 +2727,7 @@
         <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>Oracle: DataFeed&lt;SymbolName, Rate, u64&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>DepositoryTechAccount: Get&lt;<span class="self">Self</span>::TechAccountId&gt;;
         <span class="kw">type </span>TreasuryTechAccount: Get&lt;<span class="self">Self</span>::TechAccountId&gt;;
         <span class="kw">type </span>KenAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>KarmaAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
@@ -3902,7 +3910,7 @@
             technical::Pallet::&lt;T&gt;::transfer_in(
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
                 who,
-                <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
+                <span class="kw-2">&amp;</span>T::DepositoryTechAccount::get(),
                 collateral_amount,
             )<span class="question-mark">?</span>;
             <span class="self">Self</span>::update_cdp_collateral(
@@ -4357,22 +4365,22 @@
             </span><span class="kw">let </span>treasury_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
             )<span class="question-mark">?</span>;
+            <span class="kw">let </span>depository_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
+                <span class="kw-2">&amp;</span>T::DepositoryTechAccount::get(),
+            )<span class="question-mark">?</span>;
             <span class="kw">let </span>stablecoin_balance_before = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
                 <span class="kw-2">&amp;</span>cdp.stablecoin_asset_id,
                 <span class="kw-2">&amp;</span>treasury_account_id,
             )<span class="question-mark">?</span>;
             <span class="kw">let </span>collateral_balance_before = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
-                <span class="kw-2">&amp;</span>treasury_account_id,
+                <span class="kw-2">&amp;</span>depository_account_id,
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>technical_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
-                <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
-            )<span class="question-mark">?</span>;
             T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
-                <span class="kw-2">&amp;</span>technical_account_id,
-                <span class="kw-2">&amp;</span>technical_account_id,
+                <span class="kw-2">&amp;</span>depository_account_id,
+                <span class="kw-2">&amp;</span>treasury_account_id,
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
                 <span class="kw-2">&amp;</span>cdp.stablecoin_asset_id,
                 swap_amount,
@@ -4385,7 +4393,7 @@
             )<span class="question-mark">?</span>;
             <span class="kw">let </span>collateral_balance_after = &lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::free_balance(
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
-                <span class="kw-2">&amp;</span>treasury_account_id,
+                <span class="kw-2">&amp;</span>depository_account_id,
             )<span class="question-mark">?</span>;
             <span class="comment">// This value may differ from `desired_amount`, so this is calculation of actual
             // amount swapped.
@@ -4433,7 +4441,7 @@
                     .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
                 T::AssetManager::transfer_from(
                     <span class="kw-2">&amp;</span>cdp.stablecoin_asset_id,
-                    <span class="kw-2">&amp;</span>technical_account_id,
+                    <span class="kw-2">&amp;</span>treasury_account_id,
                     <span class="kw-2">&amp;</span>cdp.owner,
                     leftover,
                 )<span class="question-mark">?</span>;
@@ -4621,7 +4629,7 @@
             <span class="kw">let </span>transfer_out = cdp.collateral_amount;
             technical::Pallet::&lt;T&gt;::transfer_out(
                 <span class="kw-2">&amp;</span>cdp.collateral_asset_id,
-                <span class="kw-2">&amp;</span>T::TreasuryTechAccount::get(),
+                <span class="kw-2">&amp;</span>T::DepositoryTechAccount::get(),
                 <span class="kw-2">&amp;</span>cdp.owner,
                 transfer_out,
             )<span class="question-mark">?</span>;
