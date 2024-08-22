@@ -169,10 +169,13 @@ members = [
     "pallets/qa-tools",
     "pallets/extended-assets",
     "node/",
+    "contract-extrinsics",
     # "utils/parse",
     # "utils/generate-bags",
     # "utils/remote-ext",
 ]
+
+exclude = ["contracts/."]
 
 resolver = "2"
 
