@@ -30,7 +30,6 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-#[cfg(feature = "wip")] // dex-kusd
 use common::KUSD;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PriceVariant, DEFAULT_BALANCE_PRECISION,
@@ -112,7 +111,6 @@ fn should_create_order_book_with_correct_dex_id_polkaswap() {
     });
 }
 
-#[cfg(feature = "wip")] // dex-kusd
 #[test]
 fn should_create_order_book_with_correct_dex_id_polkaswap_kusd() {
     ext().execute_with(|| {
@@ -188,26 +186,16 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
             E::NotAllowedQuoteAsset
         );
 
-        #[cfg(feature = "wip")] // dex-kusd
-        {
-            let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-                dex_id: common::DEXId::PolkaswapKUSD.into(),
-                base: VAL,
-                quote: XOR,
-            };
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapKUSD.into(),
+            base: VAL,
+            quote: XOR,
+        };
 
-            assert_err!(
-                OrderBookPallet::create_orderbook(
-                    RawOrigin::Root.into(),
-                    order_book_id,
-                    0,
-                    0,
-                    0,
-                    0
-                ),
-                E::NotAllowedQuoteAsset
-            );
-        }
+        assert_err!(
+            OrderBookPallet::create_orderbook(RawOrigin::Root.into(), order_book_id, 0, 0, 0, 0),
+            E::NotAllowedQuoteAsset
+        );
     });
 }
 
