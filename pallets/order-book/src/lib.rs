@@ -1261,13 +1261,11 @@ impl<T: Config> Pallet<T> {
             Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
         );
 
-        #[cfg(not(feature = "wip"))] // dex-kusd
         ensure!(
             order_book_id.dex_id == common::DEXId::Polkaswap.into(),
             Error::<T>::NotAllowedDEXId
         );
 
-        #[cfg(feature = "wip")] // dex-kusd
         ensure!(
             order_book_id.dex_id == common::DEXId::Polkaswap.into()
                 || order_book_id.dex_id == common::DEXId::PolkaswapKUSD.into(),
