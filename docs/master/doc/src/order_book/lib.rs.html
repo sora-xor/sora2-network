@@ -1847,13 +1847,6 @@
 <a href="#1832" id="1832">1832</a>
 <a href="#1833" id="1833">1833</a>
 <a href="#1834" id="1834">1834</a>
-<a href="#1835" id="1835">1835</a>
-<a href="#1836" id="1836">1836</a>
-<a href="#1837" id="1837">1837</a>
-<a href="#1838" id="1838">1838</a>
-<a href="#1839" id="1839">1839</a>
-<a href="#1840" id="1840">1840</a>
-<a href="#1841" id="1841">1841</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3117,14 +3110,7 @@
             Error::&lt;T&gt;::ForbiddenToCreateOrderBookWithSameAssets
         );
 
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// dex-kusd
-        </span><span class="macro">ensure!</span>(
-            order_book_id.dex_id == common::DEXId::Polkaswap.into(),
-            Error::&lt;T&gt;::NotAllowedDEXId
-        );
-
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// dex-kusd
-        </span><span class="macro">ensure!</span>(
+        <span class="macro">ensure!</span>(
             order_book_id.dex_id == common::DEXId::Polkaswap.into()
                 || order_book_id.dex_id == common::DEXId::PolkaswapKUSD.into(),
             Error::&lt;T&gt;::NotAllowedDEXId

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["migrate"]};
+window.SIDEBAR_ITEMS = {"fn":["migrate"],"mod":["kusd_dex"]};

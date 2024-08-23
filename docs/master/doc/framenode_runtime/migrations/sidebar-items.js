@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["Migrations","WipMigrations"]};
+window.SIDEBAR_ITEMS = {"type":["Migrations"]};
