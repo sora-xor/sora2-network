@@ -1262,11 +1262,6 @@ impl<T: Config> Pallet<T> {
         );
 
         ensure!(
-            order_book_id.dex_id == common::DEXId::Polkaswap.into(),
-            Error::<T>::NotAllowedDEXId
-        );
-
-        ensure!(
             order_book_id.dex_id == common::DEXId::Polkaswap.into()
                 || order_book_id.dex_id == common::DEXId::PolkaswapKUSD.into(),
             Error::<T>::NotAllowedDEXId
