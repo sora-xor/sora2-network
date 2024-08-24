@@ -36,7 +36,6 @@ use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
 use crate::DEXInfos;
 
-#[cfg(feature = "wip")] // dex-kusd
 pub mod kusd_dex;
 
 #[derive(Decode)]

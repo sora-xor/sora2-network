@@ -31,12 +31,6 @@
 use crate::*;
 
 pub type Migrations = (
-    WipMigrations,
+    dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,
     kensetsu::migrations::v2_to_v3::UpgradeToV3<Runtime>,
 );
-
-#[cfg(feature = "wip")] // dex-kusd
-pub type WipMigrations = (dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,);
-
-#[cfg(not(feature = "wip"))] // dex-kusd
-pub type WipMigrations = ();
