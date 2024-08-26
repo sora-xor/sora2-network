@@ -96,6 +96,7 @@ sp-mmr-primitives = { git = "https://github.com/sora-xor/polkadot-sdk.git", bran
 sp-maybe-compressed-blob = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 sp-transaction-storage-proof = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 substrate-frame-rpc-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+sp-weights = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 # mmr-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 # pallet-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 substrate-prometheus-endpoint = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
@@ -124,7 +125,7 @@ pallet-beefy-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branc
 pallet-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", package = "pallet-insecure-randomness-collective-flip" }
 pallet-contracts = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-
+pallet-contracts-primitives = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 
 [workspace]
 members = [
