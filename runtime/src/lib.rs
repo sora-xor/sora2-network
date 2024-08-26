@@ -446,8 +446,7 @@ impl pallet_babe::Config for Runtime {
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
     type DisabledValidators = Session;
-    type KeyOwnerProof =
-        <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
     // type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
     //     KeyTypeId,
     //     pallet_babe::AuthorityId,
@@ -579,7 +578,7 @@ impl pallet_grandpa::Config for Runtime {
 
     // type KeyOwnerProofSystem = Historical;
 
-    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
 
     // type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
     //     KeyTypeId,
@@ -1894,7 +1893,7 @@ impl pallet_beefy::Config for Runtime {
     type MaxNominators = MaxNominatorRewardedPerValidator;
     type MaxSetIdSessionEntries = BeefySetIdSessionEntries;
     type WeightInfo = ();
-    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, BeefyId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
     type EquivocationReportSystem =
         pallet_beefy::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 }
@@ -1908,7 +1907,7 @@ impl pallet_beefy::Config for Runtime {
     type MaxNominators = MaxNominatorRewardedPerValidator;
     type MaxSetIdSessionEntries = BeefySetIdSessionEntries;
     type WeightInfo = ();
-    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, BeefyId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
     type EquivocationReportSystem =
         pallet_beefy::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 }
