@@ -971,7 +971,12 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), self.total_supply)],
+            balances: vec![(
+                alice(),
+                self.total_supply.saturating_add(
+                    <Runtime as pallet_balances::Config>::ExistentialDeposit::get(),
+                ),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();
