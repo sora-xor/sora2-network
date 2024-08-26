@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #[cfg(test)]
-pub mod mock;
+mod mock;
 
 #[cfg(test)]
-pub mod tests;
+mod tests;

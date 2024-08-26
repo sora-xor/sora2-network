@@ -36,7 +36,7 @@ use common::mock::{alice, bob};
 use common::{balance, XOR};
 use frame_support::{assert_ok, weights::Weight};
 use pallet_contracts::{CollectEvents, DebugInfo, Determinism};
-use pallet_contracts_primitives::{Code, ContractResult};
+use pallet_contracts_primitives::ContractResult;
 use sp_core::crypto::AccountId32;
 
 #[test]
