@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // dex-kusd
-
 use crate::pallet::{Config, Pallet};
 use crate::DEXInfos;
 use common::{DEXId, DEXInfo, DexIdOf, KUSD, XST};

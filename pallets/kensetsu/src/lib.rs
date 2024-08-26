@@ -61,7 +61,10 @@ pub mod migrations;
 pub mod weights;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
+/// Tech account for fees.
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
+/// Tech account for collaterals.
+pub const TECH_ACCOUNT_DEPOSITORY_MAIN: &[u8] = b"depository";
 
 /// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
 const VALIDATION_ERROR_ACCRUE: u8 = 1;
@@ -223,7 +226,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -343,6 +346,7 @@ pub mod pallet {
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type Oracle: DataFeed<SymbolName, Rate, u64>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type DepositoryTechAccount: Get<Self::TechAccountId>;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KenAssetId: Get<AssetIdOf<Self>>;
         type KarmaAssetId: Get<AssetIdOf<Self>>;
@@ -1524,7 +1528,7 @@ pub mod pallet {
             technical::Pallet::<T>::transfer_in(
                 &cdp.collateral_asset_id,
                 who,
-                &T::TreasuryTechAccount::get(),
+                &T::DepositoryTechAccount::get(),
                 collateral_amount,
             )?;
             Self::update_cdp_collateral(
@@ -1979,22 +1983,22 @@ pub mod pallet {
             let treasury_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             )?;
+            let depository_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::DepositoryTechAccount::get(),
+            )?;
             let stablecoin_balance_before = <T as Config>::AssetInfoProvider::free_balance(
                 &cdp.stablecoin_asset_id,
                 &treasury_account_id,
             )?;
             let collateral_balance_before = <T as Config>::AssetInfoProvider::free_balance(
                 &cdp.collateral_asset_id,
-                &treasury_account_id,
+                &depository_account_id,
             )?;
 
-            let technical_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::TreasuryTechAccount::get(),
-            )?;
             T::LiquidityProxy::exchange(
                 DEXId::Polkaswap.into(),
-                &technical_account_id,
-                &technical_account_id,
+                &depository_account_id,
+                &treasury_account_id,
                 &cdp.collateral_asset_id,
                 &cdp.stablecoin_asset_id,
                 swap_amount,
@@ -2007,7 +2011,7 @@ pub mod pallet {
             )?;
             let collateral_balance_after = <T as Config>::AssetInfoProvider::free_balance(
                 &cdp.collateral_asset_id,
-                &treasury_account_id,
+                &depository_account_id,
             )?;
             // This value may differ from `desired_amount`, so this is calculation of actual
             // amount swapped.
@@ -2055,7 +2059,7 @@ pub mod pallet {
                     .ok_or(Error::<T>::ArithmeticError)?;
                 T::AssetManager::transfer_from(
                     &cdp.stablecoin_asset_id,
-                    &technical_account_id,
+                    &treasury_account_id,
                     &cdp.owner,
                     leftover,
                 )?;
@@ -2243,7 +2247,7 @@ pub mod pallet {
             let transfer_out = cdp.collateral_amount;
             technical::Pallet::<T>::transfer_out(
                 &cdp.collateral_asset_id,
-                &T::TreasuryTechAccount::get(),
+                &T::DepositoryTechAccount::get(),
                 &cdp.owner,
                 transfer_out,
             )?;

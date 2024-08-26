@@ -295,6 +295,17 @@ where
 }
 
 parameter_types! {
+    pub KensetsuDepositoryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_DEPOSITORY_MAIN.to_vec(),
+        )
+    };
+    pub KensetsuDepositoryAccountId: AccountId = {
+        let tech_account_id = KensetsuDepositoryTechAccountId::get();
+        technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -337,6 +348,7 @@ impl kensetsu::Config for TestRuntime {
     type LiquidityProxy = MockLiquidityProxy;
     type Oracle = MockOracle;
     type TradingPairSourceManager = MockTradingPairSourceManager;
+    type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
     type KarmaAssetId = KarmaAssetId;
@@ -365,6 +377,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![
+            (
+                KensetsuDepositoryAccountId::get(),
+                KensetsuDepositoryTechAccountId::get(),
+            ),
             (
                 KensetsuTreasuryAccountId::get(),
                 KensetsuTreasuryTechAccountId::get(),

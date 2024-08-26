@@ -37,7 +37,6 @@ use log::info;
 
 use crate::DEXInfos;
 
-#[cfg(feature = "wip")] // dex-kusd
 pub mod kusd_dex;
 
 #[derive(Decode)]
