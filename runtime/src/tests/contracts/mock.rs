@@ -201,8 +201,6 @@ pub fn create_order_book(caller: AccountId32) -> OrderBookId<AssetIdOf<Runtime>,
     order_book_id1
 }
 
-pub fn place_limit_orders(caller: AccountId32) {}
-
 pub fn instantiate_contract(code: Vec<u8>) -> AccountId32 {
     crate::Contracts::bare_instantiate(
         alice(),

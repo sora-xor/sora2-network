@@ -7,7 +7,7 @@ use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
-    Fixed, PSWAP, TBCD, VAL, XST,
+    Fixed, PSWAP, TBCD, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
