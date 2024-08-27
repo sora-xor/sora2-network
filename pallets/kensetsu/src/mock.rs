@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as kensetsu;
-use crate::test_utils::alice_account_id;
 use std::collections::BTreeSet;
 
 use common::mock::ExistentialDeposits;
@@ -46,14 +45,14 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
+use frame_support::traits::{ConstU64, Everything, Randomness};
 use frame_system::offchain::SendTransactionTypes;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
 use sp_core::{ConstU32, H256};
 use sp_runtime::{
-    testing::{Header, TestXt},
+    testing::TestXt,
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
 use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
@@ -68,7 +67,6 @@ type Moment = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
 pub struct MockRandomness;
 
@@ -295,6 +293,17 @@ where
 }
 
 parameter_types! {
+    pub KensetsuDepositoryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_DEPOSITORY_MAIN.to_vec(),
+        )
+    };
+    pub KensetsuDepositoryAccountId: AccountId = {
+        let tech_account_id = KensetsuDepositoryTechAccountId::get();
+        technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -337,6 +346,7 @@ impl kensetsu::Config for TestRuntime {
     type LiquidityProxy = MockLiquidityProxy;
     type Oracle = MockOracle;
     type TradingPairSourceManager = MockTradingPairSourceManager;
+    type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
     type KarmaAssetId = KarmaAssetId;
@@ -365,6 +375,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![
+            (
+                KensetsuDepositoryAccountId::get(),
+                KensetsuDepositoryTechAccountId::get(),
+            ),
             (
                 KensetsuTreasuryAccountId::get(),
                 KensetsuTreasuryTechAccountId::get(),

@@ -56,11 +56,11 @@ const RATIO: u128 = 1_000_000_000_000_000_000;
 /// `Ord` (+ `PartialOrd`), and `Encode` (+ `Decode`) are not consistent with each other.
 ///
 /// - `Ord` compares numbers by mathematical values. So `{1, indivisible}` and
-/// `{10^18, divisible}` will be `Ordering::Equal`.
+///   `{10^18, divisible}` will be `Ordering::Equal`.
 /// - `Eq` compares them field-by-field, making divisible never equal to indivisible numbers.
-/// So `{1, indivisible} != {10^18, divisible}`.
+///   So `{1, indivisible} != {10^18, divisible}`.
 /// - `Encode` behaves the same way as `Eq`, concentrating on the fields rather than mathematical
-/// value.
+///   value.
 ///
 /// It was left this way because obtaining the following properties requires some major
 /// reconsiderations of implementation, possible migrations, and a lot of effort:
@@ -71,9 +71,9 @@ const RATIO: u128 = 1_000_000_000_000_000_000;
 ///
 /// For example, this has the following implications for `a = {1, indivisible}` and `b = {10^18, divisible}`:
 /// - counterintuitively, `a > b == false`,  `a < b == false`, and `(a == b) == false`
-/// (first two use `PartialOrd`, the last one uses `PartialEq`)
+///   (first two use `PartialOrd`, the last one uses `PartialEq`)
 /// - in `StorageMap` (that uses encoded values as keys) `a` and `b` are considered different
-/// keys, but in `BTreeMap` (that uses `Ord`) they are unified.
+///   keys, but in `BTreeMap` (that uses `Ord`) they are unified.
 #[derive(
     Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
 )]

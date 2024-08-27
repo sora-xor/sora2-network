@@ -120,7 +120,10 @@ impl<T: Config> Pallet<T> {
         block: BlockNumberFor<T>,
         weight: &mut WeightMeter,
     ) -> bool {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_block_base()) {
+        if weight
+            .try_consume(<T as Config>::WeightInfo::service_expiration_block_base())
+            .is_err()
+        {
             return false;
         }
 
@@ -185,7 +188,10 @@ impl<T: Config>
     > for Pallet<T>
 {
     fn service_expiration(current_block: BlockNumberFor<T>, weight: &mut WeightMeter) {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_base()) {
+        if weight
+            .try_consume(<T as Config>::WeightInfo::service_expiration_base())
+            .is_err()
+        {
             return;
         }
 
@@ -194,7 +200,7 @@ impl<T: Config>
 
         let service_block_base_weight = <T as Config>::WeightInfo::service_expiration_block_base();
         let mut data_layer = CacheDataLayer::<T>::new();
-        while when <= current_block && weight.can_accrue(service_block_base_weight) {
+        while when <= current_block && weight.can_consume(service_block_base_weight) {
             if !Self::service_expiration_block(&mut data_layer, when, weight) {
                 incomplete_since = incomplete_since.min(when);
             }
@@ -240,7 +246,7 @@ impl<T: Config>
 impl<T: Config> AlignmentScheduler for Pallet<T> {
     fn service_alignment(weight: &mut WeightMeter) {
         // return if it cannot align even 1 limit order
-        if !weight.can_accrue(<T as Config>::WeightInfo::align_single_order()) {
+        if !weight.can_consume(<T as Config>::WeightInfo::align_single_order()) {
             return;
         }
 
@@ -251,7 +257,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
 
         for (order_book_id, cursor) in <AlignmentCursor<T>>::iter() {
             // break if it cannot align even 1 limit order for the order-book
-            if !weight.can_accrue(<T as Config>::WeightInfo::align_single_order()) {
+            if !weight.can_consume(<T as Config>::WeightInfo::align_single_order()) {
                 break;
             }
 
@@ -284,7 +290,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                 continue;
             };
 
-            weight.defensive_saturating_accrue(
+            weight.consume(
                 <T as Config>::WeightInfo::align_single_order()
                     .saturating_mul(limit_orders.len() as u64),
             );

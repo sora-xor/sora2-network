@@ -265,6 +265,7 @@ parameter_types! {
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
 }
 
+#[allow(dead_code)]
 pub struct RemoveTemporaryPeerAccountId;
 impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
     fn get() -> Vec<(AccountId, H160)> {

@@ -103,7 +103,6 @@ pub mod v1_to_v2 {
     use frame_support::weights::Weight;
     use log::error;
     use permissions::{Scope, BURN, MINT};
-    use sp_arithmetic::traits::Zero;
     use sp_core::Get;
 
     mod v1 {
@@ -438,6 +437,61 @@ pub mod v1_to_v2 {
                     xor_kusd_collateral_info.interest_coefficient
                 );
             });
+        }
+    }
+}
+
+/// V3 introduces depository tech account for collaterals.
+pub mod v2_to_v3 {
+    use crate::{CDPDepository, Config, Pallet};
+    use core::marker::PhantomData;
+    use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
+    use sp_core::Get;
+
+    pub struct UpgradeToV3<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV3<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+
+            let version = Pallet::<T>::on_chain_storage_version();
+            if version == 2 {
+                let depository_acc = T::DepositoryTechAccount::get();
+                weight += match technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+                    &depository_acc,
+                ) {
+                    Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
+                    Err(err) => {
+                        log::error!(
+                            "Failed to register technical account: {:?}, error: {:?}",
+                            depository_acc,
+                            err
+                        );
+                        <T as frame_system::Config>::DbWeight::get().reads(1)
+                    }
+                };
+
+                let treasury_acc = T::TreasuryTechAccount::get();
+                for (_, cdp) in CDPDepository::<T>::iter() {
+                    technical::Pallet::<T>::transfer(
+                        &cdp.collateral_asset_id,
+                        &treasury_acc,
+                        &depository_acc,
+                        cdp.collateral_amount,
+                    )
+                    .unwrap_or_else(|err| {
+                        log::error!("Error while transfer to depository tech acc: {:?}", err);
+                    });
+                }
+
+                StorageVersion::new(3).put::<Pallet<T>>();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            }
+
+            weight
         }
     }
 }

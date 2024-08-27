@@ -49,18 +49,17 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
-use framenode_runtime::RuntimeGenesisConfig;
 
 #[cfg(feature = "wip")]
 use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature,
     StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
@@ -898,7 +897,7 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
     use common::XSTUSD;
     // Initial balances
     let initial_staking = balance!(1000000000);
@@ -1005,6 +1004,10 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let kensetsu_depository_tech_account_id =
+        framenode_runtime::KensetsuDepositoryTechAccountId::get();
+    let kensetsu_depository_account_id = framenode_runtime::KensetsuDepositoryAccountId::get();
+
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
@@ -1066,6 +1069,10 @@ fn testnet_genesis(
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
+        ),
+        (
+            kensetsu_depository_account_id.clone(),
+            kensetsu_depository_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -1942,6 +1949,9 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let kensetsu_depository_tech_account_id =
+        framenode_runtime::KensetsuDepositoryTechAccountId::get();
+    let kensetsu_depository_account_id = framenode_runtime::KensetsuDepositoryAccountId::get();
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
@@ -2003,6 +2013,10 @@ fn mainnet_genesis(
         (
             kensetsu_treasury_account_id.clone(),
             kensetsu_treasury_tech_account_id.clone(),
+        ),
+        (
+            kensetsu_depository_account_id.clone(),
+            kensetsu_depository_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();

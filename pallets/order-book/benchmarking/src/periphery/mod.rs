@@ -33,6 +33,8 @@
 //!
 //! Separated for each benchmark.
 
+#![allow(dead_code)] // fields never read warning
+
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]
 use framenode_runtime::order_book as order_book_imported;

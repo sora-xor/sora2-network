@@ -607,7 +607,7 @@ pub trait Config: frame_system::Config {
 /// Definition of a pending atomic swap action. It contains the following three phrases:
 ///
 /// - **Reserve**: reserve the resources needed for a swap. This is to make sure that **Claim**
-/// succeeds with best efforts.
+///   succeeds with best efforts.
 /// - **Claim**: claim any resources reserved in the first phrase.
 /// - **Cancel**: cancel any resources reserved in the first phrase.
 pub trait SwapAction<SourceAccountId, TargetAccountId, AssetId, T: Config> {

@@ -33,25 +33,22 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, DEXId, XST,
+    mock_permissions_config, mock_tokens_config, DEXId, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{BuildStorage, Perbill};
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::mock::*;
-pub use common::TechAssetId::*;
 pub use common::TechPurpose::*;
 pub use common::TradingPair;
 
@@ -63,8 +60,6 @@ type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 type TechAmount = Amount;
 type TechBalance = Balance;
-
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
@@ -88,7 +83,6 @@ construct_runtime! {
     }
 }
 
-/* mock_pallet_balances_config!(Runtime); */
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);

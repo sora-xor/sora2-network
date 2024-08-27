@@ -68,7 +68,14 @@ pub fn bob() -> OriginFor<TestRuntime> {
 }
 
 /// Returns Kensetsu technical treasury account id.
-pub fn tech_account_id() -> AccountId {
+pub fn depository_tech_account_id() -> AccountId {
+    let tech_account = <TestRuntime as Config>::DepositoryTechAccount::get();
+    technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account)
+        .expect("Failed to get ordinary account id for technical account id.")
+}
+
+/// Returns Kensetsu technical treasury account id.
+pub fn treasury_tech_account_id() -> AccountId {
     let tech_account = <TestRuntime as Config>::TreasuryTechAccount::get();
     technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account)
         .expect("Failed to get ordinary account id for technical account id.")

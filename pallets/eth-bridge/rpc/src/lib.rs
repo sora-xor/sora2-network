@@ -40,7 +40,6 @@ use jsonrpsee::{
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;

@@ -41,9 +41,9 @@ use common::balance;
 /// `A = P * (1 + period_rate) ^ period`, where:
 /// - principal - (P) - initial balance
 /// - rate_per_second - (period_rate) - rate per second, where
-/// rate_secondly = (1 + rate_annual)^(1/seconds_per_year) - 1
+///   rate_secondly = (1 + rate_annual)^(1/seconds_per_year) - 1
 /// - period - time passed in seconds
-/// Returns (A) - the new balance with interest over time
+///   Returns (A) - the new balance with interest over time
 pub fn compound(
     principal: Balance,
     rate_per_second: FixedU128,

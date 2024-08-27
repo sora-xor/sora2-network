@@ -44,7 +44,7 @@ use frame_support::{
 use sp_runtime::traits::Dispatchable;
 use sp_runtime::RuntimeDebug;
 
-pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
+pub use common::weights::BlockWeights;
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::Convert;
@@ -563,6 +563,7 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     }
 }
 
+#[allow(dead_code)]
 #[cfg(feature = "wip")] // EVM bridge
 pub struct EVMBridgeCallFilter;
 

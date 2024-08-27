@@ -8,5 +8,5 @@ def pipeline = new org.docker.AppPipeline(steps: this,
     triggerCommonBuildGrepRegex:  'housekeeping',
     secretScannerExclusion:       '.*Cargo.toml$|.*env\$',
     nameCI:                       'env-CI',
-    dockerImageTags:              ['master': 'env', 'feature/dops-3304/update_deploy_workflow': 'test'])
+    dockerImageTags:              ['master': 'latest'])
 pipeline.runPipeline()

@@ -263,16 +263,17 @@ pub mod oracle_types {
 }
 pub use oracle_types::*;
 
+#[deny(warnings)]
 /// This runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 92,
+    spec_version: 93,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 92,
+    transaction_version: 93,
     state_version: 0,
 };
 
@@ -453,8 +454,7 @@ impl pallet_babe::Config for Runtime {
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
     type DisabledValidators = Session;
-    type KeyOwnerProof =
-        <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
     // type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
     //     KeyTypeId,
     //     pallet_babe::AuthorityId,
@@ -586,7 +586,7 @@ impl pallet_grandpa::Config for Runtime {
 
     // type KeyOwnerProofSystem = Historical;
 
-    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
 
     // type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
     //     KeyTypeId,
@@ -1901,7 +1901,7 @@ impl pallet_beefy::Config for Runtime {
     type MaxNominators = MaxNominatorRewardedPerValidator;
     type MaxSetIdSessionEntries = BeefySetIdSessionEntries;
     type WeightInfo = ();
-    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, BeefyId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
     type EquivocationReportSystem =
         pallet_beefy::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 }
@@ -1915,7 +1915,7 @@ impl pallet_beefy::Config for Runtime {
     type MaxNominators = MaxNominatorRewardedPerValidator;
     type MaxSetIdSessionEntries = BeefySetIdSessionEntries;
     type WeightInfo = ();
-    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, BeefyId)>>::Proof;
+    type KeyOwnerProof = sp_session::MembershipProof;
     type EquivocationReportSystem =
         pallet_beefy::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 }
@@ -2072,6 +2072,17 @@ impl hermes_governance_platform::Config for Runtime {
 }
 
 parameter_types! {
+    pub KensetsuDepositoryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_DEPOSITORY_MAIN.to_vec(),
+        )
+    };
+    pub KensetsuDepositoryAccountId: AccountId = {
+        let tech_account_id = KensetsuDepositoryTechAccountId::get();
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -2108,6 +2119,7 @@ impl kensetsu::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
     type KarmaAssetId = KarmaAssetId;
@@ -2900,7 +2912,7 @@ impl_runtime_apis! {
     impl sp_session::SessionKeys<Block> for Runtime {
         fn decode_session_keys(
             encoded: Vec<u8>,
-        ) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
+        ) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
             opaque::SessionKeys::decode_into_raw_public_keys(&encoded)
         }
 
@@ -3585,6 +3597,7 @@ impl_runtime_apis! {
             return (list, storage_info)
         }
 
+        #[allow(warnings)] // ignore non-local `impl` definition
         fn dispatch_benchmark(
             config: frame_benchmarking::BenchmarkConfig
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {

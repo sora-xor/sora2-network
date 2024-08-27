@@ -39,10 +39,9 @@ use common::weights::constants::SMALL_FEE;
 use common::DAI;
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
-    VAL, XOR,
+    mock_frame_system_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
@@ -51,14 +50,13 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
 use frame_support::traits::{
-    ConstU128, Currency, Everything, ExistenceRequirement, GenesisBuild, WithdrawReasons,
+    ConstU128, Currency, Everything, ExistenceRequirement, WithdrawReasons,
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError, Percent};
 use sp_staking::SessionIndex;
@@ -73,7 +71,6 @@ pub type BlockNumber = u64;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.7);
@@ -131,7 +128,6 @@ impl pallet_balances::Config for Runtime {
     type MaxFreezes = ();
 }
 
-/* mock_pallet_balances_config!(Runtime); */
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);

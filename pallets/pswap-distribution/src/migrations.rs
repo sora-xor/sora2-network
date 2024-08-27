@@ -36,6 +36,7 @@ pub mod v2 {
     use common::AccountIdOf;
     use frame_support::traits::StorageVersion;
     use log::info;
+    #[cfg(feature = "try-runtime")]
     use sp_runtime::TryRuntimeError;
     use sp_std::prelude::Vec;
 

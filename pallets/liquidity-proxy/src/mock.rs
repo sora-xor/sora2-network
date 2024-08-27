@@ -41,7 +41,7 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
@@ -52,7 +52,6 @@ use core::marker::PhantomData;
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError, Perbill, Percent, Permill};
 use sp_std::str::FromStr;
@@ -65,7 +64,6 @@ type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId {
@@ -138,10 +136,7 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum Runtime
     {
         System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
@@ -971,7 +966,12 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), self.total_supply)],
+            balances: vec![(
+                alice(),
+                self.total_supply.saturating_add(
+                    <Runtime as pallet_balances::Config>::ExistentialDeposit::get(),
+                ),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();

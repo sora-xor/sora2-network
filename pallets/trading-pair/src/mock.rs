@@ -33,23 +33,21 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, AssetId32, AssetName,
-    AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION,
-    DOT, KSM, XOR, XST, XSTUSD,
+    mock_permissions_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR,
+    XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{BuildStorage, Perbill};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime! {
@@ -80,7 +78,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-// mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_permissions_config!(Runtime);

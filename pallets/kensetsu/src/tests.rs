@@ -34,8 +34,9 @@ use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     add_balance, alice, alice_account_id, assert_bad_debt, assert_balance, bob, bob_account_id,
     configure_kensetsu_dollar_for_xor, configure_kxor_for_xor, create_cdp_for_xor,
-    deposit_xor_to_cdp, get_account_cdp_ids, get_total_supply, make_cdps_unsafe, set_bad_debt,
-    set_borrow_tax, set_kensetsu_dollar_stablecoin, set_kensetsu_gold_stablecoin, tech_account_id,
+    deposit_xor_to_cdp, depository_tech_account_id, get_account_cdp_ids, get_total_supply,
+    make_cdps_unsafe, set_bad_debt, set_borrow_tax, set_kensetsu_dollar_stablecoin,
+    set_kensetsu_gold_stablecoin, treasury_tech_account_id,
 };
 
 use common::{balance, AssetId32, Balance, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR};
@@ -253,6 +254,7 @@ fn test_create_cdp_sunny_day() {
             KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(BoundedVec::try_from(vec![1]).unwrap())
         );
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -338,6 +340,7 @@ fn test_create_cdp_gold_sunny_day() {
             KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(BoundedVec::try_from(vec![1]).unwrap())
         );
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -433,6 +436,7 @@ fn test_close_cdp_outstanding_debt() {
         assert_balance(&alice_account_id(), &KUSD, more_than_debt);
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -479,6 +483,7 @@ fn test_close_cdp_sunny_day() {
         .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(get_total_supply(&KUSD), balance!(0));
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -508,8 +513,12 @@ fn test_multiple_cdp_close() {
             Some(BoundedVec::try_from(vec![cdp_id_2]).unwrap())
         );
 
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(10));
+
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_2));
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -618,6 +627,8 @@ fn test_deposit_collateral_zero() {
         assert_eq!(collateral_info.total_collateral, amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
+
+        assert_balance(&depository_tech_account_id(), &XOR, amount);
     });
 }
 
@@ -655,6 +666,8 @@ fn test_deposit_collateral_sunny_day() {
         assert_eq!(collateral_info.total_collateral, amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
+
+        assert_balance(&depository_tech_account_id(), &XOR, amount);
     });
 }
 
@@ -951,7 +964,7 @@ fn borrow_with_ken_incentivization() {
         );
         let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let demeter_farming_amount = remint_percent * ken_buyback_amount;
-        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+        assert_balance(&treasury_tech_account_id(), &KEN, demeter_farming_amount);
     });
 }
 
@@ -1016,7 +1029,7 @@ fn borrow_max_with_ken_incentivization() {
         );
         let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let demeter_farming_amount = remint_percent * ken_buyback_amount;
-        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+        assert_balance(&treasury_tech_account_id(), &KEN, demeter_farming_amount);
     });
 }
 
@@ -1106,7 +1119,11 @@ fn borrow_xor_kxor_with_incentivization() {
         let ken_remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let ken_demeter_farming_amount = ken_remint_percent * ken_buyback_amount;
         let ken_burned = ken_buyback_amount - ken_demeter_farming_amount;
-        assert_balance(&tech_account_id(), &KEN, ken_demeter_farming_amount);
+        assert_balance(
+            &treasury_tech_account_id(),
+            &KEN,
+            ken_demeter_farming_amount,
+        );
         assert_eq!(
             initial_total_ken_supply - ken_burned,
             get_total_supply(&KEN)
@@ -1115,7 +1132,11 @@ fn borrow_xor_kxor_with_incentivization() {
         let karma_remint_percent = <TestRuntime as Config>::KarmaIncentiveRemintPercent::get();
         let karma_demeter_farming_amount = karma_remint_percent * karma_buyback_amount;
         let karma_burned = karma_buyback_amount - karma_demeter_farming_amount;
-        assert_balance(&tech_account_id(), &KARMA, karma_demeter_farming_amount);
+        assert_balance(
+            &treasury_tech_account_id(),
+            &KARMA,
+            karma_demeter_farming_amount,
+        );
         assert_eq!(
             initial_total_karma_supply - karma_burned,
             get_total_supply(&KARMA)
@@ -1168,7 +1189,7 @@ fn test_borrow_cdp_accrue() {
         assert_balance(&alice_account_id(), &KUSD, balance!(10));
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, balance!(1));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1));
     });
 }
 
@@ -1434,7 +1455,7 @@ fn test_repay_debt_accrue() {
         assert_balance(&alice_account_id(), &KUSD, balance!(10));
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, balance!(1));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1));
     });
 }
 
@@ -1528,7 +1549,8 @@ fn test_liquidate_accrue() {
         assert_balance(&alice_account_id(), &KUSD, debt);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, interest);
+        assert_balance(&treasury_tech_account_id(), &KUSD, interest);
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -1578,7 +1600,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
             }
             .into(),
         );
-        assert_balance(&tech_account_id(), &KUSD, penalty);
+        assert_balance(&treasury_tech_account_id(), &KUSD, penalty);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
@@ -1602,6 +1624,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(1800));
     });
 }
 
@@ -1651,7 +1674,7 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
             }
             .into(),
         );
-        assert_balance(&tech_account_id(), &KUSD, penalty);
+        assert_balance(&treasury_tech_account_id(), &KUSD, penalty);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
@@ -1672,6 +1695,11 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(
+            &depository_tech_account_id(),
+            &XOR,
+            collateral - collateral_liquidated,
+        );
     });
 }
 
@@ -1679,6 +1707,7 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
 /// Liquidation results with revenue KUSD amount where
 ///  - revenue KUSD amount > cdp.debt
 ///  - revenue KUSD amount < cdp.debt + liquidation penalty
+///
 /// CDP debt is repaid, corresponding amount of collateral is sold
 /// Liquidation penalty is a protocol profit
 /// CDP has outstanding debt
@@ -1723,7 +1752,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
             }
             .into(),
         );
-        assert_balance(&tech_account_id(), &KUSD, penalty);
+        assert_balance(&treasury_tech_account_id(), &KUSD, penalty);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
@@ -1746,6 +1775,11 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
         assert_eq!(initial_kusd_supply - debt + cdp.debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(
+            &depository_tech_account_id(),
+            &XOR,
+            collateral - collateral_liquidated,
+        );
     });
 }
 
@@ -1807,7 +1841,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         // debt is 100 + 10 interest
         // liquidation revenue is 100 - 10 penalty = 90
         // bad debt = debt - liquidation = 110 - 90 = 20 - covered with protocol profit
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1824,6 +1858,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -1903,7 +1938,7 @@ fn test_liquidate_kusd_bad_debt() {
         // liquidation sold for 100 where proceeds is 90 and 10 penalty
         // CDP bad debt = CDP debt - proceeds = 110 - 90 = 20 KUSD
         // protocol bad debt = CDP bad debt - tech account balance = 20 - 10 = 10 KUSD
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(10));
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1923,6 +1958,7 @@ fn test_liquidate_kusd_bad_debt() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -2070,7 +2106,8 @@ fn test_accrue_profit() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, interest);
+        assert_balance(&treasury_tech_account_id(), &KUSD, interest);
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -2141,8 +2178,9 @@ fn test_accrue_interest_less_bad_debt() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(new_bad_debt);
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -2185,8 +2223,9 @@ fn test_accrue_interest_eq_bad_debt() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -2230,7 +2269,7 @@ fn test_accrue_interest_gt_bad_debt() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + profit);
-        assert_balance(&tech_account_id(), &KUSD, profit);
+        assert_balance(&treasury_tech_account_id(), &KUSD, profit);
         assert_bad_debt(balance!(0));
     });
 }
@@ -2512,7 +2551,7 @@ fn test_donate_no_bad_debt() {
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
@@ -2525,7 +2564,7 @@ fn test_donate_no_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, donation);
+        assert_balance(&treasury_tech_account_id(), &KUSD, donation);
         assert_bad_debt(balance!(0));
     });
 }
@@ -2547,7 +2586,7 @@ fn test_donate_donation_less_bad_debt() {
         let donation = balance!(10);
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
 
@@ -2559,7 +2598,7 @@ fn test_donate_donation_less_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(initial_bad_debt - donation);
     });
 }
@@ -2581,7 +2620,7 @@ fn test_donate_donation_eq_bad_debt() {
         set_bad_debt(initial_bad_debt);
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
 
@@ -2593,7 +2632,7 @@ fn test_donate_donation_eq_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
     });
 }
@@ -2615,7 +2654,7 @@ fn test_donate_donation_gt_bad_debt() {
         set_bad_debt(initial_bad_debt);
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
 
@@ -2627,7 +2666,11 @@ fn test_donate_donation_gt_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, donation - initial_bad_debt);
+        assert_balance(
+            &treasury_tech_account_id(),
+            &KUSD,
+            donation - initial_bad_debt,
+        );
         assert_bad_debt(balance!(0));
     });
 }
@@ -2717,7 +2760,7 @@ fn test_withdraw_profit_sunny_day() {
             KUSD,
             initial_protocol_profit
         ));
-        assert_balance(&tech_account_id(), &KUSD, initial_protocol_profit);
+        assert_balance(&treasury_tech_account_id(), &KUSD, initial_protocol_profit);
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
         let to_withdraw = balance!(10);
 
@@ -2736,7 +2779,7 @@ fn test_withdraw_profit_sunny_day() {
             .into(),
         );
         assert_balance(
-            &tech_account_id(),
+            &treasury_tech_account_id(),
             &KUSD,
             initial_protocol_profit - to_withdraw,
         );

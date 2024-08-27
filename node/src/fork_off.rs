@@ -28,15 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::io::Write;
-
-use frame_remote_externalities::{
-    Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig, Transport,
-};
+// use std::io::Write;
+//
+// use frame_remote_externalities::{
+//     Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig, Transport,
+// };
 use sc_cli::CliConfiguration;
 use sc_service::Configuration;
-use sp_core::bytes::to_hex;
+// use sp_core::bytes::to_hex;
 
+#[allow(dead_code)]
 const SKIPPED_PALLETS: [&str; 7] = [
     "System",
     "Session",
@@ -47,6 +48,7 @@ const SKIPPED_PALLETS: [&str; 7] = [
     "Sudo",
 ];
 
+#[allow(dead_code)]
 const INCLUDED_PREFIXES: [(&str, &str); 1] = [("System", "Accounts")];
 
 #[derive(Debug, Clone, clap::Parser)]
@@ -69,6 +71,7 @@ pub struct ForkOffCmd {
     raw: bool,
 }
 
+#[allow(dead_code)]
 fn get_storage_prefix(pallet: &str, storage: &str) -> Vec<u8> {
     [
         sp_core::twox_128(pallet.as_bytes()),
@@ -77,11 +80,13 @@ fn get_storage_prefix(pallet: &str, storage: &str) -> Vec<u8> {
     .concat()
 }
 
+#[allow(dead_code)]
 fn get_pallet_prefix(pallet: &str) -> Vec<u8> {
     sp_core::twox_128(pallet.as_bytes()).to_vec()
 }
 
 impl ForkOffCmd {
+    #[allow(warnings)]
     pub async fn run(&self, mut cfg: Configuration) -> Result<(), sc_cli::Error> {
         // let transport: Transport = self.url.clone().into();
         // let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());

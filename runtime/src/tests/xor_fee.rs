@@ -32,9 +32,9 @@ use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::order_book::OrderBookId;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
-    Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens,
-    Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
+    AccountId, AssetId, Assets, Balance, Balances, Currencies, PoolXYK, Referrals, ReferrerWeight,
+    Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens, Weight, XorBurnedWeight, XorFee,
+    XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -53,6 +53,7 @@ use framenode_chain_spec::ext;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
+#[allow(unused_imports)]
 use sp_runtime::traits::{Dispatchable, Saturating, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
@@ -516,8 +517,6 @@ fn refund_if_pays_no_works() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         give_xor_initial_balance(alice());
-
-        let tech_account_id = GetXorFeeAccountId::get();
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);

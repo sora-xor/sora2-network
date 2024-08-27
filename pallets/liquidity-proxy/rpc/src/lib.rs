@@ -40,7 +40,6 @@ use jsonrpsee::{
 };
 use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr, Zero};
 use std::sync::Arc;
 

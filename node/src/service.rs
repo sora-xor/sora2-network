@@ -370,7 +370,7 @@ pub fn new_partial(
     let rpc_setup = shared_voter_state.clone();
 
     let rpc_extensions_builder = {
-        let (_, grandpa_link, _, _) = &import_setup;
+        // let (_, grandpa_link, _, _) = &import_setup;
         let client = client.clone();
         let pool = transaction_pool.clone();
         let backend = backend.clone();
