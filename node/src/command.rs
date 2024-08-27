@@ -17,6 +17,7 @@
 
 use crate::cli::{Cli, Subcommand};
 use crate::service;
+#[allow(unused_imports)]
 use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 use sc_executor::sp_wasm_interface::ExtendedHostFunctions;
 use sc_executor::NativeExecutionDispatch;

@@ -149,6 +149,8 @@ parameter_types! {
     pub const MaxMessagesPerCommit: u32 = 3;
     pub const Decimals: u32 = 12;
 }
+
+#[allow(dead_code)]
 pub struct FeeConverter;
 impl Convert<U256, Balance> for FeeConverter {
     fn convert(amount: U256) -> Balance {

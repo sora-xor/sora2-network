@@ -8,6 +8,7 @@ use frame_support::traits::OnRuntimeUpgrade;
 use frame_system::pallet_prelude::BlockNumberFor;
 use log::{error, info};
 use sp_runtime::traits::One;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::Vec;

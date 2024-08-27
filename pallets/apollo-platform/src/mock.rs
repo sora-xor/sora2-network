@@ -297,6 +297,7 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
         false
     }
 
+    #[allow(unused)]
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,

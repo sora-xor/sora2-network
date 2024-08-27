@@ -37,6 +37,7 @@ pub mod v2 {
     use frame_support::weights::Weight;
     use frame_system::pallet_prelude::BlockNumberFor;
     use log::info;
+    #[cfg(feature = "try-runtime")]
     use sp_runtime::TryRuntimeError;
 
     use crate::*;
@@ -48,7 +49,7 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            let period = BlockNumberFor::<T>::try_from(3600_u32).unwrap_or_default();
+            let period = BlockNumberFor::<T>::from(3600_u32);
 
             // let period =
             //     <T as frame_system::Config>::BlockNumberFor::try_from(3600_u32).unwrap_or_default();

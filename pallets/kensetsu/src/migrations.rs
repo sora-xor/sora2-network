@@ -103,7 +103,6 @@ pub mod v1_to_v2 {
     use frame_support::weights::Weight;
     use log::error;
     use permissions::{Scope, BURN, MINT};
-    use sp_arithmetic::traits::Zero;
     use sp_core::Get;
 
     mod v1 {

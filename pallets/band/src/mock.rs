@@ -31,7 +31,6 @@
 use crate::{self as band, Config};
 use common::Balance;
 use frame_support::{parameter_types, traits::ConstU16};
-use frame_system;
 use sp_core::H256;
 use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},

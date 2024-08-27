@@ -4,14 +4,14 @@ use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
-    Fixed, PSWAP, TBCD, VAL, XST,
+    fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, VAL,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
@@ -19,7 +19,6 @@ use common::prelude::Balance;
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, BuildStorage, Percent};
 
@@ -28,7 +27,6 @@ pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 
@@ -46,7 +44,6 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_permissions_config!(Runtime);
-// mock_assets_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

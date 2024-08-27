@@ -1707,6 +1707,7 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
 /// Liquidation results with revenue KUSD amount where
 ///  - revenue KUSD amount > cdp.debt
 ///  - revenue KUSD amount < cdp.debt + liquidation penalty
+///
 /// CDP debt is repaid, corresponding amount of collateral is sold
 /// Liquidation penalty is a protocol profit
 /// CDP has outstanding debt

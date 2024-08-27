@@ -49,8 +49,6 @@ use sp_runtime::DispatchError;
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
-#[cfg(feature = "std")]
-use common::balance;
 use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]

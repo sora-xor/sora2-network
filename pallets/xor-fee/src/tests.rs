@@ -31,8 +31,6 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use core::ops::Sub;
-
 use crate::extension::ChargeTransactionPayment;
 use crate::{mock::*, LiquidityInfo, XorToVal};
 #[cfg(feature = "wip")] // Dynamic fee
@@ -45,12 +43,10 @@ use common::prelude::FixedWrapper;
 use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
-use frame_support::error::BadOrigin;
-use frame_support::traits::tokens::Balance;
 use frame_support::traits::{Currency, Imbalance};
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::traits::{Saturating, SignedExtension};
+use sp_runtime::traits::{BadOrigin, SignedExtension};
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{FixedPointNumber, FixedU128};
 

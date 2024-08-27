@@ -34,6 +34,7 @@ use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{traits::GetStorageVersion as _, weights::Weight};
 use log::info;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_std::collections::btree_set::BTreeSet;
 

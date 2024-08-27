@@ -41,7 +41,6 @@ use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
 use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -108,10 +107,7 @@ impl extended_assets::Config for TestRuntime {
 }
 
 construct_runtime! {
-    pub enum TestRuntime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum TestRuntime
     {
 
         System: frame_system::{Pallet, Call, Storage, Event<T>},

@@ -29,23 +29,22 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{Everything, OnFinalize, OnInitialize};
 use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{BuildStorage, MultiSignature, Perbill, Percent};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_frame_system_config, mock_permissions_config, mock_technical_config, mock_tokens_config,
+    Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL,
+    XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -58,7 +57,6 @@ type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId32 {
@@ -105,8 +103,6 @@ construct_runtime! {
 mock_technical_config!(Runtime);
 // Required by assets::Config
 mock_currencies_config!(Runtime);
-// Required by currencies::Config
-/* mock_pallet_balances_config!(Runtime); */
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);

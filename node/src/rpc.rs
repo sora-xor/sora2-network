@@ -45,7 +45,6 @@ use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
-use sp_core::H256 as Hash;
 use sp_keystore::KeystorePtr;
 use std::sync::Arc;
 
@@ -116,6 +115,7 @@ pub fn add_stage_rpc(
     Ok(rpc)
 }
 
+#[allow(unused_variables)] // chain_spec
 /// Instantiate full RPC extensions.
 pub fn create_full<C, P, SC, B>(
     deps: FullDeps<C, P, SC, B>,
@@ -247,7 +247,6 @@ where
         keystore,
         babe_worker_handle,
     } = babe;
-    let properties = chain_spec.properties();
 
     io.merge(
         Mmr::new(

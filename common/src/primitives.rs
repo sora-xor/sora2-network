@@ -240,17 +240,17 @@ pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(
 pub const APOLLO_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "00efe45135018136733be626b380a87ae663ccf6784a25fe9d9d2be64acecb9d"
 ));
-#[cfg(not(feature = "private-net"))]
+
 pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
 ));
-#[cfg(not(feature = "private-net"))]
+
 pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "00117b0fa73c4672e03a7d9d774e3b3f91beb893e93d9a8d0430295f44225db8"
 ));
 #[cfg(feature = "private-net")]
 pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
-    "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+    "00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
 ));
 // `private-net` is not used in prod
 #[allow(deprecated)]
@@ -1325,6 +1325,7 @@ impl<N: Get<u32>> TryFrom<&str> for BoundedString<N> {
 }
 
 impl<N: Get<u32>> PartialOrd for BoundedString<N> {
+    #[allow(clippy::non_canonical_partial_ord_impl)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
     }

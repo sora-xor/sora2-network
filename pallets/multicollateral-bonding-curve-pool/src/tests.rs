@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(non_snake_case)]
+
 mod tests {
     use crate::{
         mock::*, DistributionAccount, DistributionAccountData, DistributionAccounts, Error, Pallet,
@@ -50,7 +52,6 @@ mod tests {
         GetStorageVersion, OnFinalize, OnInitialize, OnRuntimeUpgrade, StorageVersion,
     };
     use sp_arithmetic::traits::Zero;
-    use sp_runtime::traits::Saturating;
     use sp_runtime::DispatchError;
     use sp_std::collections::vec_deque::VecDeque;
 

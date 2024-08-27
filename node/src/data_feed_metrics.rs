@@ -1,7 +1,4 @@
-use framenode_runtime::{
-    opaque::{Block, BlockId},
-    ResolveTime, Symbol,
-};
+use framenode_runtime::{opaque::Block, ResolveTime, Symbol};
 use oracle_proxy_rpc::OracleProxyRuntimeApi;
 use prometheus_endpoint::{register, Gauge, Opts, PrometheusError, Registry, U64};
 use sp_api::ProvideRuntimeApi;

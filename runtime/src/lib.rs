@@ -256,6 +256,7 @@ pub mod oracle_types {
 }
 pub use oracle_types::*;
 
+#[deny(warnings)]
 /// This runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -2782,7 +2783,7 @@ impl_runtime_apis! {
     impl sp_session::SessionKeys<Block> for Runtime {
         fn decode_session_keys(
             encoded: Vec<u8>,
-        ) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
+        ) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
             opaque::SessionKeys::decode_into_raw_public_keys(&encoded)
         }
 
@@ -3467,6 +3468,7 @@ impl_runtime_apis! {
             return (list, storage_info)
         }
 
+        #[allow(warnings)] // ignore non-local `impl` definition
         fn dispatch_benchmark(
             config: frame_benchmarking::BenchmarkConfig
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {

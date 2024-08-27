@@ -9,6 +9,7 @@ use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{pallet_prelude::StorageVersion, traits::GetStorageVersion as _};
 use log::{error, info};
 use sp_runtime::traits::Zero;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 
 #[cfg(feature = "try-runtime")]
