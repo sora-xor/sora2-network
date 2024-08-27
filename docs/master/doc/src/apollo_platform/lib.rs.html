@@ -2103,11 +2103,11 @@
                 </span><span class="kw">let </span>num_of_pools = &lt;PoolsByBlock&lt;T&gt;&gt;::iter().count() <span class="kw">as </span>u32;
                 <span class="kw">let </span>block_number: BlockNumberFor&lt;T&gt; = num_of_pools.into();
                 &lt;PoolsByBlock&lt;T&gt;&gt;::insert(block_number, asset_id);
+            }
 
-                <span class="comment">// Register asset on PriceTools
-                </span><span class="kw">if </span>!T::PriceTools::is_asset_registered(<span class="kw-2">&amp;</span>asset_id) {
-                    T::PriceTools::register_asset(<span class="kw-2">&amp;</span>asset_id)<span class="question-mark">?</span>;
-                }
+            <span class="comment">// Register asset on PriceTools
+            </span><span class="kw">if </span>!T::PriceTools::is_asset_registered(<span class="kw-2">&amp;</span>asset_id) {
+                T::PriceTools::register_asset(<span class="kw-2">&amp;</span>asset_id)<span class="question-mark">?</span>;
             }
 
             <span class="self">Self</span>::deposit_event(Event::PoolAdded(user, asset_id));
