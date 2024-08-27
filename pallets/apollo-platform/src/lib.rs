@@ -413,11 +413,11 @@ pub mod pallet {
                 let num_of_pools = <PoolsByBlock<T>>::iter().count() as u32;
                 let block_number: BlockNumberFor<T> = num_of_pools.into();
                 <PoolsByBlock<T>>::insert(block_number, asset_id);
+            }
 
-                // Register asset on PriceTools
-                if !T::PriceTools::is_asset_registered(&asset_id) {
-                    T::PriceTools::register_asset(&asset_id)?;
-                }
+            // Register asset on PriceTools
+            if !T::PriceTools::is_asset_registered(&asset_id) {
+                T::PriceTools::register_asset(&asset_id)?;
             }
 
             Self::deposit_event(Event::PoolAdded(user, asset_id));
