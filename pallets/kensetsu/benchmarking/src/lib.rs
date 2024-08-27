@@ -615,4 +615,27 @@ benchmarks! {
             ).into()
         );
     }
+
+    update_minimal_stability_fee_accrue {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_minimal_stability_fee_accrue(
+            RawOrigin::Root.into(),
+            KUSD.into(),
+            balance!(42),
+        ).unwrap();
+    }
+    verify {
+        let new_info = StablecoinInfos::<T>::get::<AssetIdOf<T>>(KUSD.into()).expect("Must succeed");
+        assert_eq!(new_info.stablecoin_parameters.minimal_stability_fee_accrue, balance!(42));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::MinimalStabilityFeeAccrueUpdated {
+                    old_minimal_stability_fee_accrue: balance!(0),
+                    new_minimal_stability_fee_accrue: balance!(42),
+                }
+            ).into()
+        );
+    }
 }
