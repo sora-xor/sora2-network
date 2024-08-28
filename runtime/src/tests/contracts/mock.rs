@@ -40,7 +40,7 @@ use order_book::OrderBookId;
 use sp_core::crypto::AccountId32;
 use sp_runtime::BuildStorage;
 
-pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000_000, 1024 * 1024);
+pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000_000, 1024 * 1024 * 1024);
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(u32, DEXInfo<AssetId>)>,
