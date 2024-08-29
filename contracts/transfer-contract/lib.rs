@@ -33,7 +33,7 @@
 /// Example of contract for calling `transfer` extrinsic
 #[ink::contract]
 mod transfer_contract {
-    use contract_extrinsics::{RuntimeCall, assets::AssetsCall, primitives::AssetId32};
+    use contract_extrinsics::{assets::AssetsCall, primitives::AssetId32, ExtrinsicCall};
 
     #[ink(storage)]
     #[derive(Default)]
@@ -63,7 +63,7 @@ mod transfer_contract {
             amount: Balance,
         ) -> Result<(), RuntimeError> {
             self.env()
-                .call_runtime(&RuntimeCall::Assets(AssetsCall::Transfer {
+                .call_runtime(&ExtrinsicCall::Assets(AssetsCall::Transfer {
                     asset_id,
                     to,
                     amount,
@@ -72,6 +72,3 @@ mod transfer_contract {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {}

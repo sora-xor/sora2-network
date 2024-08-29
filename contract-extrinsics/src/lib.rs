@@ -41,7 +41,7 @@ pub mod primitives;
 /// `Ink!` doesn't expose the real enum, so we need a partial definition matching our targets.
 /// You should get or count index of the pallet, using `construct_runtime!`, it is zero based
 #[ink::scale_derive(Encode)]
-pub enum RuntimeCall {
+pub enum ExtrinsicCall {
     #[codec(index = 21)]
     Assets(AssetsCall),
     #[codec(index = 57)]

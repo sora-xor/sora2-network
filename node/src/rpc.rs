@@ -104,7 +104,7 @@ where
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
 {
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
-    rpc.merge(BeefyLightClientClient::new(client.clone()).into_rpc())?;
+    rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
     Ok(rpc)
 }
 

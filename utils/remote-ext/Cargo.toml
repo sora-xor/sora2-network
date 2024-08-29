@@ -15,7 +15,7 @@ clap = { version = "=4.5.4", features = ["derive"] }
 jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
 tokio = { version = "1.18.2", features = ["macros", "rt-multi-thread", "sync"] }
 anyhow = "1.0.51"
-env_logger = "0.10.0"
+env_logger = "0.11"
 hex = "0.4.3"
 
 frame-remote-externalities = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
