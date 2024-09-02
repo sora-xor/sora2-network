@@ -47,7 +47,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
-use hex_literal::hex;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
@@ -299,6 +298,17 @@ where
 }
 
 parameter_types! {
+    pub KensetsuDepositoryTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+            kensetsu::TECH_ACCOUNT_DEPOSITORY_MAIN.to_vec(),
+        )
+    };
+    pub KensetsuDepositoryAccountId: AccountId = {
+        let tech_account_id = KensetsuDepositoryTechAccountId::get();
+        technical::Pallet::<TestRuntime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.")
+    };
     pub KensetsuTreasuryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -316,6 +326,11 @@ parameter_types! {
     pub const GetKenIncentiveRemintPercent: Percent = Percent::from_percent(80);
     pub const GetKarmaIncentiveRemintPercent: Percent = Percent::from_percent(80);
     pub const MinimalStabilityFeeAccrue: Balance = balance!(1);
+}
+
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBuyBackAssetId: AssetId = XST;
 }
 
 mock_assets_config!(TestRuntime);
@@ -336,6 +351,7 @@ impl kensetsu::Config for TestRuntime {
     type LiquidityProxy = MockLiquidityProxy;
     type Oracle = MockOracle;
     type TradingPairSourceManager = MockTradingPairSourceManager;
+    type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
     type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
     type KenAssetId = KenAssetId;
     type KarmaAssetId = KarmaAssetId;
@@ -364,6 +380,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![
+            (
+                KensetsuDepositoryAccountId::get(),
+                KensetsuDepositoryTechAccountId::get(),
+            ),
             (
                 KensetsuTreasuryAccountId::get(),
                 KensetsuTreasuryTechAccountId::get(),

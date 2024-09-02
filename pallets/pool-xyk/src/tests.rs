@@ -36,8 +36,8 @@ use common::{
     balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
     LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
 };
-use frame_support::assert_noop;
 use frame_support::assert_ok;
+use frame_support::{assert_err, assert_noop};
 
 use crate::mock::*;
 use crate::{PoolProviders, TotalIssuances};
@@ -83,6 +83,7 @@ impl<'a> crate::Pallet<Runtime> {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ));
@@ -95,6 +96,7 @@ impl<'a> crate::Pallet<Runtime> {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ));
@@ -107,6 +109,7 @@ impl<'a> crate::Pallet<Runtime> {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             ));
@@ -545,14 +548,14 @@ fn quote_case_exact_output_for_input_base_second() {
                     &bp,
                     &gt,
                     QuoteAmount::WithDesiredOutput {
-                        desired_amount_out: balance!(50000)
+                        desired_amount_out: balance!(5000)
                     },
                     true,
                 )
                 .unwrap()),
                 (
-                    201207243460764587525158,
-                    OutcomeFee::from_asset(GoldenTicket.into(), 150451354062186559679)
+                    10559662090813093980992,
+                    OutcomeFee::from_asset(GoldenTicket.into(), 15045135406218655967)
                 )
             );
         })],
@@ -1936,6 +1939,7 @@ fn cannot_initialize_with_non_divisible_asset() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -1947,6 +1951,7 @@ fn cannot_initialize_with_non_divisible_asset() {
             0,
             1,
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3228,6 +3233,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3303,6 +3309,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3315,6 +3322,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3378,6 +3386,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3390,6 +3399,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             0,
             Balance::from(0u32),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3660,6 +3670,7 @@ fn initialize_pool_with_different_dex() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3671,6 +3682,7 @@ fn initialize_pool_with_different_dex() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3710,6 +3722,7 @@ fn initialize_pool_with_synthetics() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3721,6 +3734,7 @@ fn initialize_pool_with_synthetics() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3732,6 +3746,7 @@ fn initialize_pool_with_synthetics() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(balance!(10)),
             true,
+            common::AssetType::Regular,
             None,
             None,
         ));
@@ -3818,6 +3833,509 @@ fn initialize_pool_with_synthetics() {
             DEX_C_ID,
             Mango.into(),
             BlackPepper.into(),
+        ));
+    });
+}
+
+#[test]
+fn check_step_quote_chameleon_limits() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, pt, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            Potato.into(),
+            BlackPepper.into(),
+            balance!(10),
+            balance!(20),
+            balance!(10),
+            balance!(20),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(33),
+                        balance!(16.447786386607548998),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049491834663814090))
+                    ),
+                    SwapChunk::new(
+                        balance!(33),
+                        balance!(16.442360950037693547),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049475509378247824))
+                    ),
+                    SwapChunk::new(
+                        balance!(33),
+                        balance!(16.436938197461963666),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049459192168892569))
+                    ),
+                ]),
+                limits: Default::default(),
+            }
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(6.687397532149040098),
+                        balance!(3.333556216843500771),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030760933330494))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687397532149040098),
+                        balance!(3.333333325882023583),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090248391245))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687397532149040099),
+                        balance!(3.333110457274475645),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010029419630715573))
+                    ),
+                ]),
+                limits: SwapLimits::new(
+                    None,
+                    Some(SideAmount::Input(balance!(20.062192596447120295))),
+                    None
+                )
+            }
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(6.686950393907246094),
+                        balance!(3.333333333333333333),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687397517200078968),
+                        balance!(3.333333333333333333),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                    ),
+                    SwapChunk::new(
+                        balance!(6.687844685339795233),
+                        balance!(3.333333333333333334),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                    ),
+                ]),
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10))), None)
+            }
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::step_quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                3,
+                true
+            )
+            .unwrap()
+            .0,
+            DiscreteQuotation {
+                chunks: VecDeque::from([
+                    SwapChunk::new(
+                        balance!(66.220512120302212237),
+                        balance!(33),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043129))
+                    ),
+                    SwapChunk::new(
+                        balance!(66.264373819107869477),
+                        balance!(33),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043129))
+                    ),
+                    SwapChunk::new(
+                        balance!(66.308279110583909913),
+                        balance!(33),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043130))
+                    ),
+                ]),
+                limits: SwapLimits::new(
+                    None,
+                    Some(SideAmount::Output(balance!(98712.870300000000000000))),
+                    None
+                )
+            }
+        );
+    })]);
+}
+
+#[test]
+fn check_quote_chameleon_limits() {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, pt, _, _, _, _, _| {
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            balance!(100000),
+            balance!(200000),
+        ));
+        assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            dex_id,
+            Potato.into(),
+            BlackPepper.into(),
+            balance!(10),
+            balance!(20),
+            balance!(10),
+            balance!(20),
+        ));
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(
+                balance!(49.327085534107206211),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.148426536210954483))
+            ),
+        );
+
+        assert_err!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_input(balance!(99)),
+                true
+            ),
+            crate::Error::<Runtime>::NotEnoughOutputReserves
+        );
+
+        assert_err!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &pt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                true
+            ),
+            crate::Error::<Runtime>::NotEnoughOutputReserves
+        );
+
+        assert_eq!(
+            crate::Pallet::<Runtime>::quote(
+                &dex_id,
+                &bp,
+                &gt,
+                QuoteAmount::with_desired_output(balance!(99)),
+                true
+            )
+            .unwrap()
+            .0,
+            SwapOutcome::new(
+                balance!(198.793165049993991627),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.297893681043129388))
+            ),
+        );
+    })]);
+}
+
+#[test]
+fn test_pool_fails_with_regulated_asset() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            GoldenTicket.into(),
+            AssetSymbol(b"GT".to_vec()),
+            AssetName(b"Golden Ticket".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        ));
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            Apple.into(),
+            AssetSymbol(b"AP".to_vec()),
+            AssetName(b"Apple".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            common::AssetType::Regulated,
+            None,
+            None,
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+        ));
+
+        assert_ok!(PoolXYK::initialize_pool(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+        ));
+
+        assert_err!(
+            PoolXYK::deposit_liquidity(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_A_ID,
+                GoldenTicket.into(),
+                Apple.into(),
+                balance!(144000),
+                balance!(360000),
+                balance!(144000),
+                balance!(227683.9915321233119024),
+            ),
+            crate::Error::<Runtime>::AssetRegulationsCheckFailed
+        );
+
+        assert_err!(
+            PoolXYK::withdraw_liquidity(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_A_ID,
+                Apple.into(),
+                GoldenTicket.into(),
+                balance!(144000),
+                balance!(36000),
+                balance!(14400),
+            ),
+            crate::Error::<Runtime>::AssetRegulationsCheckFailed
+        );
+
+        assert_err!(
+            PoolXYK::deposit_liquidity(
+                RuntimeOrigin::signed(BOB()),
+                DEX_A_ID,
+                GoldenTicket.into(),
+                Apple.into(),
+                balance!(144000),
+                balance!(360000),
+                balance!(144000),
+                balance!(227683.9915321233119024),
+            ),
+            crate::Error::<Runtime>::AssetRegulationsCheckFailed
+        );
+
+        assert_err!(
+            PoolXYK::withdraw_liquidity(
+                RuntimeOrigin::signed(BOB()),
+                DEX_A_ID,
+                Apple.into(),
+                GoldenTicket.into(),
+                balance!(144000),
+                balance!(36000),
+                balance!(14400),
+            ),
+            crate::Error::<Runtime>::AssetRegulationsCheckFailed
+        );
+    });
+}
+
+#[test]
+fn test_pool_works_with_regulated_asset() {
+    use common::AssetId32;
+
+    ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            GoldenTicket.into(),
+            AssetSymbol(b"GT".to_vec()),
+            AssetName(b"Golden Ticket".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        ));
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            Apple.into(),
+            AssetSymbol(b"AP".to_vec()),
+            AssetName(b"Apple".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            common::AssetType::Regulated,
+            None,
+            None,
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &ALICE(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &GoldenTicket.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &Apple.into(),
+            &ALICE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+        ));
+
+        assert_ok!(PoolXYK::initialize_pool(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+        ));
+
+        // Good Scenarios
+
+        let apple_asset_id = AssetId32::from(Apple);
+        let sbt_asset_id = extended_assets::test_utils::register_sbt_asset::<Runtime>(&ALICE());
+
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            RuntimeOrigin::signed(ALICE()),
+            sbt_asset_id,
+            apple_asset_id
+        ));
+
+        assert_ok!(Assets::mint_to(&sbt_asset_id, &ALICE(), &ALICE(), 1));
+        assert_ok!(Assets::mint_to(&sbt_asset_id, &ALICE(), &BOB(), 1));
+
+        assert_ok!(PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+            balance!(227683.9915321233119024),
+        ));
+
+        assert_ok!(PoolXYK::withdraw_liquidity(
+            RuntimeOrigin::signed(ALICE()),
+            DEX_A_ID,
+            Apple.into(),
+            GoldenTicket.into(),
+            balance!(144000),
+            balance!(36000),
+            balance!(14400),
+        ));
+
+        assert_ok!(PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Apple.into(),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+            balance!(227683.9915321233119024),
+        ));
+
+        assert_ok!(PoolXYK::withdraw_liquidity(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            Apple.into(),
+            GoldenTicket.into(),
+            balance!(144000),
+            balance!(36000),
+            balance!(14400),
         ));
     });
 }

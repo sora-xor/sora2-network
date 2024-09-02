@@ -89,6 +89,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        common::AssetType::Regular,
         None,
         None,
     );
@@ -100,6 +101,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        common::AssetType::Regular,
         None,
         None,
     )

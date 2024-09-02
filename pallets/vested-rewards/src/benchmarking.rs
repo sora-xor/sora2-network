@@ -70,6 +70,7 @@ fn create_asset<T: Config>(prefix: &str, index: u128) -> AssetIdOf<T> {
         18,
         0,
         true,
+        common::AssetType::Regular,
         None,
         None,
     )

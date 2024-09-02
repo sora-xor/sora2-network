@@ -35,7 +35,7 @@ use crate::tests::{
     approve_last_request, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
 use crate::{AssetConfig, EthAddress};
-use common::{AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, USDT, XOR};
+use common::{AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, PSWAP, USDT, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;

@@ -34,11 +34,13 @@
 
 extern crate core;
 
+#[cfg(test)]
+mod alt_test_utils;
+#[cfg(test)]
+mod alt_tests;
 pub mod liquidity_aggregator;
 #[cfg(test)]
 mod mock;
-#[cfg(test)]
-mod new_tests;
 #[cfg(test)]
 mod test_utils;
 #[cfg(test)]
@@ -125,10 +127,9 @@ impl AssetType {
         synthetic_assets: &BTreeSet<AssetIdOf<T>>,
         asset_id: AssetIdOf<T>,
     ) -> Self {
-        let base_chameleon_asset_id =
-            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
-                &dex_info.base_asset_id,
-            );
+        let (base_chameleon_asset_id, chameleon_targets) =
+            <T::GetChameleonPools as traits::GetByKey<_, _>>::get(&dex_info.base_asset_id).unzip();
+        let chameleon_targets = chameleon_targets.unwrap_or_default();
         if asset_id == dex_info.base_asset_id {
             AssetType::Base
         } else if asset_id == dex_info.synthetic_base_asset_id {
@@ -138,10 +139,7 @@ impl AssetType {
         } else if let Some(base_chameleon_asset_id) = base_chameleon_asset_id {
             if asset_id == base_chameleon_asset_id {
                 AssetType::ChameleonBase
-            } else if <T::GetChameleonPool as traits::GetByKey<_, _>>::get(&common::TradingPair {
-                base_asset_id: dex_info.base_asset_id,
-                target_asset_id: asset_id,
-            }) {
+            } else if chameleon_targets.contains(&asset_id) {
                 AssetType::ChameleonPoolAsset
             } else {
                 AssetType::Basic
@@ -303,10 +301,8 @@ impl<T: Config> ExchangePath<T> {
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
-        let base_chameleon_asset_id =
-            <T::GetChameleonPoolBaseAssetId as traits::GetByKey<_, _>>::get(
-                &dex_info.base_asset_id,
-            );
+        let (base_chameleon_asset_id, _) =
+            <T::GetChameleonPools as traits::GetByKey<_, _>>::get(&dex_info.base_asset_id).unzip();
 
         let mut path_builder = PathBuilder::<T> {
             input_asset_id,
@@ -1599,7 +1595,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
 
-        let mut aggregator = LiquidityAggregator::new(amount.variant());
+        let mut aggregator: LiquidityAggregator<T, _> = LiquidityAggregator::new(amount.variant());
 
         let mut total_weight = Weight::zero();
 
@@ -1612,7 +1608,10 @@ impl<T: Config> Pallet<T> {
                 T::GetNumSamples::get(),
                 deduce_fee,
             ) {
-                aggregator.add_source(source.clone(), discrete_quotation);
+                // skip the source if it returns bad liquidity
+                if discrete_quotation.verify() {
+                    aggregator.add_source(source.clone(), discrete_quotation);
+                }
                 total_weight = total_weight.saturating_add(weight);
             } else {
                 // skip the source if it returns an error
@@ -1620,19 +1619,18 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let (swap_info, aggregate_swap_outcome) =
-            aggregator.aggregate_swap_outcome::<T>(amount.amount())?;
+        let aggregation_result = aggregator.aggregate_liquidity(amount.amount())?;
 
         let mut rewards = Rewards::new();
 
         if !skip_info {
-            for (source, (input, output)) in swap_info {
+            for (source, (input, output)) in &aggregation_result.swap_info {
                 let (mut reward, weight) = T::LiquidityRegistry::check_rewards(
                     &source,
                     input_asset_id,
                     output_asset_id,
-                    input,
-                    output,
+                    *input,
+                    *output,
                 )
                 .unwrap_or((Vec::new(), Weight::zero()));
 
@@ -1641,7 +1639,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        Ok((aggregate_swap_outcome, rewards, total_weight))
+        Ok((aggregation_result.into(), rewards, total_weight))
     }
 
     /// Implements the "smart" split algorithm.
@@ -2520,6 +2518,7 @@ pub mod pallet {
     use common::prelude::OutcomeFee;
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Permill;
     use frame_support::traits::EnsureOrigin;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
@@ -2548,10 +2547,11 @@ pub mod pallet {
         type MaxAdditionalDataLengthXorlessTransfer: Get<u32>;
         type MaxAdditionalDataLengthSwapTransferBatch: Get<u32>;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        type GetChameleonPoolBaseAssetId: traits::GetByKey<AssetIdOf<Self>, Option<AssetIdOf<Self>>>;
-        type GetChameleonPool: traits::GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
-        /// Weight information for the extrinsics in this Pallet.
-        type WeightInfo: WeightInfo;
+        /// base_asset_id => (chameleon_base_asset_id, target_assets)
+        type GetChameleonPools: traits::GetByKey<
+            AssetIdOf<Self>,
+            Option<(AssetIdOf<Self>, BTreeSet<AssetIdOf<Self>>)>,
+        >;
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
@@ -2562,6 +2562,11 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        /// Percent of internal slippage tolerance
+        #[pallet::constant]
+        type InternalSlippageTolerance: Get<Permill>;
+        /// Weight information for the extrinsics in this Pallet.
+        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
@@ -2893,7 +2898,7 @@ pub mod pallet {
         InvalidFeeValue,
         /// None of the sources has enough reserves to execute a trade
         InsufficientLiquidity,
-        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
+        /// Unable to aggregate the liquidity from sources.
         AggregationError,
         /// Specified parameters lead to arithmetic error
         CalculationError,
@@ -2913,16 +2918,18 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
-        // Information about swap batch receivers is invalid
+        /// Information about swap batch receivers is invalid
         InvalidReceiversInfo,
-        // Failure while transferring commission to ADAR account
+        /// Failure while transferring commission to ADAR account
         FailedToTransferAdarCommission,
-        // ADAR commission ratio exceeds 1
+        /// ADAR commission ratio exceeds 1
         InvalidADARCommissionRatio,
-        // Sender don't have enough asset balance
+        /// Sender don't have enough asset balance
         InsufficientBalance,
-        // Sender and receiver should not be the same
+        /// Sender and receiver should not be the same
         TheSameSenderAndReceiver,
+        /// Internal error. Liquidity source returned wrong liquidity.
+        BadLiquidity,
     }
 
     #[pallet::type_value]

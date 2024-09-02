@@ -100,7 +100,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             Err(Error::<T>::AccountBalanceIsInvalid)?;
         }
 
-        let (balance_bp, balance_tp) = Pallet::<T>::get_actual_reserves(
+        let (balance_bp, balance_tp, _max_output_available) = Pallet::<T>::get_actual_reserves(
             &pool_account_repr_sys,
             &base_asset_id,
             &self.destination.0.asset,
@@ -264,7 +264,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 set.remove(&pair.target_asset_id)
             });
         }
-        let (balance_a, balance_b) = Pallet::<T>::get_actual_reserves(
+        let (balance_a, balance_b, _max_output_available) = Pallet::<T>::get_actual_reserves(
             &pool_account_repr_sys,
             &base_asset_id,
             &self.destination.0.asset,

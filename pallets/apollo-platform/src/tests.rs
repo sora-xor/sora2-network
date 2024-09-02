@@ -466,6 +466,25 @@ mod test {
 
             assert_ok!(ApolloPlatform::remove_pool(user.clone(), DOT));
 
+            let new_basic_lending_rate =
+                (FixedWrapper::from(ApolloPlatform::lending_rewards_per_block())
+                    / FixedWrapper::from(balance!(2)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            let new_borrowing_rewards_rate =
+                (FixedWrapper::from(ApolloPlatform::borrowing_rewards_per_block())
+                    / FixedWrapper::from(balance!(2)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            for (asset_id, pool_info) in pallet::PoolData::<Runtime>::iter() {
+                if asset_id != DOT {
+                    assert_eq!(pool_info.basic_lending_rate, new_basic_lending_rate);
+                    assert_eq!(pool_info.borrowing_rewards_rate, new_borrowing_rewards_rate);
+                }
+            }
+
             assert_ok!(ApolloPlatform::add_pool(
                 user,
                 DOT,
@@ -712,7 +731,13 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, XOR, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    XOR,
+                    XOR,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::SameCollateralAndBorrowingAssets
             );
         });
@@ -723,7 +748,13 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, DOT, balance!(9)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    XOR,
+                    DOT,
+                    balance!(9),
+                    balance!(1)
+                ),
                 Error::<Runtime>::InvalidBorrowingAmount
             );
         });
@@ -734,7 +765,13 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), XOR, DOT, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    XOR,
+                    DOT,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -762,7 +799,13 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    XOR,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::PoolIsRemoved
             );
         });
@@ -785,8 +828,56 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    XOR,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::NoLiquidityForBorrowingAsset
+            );
+        });
+    }
+
+    #[test]
+    fn borrow_invalid_loan_to_value() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_err!(
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    XOR,
+                    balance!(100),
+                    balance!(1.2)
+                ),
+                Error::<Runtime>::InvalidLoanToValue
             );
         });
     }
@@ -821,7 +912,13 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    XOR,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::PoolDoesNotExist
             );
         });
@@ -871,7 +968,13 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    XOR,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::NothingLent
             );
         });
@@ -936,7 +1039,13 @@ mod test {
             ));
 
             assert_err!(
-                ApolloPlatform::borrow(RuntimeOrigin::signed(alice()), DOT, XOR, balance!(100)),
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    XOR,
+                    balance!(100),
+                    balance!(1)
+                ),
                 Error::<Runtime>::InvalidCollateralAmount
             );
         });
@@ -1016,7 +1125,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             // Check user and pallet balances of the borrowed asset
@@ -1060,6 +1170,130 @@ mod test {
             assert_eq!(borrowing_user_debt.last_borrowing_block, 0);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(100));
+            assert_eq!(borrowing_user_debt.borrowing_interest, balance!(0));
+            assert_eq!(borrowing_user_debt.borrowing_rewards, balance!(0));
+        });
+    }
+
+    #[test]
+    fn borrow_with_smaller_loan_to_value_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(100),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            // Get data before borrow
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
+
+            // Collateral asset pool tests (before borrow)
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(100));
+            assert_eq!(collateral_asset_pool_info.total_collateral, balance!(0));
+
+            // Borrowing asset pool tests (before borrow)
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(300000));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(0));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(80),
+                balance!(0.8)
+            ));
+
+            // Check user and pallet balances of the borrowed asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
+                balance!(80)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account()).unwrap(),
+                balance!(299920)
+            );
+
+            // Check user and pallet balances of the collateral asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account()).unwrap(),
+                balance!(100)
+            );
+
+            // Get data after borrow
+            let borrowing_user_info =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
+
+            // Collateral asset pool tests (after borrow)
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(0));
+            assert_eq!(collateral_asset_pool_info.total_collateral, balance!(100));
+
+            // Borrowing asset pool tests (after borrow)
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299920));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(80));
+
+            // Borrowing user tests (after borrow)
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 0);
+            assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(80));
             assert_eq!(borrowing_user_debt.borrowing_interest, balance!(0));
             assert_eq!(borrowing_user_debt.borrowing_rewards, balance!(0));
         });
@@ -1135,7 +1369,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(50)
+                balance!(50),
+                balance!(1)
             ));
 
             run_to_block(151);
@@ -1198,7 +1433,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(50)
+                balance!(50),
+                balance!(1)
             ));
 
             // Check user and pallet balances of the borrowed asset
@@ -1516,7 +1752,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             assert_err!(
@@ -1588,7 +1825,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             run_to_block(101);
@@ -1669,7 +1907,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             run_to_block(101);
@@ -1797,14 +2036,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
                 KSM,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             run_to_block(101);
@@ -1984,7 +2225,8 @@ mod test {
                 RuntimeOrigin::signed(bob()),
                 DOT,
                 XOR,
-                balance!(300)
+                balance!(300),
+                balance!(1)
             ));
 
             assert_err!(
@@ -2333,7 +2575,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 KSM,
                 XOR,
-                balance!(200)
+                balance!(200),
+                balance!(1)
             ));
 
             assert_err!(
@@ -2406,7 +2649,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(200)
+                balance!(200),
+                balance!(1)
             ));
 
             run_to_block(151);
@@ -2583,7 +2827,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(200)
+                balance!(200),
+                balance!(1)
             ));
 
             run_to_block(151);
@@ -2774,7 +3019,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(200)
+                balance!(200),
+                balance!(1)
             ));
 
             run_to_block(151);
@@ -2892,6 +3138,139 @@ mod test {
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR, &get_authority_account()).unwrap(),
                 developer_reserve
+            );
+        });
+    }
+
+    #[test]
+    fn repay_full_loan_with_two_collaterals_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            static_set_dex();
+            init_exchange();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DAI,
+                &alice(),
+                &alice(),
+                balance!(10000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(0.8),
+                balance!(0.7),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.2),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+                balance!(0.8),
+                balance!(0.7),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.2),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DAI,
+                balance!(0.8),
+                balance!(0.7),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.2),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(200),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DAI,
+                balance!(1500),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(80),
+                balance!(0.8)
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DAI,
+                XOR,
+                balance!(80),
+                balance!(0.8)
+            ));
+
+            let borrow_user_info_before_lq =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrow_user_info_dot_coll_before_lq = borrow_user_info_before_lq.get(&DOT).unwrap();
+            let borrow_user_info_dai_coll_before_lq = borrow_user_info_before_lq.get(&DAI).unwrap();
+
+            assert_eq!(
+                borrow_user_info_dot_coll_before_lq.collateral_amount,
+                balance!(100)
+            );
+            assert_eq!(
+                borrow_user_info_dai_coll_before_lq.collateral_amount,
+                balance!(1000)
+            );
+
+            assert_ok!(ApolloPlatform::repay(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(100)
+            ));
+
+            // One collateral should remain after the other collateral full repayment
+            let borrow_user_info_before_lq =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrow_user_info_dot_coll_before_lq = borrow_user_info_before_lq.get(&DOT);
+            assert_eq!(borrow_user_info_dot_coll_before_lq, None);
+
+            let borrow_user_info_dai_coll_before_lq = borrow_user_info_before_lq.get(&DAI).unwrap();
+            assert_eq!(
+                borrow_user_info_dai_coll_before_lq.collateral_amount,
+                balance!(1000)
             );
         });
     }
@@ -3279,7 +3658,8 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             let borrow_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
@@ -3510,14 +3890,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(40)
+                balance!(40),
+                balance!(1)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(bob()),
                 XOR,
                 DOT,
-                balance!(40)
+                balance!(40),
+                balance!(1)
             ));
 
             run_to_block(151);
@@ -3687,14 +4069,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(40)
+                balance!(40),
+                balance!(1)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(bob()),
                 XOR,
                 DOT,
-                balance!(40)
+                balance!(40),
+                balance!(1)
             ));
 
             run_to_block(3);
@@ -3871,14 +4255,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
                 KSM,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             assert_err!(
@@ -3993,14 +4379,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(80),
+                balance!(0.8)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
                 DAI,
                 XOR,
-                balance!(100)
+                balance!(80),
+                balance!(0.8)
             ));
 
             let dot_collateral_asset_pool_info_before_lq =
@@ -4018,33 +4406,33 @@ mod test {
 
             assert_eq!(
                 borrow_user_info_dot_coll_before_lq.collateral_amount,
-                balance!(125)
+                balance!(100)
             );
             assert_eq!(
                 borrow_user_info_dai_coll_before_lq.collateral_amount,
-                balance!(1250)
+                balance!(1000)
             );
 
-            assert_eq!(borrowing_pool_before_lq.total_borrowed, balance!(200));
+            assert_eq!(borrowing_pool_before_lq.total_borrowed, balance!(160));
 
             assert_eq!(
                 dot_collateral_asset_pool_info_before_lq.total_collateral,
-                balance!(125)
+                balance!(100)
             );
 
             assert_eq!(
                 dai_collateral_asset_pool_info_before_lq.total_collateral,
-                balance!(1250)
+                balance!(1000)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
-                balance!(200)
+                balance!(160)
             );
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account()).unwrap(),
-                balance!(299800)
+                balance!(299840)
             );
 
             assert_eq!(
@@ -4074,10 +4462,10 @@ mod test {
             ));
 
             let (treasury_reserve_dot, _, developer_amount_dot) =
-                calculate_reserve_amounts(DOT, balance!(25));
+                calculate_reserve_amounts(DOT, balance!(20));
 
             let (treasury_reserve_dai, _, developer_amount_dai) =
-                calculate_reserve_amounts(DAI, balance!(250));
+                calculate_reserve_amounts(DAI, balance!(200));
 
             let borrowing_asset_pool_info_after_lq = pallet::PoolData::<Runtime>::get(XOR).unwrap();
 
@@ -4096,7 +4484,7 @@ mod test {
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&DAI, &get_pallet_account()).unwrap(),
-                balance!(250)
+                balance!(500)
             );
 
             assert_eq!(
@@ -4148,7 +4536,7 @@ mod test {
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID, &exchange_account())
                     .unwrap(),
-                balance!(998)
+                balance!(998.4)
             );
         });
     }
@@ -4239,14 +4627,16 @@ mod test {
                 RuntimeOrigin::signed(alice()),
                 DOT,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
                 DAI,
                 XOR,
-                balance!(100)
+                balance!(100),
+                balance!(1)
             ));
 
             let dot_collateral_asset_pool_info_before_lq =
@@ -4514,6 +4904,9 @@ mod test {
             let asset_id = XOR;
             let initial_parameter_value = balance!(1);
             let edit_parameter_value = balance!(0.8);
+            let new_tl = balance!(0.691337);
+            let new_tb = balance!(0.69);
+            let new_tc = balance!(0.1337);
 
             assert_ok!(ApolloPlatform::add_pool(
                 user.clone(),
@@ -4539,6 +4932,9 @@ mod test {
                 edit_parameter_value,
                 edit_parameter_value,
                 edit_parameter_value,
+                new_tl,
+                new_tb,
+                new_tc
             ));
 
             let pool_info_after_edit = pallet::PoolData::<Runtime>::get(asset_id).unwrap();
@@ -4565,6 +4961,9 @@ mod test {
             assert_eq!(pool_info_after_edit.slope_rate_1, edit_parameter_value);
             assert_eq!(pool_info_after_edit.slope_rate_2, edit_parameter_value);
             assert_eq!(pool_info_after_edit.reserve_factor, edit_parameter_value);
+            assert_eq!(pool_info_after_edit.total_liquidity, new_tl);
+            assert_eq!(pool_info_after_edit.total_borrowed, new_tb);
+            assert_eq!(pool_info_after_edit.total_collateral, new_tc);
         });
     }
 
@@ -4600,8 +4999,504 @@ mod test {
                     edit_parameter_value,
                     edit_parameter_value,
                     edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value,
+                    edit_parameter_value
                 ),
                 Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_same_collateral_and_borrowing_assets() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    XOR,
+                    balance!(100),
+                    XOR
+                ),
+                Error::<Runtime>::SameCollateralAndBorrowingAssets
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_borrow_pool_does_not_exist() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    balance!(100),
+                    XOR
+                ),
+                Error::<Runtime>::PoolDoesNotExist
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_borrow_pool_is_removed() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::remove_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR
+            ));
+
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    balance!(100),
+                    XOR
+                ),
+                Error::<Runtime>::PoolIsRemoved
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_collateral_pool_does_not_exist() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    balance!(100),
+                    XOR
+                ),
+                Error::<Runtime>::PoolDoesNotExist
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_nothing_lent() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    balance!(100),
+                    XOR
+                ),
+                Error::<Runtime>::NothingLent
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_invalid_collateral_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(99),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    balance!(100),
+                    XOR
+                ),
+                Error::<Runtime>::InvalidCollateralAmount
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_non_existent_borrowing_position() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(99),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    DOT,
+                    balance!(99),
+                    XOR
+                ),
+                Error::<Runtime>::NonexistentBorrowingPosition
+            );
+        });
+    }
+
+    #[test]
+    fn add_collateral_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(100),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                balance!(50),
+                balance!(1)
+            ));
+
+            run_to_block(151);
+
+            // Get data before second borrow
+            let borrowing_user_info =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
+
+            // Collateral asset pool tests (before borrow)
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(50));
+            assert_eq!(collateral_asset_pool_info.total_collateral, balance!(50));
+
+            // Borrowing asset pool tests (before borrow)
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299950));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(50));
+
+            // Check user and pallet balances of the borrowed asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
+                balance!(50)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account()).unwrap(),
+                balance!(299950)
+            );
+
+            // Check user and pallet balances of the collateral asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account()).unwrap(),
+                balance!(100)
+            );
+
+            let calculated_borrowing_interest_first =
+                calculate_borrowing_interest(alice(), XOR, DOT, 149);
+
+            // Borrowing user tests (before borrow)
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 150);
+            assert_eq!(borrowing_user_debt.collateral_amount, balance!(50));
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
+            assert_eq!(
+                borrowing_user_debt.borrowing_interest,
+                calculated_borrowing_interest_first.0
+            );
+
+            assert_eq!(
+                borrowing_user_debt.borrowing_rewards,
+                calculated_borrowing_interest_first.1
+            );
+
+            assert_ok!(ApolloPlatform::add_collateral(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(50),
+                XOR
+            ));
+
+            // Check user and pallet balances of the borrowed asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).unwrap(),
+                balance!(50)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&XOR, &get_pallet_account()).unwrap(),
+                balance!(299950)
+            );
+
+            // Check user and pallet balances of the collateral asset
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT, &alice()).unwrap(),
+                balance!(100)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&DOT, &get_pallet_account()).unwrap(),
+                balance!(100)
+            );
+
+            // Get data after first borrow
+            let borrowing_user_info =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let borrowing_user_debt = borrowing_user_info.get(&DOT).unwrap();
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            let collateral_asset_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
+
+            // Collateral asset pool tests (after borrow)
+            assert_eq!(collateral_asset_pool_info.total_liquidity, balance!(0));
+            assert_eq!(collateral_asset_pool_info.total_collateral, balance!(100));
+
+            // Borrowing asset pool tests (after borrow)
+            assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299950));
+            assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(50));
+
+            let calculated_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 1);
+
+            // Borrowing user tests (after borrow)
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 151);
+            assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
+            assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
+            assert_eq!(
+                borrowing_user_debt.borrowing_interest,
+                calculated_borrowing_interest_first.0 + calculated_borrowing_interest.0,
+            );
+
+            assert_eq!(
+                borrowing_user_debt.borrowing_rewards,
+                calculated_borrowing_interest_first.1 + calculated_borrowing_interest.1,
             );
         });
     }

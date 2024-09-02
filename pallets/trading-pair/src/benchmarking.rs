@@ -71,6 +71,7 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            common::AssetType::Regular,
             None,
             None
         );

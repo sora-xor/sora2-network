@@ -34,8 +34,9 @@ use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     add_balance, alice, alice_account_id, assert_bad_debt, assert_balance, bob, bob_account_id,
     configure_kensetsu_dollar_for_xor, configure_kxor_for_xor, create_cdp_for_xor,
-    deposit_xor_to_cdp, get_account_cdp_ids, get_total_supply, make_cdps_unsafe, set_bad_debt,
-    set_borrow_tax, set_kensetsu_dollar_stablecoin, set_kensetsu_gold_stablecoin, tech_account_id,
+    deposit_xor_to_cdp, depository_tech_account_id, get_account_cdp_ids, get_total_supply,
+    make_cdps_unsafe, set_bad_debt, set_borrow_tax, set_kensetsu_dollar_stablecoin,
+    set_kensetsu_gold_stablecoin, treasury_tech_account_id,
 };
 
 use common::{balance, AssetId32, Balance, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR};
@@ -252,6 +253,7 @@ fn test_create_cdp_sunny_day() {
             KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(BoundedVec::try_from(vec![1]).unwrap())
         );
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -337,6 +339,7 @@ fn test_create_cdp_gold_sunny_day() {
             KensetsuPallet::cdp_owner_index(alice_account_id()),
             Some(BoundedVec::try_from(vec![1]).unwrap())
         );
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -432,6 +435,7 @@ fn test_close_cdp_outstanding_debt() {
         assert_balance(&alice_account_id(), &KUSD, more_than_debt);
         assert_eq!(KensetsuPallet::cdp(cdp_id), None);
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -478,6 +482,7 @@ fn test_close_cdp_sunny_day() {
         .expect("must exists");
         assert_eq!(collateral_info.stablecoin_supply, balance!(0));
         assert_eq!(get_total_supply(&KUSD), balance!(0));
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -507,8 +512,12 @@ fn test_multiple_cdp_close() {
             Some(BoundedVec::try_from(vec![cdp_id_2]).unwrap())
         );
 
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(10));
+
         assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id_2));
         assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -617,6 +626,8 @@ fn test_deposit_collateral_zero() {
         assert_eq!(collateral_info.total_collateral, amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
+
+        assert_balance(&depository_tech_account_id(), &XOR, amount);
     });
 }
 
@@ -654,6 +665,8 @@ fn test_deposit_collateral_sunny_day() {
         assert_eq!(collateral_info.total_collateral, amount);
         let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
         assert_eq!(cdp.collateral_amount, amount);
+
+        assert_balance(&depository_tech_account_id(), &XOR, amount);
     });
 }
 
@@ -950,7 +963,7 @@ fn borrow_with_ken_incentivization() {
         );
         let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let demeter_farming_amount = remint_percent * ken_buyback_amount;
-        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+        assert_balance(&treasury_tech_account_id(), &KEN, demeter_farming_amount);
     });
 }
 
@@ -1015,7 +1028,7 @@ fn borrow_max_with_ken_incentivization() {
         );
         let remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let demeter_farming_amount = remint_percent * ken_buyback_amount;
-        assert_balance(&tech_account_id(), &KEN, demeter_farming_amount);
+        assert_balance(&treasury_tech_account_id(), &KEN, demeter_farming_amount);
     });
 }
 
@@ -1105,7 +1118,11 @@ fn borrow_xor_kxor_with_incentivization() {
         let ken_remint_percent = <TestRuntime as Config>::KenIncentiveRemintPercent::get();
         let ken_demeter_farming_amount = ken_remint_percent * ken_buyback_amount;
         let ken_burned = ken_buyback_amount - ken_demeter_farming_amount;
-        assert_balance(&tech_account_id(), &KEN, ken_demeter_farming_amount);
+        assert_balance(
+            &treasury_tech_account_id(),
+            &KEN,
+            ken_demeter_farming_amount,
+        );
         assert_eq!(
             initial_total_ken_supply - ken_burned,
             get_total_supply(&KEN)
@@ -1114,7 +1131,11 @@ fn borrow_xor_kxor_with_incentivization() {
         let karma_remint_percent = <TestRuntime as Config>::KarmaIncentiveRemintPercent::get();
         let karma_demeter_farming_amount = karma_remint_percent * karma_buyback_amount;
         let karma_burned = karma_buyback_amount - karma_demeter_farming_amount;
-        assert_balance(&tech_account_id(), &KARMA, karma_demeter_farming_amount);
+        assert_balance(
+            &treasury_tech_account_id(),
+            &KARMA,
+            karma_demeter_farming_amount,
+        );
         assert_eq!(
             initial_total_karma_supply - karma_burned,
             get_total_supply(&KARMA)
@@ -1167,7 +1188,7 @@ fn test_borrow_cdp_accrue() {
         assert_balance(&alice_account_id(), &KUSD, balance!(10));
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, balance!(1));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1));
     });
 }
 
@@ -1433,7 +1454,7 @@ fn test_repay_debt_accrue() {
         assert_balance(&alice_account_id(), &KUSD, balance!(10));
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, balance!(1));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1));
     });
 }
 
@@ -1527,7 +1548,8 @@ fn test_liquidate_accrue() {
         assert_balance(&alice_account_id(), &KUSD, debt);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_total_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, interest);
+        assert_balance(&treasury_tech_account_id(), &KUSD, interest);
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -1577,7 +1599,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
             }
             .into(),
         );
-        assert_balance(&tech_account_id(), &KUSD, penalty);
+        assert_balance(&treasury_tech_account_id(), &KUSD, penalty);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
@@ -1601,6 +1623,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_penalty() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(1800));
     });
 }
 
@@ -1650,7 +1673,7 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
             }
             .into(),
         );
-        assert_balance(&tech_account_id(), &KUSD, penalty);
+        assert_balance(&treasury_tech_account_id(), &KUSD, penalty);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
@@ -1671,6 +1694,11 @@ fn test_liquidate_kusd_amount_eq_cdp_debt_and_penalty() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(
+            &depository_tech_account_id(),
+            &XOR,
+            collateral - collateral_liquidated,
+        );
     });
 }
 
@@ -1722,7 +1750,7 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
             }
             .into(),
         );
-        assert_balance(&tech_account_id(), &KUSD, penalty);
+        assert_balance(&treasury_tech_account_id(), &KUSD, penalty);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
             stablecoin_asset_id: KUSD,
@@ -1745,6 +1773,11 @@ fn test_liquidate_kusd_amount_covers_cdp_debt_and_partly_penalty() {
         assert_eq!(initial_kusd_supply - debt + cdp.debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(
+            &depository_tech_account_id(),
+            &XOR,
+            collateral - collateral_liquidated,
+        );
     });
 }
 
@@ -1806,7 +1839,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         // debt is 100 + 10 interest
         // liquidation revenue is 100 - 10 penalty = 90
         // bad debt = debt - liquidation = 110 - 90 = 20 - covered with protocol profit
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1823,6 +1856,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -1902,7 +1936,7 @@ fn test_liquidate_kusd_bad_debt() {
         // liquidation sold for 100 where proceeds is 90 and 10 penalty
         // CDP bad debt = CDP debt - proceeds = 110 - 90 = 20 KUSD
         // protocol bad debt = CDP bad debt - tech account balance = 20 - 10 = 10 KUSD
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(10));
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1922,6 +1956,7 @@ fn test_liquidate_kusd_bad_debt() {
         assert_eq!(initial_kusd_supply - debt, kusd_supply);
         // liquidation flag was set
         assert!(LiquidatedThisBlock::<TestRuntime>::get());
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
     });
 }
 
@@ -2069,7 +2104,8 @@ fn test_accrue_profit() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, interest);
+        assert_balance(&treasury_tech_account_id(), &KUSD, interest);
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -2106,7 +2142,7 @@ fn test_accrue_one_year() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
-        assert_balance(&tech_account_id(), &KUSD, interest);
+        assert_balance(&treasury_tech_account_id(), &KUSD, interest);
     });
 }
 
@@ -2177,8 +2213,9 @@ fn test_accrue_interest_less_bad_debt() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(new_bad_debt);
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -2221,8 +2258,9 @@ fn test_accrue_interest_eq_bad_debt() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
+        assert_balance(&depository_tech_account_id(), &XOR, collateral);
     });
 }
 
@@ -2266,7 +2304,7 @@ fn test_accrue_interest_gt_bad_debt() {
         assert_eq!(cdp.debt, debt + interest);
         let total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(total_kusd_supply, initial_kusd_supply + profit);
-        assert_balance(&tech_account_id(), &KUSD, profit);
+        assert_balance(&treasury_tech_account_id(), &KUSD, profit);
         assert_bad_debt(balance!(0));
     });
 }
@@ -2548,7 +2586,7 @@ fn test_donate_no_bad_debt() {
         );
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
@@ -2561,7 +2599,7 @@ fn test_donate_no_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, donation);
+        assert_balance(&treasury_tech_account_id(), &KUSD, donation);
         assert_bad_debt(balance!(0));
     });
 }
@@ -2583,7 +2621,7 @@ fn test_donate_donation_less_bad_debt() {
         let donation = balance!(10);
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
 
@@ -2595,7 +2633,7 @@ fn test_donate_donation_less_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(initial_bad_debt - donation);
     });
 }
@@ -2617,7 +2655,7 @@ fn test_donate_donation_eq_bad_debt() {
         set_bad_debt(initial_bad_debt);
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
 
@@ -2629,7 +2667,7 @@ fn test_donate_donation_eq_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
         assert_bad_debt(balance!(0));
     });
 }
@@ -2651,7 +2689,7 @@ fn test_donate_donation_gt_bad_debt() {
         set_bad_debt(initial_bad_debt);
         create_cdp_for_xor(alice(), balance!(100), donation);
         assert_balance(&alice_account_id(), &KUSD, donation);
-        assert_balance(&tech_account_id(), &KUSD, balance!(0));
+        assert_balance(&treasury_tech_account_id(), &KUSD, balance!(0));
 
         assert_ok!(KensetsuPallet::donate(alice(), KUSD, donation));
 
@@ -2663,7 +2701,11 @@ fn test_donate_donation_gt_bad_debt() {
             .into(),
         );
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
-        assert_balance(&tech_account_id(), &KUSD, donation - initial_bad_debt);
+        assert_balance(
+            &treasury_tech_account_id(),
+            &KUSD,
+            donation - initial_bad_debt,
+        );
         assert_bad_debt(balance!(0));
     });
 }
@@ -2753,7 +2795,7 @@ fn test_withdraw_profit_sunny_day() {
             KUSD,
             initial_protocol_profit
         ));
-        assert_balance(&tech_account_id(), &KUSD, initial_protocol_profit);
+        assert_balance(&treasury_tech_account_id(), &KUSD, initial_protocol_profit);
         assert_balance(&alice_account_id(), &KUSD, balance!(0));
         let to_withdraw = balance!(10);
 
@@ -2772,7 +2814,7 @@ fn test_withdraw_profit_sunny_day() {
             .into(),
         );
         assert_balance(
-            &tech_account_id(),
+            &treasury_tech_account_id(),
             &KUSD,
             initial_protocol_profit - to_withdraw,
         );
@@ -2800,6 +2842,383 @@ fn test_withdraw_profit_zero_amount() {
                 amount: to_withdraw,
             }
             .into(),
+        );
+    });
+}
+
+/// Only root can update hard cap
+#[test]
+fn test_update_hard_cap_only_root() {
+    new_test_ext().execute_with(|| {
+        let hard_cap = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_hard_cap(RuntimeOrigin::none(), XOR, KUSD, hard_cap),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_hard_cap(alice(), XOR, KUSD, hard_cap),
+            BadOrigin
+        );
+    });
+}
+
+/// Update hard cap successful
+#[test]
+fn test_update_hard_cap_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_hard_cap = balance!(10);
+        configure_kensetsu_dollar_for_xor(
+            old_hard_cap,
+            Perbill::default(),
+            FixedU128::default(),
+            balance!(0),
+        );
+        let new_hard_cap = balance!(42);
+
+        assert_ok!(KensetsuPallet::update_hard_cap(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_hard_cap,
+        ));
+
+        System::assert_has_event(
+            Event::HardCapUpdated {
+                old_hard_cap,
+                new_hard_cap,
+            }
+            .into(),
+        );
+        let collateral_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+
+        assert_eq!(collateral_info.risk_parameters.hard_cap, new_hard_cap);
+    });
+}
+
+/// Only root can update liquidation ratio
+#[test]
+fn test_update_liquidation_ratio_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_liquidation_ratio = Perbill::from_percent(42);
+
+        assert_noop!(
+            KensetsuPallet::update_liquidation_ratio(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_liquidation_ratio
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_liquidation_ratio(alice(), XOR, KUSD, new_liquidation_ratio),
+            BadOrigin
+        );
+    });
+}
+
+/// Update liquidation ratio successful
+#[test]
+fn test_update_liquidation_ratio_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_liquidation_ratio = Perbill::from_percent(10);
+        configure_kensetsu_dollar_for_xor(
+            balance!(100),
+            old_liquidation_ratio,
+            FixedU128::default(),
+            balance!(0),
+        );
+        let new_liquidation_ratio = Perbill::from_percent(42);
+
+        assert_ok!(KensetsuPallet::update_liquidation_ratio(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_liquidation_ratio,
+        ));
+
+        System::assert_has_event(
+            Event::LiquidationRatioUpdated {
+                old_liquidation_ratio,
+                new_liquidation_ratio,
+            }
+            .into(),
+        );
+        let collateral_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+
+        assert_eq!(
+            collateral_info.risk_parameters.liquidation_ratio,
+            new_liquidation_ratio
+        );
+    });
+}
+
+/// Only root can update max liquidation lot
+#[test]
+fn test_update_max_liquidation_lot_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_liquidation_lot = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_max_liquidation_lot(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_liquidation_lot
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_max_liquidation_lot(alice(), XOR, KUSD, new_liquidation_lot),
+            BadOrigin
+        );
+    });
+}
+
+/// Update liquidation max lot successful
+#[test]
+fn test_update_max_liquidation_lot_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_max_liquidation_lot = balance!(10);
+        set_kensetsu_dollar_stablecoin();
+        assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            CollateralRiskParameters {
+                hard_cap: balance!(100),
+                max_liquidation_lot: old_max_liquidation_lot,
+                liquidation_ratio: Perbill::default(),
+                stability_fee_rate: FixedU128::default(),
+                minimal_collateral_deposit: balance!(0),
+            }
+        ));
+
+        let new_max_liquidation_lot = balance!(42);
+
+        assert_ok!(KensetsuPallet::update_max_liquidation_lot(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_max_liquidation_lot,
+        ));
+
+        System::assert_has_event(
+            Event::MaxLiquidationLotUpdated {
+                old_max_liquidation_lot,
+                new_max_liquidation_lot,
+            }
+            .into(),
+        );
+        let collateral_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+
+        assert_eq!(
+            collateral_info.risk_parameters.max_liquidation_lot,
+            new_max_liquidation_lot
+        );
+    });
+}
+
+/// Only root can update stability fee rate
+#[test]
+fn test_update_stability_fee_rate_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_stability_fee_rate = FixedU128::from_u32(42);
+
+        assert_noop!(
+            KensetsuPallet::update_stability_fee_rate(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_stability_fee_rate
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_stability_fee_rate(alice(), XOR, KUSD, new_stability_fee_rate),
+            BadOrigin
+        );
+    });
+}
+
+/// Update stability fee rate successful
+#[test]
+fn test_update_stability_fee_rate_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_stability_fee_rate = FixedU128::from_u32(10);
+        configure_kensetsu_dollar_for_xor(
+            balance!(100),
+            Perbill::default(),
+            old_stability_fee_rate,
+            balance!(0),
+        );
+        let new_stability_fee_rate = FixedU128::from_u32(42);
+
+        assert_ok!(KensetsuPallet::update_stability_fee_rate(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_stability_fee_rate,
+        ));
+
+        System::assert_has_event(
+            Event::StabilityFeeRateUpdated {
+                old_stability_fee_rate,
+                new_stability_fee_rate,
+            }
+            .into(),
+        );
+        let collateral_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+
+        assert_eq!(
+            collateral_info.risk_parameters.stability_fee_rate,
+            new_stability_fee_rate
+        );
+    });
+}
+
+/// Only root can update minimal collateral deposit
+#[test]
+fn test_update_minimal_collateral_deposit_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_minimal_collateral_deposit = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_minimal_collateral_deposit(
+                RuntimeOrigin::none(),
+                XOR,
+                KUSD,
+                new_minimal_collateral_deposit
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_minimal_collateral_deposit(
+                alice(),
+                XOR,
+                KUSD,
+                new_minimal_collateral_deposit
+            ),
+            BadOrigin
+        );
+    });
+}
+
+/// Update minimal collateral deposit successful
+#[test]
+fn test_update_minimal_collateral_deposit_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_minimal_collateral_deposit = balance!(10);
+        configure_kensetsu_dollar_for_xor(
+            balance!(100),
+            Perbill::default(),
+            FixedU128::default(),
+            old_minimal_collateral_deposit,
+        );
+        let new_minimal_collateral_deposit = balance!(42);
+
+        assert_ok!(KensetsuPallet::update_minimal_collateral_deposit(
+            RuntimeOrigin::root(),
+            XOR,
+            KUSD,
+            new_minimal_collateral_deposit,
+        ));
+
+        System::assert_has_event(
+            Event::MinimalCollateralDepositUpdated {
+                old_minimal_collateral_deposit,
+                new_minimal_collateral_deposit,
+            }
+            .into(),
+        );
+        let collateral_info = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("Must succeed");
+
+        assert_eq!(
+            collateral_info.risk_parameters.minimal_collateral_deposit,
+            new_minimal_collateral_deposit
+        );
+    });
+}
+
+/// Only root can update minimal_stability_fee_accrue
+#[test]
+fn test_update_minimal_stability_fee_accrue_only_root() {
+    new_test_ext().execute_with(|| {
+        let new_minimal_stability_fee_accrue = balance!(42);
+
+        assert_noop!(
+            KensetsuPallet::update_minimal_stability_fee_accrue(
+                RuntimeOrigin::none(),
+                KUSD,
+                new_minimal_stability_fee_accrue
+            ),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::update_minimal_stability_fee_accrue(
+                alice(),
+                KUSD,
+                new_minimal_stability_fee_accrue
+            ),
+            BadOrigin
+        );
+    });
+}
+
+/// Update update minimal_stability_fee_accrue successful
+#[test]
+fn test_update_minimal_stability_fee_accrue_sunny_day() {
+    new_test_ext().execute_with(|| {
+        let old_minimal_stability_fee_accrue = balance!(1);
+        configure_kensetsu_dollar_for_xor(
+            balance!(100),
+            Perbill::default(),
+            FixedU128::default(),
+            balance!(1),
+        );
+        let new_minimal_stability_fee_accrue = balance!(42);
+
+        assert_ok!(KensetsuPallet::update_minimal_stability_fee_accrue(
+            RuntimeOrigin::root(),
+            KUSD,
+            new_minimal_stability_fee_accrue,
+        ));
+
+        System::assert_has_event(
+            Event::MinimalStabilityFeeAccrueUpdated {
+                old_minimal_stability_fee_accrue,
+                new_minimal_stability_fee_accrue,
+            }
+            .into(),
+        );
+        let stablecoin_info = StablecoinInfos::<TestRuntime>::get(KUSD).expect("Must succeed");
+
+        assert_eq!(
+            stablecoin_info
+                .stablecoin_parameters
+                .minimal_stability_fee_accrue,
+            new_minimal_stability_fee_accrue
         );
     });
 }

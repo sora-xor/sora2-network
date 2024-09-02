@@ -31,8 +31,8 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
-    balance, fixed, hash, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, DEXInfo, GetMarketInfo, PSWAP, TBCD, VAL,
+    balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, TBCD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -43,10 +43,11 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
+use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
+use sp_std::collections::btree_set::BTreeSet;
 
 pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
@@ -77,6 +78,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
@@ -110,64 +112,21 @@ construct_runtime! {
         XSTPools: xst::{Pallet, Call, Storage, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
-mock_frame_system_config!(Runtime);
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
 mock_pallet_balances_config!(Runtime);
-
-impl orml_tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = orml_tokens::Pallet<Runtime>;
-    type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
-}
+mock_currencies_config!(Runtime);
+mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
 
 parameter_types! {
-    pub GetBuyBackAssetId: AssetId = TBCD.into();
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = 0;
+    pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
+    pub const GetBuyBackPercentage: u8 = 0;
+    pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
 }
 
 impl assets::Config for Runtime {
@@ -189,7 +148,37 @@ impl assets::Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+impl permissions::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+}
+
+impl dex_manager::Config for Runtime {}
+
+impl trading_pair::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type DexInfoProvider = dex_manager::Pallet<Runtime>;
+    type WeightInfo = ();
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+}
+
+impl orml_tokens::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type CurrencyHooks = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type DustRemovalWhitelist = Everything;
+}
+
+parameter_types! {
+    pub GetBuyBackAssetId: AssetId = TBCD.into();
+}
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
@@ -208,7 +197,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -283,6 +272,13 @@ impl xst::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
+impl extended_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
+    type WeightInfo = ();
+}
+
 parameter_type_with_key! {
     pub GetTradingPairRestrictedFlag: |trading_pair: common::TradingPair<AssetId>| -> bool {
         let common::TradingPair {
@@ -297,18 +293,12 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId| -> Option<AssetId> {
-        if base_asset_id == &GoldenTicket.into() {
-            Some(Potato.into())
+    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, BTreeSet<AssetId>)> {
+        if base == &GoldenTicket.into() {
+            Some((Potato.into(), [BlackPepper.into()].into_iter().collect()))
         } else {
             None
         }
-    };
-}
-
-parameter_type_with_key! {
-    pub GetChameleonPool: |tpair: common::TradingPair<AssetId>| -> bool {
-        tpair.base_asset_id == GoldenTicket.into() && tpair.target_asset_id == BlackPepper.into()
     };
 }
 
@@ -326,14 +316,16 @@ impl Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
     type GetFee = GetFee;
+    type GetMaxIssuanceRatio = GetMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type XSTMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
 

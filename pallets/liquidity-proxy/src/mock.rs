@@ -32,11 +32,12 @@ use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, Amount, AssetId32, AssetName, AssetSymbol,
-    DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType,
-    RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD, USDT, VAL, XOR, XST,
-    XSTUSD,
+    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_assets_config,
+    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
+    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, TBCD,
+    USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -48,12 +49,11 @@ use traits::MultiCurrency;
 
 use common::prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot};
-use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{ConstU32, H256};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, Perbill, Percent};
+use sp_runtime::{AccountId32, DispatchError, Perbill, Percent, Permill};
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
 
@@ -128,10 +128,12 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
 }
 
 construct_runtime! {
@@ -162,22 +164,27 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_pallet_balances_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_common_config!(Runtime);
+mock_tokens_config!(Runtime);
+mock_assets_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
     type PrimaryMarketTBC = MockMCBCPool;
     type PrimaryMarketXST = MockXSTPool;
     type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
-
     type GetADARAccountId = GetADARAccountId;
     type ADARCommissionRatioUpdateOrigin = EnsureRoot<AccountId>;
     type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
@@ -185,70 +192,16 @@ impl Config for Runtime {
     type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = GetBaseAssetId;
+    type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
     type WeightInfo = ();
 }
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEX_A_ID;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl common::Config for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-    type AssetManager = assets::Pallet<Runtime>;
-    type MultiCurrency = currencies::Pallet<Runtime>;
-}
-
-mock_pallet_balances_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -279,8 +232,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
-
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -329,7 +280,7 @@ impl pswap_distribution::Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
@@ -339,6 +290,13 @@ impl demeter_farming_platform::Config for Runtime {
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+}
+
+impl extended_assets::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxRegulatedAssetsPerSBT = ConstU32<1000>;
+    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -358,14 +316,17 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
+    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type XSTMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPool = common::mock::GetChameleonPool;
-    type GetChameleonPoolBaseAssetId = common::mock::GetChameleonPoolBaseAssetId;
+    type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
+    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
 }
+
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
     type OnTimestampSet = ();
@@ -420,6 +381,7 @@ pub struct ExtBuilder {
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    pub is_permissioned_xyk_pool: bool,
 }
 
 impl Default for ExtBuilder {
@@ -565,6 +527,7 @@ impl Default for ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
+            is_permissioned_xyk_pool: false,
         }
     }
 }
@@ -975,6 +938,32 @@ impl ExtBuilder {
         self
     }
 
+    pub fn with_permissioned_xyk_pool(mut self) -> Self {
+        self = self.with_xyk_pool();
+        self.is_permissioned_xyk_pool = true;
+        self
+    }
+
+    fn prepare_asset_for_permissioned_pool(owner: &AccountId, asset_id: &AssetId) {
+        use extended_assets::test_utils::register_sbt_asset;
+        use frame_support::assert_ok;
+
+        System::set_block_number(1);
+        let owner_origin = RuntimeOrigin::signed(owner.clone());
+        if !ExtendedAssets::is_asset_regulated(asset_id) {
+            assets::Pallet::<Runtime>::update_asset_type(asset_id, &common::AssetType::Regulated)
+                .expect("Failed to regulate Asset");
+        }
+
+        let sbt_asset_id = register_sbt_asset::<Runtime>(owner);
+        assert_ok!(ExtendedAssets::bind_regulated_asset_to_sbt(
+            owner_origin,
+            sbt_asset_id,
+            *asset_id
+        ));
+        Assets::mint_to(&sbt_asset_id, &owner, &owner, 1).expect("Failed to mint SBT");
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -1027,6 +1016,15 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        technical::GenesisConfig::<Runtime> {
+            register_tech_accounts: vec![(
+                GetLiquidityProxyAccountId::get().into(),
+                GetLiquidityProxyTechAccountId::get(),
+            )],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
             &dex_api::GenesisConfig {
                 source_types: self.source_types,
@@ -1074,6 +1072,9 @@ impl ExtBuilder {
                     asset.into(),
                 )
                 .unwrap();
+                if self.is_permissioned_xyk_pool {
+                    Self::prepare_asset_for_permissioned_pool(&owner, &asset.into());
+                }
                 assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
                     .unwrap();
                 pool_xyk::Pallet::<Runtime>::initialize_pool(

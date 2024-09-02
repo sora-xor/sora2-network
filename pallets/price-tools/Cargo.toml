@@ -45,6 +45,7 @@ assets = { path = "../assets", default-features = false }
 [features]
 default = ['std']
 std = [
+    'assets/std',
     'codec/std',
     "scale-info/std",
     'currencies/std',

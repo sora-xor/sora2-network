@@ -165,6 +165,7 @@ fn should_create_and_fill_orderbook_fixed_amount() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -207,6 +208,7 @@ fn should_create_and_fill_orderbook_random_amount() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )

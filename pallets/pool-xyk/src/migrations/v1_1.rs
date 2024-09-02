@@ -1,6 +1,6 @@
 use common::{
     generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
-    ContentSource, CurrencyIdOf, Description,
+    AssetType, ContentSource, CurrencyIdOf, Description,
 };
 use frame_support::dispatch::Weight;
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
@@ -23,6 +23,7 @@ where
         AssetSymbol,
         AssetName,
         u8,
+        AssetType,
         ContentSource,
         Description,
     >>::AssetId: PartialEq<<T as orml_tokens::Config>::CurrencyId>,
@@ -135,6 +136,7 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             )
@@ -151,6 +153,7 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                common::AssetType::Regular,
                 None,
                 None,
             )

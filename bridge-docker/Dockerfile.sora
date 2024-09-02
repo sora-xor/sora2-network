@@ -55,7 +55,7 @@ FROM rust AS builder
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
 # cache dependencies build
-RUN cargo chef cook --release --features private-net,wip,ready-to-test --recipe-path recipe.json
+RUN cargo chef cook --release --features private-net,wip,stage --recipe-path recipe.json
 # build
 COPY Cargo.lock /app
 COPY Cargo.toml /app
@@ -67,7 +67,7 @@ COPY utils /app/utils
 COPY node /app/node
 COPY .hooks /app/.hooks
 COPY .cargo /app/.cargo
-RUN cargo build --release --features private-net,wip,ready-to-test
+RUN cargo build --release --features private-net,wip,stage
 
 # runtime
 FROM debian:bullseye-slim

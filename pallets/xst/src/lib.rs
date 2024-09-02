@@ -980,6 +980,7 @@ impl<T: Config> Pallet<T> {
             DEFAULT_BALANCE_PRECISION,
             balance!(0),
             true,
+            common::AssetType::Regular,
             None,
             None,
         )

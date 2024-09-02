@@ -77,7 +77,6 @@ pub enum ComicAssetId {
     CrackedBrassBell,
     Tomato,
     Potato,
-    Mouse,
     Table,
 }
 
@@ -115,7 +114,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KUSD => CrackedBrassBell,
             PredefinedAssetId::KGOLD => Tomato,
             PredefinedAssetId::KXOR => Potato,
-            PredefinedAssetId::SB => Mouse,
             PredefinedAssetId::KARMA => Table,
         }
     }
@@ -187,18 +185,12 @@ impl<T> orml_traits::get_by_key::GetByKey<T, bool> for GetTradingPairRestrictedF
 }
 
 parameter_type_with_key! {
-    pub GetChameleonPoolBaseAssetId: |base_asset_id: AssetId32<PredefinedAssetId>| -> Option<AssetId32<PredefinedAssetId>> {
-        if base_asset_id == &crate::XOR {
-            Some(crate::KXOR)
+    pub GetChameleonPools: |base: AssetId32<PredefinedAssetId>| -> Option<(AssetId32<PredefinedAssetId>, sp_std::collections::btree_set::BTreeSet<AssetId32<PredefinedAssetId>>)> {
+        if *base == crate::XOR {
+            Some((crate::KXOR, [crate::ETH].into_iter().collect()))
         } else {
             None
         }
-    };
-}
-
-parameter_type_with_key! {
-    pub GetChameleonPool: |tpair: crate::TradingPair<AssetId32<PredefinedAssetId>>| -> bool {
-        tpair.base_asset_id == crate::XOR && tpair.target_asset_id == crate::ETH
     };
 }
 
@@ -219,20 +211,16 @@ pub fn charlie() -> AccountId32 {
 macro_rules! mock_assets_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const GetBaseAssetId: AssetId = XOR;
-            pub const GetBuyBackAssetId: AssetId = XST;
+            pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
             pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
             pub const GetBuyBackPercentage: u8 = 0;
-            pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-                    "0000000000000000000000000000000000000000000000000000000000000023"
-            ));
-            pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+            pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
         }
         impl assets::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
             type ExtraAccountId = [u8; 32];
             type ExtraAssetRecordArg =
-                common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
+                common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
             type AssetId = AssetId;
             type GetBaseAssetId = GetBaseAssetId;
             type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -276,7 +264,7 @@ macro_rules! mock_common_config {
     ($runtime:ty) => {
         impl common::Config for $runtime {
             type DEXId = DEXId;
-            type LstId = LiquiditySourceType;
+            type LstId = common::LiquiditySourceType;
             type MultiCurrency = currencies::Pallet<$runtime>;
             type AssetManager = assets::Pallet<$runtime>;
         }
@@ -289,8 +277,8 @@ macro_rules! mock_currencies_config {
     ($runtime:ty) => {
         impl currencies::Config for $runtime {
             type MultiCurrency = Tokens;
-            type NativeCurrency = BasicCurrencyAdapter<TestRuntime, Balances, Amount, u64>;
-            type GetNativeCurrencyId = <TestRuntime as assets::Config>::GetBaseAssetId;
+            type NativeCurrency = BasicCurrencyAdapter<$runtime, Balances, Amount, BlockNumber>;
+            type GetNativeCurrencyId = <$runtime as assets::Config>::GetBaseAssetId;
             type WeightInfo = ();
         }
     };
@@ -374,7 +362,7 @@ macro_rules! mock_tokens_config {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
             type Amount = Amount;
-            type CurrencyId = <TestRuntime as assets::Config>::AssetId;
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();

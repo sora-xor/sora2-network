@@ -30,6 +30,7 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
+use common::KUSD;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PriceVariant, DEFAULT_BALANCE_PRECISION,
     ETH, PSWAP, VAL, XOR, XST, XSTUSD,
@@ -70,7 +71,7 @@ fn should_not_create_order_book_with_disallowed_dex_id() {
             E::NotAllowedDEXId,
         );
 
-        // any number except 0 (polkaswap dex id) should not be allowed
+        // any number except 0 & 2 (polkaswap & polkaswap kusd) should not be allowed
         order_book_id.dex_id = 12345678;
         assert_err!(
             OrderBookPallet::create_orderbook(RawOrigin::Root.into(), order_book_id, 0, 0, 0, 0),
@@ -80,13 +81,51 @@ fn should_not_create_order_book_with_disallowed_dex_id() {
 }
 
 #[test]
-fn should_create_order_book_with_correct_dex_id() {
+fn should_create_order_book_with_correct_dex_id_polkaswap() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
         };
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            balance!(0.00001),
+            balance!(0.00001),
+            balance!(1),
+            balance!(1000)
+        ));
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap(),
+            OrderBook::new(
+                order_book_id,
+                OrderPrice::divisible(balance!(0.00001)),
+                OrderVolume::divisible(balance!(0.00001)),
+                OrderVolume::divisible(balance!(1)),
+                OrderVolume::divisible(balance!(1000))
+            )
+        );
+    });
+}
+
+#[test]
+fn should_create_order_book_with_correct_dex_id_polkaswap_kusd() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapKUSD.into(),
+            base: VAL,
+            quote: KUSD,
+        };
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(accounts::alice::<Runtime>()).into(),
+            order_book_id.dex_id,
+            order_book_id.quote,
+            order_book_id.base
+        ));
 
         assert_ok!(OrderBookPallet::create_orderbook(
             RawOrigin::Root.into(),
@@ -140,6 +179,17 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
             dex_id: DEX.into(),
             base: XOR,
             quote: VAL,
+        };
+
+        assert_err!(
+            OrderBookPallet::create_orderbook(RawOrigin::Root.into(), order_book_id, 0, 0, 0, 0),
+            E::NotAllowedQuoteAsset
+        );
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapKUSD.into(),
+            base: VAL,
+            quote: XOR,
         };
 
         assert_err!(
@@ -271,6 +321,7 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
             DEFAULT_BALANCE_PRECISION,
             balance!(100),
             false,
+            common::AssetType::Regular,
             None,
             None,
         )
@@ -366,6 +417,7 @@ fn should_not_create_order_book_for_user_without_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -412,6 +464,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -462,6 +515,7 @@ fn should_create_order_book_for_nft() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -1183,44 +1237,6 @@ fn should_not_update_order_book_with_wrong_min_deal_amount() {
 }
 
 #[test]
-fn should_not_update_order_book_when_attributes_exceed_total_supply() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: DEX.into(),
-            base: VAL,
-            quote: XOR,
-        };
-
-        create_empty_order_book::<Runtime>(order_book_id);
-        update_orderbook_unchecked::<Runtime>(
-            order_book_id,
-            balance!(0.1),
-            balance!(0.1),
-            balance!(10000000),
-            balance!(10000000),
-        );
-
-        assert_ok!(OrderBookPallet::change_orderbook_status(
-            RuntimeOrigin::root(),
-            order_book_id,
-            OrderBookStatus::OnlyCancel
-        ));
-
-        assert_err!(
-            OrderBookPallet::update_orderbook(
-                RuntimeOrigin::root(),
-                order_book_id,
-                balance!(0.01),
-                balance!(0.001),
-                balance!(10000000),
-                balance!(10000000000)
-            ),
-            E::MaxLotSizeIsMoreThanTotalSupply
-        );
-    });
-}
-
-#[test]
 fn should_update_order_book_with_regular_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -1327,6 +1343,7 @@ fn should_update_order_book_with_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -1980,6 +1997,7 @@ fn should_place_limit_order_with_nft() {
             0,
             1000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -3239,6 +3257,7 @@ fn should_execute_market_order_with_indivisible_asset() {
             0,
             100000,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )

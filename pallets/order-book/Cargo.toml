@@ -67,3 +67,8 @@ private-net = [
 ]
 
 test = []
+
+wip = [
+    "framenode-chain-spec/wip",
+    "framenode-runtime/wip"
+]

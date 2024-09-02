@@ -62,6 +62,7 @@ fn should_register_technical_account() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -310,6 +311,7 @@ fn should_lock_unlock_indivisible_nft() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -350,6 +352,7 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
             0,
             4,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -450,6 +453,7 @@ fn should_not_lock_insufficient_nft() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )
@@ -566,6 +570,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
             0,
             1,
             false,
+            common::AssetType::NFT,
             None,
             None,
         )

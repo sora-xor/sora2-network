@@ -36,6 +36,8 @@ use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
 use crate::DEXInfos;
 
+pub mod kusd_dex;
+
 #[derive(Decode)]
 struct DEXInfoV0<T: Config> {
     base_asset_id: AssetIdOf<T>,

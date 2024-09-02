@@ -31,7 +31,7 @@
 use core::marker::PhantomData;
 
 use crate::weights::WeightInfo;
-use common::DEFAULT_BALANCE_PRECISION;
+use common::{AssetType, DEFAULT_BALANCE_PRECISION};
 use frame_support::traits::OnRuntimeUpgrade;
 use sp_core::Get;
 
@@ -57,6 +57,7 @@ where
             DEFAULT_BALANCE_PRECISION,
             0,
             true,
+            AssetType::Regular,
             None,
             None,
         ) {

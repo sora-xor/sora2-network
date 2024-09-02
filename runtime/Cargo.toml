@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.4.2"
+version = "3.6.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -46,8 +46,9 @@ substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", d
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
 
-apollo-platform = { path = "../pallets/apollo-platform", default-features = false, optional = true }
+apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 band = { path = "../pallets/band", default-features = false }
@@ -92,9 +93,10 @@ pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchm
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 qa-tools = { path = "../pallets/qa-tools", default-features = false, optional = true }
 referrals = { path = "../pallets/referrals", default-features = false }
-regulated-assets = { path = "../pallets/regulated-assets", default-features = false, optional = true }
+extended-assets = { path = "../pallets/extended-assets", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
+soratopia = { path = "../pallets/soratopia", default-features = false, optional = true }
 technical = { path = "../pallets/technical", default-features = false }
 trading-pair = { path = "../pallets/trading-pair", default-features = false }
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
@@ -208,6 +210,7 @@ std = [
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
     "evm-fungible-app/std",
+    "jetton-app/std",
     "parachain-bridge-app/std",
     "substrate-bridge-channel/std",
     "bridge-channel/std",
@@ -264,7 +267,7 @@ std = [
     "pswap-distribution/std",
     "qa-tools/std",
     "referrals/std",
-    "regulated-assets/std",
+    "extended-assets/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde/std",
@@ -282,6 +285,7 @@ std = [
     "sp-version/std",
     "sp-npos-elections/std",
     "substrate-bridge-app/std",
+    "soratopia/std",
     "technical/std",
     "trading-pair-runtime-api/std",
     "trading-pair/std",
@@ -302,6 +306,8 @@ private-net = [
 
 wip = [
     "framenode-chain-spec/wip",
+    "dex-manager/wip",
+    "order-book/wip",
     "liquidity-proxy/wip",
     "liquidity-proxy-runtime-api/wip",
     "liquidity-proxy-benchmarking/wip",
@@ -309,13 +315,15 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
+    "jetton-app",
     "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "regulated-assets/wip",
+    "xor-fee/wip",
+    "soratopia",
 ]
 
-ready-to-test = ["framenode-chain-spec/ready-to-test", "apollo-platform"]
+stage = ["framenode-chain-spec/stage"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
@@ -336,6 +344,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
     "evm-fungible-app/runtime-benchmarks",
+    "jetton-app/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
     "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
@@ -359,6 +368,7 @@ runtime-benchmarks = [
     "pool-xyk-benchmarking/runtime-benchmarks",
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
+    "soratopia/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
@@ -372,7 +382,7 @@ runtime-benchmarks = [
     "beefy-light-client/runtime-benchmarks",
     "multisig-verifier/runtime-benchmarks",
     "bridge-data-signer/runtime-benchmarks",
-    "regulated-assets/runtime-benchmarks"
+    "extended-assets/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []
@@ -401,6 +411,7 @@ try-runtime = [
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
     "evm-fungible-app/try-runtime",
+    "jetton-app/try-runtime",
     "parachain-bridge-app/try-runtime",
     "bridge-channel/try-runtime",
     "substrate-bridge-app/try-runtime",
@@ -445,6 +456,7 @@ try-runtime = [
     "pswap-distribution/try-runtime",
     "referrals/try-runtime",
     "rewards/try-runtime",
+    "soratopia/try-runtime",
     "technical/try-runtime",
     "trading-pair/try-runtime",
     "vested-rewards/try-runtime",
@@ -459,7 +471,7 @@ try-runtime = [
     "bridge-data-signer/try-runtime",
     "multisig-verifier/try-runtime",
     "qa-tools/try-runtime",
-    "regulated-assets/try-runtime",
+    "extended-assets/try-runtime",
 ]
 
 test = ["framenode-chain-spec/test", "liquidity-proxy/test", "order-book/test"]

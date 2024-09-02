@@ -1260,8 +1260,10 @@ impl<T: Config> Pallet<T> {
             order_book_id.base != order_book_id.quote,
             Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
         );
+
         ensure!(
-            order_book_id.dex_id == common::DEXId::Polkaswap.into(),
+            order_book_id.dex_id == common::DEXId::Polkaswap.into()
+                || order_book_id.dex_id == common::DEXId::PolkaswapKUSD.into(),
             Error::<T>::NotAllowedDEXId
         );
 
@@ -1343,13 +1345,6 @@ impl<T: Config> Pallet<T> {
             .try_into_balance() // Returns error if value overflows.
             .map_err(|_| Error::<T>::TickSizeAndStepLotSizeAreTooBig)?;
         }
-
-        // `max_lot_size` couldn't be more then total supply of `base` asset
-        let total_supply = <T as Config>::AssetInfoProvider::total_issuance(&order_book_id.base)?;
-        ensure!(
-            max_lot_size <= total_supply,
-            Error::<T>::MaxLotSizeIsMoreThanTotalSupply
-        );
 
         Ok(())
     }

@@ -28,102 +28,98 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as regulated_assets};
+use crate as soratopia;
+
 use common::mock::ExistentialDeposits;
+use common::Amount;
 use common::{
-    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType, PredefinedAssetId, XOR, XST,
+    mock_tokens_config, AssetId32, DEXId, PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
+use frame_support::parameter_types;
 use frame_support::traits::Everything;
-use frame_support::{construct_runtime, parameter_types};
+use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
-use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_core::crypto::AccountId32;
+use sp_core::H256;
 use sp_runtime::MultiSignature;
+use sp_runtime::{
+    testing::{Header, TestXt},
+    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
 type Balance = u128;
-type Signature = MultiSignature;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
-type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type BlockNumber = u64;
+type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAssetId = common::TechAssetId<PredefinedAssetId>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
-mock_common_config!(TestRuntime);
-mock_currencies_config!(TestRuntime);
-mock_tokens_config!(TestRuntime);
-mock_pallet_balances_config!(TestRuntime);
-mock_frame_system_config!(TestRuntime);
-mock_permissions_config!(TestRuntime);
-mock_technical_config!(TestRuntime);
-
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
-    pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
-    pub const GetBuyBackPercentage: u8 = 0;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-impl assets::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<TestRuntime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = (
-        regulated_assets::Pallet<TestRuntime>,
-        permissions::Pallet<TestRuntime>,
-    );
-}
-
-impl regulated_assets::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type AssetInfoProvider = assets::Pallet<TestRuntime>;
-    type MaxAllowedTokensPerSBT = ConstU32<10000>;
-    type MaxSBTsPerAsset = ConstU32<10000>;
-    type WeightInfo = ();
-}
-
-construct_runtime! {
+frame_support::construct_runtime!(
     pub enum TestRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RegulatedAssets: regulated_assets::{Pallet, Storage, Event<T>, Call},
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
+        Soratopia: soratopia::{Pallet, Call, Storage, Event<T>},
     }
+);
+
+pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for TestRuntime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    type Extrinsic = MockExtrinsic;
+    type OverarchingCall = RuntimeCall;
 }
 
-// Build genesis storage according to the mock runtime.
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBuyBackAssetId: AssetId = XST;
+}
+
+mock_assets_config!(TestRuntime);
+mock_pallet_balances_config!(TestRuntime);
+mock_common_config!(TestRuntime);
+mock_currencies_config!(TestRuntime);
+mock_frame_system_config!(TestRuntime);
+mock_permissions_config!(TestRuntime);
+mock_tokens_config!(TestRuntime);
+mock_technical_config!(TestRuntime);
+
+parameter_types! {
+    pub AdminAccount: AccountId = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48").into();
+    pub const CheckInTransferAmount: Balance = 1_000;
+}
+
+impl soratopia::Config for TestRuntime {
+    type RuntimeEvent = RuntimeEvent;
+    type AdminAccount = AdminAccount;
+    type CheckInTransferAmount = CheckInTransferAmount;
+    type WeightInfo = ();
+}
+
+// Builds testing externalities
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    frame_system::GenesisConfig::default()
+    let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
         .build_storage::<TestRuntime>()
         .unwrap()
-        .into()
+        .into();
+    ext.execute_with(|| {
+        System::set_block_number(1); // No events in zero block
+    });
+    ext
 }

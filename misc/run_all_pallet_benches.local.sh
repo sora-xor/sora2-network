@@ -5,7 +5,7 @@
 # current reference machine: https://github.com/paritytech/substrate/pull/5848
 
 echo "[+] Compiling benchmarks..."
-cargo build --release --locked --features runtime-benchmarks,private-net,ready-to-test --bin framenode
+cargo build --release --locked --features runtime-benchmarks,private-net,stage --bin framenode
 
 # Load all pallet names in an array.
 PALLETS=($(

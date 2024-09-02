@@ -97,7 +97,7 @@ pub mod v1_to_v2 {
         CollateralInfos, Config, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfo,
         StablecoinInfos, StablecoinParameters,
     };
-    use common::{balance, AssetIdOf, DAI, KARMA, KUSD, KXOR, TBCD, XOR};
+    use common::{balance, AssetIdOf, SymbolName, DAI, KARMA, KGOLD, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
     use frame_support::dispatch::Weight;
     use frame_support::log::error;
@@ -202,41 +202,43 @@ pub mod v1_to_v2 {
             if let Ok(technical_account_id) = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::TreasuryTechAccount::get(),
             ) {
-                let scope = Scope::Limited(common::hash(&KXOR));
-                for permission in &[MINT, BURN] {
-                    match permissions::Pallet::<T>::assign_permission(
-                        technical_account_id.clone(),
-                        &technical_account_id,
-                        *permission,
-                        scope,
-                    ) {
-                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
-                        Err(err) => {
-                            error!(
+                for token in &[KXOR, KGOLD, KARMA] {
+                    let scope = Scope::Limited(common::hash(token));
+                    for permission in &[MINT, BURN] {
+                        match permissions::Pallet::<T>::assign_permission(
+                            technical_account_id.clone(),
+                            &technical_account_id,
+                            *permission,
+                            scope,
+                        ) {
+                            Ok(()) => {
+                                weight += <T as frame_system::Config>::DbWeight::get().writes(1)
+                            }
+                            Err(err) => {
+                                error!(
                                 "Failed to grant permission to technical account id: {:?}, error: {:?}",
                                 technical_account_id, err
                             );
-                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                                weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                            }
                         }
                     }
                 }
 
-                for token in &[KARMA, TBCD] {
-                    let scope = Scope::Limited(common::hash(token));
-                    match permissions::Pallet::<T>::assign_permission(
-                        technical_account_id.clone(),
-                        &technical_account_id,
-                        BURN,
-                        scope,
-                    ) {
-                        Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
-                        Err(err) => {
-                            error!(
-                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
-                                technical_account_id, err
-                            );
-                            weight += <T as frame_system::Config>::DbWeight::get().reads(1);
-                        }
+                let scope = Scope::Limited(common::hash(&TBCD));
+                match permissions::Pallet::<T>::assign_permission(
+                    technical_account_id.clone(),
+                    &technical_account_id,
+                    BURN,
+                    scope,
+                ) {
+                    Ok(()) => weight += <T as frame_system::Config>::DbWeight::get().writes(1),
+                    Err(err) => {
+                        error!(
+                            "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                            technical_account_id, err
+                        );
+                        weight += <T as frame_system::Config>::DbWeight::get().reads(1);
                     }
                 }
             }
@@ -264,6 +266,19 @@ pub mod v1_to_v2 {
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
                 StablecoinInfos::<T>::insert(
+                    AssetIdOf::<T>::from(KGOLD),
+                    StablecoinInfo {
+                        bad_debt: balance!(0),
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
+                            // approximately ~$4
+                            minimal_stability_fee_accrue: balance!(0.001),
+                        },
+                    },
+                );
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+
+                StablecoinInfos::<T>::insert(
                     AssetIdOf::<T>::from(KXOR),
                     StablecoinInfo {
                         bad_debt: balance!(0),
@@ -275,8 +290,7 @@ pub mod v1_to_v2 {
                 );
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
-                // remove all elements before inserting them back, otherwise we get UB
-                let r: Vec<_> = v1::CollateralInfos::<T>::drain()
+                let collateral_infos: sp_std::vec::Vec<_> = v1::CollateralInfos::<T>::drain()
                     .map(|(collateral_asset_id, old_collateral_info)| {
                         weight += <T as frame_system::Config>::DbWeight::get().writes(1);
                         (
@@ -288,7 +302,7 @@ pub mod v1_to_v2 {
                         )
                     })
                     .collect();
-                for (stablecoin_identifier, collateral_info) in r {
+                for (stablecoin_identifier, collateral_info) in collateral_infos {
                     CollateralInfos::<T>::insert(stablecoin_identifier, collateral_info);
                 }
 
@@ -327,7 +341,7 @@ pub mod v1_to_v2 {
             CollateralInfos, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
             StablecoinParameters,
         };
-        use common::{balance, DAI, KUSD, KXOR, XOR};
+        use common::{balance, SymbolName, DAI, KGOLD, KUSD, KXOR, XOR};
         use core::default::Default;
         use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
         use sp_arithmetic::FixedU128;
@@ -364,7 +378,7 @@ pub mod v1_to_v2 {
 
                 assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 2);
 
-                assert_eq!(2, StablecoinInfos::<TestRuntime>::iter().count());
+                assert_eq!(3, StablecoinInfos::<TestRuntime>::iter().count());
                 let kusd_info = StablecoinInfos::<TestRuntime>::get(KUSD).unwrap();
                 assert_eq!(kusd_bad_debt, kusd_info.bad_debt);
                 assert_eq!(
@@ -373,6 +387,16 @@ pub mod v1_to_v2 {
                         minimal_stability_fee_accrue: balance!(1),
                     },
                     kusd_info.stablecoin_parameters
+                );
+
+                let kgold_info = StablecoinInfos::<TestRuntime>::get(KGOLD).unwrap();
+                assert_eq!(balance!(0), kgold_info.bad_debt);
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::OracleSymbol(SymbolName::xau()),
+                        minimal_stability_fee_accrue: balance!(0.001),
+                    },
+                    kgold_info.stablecoin_parameters
                 );
 
                 let kxor_info = StablecoinInfos::<TestRuntime>::get(KXOR).unwrap();
@@ -421,6 +445,61 @@ pub mod v1_to_v2 {
                     xor_kusd_collateral_info.interest_coefficient
                 );
             });
+        }
+    }
+}
+
+/// V3 introduces depository tech account for collaterals.
+pub mod v2_to_v3 {
+    use crate::{CDPDepository, Config, Pallet};
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::log::error;
+    use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use sp_core::Get;
+
+    pub struct UpgradeToV3<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV3<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+
+            let version = Pallet::<T>::on_chain_storage_version();
+            if version == 2 {
+                let depository_acc = T::DepositoryTechAccount::get();
+                weight += match technical::Pallet::<T>::register_tech_account_id_if_not_exist(
+                    &depository_acc,
+                ) {
+                    Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
+                    Err(err) => {
+                        error!(
+                            "Failed to register technical account: {:?}, error: {:?}",
+                            depository_acc, err
+                        );
+                        <T as frame_system::Config>::DbWeight::get().reads(1)
+                    }
+                };
+
+                let treasury_acc = T::TreasuryTechAccount::get();
+                for (_, cdp) in CDPDepository::<T>::iter() {
+                    technical::Pallet::<T>::transfer(
+                        &cdp.collateral_asset_id,
+                        &treasury_acc,
+                        &depository_acc,
+                        cdp.collateral_amount,
+                    )
+                    .unwrap_or_else(|err| {
+                        error!("Error while transfer to depository tech acc: {:?}", err);
+                    });
+                }
+
+                StorageVersion::new(3).put::<Pallet<T>>();
+                weight += <T as frame_system::Config>::DbWeight::get().writes(1);
+            }
+
+            weight
         }
     }
 }
