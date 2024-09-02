@@ -47,6 +47,7 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "pallet-timestamp/std",
     "scale-info/std",
     "serde",

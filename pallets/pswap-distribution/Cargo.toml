@@ -62,6 +62,7 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
+    'frame-benchmarking/std',
     'permissions/std',
     'sp-arithmetic/std',
     'sp-core/std',

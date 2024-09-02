@@ -50,6 +50,7 @@ std = [
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "sp-core/std",
     "sp-std/std",
     "sp-io/std",

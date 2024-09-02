@@ -54,11 +54,13 @@ std = [
     "scale-info/std",
     'frame-support/std',
     'frame-system/std',
+    'frame-benchmarking/std',
     'serde/std',
     'sp-core/std',
     'sp-io/std',
     'sp-std/std',
     'secp256k1/std',
+    'common/std',
 ]
 
 runtime-benchmarks = [

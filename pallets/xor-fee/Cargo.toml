@@ -53,6 +53,7 @@ std = [
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "pallet-session/std",
     "pallet-transaction-payment/std",
     "sp-arithmetic/std",

@@ -50,6 +50,7 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
+    'frame-benchmarking/std',
     'sp-core/std',
     'sp-io/std',
     'sp-std/std',

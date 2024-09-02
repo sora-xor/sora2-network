@@ -49,6 +49,8 @@ std = [
     "pallet-timestamp/std",
     "sp-core/std",
     "sp-std/std",
+    "assets/std",
+    "common/std",
 ]
 
 runtime-benchmarks = [

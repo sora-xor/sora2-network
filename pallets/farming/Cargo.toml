@@ -68,10 +68,14 @@ std = [
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "pallet-timestamp/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "common/std",
+    "assets/std",
+    "tokens/std",
 ]
 
 runtime-benchmarks = [

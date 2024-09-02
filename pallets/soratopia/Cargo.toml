@@ -46,6 +46,7 @@ std = [
     "common/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "scale-info/std",
     "sp-std/std",
     "technical/std",

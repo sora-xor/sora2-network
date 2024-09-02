@@ -53,11 +53,13 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
     "common/std",
     "technical/std",
+    "assets/std",
 ]
 
 runtime-benchmarks = [

@@ -50,10 +50,12 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
+    'frame-benchmarking/std',
     'pallet-balances/std',
     'sp-core/std',
     'sp-std/std',
     'twox-hash/std',
+    'common/std',
 ]
 
 runtime-benchmarks = [

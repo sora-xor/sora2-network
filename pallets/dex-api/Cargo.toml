@@ -60,6 +60,7 @@ std = [
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "currencies/std",
     "tokens/std",
     "traits/std",
