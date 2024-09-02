@@ -1556,13 +1556,14 @@ pub mod pallet {
                 &cdp.stablecoin_asset_id,
             )?;
             let interest_coefficient = collateral_info.interest_coefficient;
-            let interest_percent = interest_coefficient
+            let stability_fee = interest_coefficient
                 .checked_sub(&cdp.interest_coefficient)
                 .ok_or(Error::<T>::ArithmeticError)?
-                .checked_div(&cdp.interest_coefficient)
-                .ok_or(Error::<T>::ArithmeticError)?;
-            let stability_fee = FixedU128::from_inner(cdp.debt)
-                .checked_mul(&interest_percent)
+                .checked_mul(
+                    &FixedU128::from_inner(cdp.debt)
+                        .checked_div(&cdp.interest_coefficient)
+                        .ok_or(Error::<T>::ArithmeticError)?,
+                )
                 .ok_or(Error::<T>::ArithmeticError)?
                 .into_inner();
             Ok((stability_fee, interest_coefficient))
