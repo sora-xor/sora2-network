@@ -142,7 +142,7 @@ pub struct CollateralRiskParameters {
     /// The max amount of collateral can be liquidated in one round
     pub max_liquidation_lot: Balance,
 
-    /// Protocol Interest rate per millisecond
+    /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
 
     /// Minimal deposit in collateral AssetId.
@@ -1792,7 +1792,8 @@ pub mod pallet {
                 stablecoin_asset_id: *stablecoin_asset_id,
             })
             .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let now = Timestamp::<T>::get();
+            // now from ms to seconds, no need to check
+            let now = Timestamp::<T>::get() / 1000u32.into();
             ensure!(
                 now >= collateral_info.last_fee_update_time,
                 Error::<T>::AccrueWrongTime
@@ -1834,13 +1835,13 @@ pub mod pallet {
                 &cdp.stablecoin_asset_id,
             )?;
             let interest_coefficient = collateral_info.interest_coefficient;
-            let interest_percent = interest_coefficient
+            let stability_fee = interest_coefficient
                 .checked_sub(&cdp.interest_coefficient)
                 .ok_or(Error::<T>::ArithmeticError)?
                 .checked_div(&cdp.interest_coefficient)
                 .ok_or(Error::<T>::ArithmeticError)?;
             let stability_fee = FixedU128::from_inner(cdp.debt)
-                .checked_mul(&interest_percent)
+                .checked_mul(&stability_fee)
                 .ok_or(Error::<T>::ArithmeticError)?
                 .into_inner();
             Ok((stability_fee, interest_coefficient))
@@ -2352,7 +2353,8 @@ pub mod pallet {
                                 risk_parameters: new_risk_parameters,
                                 total_collateral: Balance::zero(),
                                 stablecoin_supply: balance!(0),
-                                last_fee_update_time: Timestamp::<T>::get(),
+                                // now from ms to seconds, no need to check
+                                last_fee_update_time: Timestamp::<T>::get() / 1000u32.into(),
                                 interest_coefficient: FixedU128::one(),
                             });
                         }
