@@ -2136,6 +2136,33 @@ fn test_accrue_profit_same_time() {
     });
 }
 
+/// Call accrue when cdp has interest coefficient > collateral coefficient should not result in
+/// arithmetic error. It means cdp owner has paid more fee than required, so fee is 0 in that case.
+/// Actually this case should never happen.
+#[test]
+fn test_accrue_profit_from_past() {
+    new_test_ext().execute_with(|| {
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 10% per millisecond
+            FixedU128::from_float(0.1),
+            balance!(0),
+        );
+        let debt = balance!(10);
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        assert_noop!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuError::UncollectedStabilityFeeTooSmall
+        );
+    });
+}
+
 /// Given: CDP with debt, protocol has bad debt and interest accrued < bad debt.
 /// When: accrue is called.
 /// Then: interest covers the part of bad debt.
