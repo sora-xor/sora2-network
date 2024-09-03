@@ -2400,7 +2400,6 @@
 <a href="#2385" id="2385">2385</a>
 <a href="#2386" id="2386">2386</a>
 <a href="#2387" id="2387">2387</a>
-<a href="#2388" id="2388">2388</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2619,7 +2618,7 @@
     <span class="kw">use </span>frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>pallet_timestamp <span class="kw">as </span>timestamp;
-    <span class="kw">use </span>sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
+    <span class="kw">use </span>sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, Saturating};
     <span class="kw">use </span>sp_core::bounded::BoundedVec;
     <span class="kw">use </span>sp_runtime::traits::{CheckedConversion, One, Zero};
     <span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
@@ -4238,9 +4237,8 @@
             )<span class="question-mark">?</span>;
             <span class="kw">let </span>interest_coefficient = collateral_info.interest_coefficient;
             <span class="kw">let </span>interest_percent = interest_coefficient
-                .checked_sub(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
-                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?
-                </span>.checked_div(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
+                .saturating_sub(cdp.interest_coefficient)
+                .checked_div(<span class="kw-2">&amp;</span>cdp.interest_coefficient)
                 .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
             <span class="kw">let </span>stability_fee = FixedU128::from_inner(cdp.debt)
                 .checked_mul(<span class="kw-2">&amp;</span>interest_percent)
