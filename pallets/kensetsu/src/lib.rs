@@ -216,7 +216,7 @@ pub mod pallet {
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
+    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, Saturating};
     use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
@@ -1835,8 +1835,7 @@ pub mod pallet {
             )?;
             let interest_coefficient = collateral_info.interest_coefficient;
             let interest_percent = interest_coefficient
-                .checked_sub(&cdp.interest_coefficient)
-                .ok_or(Error::<T>::ArithmeticError)?
+                .saturating_sub(cdp.interest_coefficient)
                 .checked_div(&cdp.interest_coefficient)
                 .ok_or(Error::<T>::ArithmeticError)?;
             let stability_fee = FixedU128::from_inner(cdp.debt)
