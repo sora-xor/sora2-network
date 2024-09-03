@@ -1028,7 +1028,7 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+    pub GetChameleonPools: |_base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
         None
     };
 }
