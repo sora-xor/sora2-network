@@ -28,9 +28,4 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::*;
-
-pub type Migrations = (
-    dex_manager::migrations::kusd_dex::AddKusdBasedDex<Runtime>,
-    kensetsu::migrations::v2_to_v3::UpgradeToV3<Runtime>,
-);
+pub type Migrations = ();
