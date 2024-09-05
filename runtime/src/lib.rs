@@ -3001,10 +3001,6 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
-            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, &selected_source_types, &filter_mode) {
-                return None;
-            }
-
             LiquidityProxy::inner_quote(
                 dex_id,
                 &input_asset_id,
@@ -3042,9 +3038,7 @@ impl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType> {
-            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
-                dex_id, input_asset_id, output_asset_id
-            ).unwrap_or(Vec::new())
+            LiquidityProxy::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id).unwrap_or(Vec::new())
         }
     }
 
