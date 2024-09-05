@@ -28,8 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::primitives::{AssetId32, Balance, DEXId, OrderBookId, OrderId, PriceVariant};
+// use crate::primitives::{AssetId32, Balance, DEXId, OrderBookId, OrderId, PriceVariant};
 use sp_std::vec::Vec;
+
+use crate::primitives::OrderId;
+use common::{AssetId32, Balance, DEXId, OrderBookId, PredefinedAssetId, PriceVariant};
 
 /// It is a part of a pallet dispatchables API.
 /// The indexes can be found in your pallet code's #[pallet::call] section and check #[pallet::call_index(x)] attribute of the call.
@@ -41,7 +44,7 @@ pub enum OrderBookCall {
     /// `order_book::pallet::place_limit_order`
     #[codec(index = 4)]
     PlaceLimitOrder {
-        order_book_id: OrderBookId<AssetId32, DEXId>,
+        order_book_id: OrderBookId<AssetId32<PredefinedAssetId>, DEXId>,
         price: Balance,
         amount: Balance,
         side: PriceVariant,
@@ -51,20 +54,23 @@ pub enum OrderBookCall {
     /// `order_book::pallet::cancel_limit_order`
     #[codec(index = 5)]
     CancelLimitOrder {
-        order_book_id: OrderBookId<AssetId32, DEXId>,
+        order_book_id: OrderBookId<AssetId32<PredefinedAssetId>, DEXId>,
         order_id: OrderId,
     },
     /// Cancels the list of limit orders
     /// `order_book::pallet::cancel_limit_orders_batch`
     #[codec(index = 6)]
     CancelLimitOrdersBatch {
-        limit_orders_to_cancel: Vec<(OrderBookId<AssetId32, DEXId>, Vec<OrderId>)>,
+        limit_orders_to_cancel: Vec<(
+            OrderBookId<AssetId32<PredefinedAssetId>, DEXId>,
+            Vec<OrderId>,
+        )>,
     },
     /// Executes the market order
     /// `order_book::pallet::execute_market_order`
     #[codec(index = 7)]
     ExecuteMarketOrder {
-        order_book_id: OrderBookId<AssetId32, DEXId>,
+        order_book_id: OrderBookId<AssetId32<PredefinedAssetId>, DEXId>,
         direction: PriceVariant,
         amount: Balance,
     },

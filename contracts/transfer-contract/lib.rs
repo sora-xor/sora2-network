@@ -33,7 +33,8 @@
 /// Example of contract for calling `transfer` extrinsic
 #[ink::contract]
 mod transfer_contract {
-    use contract_extrinsics::{assets::AssetsCall, primitives::AssetId32, ExtrinsicCall};
+    use contract_extrinsics::{assets::AssetsCall, ExtrinsicCall};
+    use common::{AssetId32, PredefinedAssetId};
 
     #[ink(storage)]
     #[derive(Default)]
@@ -58,7 +59,7 @@ mod transfer_contract {
         #[ink(message)]
         pub fn transfer(
             &self,
-            asset_id: AssetId32,
+            asset_id: AssetId32<PredefinedAssetId>,
             to: AccountId,
             amount: Balance,
         ) -> Result<(), RuntimeError> {

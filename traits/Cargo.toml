@@ -1,0 +1,33 @@
+[package]
+name = "traits"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+
+primitives = { path = "../primitives", default-features = false }
+
+[features]
+
+default = ["std"]
+
+std = [
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "primitives/std",
+]

@@ -28,7 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::primitives::{AssetId32, Balance};
+// use crate::primitives::{AssetId32, Balance};
+use common::{AssetId32, Balance, PredefinedAssetId};
 use ink::primitives::AccountId;
 
 /// It is a part of a pallet dispatchables API.
@@ -41,7 +42,7 @@ pub enum AssetsCall {
     /// `assets::pallet::transfer`
     #[codec(index = 1)]
     Transfer {
-        asset_id: AssetId32,
+        asset_id: AssetId32<PredefinedAssetId>,
         to: AccountId,
         amount: Balance,
     },

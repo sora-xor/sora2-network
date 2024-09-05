@@ -28,13 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::traits::{IsRepresentation, PureOrWrapped};
-use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::traits::ConstU32;
 use frame_support::{ensure, BoundedVec};
+use frame_system::Config;
 use hex_literal::hex;
 use rustc_hex::ToHex;
 use scale_info::prelude::fmt::Display;
@@ -42,12 +41,14 @@ use scale_info::prelude::fmt::Formatter;
 use scale_info::prelude::string::String;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
-use sp_core::{RuntimeDebug, H256};
+use sp_core::{RuntimeDebug, H256, H512};
+use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
-
+use frame_system::pallet_prelude::BlockNumberFor;
+use sp_runtime::TransactionOutcome;
 #[cfg(feature = "std")]
 use sp_std::convert::TryInto;
 
@@ -535,9 +536,9 @@ impl IsValid for AssetSymbol {
         !self.0.is_empty()
             && self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
             && self
-                .0
-                .iter()
-                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
+            .0
+            .iter()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
@@ -586,11 +587,11 @@ impl IsValid for AssetName {
         !self.0.is_empty()
             && self.0.len() <= ASSET_NAME_MAX_LENGTH
             && self.0.iter().all(|byte| {
-                byte.is_ascii_uppercase()
-                    || byte.is_ascii_lowercase()
-                    || byte.is_ascii_digit()
-                    || byte == &b' '
-            })
+            byte.is_ascii_uppercase()
+                || byte.is_ascii_lowercase()
+                || byte.is_ascii_digit()
+                || byte == &b' '
+        })
     }
 }
 
@@ -734,9 +735,9 @@ impl IsValid for SymbolName {
         !self.0.is_empty()
             && self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
             && self
-                .0
-                .iter()
-                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
+            .0
+            .iter()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
     }
 }
 
@@ -988,7 +989,7 @@ impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, As
 /// Implementation of `FromGenericPair` for cases when trait method is better than data type
 /// constructor.
 impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
-    for TechAccountId<AccountId, AssetId, DEXId>
+for TechAccountId<AccountId, AssetId, DEXId>
 {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self {
         TechAccountId::Generic(tag, data)
@@ -996,7 +997,7 @@ impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
 }
 
 impl<AccountId, AssetId, DEXId> crate::traits::WrappedRepr<AccountId>
-    for TechAccountId<AccountId, AssetId, DEXId>
+for TechAccountId<AccountId, AssetId, DEXId>
 {
     fn wrapped_repr(repr: AccountId) -> Self {
         TechAccountId::WrappedRepr(repr)
@@ -1004,7 +1005,7 @@ impl<AccountId, AssetId, DEXId> crate::traits::WrappedRepr<AccountId>
 }
 
 impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
-    for TechAccountId<AccountId, AssetId, DEXId>
+for TechAccountId<AccountId, AssetId, DEXId>
 {
     fn to_fee_account(&self) -> Option<Self> {
         match self {
@@ -1017,8 +1018,8 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
 }
 
 impl<AccountId, AssetId, DEXId: Clone>
-    crate::traits::ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
-    for TechAccountId<AccountId, AssetId, DEXId>
+crate::traits::ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
+for TechAccountId<AccountId, AssetId, DEXId>
 {
     fn to_xyk_tech_unit_from_dex_and_trading_pair(
         dex_id: DEXId,
@@ -1029,8 +1030,8 @@ impl<AccountId, AssetId, DEXId: Clone>
 }
 
 impl<AccountId, AssetId, DEXId: Clone>
-    crate::traits::ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
-    for TechAccountId<AccountId, AssetId, DEXId>
+crate::traits::ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
+for TechAccountId<AccountId, AssetId, DEXId>
 {
     fn to_order_tech_unit_from_dex_and_trading_pair(
         dex_id: DEXId,
@@ -1054,7 +1055,7 @@ where
 }
 
 impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
-    for Option<AccountId>
+for Option<AccountId>
 {
     fn from(a: TechAccountId<AccountId, AssetId, DEXId>) -> Option<AccountId> {
         match a {
@@ -1066,10 +1067,10 @@ impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
 }
 
 impl<
-        AccountId: Clone + Encode + From<[u8; 32]> + Into<[u8; 32]>,
-        AssetId: Encode,
-        DEXId: Encode,
-    > PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
+    AccountId: Clone + Encode + From<[u8; 32]> + Into<[u8; 32]>,
+    AssetId: Encode,
+    DEXId: Encode,
+> PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
 where
     AccountId: IsRepresentation,
 {
@@ -1373,8 +1374,6 @@ pub struct AssetInfo {
     pub description: Option<Description>,
 }
 
-// Todo: remove or add duplicate from orderbook pallet
-
 #[derive(
     Encode,
     Decode,
@@ -1397,4 +1396,124 @@ pub struct OrderBookId<AssetId, DEXId> {
     pub base: AssetId,
     /// Quote asset. It should be a base asset of DEX.
     pub quote: AssetId,
+}
+
+// TODO: FROM common::lib
+
+/// Basic type representing asset.
+pub type Asset<T, GetAssetId> = orml_currencies::Currency<T, GetAssetId>;
+
+/// Basic type representing assets quantity.
+///
+/// MAX = (2 ** (BITS_COUNT - 1) - 1) / 10 ** PRECISION =
+///     = (2 ** (128 - 1) - 1) / 1e18 =
+///     = 170_141_183_460_469_231_731.687_303_715_884_105_727 ~
+///     ~ 1.7e20
+/// ERROR_MAX = 0.5 / (10 ** PRECISION) =
+///           = 0.5 / 1e18 =
+///           = 5e-19
+pub type Fixed = FixedPoint<FixedInner, FixedPrecision>;
+pub type FixedInner = i128;
+type FixedPrecision = U18;
+
+pub type Price = Fixed;
+
+pub type Amount = i128;
+/// Type definition representing financial basis points (1bp is 0.01%)
+pub type BasisPoints = u16;
+
+pub const FIXED_PRECISION: u32 = FixedPrecision::U32;
+
+/// Similar to #\[transactional]
+pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E>
+where
+    E: From<sp_runtime::DispatchError>,
+{
+    frame_support::storage::with_transaction(|| {
+        let result = f();
+        if result.is_ok() {
+            TransactionOutcome::Commit(result)
+        } else {
+            TransactionOutcome::Rollback(result)
+        }
+    })
+}
+
+pub fn hash<T: Encode>(val: &T) -> H512 {
+    H512::from_slice(blake2_rfc::blake2b::blake2b(64, &[], &val.encode()).as_bytes())
+}
+
+pub fn hash_to_u128_pair<T: Encode>(val: &T) -> (u128, u128) {
+    let data = blake2_rfc::blake2b::blake2b(32, &[], &val.encode());
+    let bytes = data.as_bytes();
+    let mut result: (u128, u128) = (0, 0);
+    for i in 0..16 {
+        result.0 += (bytes[i] as u128) << (8 * i);
+        result.1 += (bytes[i + 16] as u128) << (8 * i);
+    }
+    result
+}
+
+/// Commutative merkle operation, is crypto safe, defined as hash(a,b) `xor` hash(b,a).
+pub fn comm_merkle_op<T: Encode>(val_a: &T, val_b: &T) -> H512 {
+    use sp_std::ops::BitXor;
+    let hash_u = H512::from_slice(
+        blake2_rfc::blake2b::blake2b(64, &[], &(val_a, val_b).encode()).as_bytes(),
+    );
+    let hash_v = H512::from_slice(
+        blake2_rfc::blake2b::blake2b(64, &[], &(val_b, val_a).encode()).as_bytes(),
+    );
+    hash_u.bitxor(hash_v)
+}
+
+/// Sorting of keys and values by key with hash_key, useful for crypto sorting with commutative
+/// merkle operator.
+pub fn sort_with_hash_key<'a, T: Encode, V>(
+    hash_key: H512,
+    pair_a: (&'a T, &'a V),
+    pair_b: (&'a T, &'a V),
+) -> ((&'a T, &'a V), (&'a T, &'a V)) {
+    use sp_std::ops::BitXor;
+    let hash_a = hash(pair_a.0);
+    let hash_b = hash(pair_b.0);
+    if hash_key.bitxor(hash_a) < hash_key.bitxor(hash_b) {
+        (pair_a, pair_b)
+    } else {
+        (pair_b, pair_a)
+    }
+}
+
+/// This data is used as prefix in AccountId32, if it is representative for TechAccId encode twox
+/// hash (128 + 128 = 256 bit of AccountId32 for example).
+pub const TECH_ACCOUNT_MAGIC_PREFIX: [u8; 16] = [
+    84, 115, 79, 144, 249, 113, 160, 44, 96, 155, 45, 104, 78, 97, 181, 87,
+];
+
+impl IsRepresentation for AccountId32 {
+    fn is_representation(&self) -> bool {
+        let b: [u8; 32] = self.clone().into();
+        b[0..16] == TECH_ACCOUNT_MAGIC_PREFIX
+    }
+}
+
+type MomentOf<T> = <T as pallet_timestamp::Config>::Moment;
+/// Converts block_number to timestamp
+pub fn convert_block_number_to_timestamp<T: Config + pallet_timestamp::Config>(
+    unlocking_block: BlockNumberFor<T>,
+    current_block: BlockNumberFor<T>,
+    current_timestamp: MomentOf<T>,
+) -> MomentOf<T> {
+    if unlocking_block > current_block {
+        let num_of_seconds: u32 =
+            ((unlocking_block - current_block) * 6u32.into()).unique_saturated_into();
+        let mut timestamp: T::Moment = num_of_seconds.into();
+        timestamp *= 1000u32.into();
+        current_timestamp + timestamp
+    } else {
+        let num_of_seconds: u32 =
+            ((current_block - unlocking_block) * 6u32.into()).unique_saturated_into();
+        let mut timestamp: T::Moment = num_of_seconds.into();
+        timestamp *= 1000u32.into();
+        current_timestamp - timestamp
+    }
 }

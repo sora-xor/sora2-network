@@ -27,58 +27,58 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-pub const ASSET_ID_PREFIX_PREDEFINED: u8 = 2;
-
+// pub const ASSET_ID_PREFIX_PREDEFINED: u8 = 2;
+//
 pub type OrderId = u128;
-pub type DEXId = u32;
-pub type Balance = u128;
-
-/// This code is H256 like.
-pub type AssetId32Code = [u8; 32];
-
-/// This is wrapped structure, this is like H256 or Р512, extra
-/// PhantomData is added for typing reasons.
-#[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Hash))]
-pub struct AssetId32 {
-    /// Internal data representing given AssetId.
-    pub code: AssetId32Code,
-}
-
-impl AssetId32 {
-    pub const fn new(code: AssetId32Code) -> Self {
-        Self { code }
-    }
-
-    pub const fn from_bytes(bytes: [u8; 32]) -> Self {
-        Self { code: bytes }
-    }
-}
-
-#[derive(PartialEq, Eq, Copy, Clone)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum PriceVariant {
-    Buy,
-    Sell,
-}
-
-impl PriceVariant {
-    pub fn switched(&self) -> Self {
-        match self {
-            PriceVariant::Buy => PriceVariant::Sell,
-            PriceVariant::Sell => PriceVariant::Buy,
-        }
-    }
-}
-
-#[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, Hash)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct OrderBookId<AssetId, DEXId> {
-    /// DEX id
-    pub dex_id: DEXId,
-    /// Base asset.
-    pub base: AssetId,
-    /// Quote asset. It should be a base asset of DEX.
-    pub quote: AssetId,
-}
+// pub type DEXId = u32;
+// pub type Balance = u128;
+//
+// /// This code is H256 like.
+// pub type AssetId32Code = [u8; 32];
+//
+// /// This is wrapped structure, this is like H256 or Р512, extra
+// /// PhantomData is added for typing reasons.
+// #[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
+// #[ink::scale_derive(Encode, Decode, TypeInfo)]
+// #[cfg_attr(feature = "std", derive(Hash))]
+// pub struct AssetId32 {
+//     /// Internal data representing given AssetId.
+//     pub code: AssetId32Code,
+// }
+//
+// impl AssetId32 {
+//     pub const fn new(code: AssetId32Code) -> Self {
+//         Self { code }
+//     }
+//
+//     pub const fn from_bytes(bytes: [u8; 32]) -> Self {
+//         Self { code: bytes }
+//     }
+// }
+//
+// #[derive(PartialEq, Eq, Copy, Clone)]
+// #[ink::scale_derive(Encode, Decode, TypeInfo)]
+// pub enum PriceVariant {
+//     Buy,
+//     Sell,
+// }
+//
+// impl PriceVariant {
+//     pub fn switched(&self) -> Self {
+//         match self {
+//             PriceVariant::Buy => PriceVariant::Sell,
+//             PriceVariant::Sell => PriceVariant::Buy,
+//         }
+//     }
+// }
+//
+// #[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, Hash)]
+// #[ink::scale_derive(Encode, Decode, TypeInfo)]
+// pub struct OrderBookId<AssetId, DEXId> {
+//     /// DEX id
+//     pub dex_id: DEXId,
+//     /// Base asset.
+//     pub base: AssetId,
+//     /// Quote asset. It should be a base asset of DEX.
+//     pub quote: AssetId,
+// }
