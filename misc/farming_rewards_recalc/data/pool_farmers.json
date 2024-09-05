@@ -1,0 +1,2948 @@
+{
+    "16755766": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7cfuBn4DnUtfdQkn3AKkeLaMHC": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7cowxQLzVcXVuxkw9MbQq8k1Wt": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7cpzYCbDSLjUjrNc5fUxgpBGKt": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 11251019414858818810669731
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7csfbKDggS366fB1mihC5mN8PH": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7cuR5WYzAhcsg24dmWRPzSZxRS": [
+            {
+                "account": "cnRgpUaYCiBsFeSH8CifWkx7SH6kyb6KN68yATpEBKzdPFfLi",
+                "block": 16066800,
+                "weight": 81723170641047242204289224
+            },
+            {
+                "account": "cnRrjWLsVPcGw4CYpD9iH4CZgw1SbtrFg9wEwS1ri2dPHdmH1",
+                "block": 16316400,
+                "weight": 9510330905154542911198644
+            },
+            {
+                "account": "cnRsXBjGiibsP7mfUEEy7hJ25EULXhLQAEdgUTcuLBatfJ8Ta",
+                "block": 15662400,
+                "weight": 210128419388655921227419842
+            },
+            {
+                "account": "cnRzXW5CRJr5uJ2Mxx7crEG6XozRTdNHGp8seTKNEGCHeJS7H",
+                "block": 16228800,
+                "weight": 9862602309896748264568638
+            },
+            {
+                "account": "cnSAxKhDdbGDxKc7gi34uypwabX5jUwY1WPYbqrgks3mxPw4M",
+                "block": 16228800,
+                "weight": 9948976755837424835967908
+            },
+            {
+                "account": "cnSGXgNVUur7trtvu6smELPGJ21KY7topDzWXfdQmhsRQPmE2",
+                "block": 16185600,
+                "weight": 10983212790339236535402562
+            },
+            {
+                "account": "cnSmvALMdvFxSmoSUGW18aVZkVktJYYw6dYhg9pBJNwR9eazu",
+                "block": 16724400,
+                "weight": 6515357936315169491500476
+            },
+            {
+                "account": "cnTDyjmP5cvYEjz6zLh9TfuXBvpbaRWnAQuooaCM2gRocbKHk",
+                "block": 16288800,
+                "weight": 10387978652035647668723592
+            },
+            {
+                "account": "cnTE99XSP51yCg2Y8naGKCLoqjgYGq9VzBASrm3QgHyENYQAS",
+                "block": 15961200,
+                "weight": 17844941110398556522661334
+            },
+            {
+                "account": "cnThni2BfSQpwcAKM62mY8abH3FFX4HsbwUfb3kpRg87HzMGV",
+                "block": 15609600,
+                "weight": 202607137367400800342115006
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 14245200,
+                "weight": 599582665498377943563659682
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 14848800,
+                "weight": 22207683751597564247475418
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 16087200,
+                "weight": 13801573826742495178687194
+            },
+            {
+                "account": "cnVMATz7JMecxVFVKHX7CH1ZZjp5EyGoK5vzuK4cgG9JXqqij",
+                "block": 15562800,
+                "weight": 42488336189051573081938906
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 14786400,
+                "weight": 103332795564669141129009554
+            },
+            {
+                "account": "cnWWdtWw5o5MAPwnmKHqdDvigD1Yep1voB2Z75RzTRizkewvp",
+                "block": 15594000,
+                "weight": 32950554593939323792155482
+            },
+            {
+                "account": "cnWtJdMMoRPqv6pV7tbebS1auhW2rCYZuJ8tfu4SydERkdXyf",
+                "block": 16334400,
+                "weight": 8393344557197567054925342
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7cyCUPg2gKjFbuEjqjSQibr4x9": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 9828188531419001308159085
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7d3p9i2yAYvdAyyvJv1rHU8wb6": [
+            {
+                "account": "cnUFpWCiZsAA6mFDXTRDGaHuE4Q67q1RPaSkVPvLyxAT5aXK1",
+                "block": 16354800,
+                "weight": 3123551600529105220147737
+            },
+            {
+                "account": "cnWAcRoYcUeiQqvmTyXbtehYKu2aQdvoqpYLEaq8qbuihhGrz",
+                "block": 16354800,
+                "weight": 3147089902782260909951656
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7d6baXPUBYHRncac4L29nu8NUn": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dHT5kGsvkPrCjhdhz8bfbqCYQ": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dHc5RP6Fwa4pPET9e6tvWVNLy": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dLxzfeXTFKvz99hjnMX5Em9h7": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dPeiDsyg754w2Y5M2MnPUS1Lx": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dXcBKmStS7xKEUgomxGYfUskw": [
+            {
+                "account": "cnUCoe7bhx2DYwwZ8YGGLHUVLNy6FhCE6ppNiA5cCSX76j75R",
+                "block": 16316400,
+                "weight": 75450084575702732040470547
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dhKevkRPHDNRGtHAi63K9vLjj": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 15195622505448387269255162
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dm1HKXnwheGZ4iorLCGF6gRzr": [
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 15007200,
+                "weight": 79971113883332256470983812
+            },
+            {
+                "account": "cnU8bu1tu6eNHLoZYYNmnDdZ9pbwF8CRdrwM9Pze5RQBbqaQW",
+                "block": 15847200,
+                "weight": 21597862532061886489643762
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13861200,
+                "weight": 50309380952412616564934094
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 9608400,
+                "weight": 238105380538731807581453000
+            },
+            {
+                "account": "cnV7ExvTocHEKbnc8NSTN3eGa7BpWtLEnMBE54sXwSx1XccYx",
+                "block": 16510800,
+                "weight": 104682043488662771653944124
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dmUS6BaS8smyfsjLPQ4pWwuad": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dnXUGPfYu3WAmasnFuU3Z4EEt": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dqDMBWkht2v2ufZFqSY3tYGgJ": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dreR3efpSXPkvPLkBQSpL6B2L": [
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 16024800,
+                "weight": 445144641477756499948030854
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16027200,
+                "weight": 33224112090152252172514776
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 16024800,
+                "weight": 1985716605862832609472705346
+            },
+            {
+                "account": "cnVA8S2CNn2h4CjW2vTnqnSRqEL4P2ShvPWYA46TYEdTtao3S",
+                "block": 16338000,
+                "weight": 3669264412001839819386048
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dsbRk36EhS96aij6ZUcTibAKJ": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dw4KiaqZvPTsys35BthgyP2u8": [
+            {
+                "account": "cnRrjWLsVPcGw4CYpD9iH4CZgw1SbtrFg9wEwS1ri2dPHdmH1",
+                "block": 16530000,
+                "weight": 4524358183564786119654841
+            },
+            {
+                "account": "cnRuHiYXAU6srgGEBUkiRRaQ69AQkLcNusuGFtmus4Ki3rXFf",
+                "block": 16545600,
+                "weight": 4134997662394197512552666
+            },
+            {
+                "account": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+                "block": 16129200,
+                "weight": 17894207979232109215329068
+            },
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 16012800,
+                "weight": 23758413021203234719443039
+            },
+            {
+                "account": "cnSmvALMdvFxSmoSUGW18aVZkVktJYYw6dYhg9pBJNwR9eazu",
+                "block": 16056000,
+                "weight": 7414105113213235746000804
+            },
+            {
+                "account": "cnSzuMdyBzMY76w2diPsdj6NLApu73kTX5H4i6J7k4PsaD2a3",
+                "block": 16322400,
+                "weight": 5095708074125270096587600
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16024800,
+                "weight": 7478279556551784666069560
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 16306800,
+                "weight": 5833905762873049441011767
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 16353600,
+                "weight": 4971683220349182731091064
+            },
+            {
+                "account": "cnUf7RpdCevfRoSK3DzTYvXaBnr1JaE8K3PNHxsnVxtrYnGmd",
+                "block": 16273200,
+                "weight": 5863753960423982629741245
+            },
+            {
+                "account": "cnVJeo3ugcSKFTTojdi34Knj7iFd6VG3QPSUizoaT7vmPxb4t",
+                "block": 16276800,
+                "weight": 5729607185656665531152765
+            },
+            {
+                "account": "cnVhDzCYahv9KSVfn7iwcg35m7Ze5P2extmL6xVk3nVeeLVnV",
+                "block": 16274400,
+                "weight": 5807621572643285284556530
+            },
+            {
+                "account": "cnWEhQy5B5Fiq4qQsU2WgVxyx47VvcpAL9eZgW3euQ82v8dm6",
+                "block": 16044000,
+                "weight": 16300150849894159628195011
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 16080000,
+                "weight": 38446450195048092143427521
+            },
+            {
+                "account": "cnWSMTs3Z5sWZbS2GyaQQf2J9q9vdFHzeWBiCh3bWo9qK4ayd",
+                "block": 16129200,
+                "weight": 8216105073909721323956116
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dzQVs3PGbCxyb2GekyyBTUFxP": [
+            {
+                "account": "cnRsXBjGiibsP7mfUEEy7hJ25EULXhLQAEdgUTcuLBatfJ8Ta",
+                "block": 15765600,
+                "weight": 444498759094288151921908378
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 12902400,
+                "weight": 10522407742805324213245609
+            },
+            {
+                "account": "cnTBXR92WgTULKHiPwE5FyJcnVWzrwHQinNhhAdvihiEoe8KC",
+                "block": 13099200,
+                "weight": 10429689019159260592014446
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 12909600,
+                "weight": 11712010922799412606166310
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 14149200,
+                "weight": 32245449738874623121948296
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 15906000,
+                "weight": 8630592931639801544062240
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7e74o3T6FPUW8bxPgsqaZjpSBS": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eEAyGoJe1hsXwhyCPxTBKf456": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eJdt6yJ7VpfcnHeKsKqTLcUCQ": [
+            {
+                "account": "cnU2xh5XUUk7o7uogZpqtuPtDzMWfupMWRKAe9H2pth8vMhGn",
+                "block": 16699200,
+                "weight": 3085666476961251708423028
+            },
+            {
+                "account": "cnV35zJXK9xjqkBGpbdz38Ud9zK4ZJjqEEKHr2t1USQvt3QTr",
+                "block": 15441600,
+                "weight": 12669831390106934867807347
+            },
+            {
+                "account": "cnWCEmDz6ZKtreCXaPzKefFUd7asp2YVksqn5VfWGXsomiPMm",
+                "block": 16126800,
+                "weight": 5614646826492362885164530
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eLDpqBfR9KR7exqn4rvrPtBZS": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ePRvMRSwb2bAh4i4pzpJSeZ1J": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 15907200,
+                "weight": 10034699664189241612056661
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eaHmpCaMM1je31ZkfABMN4wNS": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ei1HRsHPyd3tUfKLFsgdm8PTt": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 13009271603774997242225721
+            },
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1464000,
+                "weight": 14465430909460808983854466
+            },
+            {
+                "account": "cnW5SJEMiA4qkqarmJedZhUpru5RsMdWYWYu7qUHv9sAj3WVs",
+                "block": 16245600,
+                "weight": 5869592626490196570213088
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 3476400,
+                "weight": 26429680710959756115241213
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eiiMGg4Ayn4PQEfjz73kUrwQh": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ekFywYccfdsHvk32Z6anHUCE3": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eknrCjGT7tuoadT8CpHtg1BpE": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 15912000,
+                "weight": 6181044470018527583272456
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ezUtK7bHnWDhrpPd1GCLsWava": [
+            {
+                "account": "cnRm8HgLQUVac4AAtD7oPgzYogbEiFoq2TYmUthE35XQDNKgW",
+                "block": 16198800,
+                "weight": 5944535099485595772682178
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7f1WLYFuMLsXKH3BmLFTvTHrRn": [
+            {
+                "account": "cnToiSkbK6q5hXQrsp2Husm1ugkTEJUgrUqJyVpVv6RMs9JUF",
+                "block": 14106000,
+                "weight": 26914649823225194677878258
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7f4sMKaWQF583on92JL48B9kjq": [
+            {
+                "account": "cnRgmN1LzSgpUJwwBdMF5xJw5YbTayqKXBYuRuH8JXQZFzFNn",
+                "block": 15440400,
+                "weight": 11365131378702006388561892
+            },
+            {
+                "account": "cnRrjWLsVPcGw4CYpD9iH4CZgw1SbtrFg9wEwS1ri2dPHdmH1",
+                "block": 16746000,
+                "weight": 6012981929414354424167330
+            },
+            {
+                "account": "cnRuHiYXAU6srgGEBUkiRRaQ69AQkLcNusuGFtmus4Ki3rXFf",
+                "block": 16695600,
+                "weight": 7114184672453460020716150
+            },
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 19756891967816016969881634
+            },
+            {
+                "account": "cnSN33HpCwZqxQ4iVf3voVUJ9jx9wPULVMXw6iVgPgkeneNtM",
+                "block": 2809200,
+                "weight": 21064862236012527979553578
+            },
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 16441200,
+                "weight": 18079039464174583342871392
+            },
+            {
+                "account": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+                "block": 16057200,
+                "weight": 29941595974174487513392788
+            },
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 1629600,
+                "weight": 15925816888341953193638366
+            },
+            {
+                "account": "cnSmvALMdvFxSmoSUGW18aVZkVktJYYw6dYhg9pBJNwR9eazu",
+                "block": 16057200,
+                "weight": 14634859977987455537180100
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 1244400,
+                "weight": 11472013701627211828446800
+            },
+            {
+                "account": "cnTFacGvkgXp6x7sTSjwh2ZwNWiNEfZgDpDRqSanCrG16ggQp",
+                "block": 7368000,
+                "weight": 16168265419701625895679030
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 1244400,
+                "weight": 30869020982422216485917886
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 16142400,
+                "weight": 8404847916477085021015324
+            },
+            {
+                "account": "cnU2ktemsTqujB3HLMuWsuFrBuQsViUw1xpEV8TqnJMTvAvmS",
+                "block": 1244400,
+                "weight": 1171903019216330919734226822
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13863600,
+                "weight": 20524739335546147595498258
+            },
+            {
+                "account": "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+                "block": 10555200,
+                "weight": 10179789640963999687316260
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 1244400,
+                "weight": 10090688533950631754919332
+            },
+            {
+                "account": "cnUaPqytXyDWooh5x2aqyxNMG2LVKvnsgGPcqHcVdqU47dVE1",
+                "block": 1244400,
+                "weight": 40428508640066495501940566
+            },
+            {
+                "account": "cnV5d93J89p5kC4dRqF5WWtDNCk1XZ3HQo9dEhGUxBQnohxEB",
+                "block": 16666800,
+                "weight": 7697064832958973445620604
+            },
+            {
+                "account": "cnV5eiKAJoruX4gXk6wscKJ9L7QTBBGnbYBxCsz3H2EgbQATG",
+                "block": 16076400,
+                "weight": 13548591983002966029367910
+            },
+            {
+                "account": "cnV9zAY134h6u7LXBwbAPQzHGne2Pt7PAEq6S4oZ1nhydKCrL",
+                "block": 16695600,
+                "weight": 6769755122650658182362250
+            },
+            {
+                "account": "cnVDU9AL1hLofRfV36pWzknsj7PBHkVoP5f3snr8gh9Jn3Chb",
+                "block": 16647600,
+                "weight": 7992969336358220565307168
+            },
+            {
+                "account": "cnVG7vssvwgAm6Gd5tHjSbCniqqdFzCgbuCrjHwrR6DdAM6Bs",
+                "block": 16087200,
+                "weight": 14530032022578324720836718
+            },
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1244400,
+                "weight": 20603586990980612833177598
+            },
+            {
+                "account": "cnVZZWjg79ca1r1CtGjCRWiQ9rFs6MSdYJpdoLNBcRYef2XLS",
+                "block": 1244400,
+                "weight": 2474322520785011796131304808
+            },
+            {
+                "account": "cnVcjvUEVGbK4LGLB9K382EEKm57dxtmGYdiFfnjEWWg9vr72",
+                "block": 1782000,
+                "weight": 34435665348297877196166936
+            },
+            {
+                "account": "cnVhDzCYahv9KSVfn7iwcg35m7Ze5P2extmL6xVk3nVeeLVnV",
+                "block": 16213200,
+                "weight": 16620282397945817366053056
+            },
+            {
+                "account": "cnVvZMdvx8Q4n5ERUXMT8D4mZDRxfnETGZibFQiBBA7oHdLaG",
+                "block": 1244400,
+                "weight": 20190518139913334787853758
+            },
+            {
+                "account": "cnWHRTfD9X5ABYA9e3ibLaMTbrPQJW9XPUzJKyj97Z8wMqFUf",
+                "block": 16141200,
+                "weight": 8531230705489917321814960
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 16081200,
+                "weight": 20391558082549690799865726
+            },
+            {
+                "account": "cnWXU1rbduRUX8Va3rxhwKqcTntM91Wbne3VHVmxFcjRPVUYQ",
+                "block": 16695600,
+                "weight": 6701600899740505237376196
+            },
+            {
+                "account": "cnWcuSX3uFNnR3xmmsdLRhRBHkedthHGUVZ2Pm6JaTHVXANEu",
+                "block": 15906000,
+                "weight": 9844775731555027123480232
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 12030155435606865636026338
+            },
+            {
+                "account": "cnWpx9x7KoRaYH4FSCF5xLYqrf7hExsq7VcqAehXc5GLEMibK",
+                "block": 16695600,
+                "weight": 6704423628650611641702056
+            },
+            {
+                "account": "cnWy66LLgKbdCU8wVWLzJp71138PtFKfcd7Jfswjo8aCL3jNF",
+                "block": 15907200,
+                "weight": 27315047926861238060239836
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fCSrdeZLfG9PzboU1gZTVXb7B": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fCuXXd7jhhppCjwxQkWJB3ZSC": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fH7ydizMSbAgtLArC18C4piiN": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fHbQhfjpkFc3EiDse7Zk2Suyz": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fJYvPwE4GC2ynGZjnV1bVzNHe": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fJZcWKiZJrSFaG64yimzaxiD4": [
+            {
+                "account": "cnVr6t77QeJkaTemFFj7bbWox2C4u6GG9GFPMEsxA1FV2QwNG",
+                "block": 16370400,
+                "weight": 3855879038382531755401405
+            },
+            {
+                "account": "cnW1pm3hDysWLCD4xvQAKFmW9QPjMG5zmnRxBpc6hd3P7CWP3",
+                "block": 16660800,
+                "weight": 3604446932052488646434669
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fKvXsmmdsb3M5RypNDK2kMRAt": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fMjCB2FFrRLED9h75Rg3McDLX": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fQF5amhXvTumhYLhPKhoR7LMS": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fSher6wwkP5HjZygix8erNoSQ": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fWLyDkWn9VG7pDFkN1xjhzoKT": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fXxzNL9EnyxgvRHJ2hobHkLDd": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 18631881224805260522716445
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fadJjQajCNhXXiDHxxmRRtos7": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fctaoNgah2tWibghzBvLLUkUX": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fgFF2XzzupEw52aCtzqHfaDii": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 10353951027473759244823435
+            },
+            {
+                "account": "cnWCEmDz6ZKtreCXaPzKefFUd7asp2YVksqn5VfWGXsomiPMm",
+                "block": 2548800,
+                "weight": 10928005461580106176957185
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fgNpsQ1EP9qCzUeNJVgAuTvjF": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fhU2ACDVEtvxno4R884b9F6EA": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fuxWZxsAP6HA1UauiMxyJ4Wmp": [
+            {
+                "account": "cnRVfeiE3gEYMuUfjn2qDNvWZJSoobyriz3JGt4odxoA6tnmr",
+                "block": 1244400,
+                "weight": 28107369523330881457535564
+            },
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 25294124270775297718706214
+            },
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 15692400,
+                "weight": 1345149525431734463010977530
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 1244400,
+                "weight": 26900867723119235719899256
+            },
+            {
+                "account": "cnSyqiCBu9CCqgYsCBvavyz41kr1ixyWMJxLBuy9FRqt8gwLq",
+                "block": 16663200,
+                "weight": 7043863144294544217647902
+            },
+            {
+                "account": "cnTSGkvnMZM5fngVvhLEj8TSU8mRmrxS36z71ZsJuL3DevoRP",
+                "block": 16706400,
+                "weight": 6798430864173037659032508
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 15967200,
+                "weight": 17151795631901059030286906
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 16212000,
+                "weight": 10239731838468941450118250
+            },
+            {
+                "account": "cnU4nNEtDjxNbAoJgp1DquCgSauuda6C2bT9RcU3M2LZ9rqkf",
+                "block": 1358400,
+                "weight": 51550221299026733410558286
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13863600,
+                "weight": 33819538508077085439712464
+            },
+            {
+                "account": "cnUaYk6qo6eYV9nfd2hDYyu5jTrQvq7ySzBrHPYr7MxGUFn8E",
+                "block": 15901200,
+                "weight": 24680815623587206862972120
+            },
+            {
+                "account": "cnV21a8zn14wUTuxUK6wy5Fmus8PXaGrsBUchz33MqavYqxHE",
+                "block": 16087200,
+                "weight": 14425198042865937604636516
+            },
+            {
+                "account": "cnV5d93J89p5kC4dRqF5WWtDNCk1XZ3HQo9dEhGUxBQnohxEB",
+                "block": 5779200,
+                "weight": 192330440648442730874731404
+            },
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 6578400,
+                "weight": 27152981048009653904508866
+            },
+            {
+                "account": "cnVWsZn4bVo1UJUz4az3rSmspusjPDVXhh6pRr2h8UEo3vcMC",
+                "block": 5251200,
+                "weight": 42768352568128112859240070
+            },
+            {
+                "account": "cnVnjduxft2hudjcxXGHELMKLM66oZnTL4jrMzDcYA1pMaJDN",
+                "block": 16730400,
+                "weight": 6323447115956813719770400
+            },
+            {
+                "account": "cnWCEmDz6ZKtreCXaPzKefFUd7asp2YVksqn5VfWGXsomiPMm",
+                "block": 2504400,
+                "weight": 33038854248533832779074170
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 26779799254778714607412234
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fvpJSNeCqjUfveCnuYgdYNpY8": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fyx4dhjmBYecWiqZLmWb22Xbb": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 15906000,
+                "weight": 11534442903658447684090011
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7g4EBubPt7RPpv9KbjASKBar4L": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 11558692210120783385254360
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7g4gBXvZxUhLjs87LavNmd6Hmi": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gFhbjSHnMW8GLTYmZt2Aq7ugV": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gKE4QrZJTRgJwpMUaeS9i6Tia": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gKQF43isaT2cXSXGaA8WwoT5H": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gNjj7LUfNsP5MkHxQNjcYFnNu": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gPiam9edJEWJo2gpTsZc45saY": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 25444539783486273293917232
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gSjQ2f8tS25TuRjKJmuCtLfbc": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gTQUEdVLjhtNjt5pKJH4m4JFm": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gUT4M1RaACMU1fNrY29ABTjXE": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gccx4MWfBAnHMz3X1zCmrkdwH": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 13453037164961085886351382
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 16083600,
+                "weight": 6982922401567865013926167
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gjxz1uHQ19Wt9z7N3uy44aQeP": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gpVjfo3SXGMhuDPcYqs5RrhzH": [
+            {
+                "account": "cnW7v31wkWU4C9RkX2oZbyqAnqzke2RvQnFZQPHiMbcc9TWnr",
+                "block": 11120400,
+                "weight": 16344126409398576386246616
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gwKwEtBr8iV9VTwGSfndhTYMq": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7h1CW5Hkb5ZBLpK3JbMfZjx9RN": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 11154004991055100047678010
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7h1L9TaQaCAEugWKo3aMWyEtaG": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7h6awmLrMbY5D5PzPyehKUtD5z": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7h6ksvcL1ZeAcANYmAYJoo1W75": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hAnRLaVtCgr7YHu8VCNMQpPcb": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hBMvYLLegx8iyXRxKC7Jiwm2w": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 11040927266439576233787138
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hBx96uxFYdpgZg7qkwqM4g99Y": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hHjRoR3qjXYHFmus42Ad1zeP1": [
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1244400,
+                "weight": 15254803246918222602657606
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hJ5SzqSfyGMG2AMYJQHW8EWLg": [
+            {
+                "account": "cnWq82dXVqfeaR8Y8e14Xx6evHvs99LxSsWUoYichXmYFmcgT",
+                "block": 16087200,
+                "weight": 23959931054764670447609966
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hNCG9kkkKnb6B3r33rkxkr6rN": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hQVN1sBaN9d8jxLJBdcbc8XRC": [
+            {
+                "account": "cnS8PiVdjW3sTi76Br3apsJFZisXzgxV4RyKC2gYcLBPea6kr",
+                "block": 16592400,
+                "weight": 101851205550669309665656884
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 16629600,
+                "weight": 42297126668600037097651480
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 16560000,
+                "weight": 205028270665421095395502215
+            },
+            {
+                "account": "cnVXgkDi5NonGDnyRphHuRyumK2AMLAmiXdaVpKEX8GRCoBuv",
+                "block": 16672800,
+                "weight": 59936595768645522951615515
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hU4bTEdqSSt7BgME61rd5YeNV": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hb7PeXcWs2poWuwfwhbX4jYZX": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 15906000,
+                "weight": 10142293180330111611786255
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hhnqmUWkb3EMf1wfiPQbHLgxs": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hugtSDq7sN4GWqb94oAJQCRj2": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hxLXXLU547xjR19oaNhGBJEF8": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 13637138300089739207804502
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hxb4tKBnTeTGXTtDhvnpff9yi": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iCZgenbeBDVWrtcWnEcueQkHj": [
+            {
+                "account": "cnRYYK2bBS5kvu9U7M5WjmAUxNRMYq1KzphcsVmAWSi4rwMSg",
+                "block": 16329600,
+                "weight": 13111694471177873048540992
+            },
+            {
+                "account": "cnRbWKU2hNV1PAwiWf1LMcLCBG4MEuJyCUE98eMXHR9NqijfU",
+                "block": 16110000,
+                "weight": 1441510580950367059814420312
+            },
+            {
+                "account": "cnRgmN1LzSgpUJwwBdMF5xJw5YbTayqKXBYuRuH8JXQZFzFNn",
+                "block": 16254000,
+                "weight": 147073767880068547676098418
+            },
+            {
+                "account": "cnRrxPuAH4fV5JMjfuNpX93FoUVfqUvU4MNU2FYeXCvAikag9",
+                "block": 16748400,
+                "weight": 10730425753573529063105135
+            },
+            {
+                "account": "cnRuHiYXAU6srgGEBUkiRRaQ69AQkLcNusuGFtmus4Ki3rXFf",
+                "block": 16437600,
+                "weight": 11250474014703873844492229
+            },
+            {
+                "account": "cnRx4mchisvKxVY1ZgSdVTnNFgC2QvhKbgMr8otzvz6b8MfBM",
+                "block": 16534800,
+                "weight": 120853506217571158242553218
+            },
+            {
+                "account": "cnSAm6QMHEcRNR8ZJihW9mc1EGy4iqcXXahutuxe7ynvjHdjp",
+                "block": 16732800,
+                "weight": 3188283596641371072364639
+            },
+            {
+                "account": "cnSVXjMnZkT4zrNvyi1ixArE94rE6rbH8cxRQhmje47ABHQVh",
+                "block": 16702800,
+                "weight": 55925752343120491823511332
+            },
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 16412400,
+                "weight": 20780332202158193150632823
+            },
+            {
+                "account": "cnSuHL7kXmGYnA2VhuVfPbFkuAk12hcD23ZrxzbtUWvCzUbRW",
+                "block": 16413600,
+                "weight": 4095825944995906594292388
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16110000,
+                "weight": 48297690975454256724423276
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 16306800,
+                "weight": 4927824393235200950826950
+            },
+            {
+                "account": "cnU2ktemsTqujB3HLMuWsuFrBuQsViUw1xpEV8TqnJMTvAvmS",
+                "block": 16308000,
+                "weight": 64086297089066007411310562
+            },
+            {
+                "account": "cnUFq9P5vk67M8juGhzzFrbvLiyHqFSspBEBNpNEkk57g5pkv",
+                "block": 16706400,
+                "weight": 11012403813901794259693586
+            },
+            {
+                "account": "cnUZmfD4dFuAPvgaDSELz3XN4mZ9vFPQxzr52EwxYMyVEfjY8",
+                "block": 16467600,
+                "weight": 45609037777711445945602854
+            },
+            {
+                "account": "cnUhzbRT3HN63nZYLSE9f8fkf5YYL7PQm4PVBmiw5Lbc9jzwW",
+                "block": 16616400,
+                "weight": 16591184086608941225839235
+            },
+            {
+                "account": "cnUuAExANbfZt3syFiJa8a5QZGvQTM3vwA7egKFkjCBx6ozhL",
+                "block": 16110000,
+                "weight": 14707642246682540665470572
+            },
+            {
+                "account": "cnV7ExvTocHEKbnc8NSTN3eGa7BpWtLEnMBE54sXwSx1XccYx",
+                "block": 16668000,
+                "weight": 36863745981454799727614677
+            },
+            {
+                "account": "cnVDU9AL1hLofRfV36pWzknsj7PBHkVoP5f3snr8gh9Jn3Chb",
+                "block": 16328400,
+                "weight": 17470531170237054622164530
+            },
+            {
+                "account": "cnVXgkDi5NonGDnyRphHuRyumK2AMLAmiXdaVpKEX8GRCoBuv",
+                "block": 16353600,
+                "weight": 67124530939893490231004055
+            },
+            {
+                "account": "cnVk8cE8FhXT8ierAWBXWjP4jUAyKqCmu7vB9UGjM9S9ZzWpW",
+                "block": 16320000,
+                "weight": 3697550349755210532914816
+            },
+            {
+                "account": "cnWDA9fswff6EvozSxmEGo7ETqdsHsitfArk1YE45GB9bbfck",
+                "block": 16326000,
+                "weight": 23848514812346336072666939
+            },
+            {
+                "account": "cnWcqW7FRb2sN8HA3zLU5iGHK8LGop5CGBR3hpLFCLzifpCDG",
+                "block": 16413600,
+                "weight": 3381722317286552503607316
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iDvHZJ66aJjmEMuiWEr3ebFu3": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iE8ajPk2cBGGeRYtvH1MzUd7i": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iLThogBQSRVUzuYduZVzuxhfn": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iLywaiDY6nSDkXxmPSBAipxCs": [
+            {
+                "account": "cnUrFCE5P7YDXm4f9qUYimzV4QUr5nDuCEYYcSw7jqytzsq8Q",
+                "block": 16395600,
+                "weight": 44108758118875080577934374
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iQrn19besFcWGhpdmyUvBAJoy": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iRnTZuijftPdnfadTYnPyLekX": [
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 7852800,
+                "weight": 15192671444396168179272206
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 11160000,
+                "weight": 17870553109650521673624782
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13862400,
+                "weight": 40823760922996751330687638
+            },
+            {
+                "account": "cnUdEYi7UWU7L9bF2QXphgWkXRHveDr9NzCuAR8qoxpMt66iX",
+                "block": 16659600,
+                "weight": 6889074261778838296528422
+            },
+            {
+                "account": "cnUf7RpdCevfRoSK3DzTYvXaBnr1JaE8K3PNHxsnVxtrYnGmd",
+                "block": 16272000,
+                "weight": 8009990811629359132613464
+            },
+            {
+                "account": "cnVkXUiYXENK1FmrvWKMsZCmmGviaXWdusT9ZUodQn36mCBiC",
+                "block": 16322400,
+                "weight": 7846753779364925239058866
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iSAeqSxZAQx7ybnPUG9YJWQGr": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iSmZqAavBgcK8eWQAT3eobtgF": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 13662535972953399454671949
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iagkjJWJVFU27Jq7TUqESGKqP": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ibHvDr8jMMrQqWZJLHNPn4oBw": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 15907200,
+                "weight": 8231816816714356727688989
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ibTC6hxUFZ6xtd7PnNUitUpWT": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iccmhXsy2PHN4QKpV9Nz1tvvH": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iiE6butNfyc5toJPW4bFN3h38": [
+            {
+                "account": "cnSBSAMWBB6gSXhgWsqKkSwf8MR4eW2AhMqFK7waNBBYiNMT5",
+                "block": 2230800,
+                "weight": 9005755262943534157217781
+            },
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 16413600,
+                "weight": 23620923841147048453003230
+            },
+            {
+                "account": "cnSmWuSmX9hoT9YxHZRSzs8h5gmEcAFDgQb3AmqHGnorVZbPa",
+                "block": 12876000,
+                "weight": 9319978041200855151075047
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16042800,
+                "weight": 31008057626647333127323418
+            },
+            {
+                "account": "cnTzcPqfzjpgRjWQB4WzaNBgCND4uz9DX5kCQqhcFMKCqXgkM",
+                "block": 14052000,
+                "weight": 23162542542901918327435841
+            },
+            {
+                "account": "cnUrXbZjSApTK1u9h5aHoYKLeWZu5XQAoAP7QrJwvvZwCDF3V",
+                "block": 5337600,
+                "weight": 10570720865969208943109309
+            },
+            {
+                "account": "cnVhQ2igkz4PzQDCgXt2mhpwXQT8nuLiVfMPL3PgJmMQGMLdQ",
+                "block": 16168800,
+                "weight": 6040641307434097773923367
+            },
+            {
+                "account": "cnVkXUiYXENK1FmrvWKMsZCmmGviaXWdusT9ZUodQn36mCBiC",
+                "block": 13863600,
+                "weight": 35178272391584175142419559
+            },
+            {
+                "account": "cnVwTjKVA3fuS5mXBe7KUPnpeKFimKfPpwwkdpiCaJmkujAUA",
+                "block": 16615200,
+                "weight": 3609703035780056494519809
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7imXrib3QiZQyQiLs8oY6vy3ow": [
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1244400,
+                "weight": 10104577704702971635524015
+            },
+            {
+                "account": "cnVXgMSNr4QDLqnWV4jPz7c8jU9XjZ1RWod2o2nPpDSFWwEwm",
+                "block": 16748400,
+                "weight": 4366948943994055454254026
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ipHq2z5QMgDb4HNQz4WZ5HZhL": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7j3fiKU8hD8JnLjBMbmcSWmvzg": [
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 9955200,
+                "weight": 22126395420976992985564858
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7j4ZgTcuCxWcRJCyvDErKbhKPA": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7j5qzqL8DNewhRwLBRJhSs8cYn": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 20666880502934326543755019
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7j5yckWb6whV2cUZXiw9hY8QLr": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7j6qyWTZQddtqbQK5wKDfBgjuN": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jE1R4Dhw2a5gHgBpuCSytv9eH": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jNZEcyPLABdRvSvgNQbN2msHG": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jQhPExrBGWzwVuRh8qA6SrQQu": [
+            {
+                "account": "cnRfwT9Puo85oM15fs28ZrvTXyRAsSaQTeUt98boGiYM6KXCa",
+                "block": 15165600,
+                "weight": 47851321973399683616313973
+            },
+            {
+                "account": "cnRrskQWkJ1VdJWNEe7KJvccW6H9APVtj82vRPbkc8j84ds2P",
+                "block": 16368000,
+                "weight": 4387298350969133115366803
+            },
+            {
+                "account": "cnRuHiYXAU6srgGEBUkiRRaQ69AQkLcNusuGFtmus4Ki3rXFf",
+                "block": 16660800,
+                "weight": 3217603955582750837966360
+            },
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 9535200,
+                "weight": 8943426855859561406642813
+            },
+            {
+                "account": "cnSAm6QMHEcRNR8ZJihW9mc1EGy4iqcXXahutuxe7ynvjHdjp",
+                "block": 16501200,
+                "weight": 6603432905841875339902348
+            },
+            {
+                "account": "cnSBSAMWBB6gSXhgWsqKkSwf8MR4eW2AhMqFK7waNBBYiNMT5",
+                "block": 12523200,
+                "weight": 7777575286760942773163987
+            },
+            {
+                "account": "cnSE5M5YzxEpYyWRAmJL8TwhwewoMBsBrCZiaXG4WXYt2n86L",
+                "block": 9616800,
+                "weight": 20692951148975707477825395
+            },
+            {
+                "account": "cnSVXjMnZkT4zrNvyi1ixArE94rE6rbH8cxRQhmje47ABHQVh",
+                "block": 15122400,
+                "weight": 31576543081042980125692719
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 9535200,
+                "weight": 8597528228383961894648954
+            },
+            {
+                "account": "cnSwRJbNPpEV9o6JhcE399StSFpShaeyo2eTexeAcnUQFcuL1",
+                "block": 16504800,
+                "weight": 4355247823542660783545254
+            },
+            {
+                "account": "cnTyvaNTfhd8fbg7p9m7dsz3Gg4mxSgrc8awpCKiQqTwdztgq",
+                "block": 14194800,
+                "weight": 41794484861272093505643072
+            },
+            {
+                "account": "cnUSbSdW2psmGe5Z2QGqv5Z1FVqeUiiooov1KTM6s5V7QZU6A",
+                "block": 9484800,
+                "weight": 7496783135523346875168816
+            },
+            {
+                "account": "cnUvytNFyWQ3J2FKUF3aG12p1jUugnNKFMRsBw4qoAuWq6UwM",
+                "block": 9387600,
+                "weight": 287125445067128641612854563
+            },
+            {
+                "account": "cnVACbVFDPYyYiiv7heZwv1aSgwxbi42hAMiNBs3HjT8XTUbM",
+                "block": 15873600,
+                "weight": 53754356555883821752869510
+            },
+            {
+                "account": "cnVnkb9bmyjZqd3uGM56FWV1eKZbfF87UM3krxqySGaB5Wwhv",
+                "block": 16483200,
+                "weight": 3922035455875607933017386
+            },
+            {
+                "account": "cnVtbXXMsadXthkioPJqsmc6MpVhMBEPc3dDS1H3GKZk9zfjV",
+                "block": 9303600,
+                "weight": 9040373469950625717386815
+            },
+            {
+                "account": "cnWEhQy5B5Fiq4qQsU2WgVxyx47VvcpAL9eZgW3euQ82v8dm6",
+                "block": 15901200,
+                "weight": 22065952779571141113559988
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 9357600,
+                "weight": 18266478678571957630993252
+            },
+            {
+                "account": "cnWcqW7FRb2sN8HA3zLU5iGHK8LGop5CGBR3hpLFCLzifpCDG",
+                "block": 16215600,
+                "weight": 6857974105737842521935540
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 9522000,
+                "weight": 7394061010699949890939652
+            },
+            {
+                "account": "cnX4bgFxbJZvTB86i4186415TWMuUshjxWXkvjt6QdzchhKdT",
+                "block": 13228800,
+                "weight": 9286096024526730049623957
+            },
+            {
+                "account": "cnX9MH4vfYNgUSFM4QdXpLEiwQnSa4MYJQNuK8zgBvFzGMtih",
+                "block": 15064800,
+                "weight": 406534186723729710287495996
+            },
+            {
+                "account": "cnXCSHj5P1gQJxmDVfPe2pKNHgGPThbftbc6r66zZuysjVR6b",
+                "block": 16141200,
+                "weight": 7024950575019308708832010
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jRDHpJUNBJdWHSa8dKz7T42n1": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jT6zmAjZB72t6j7HHmgtiMKgB": [
+            {
+                "account": "cnRVfeiE3gEYMuUfjn2qDNvWZJSoobyriz3JGt4odxoA6tnmr",
+                "block": 16557600,
+                "weight": 6662903777673903345236078
+            },
+            {
+                "account": "cnRW1hkh5Z1pRiRBVp4AUwjSqF5zWzZuCKhGKAaP4ztDv4m6z",
+                "block": 12799200,
+                "weight": 92931250723794168053971332
+            },
+            {
+                "account": "cnRW3ZdSmds6oy2HyStQba33FjZYQKmrzmLKyPPq6M7xLsTiL",
+                "block": 13858800,
+                "weight": 106531578347426845571194648
+            },
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 34809293236155839145993506
+            },
+            {
+                "account": "cnSBSAMWBB6gSXhgWsqKkSwf8MR4eW2AhMqFK7waNBBYiNMT5",
+                "block": 7525200,
+                "weight": 350430511078663787793205912
+            },
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 15692400,
+                "weight": 1453198436661219764634413550
+            },
+            {
+                "account": "cnSmvALMdvFxSmoSUGW18aVZkVktJYYw6dYhg9pBJNwR9eazu",
+                "block": 16194000,
+                "weight": 10730891641195295307723484
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 1244400,
+                "weight": 26932722187817558512797274
+            },
+            {
+                "account": "cnSyqiCBu9CCqgYsCBvavyz41kr1ixyWMJxLBuy9FRqt8gwLq",
+                "block": 7405200,
+                "weight": 48696414116081765520269502
+            },
+            {
+                "account": "cnTQ7Drt2DsccQrBzsUYZ3MYbhW2wpa1GioTZV3b5f2uQZMsd",
+                "block": 12940800,
+                "weight": 69325752940093082465133688
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16028400,
+                "weight": 415654188952137348140880176
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 1244400,
+                "weight": 369320612991538028539962792
+            },
+            {
+                "account": "cnTkiF9YpNT8uzwQvJFJHf7Vr3KtFppF2VGxE22C1MTMbHEmN",
+                "block": 14482800,
+                "weight": 96895396160904197151328788
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 15907200,
+                "weight": 18273732579177971170011552
+            },
+            {
+                "account": "cnU61E5mFUm6tybn5wZ9SiFqsVNB27w2XLLbApcK97jcBma1x",
+                "block": 16390800,
+                "weight": 12217989679449873410649178
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13863600,
+                "weight": 48554299047455100341157634
+            },
+            {
+                "account": "cnUMF5irn4auQ7h5VPWQFm1NEkhqCdZZqXroKofoeVvFPfSNG",
+                "block": 16484400,
+                "weight": 7343261192427076315999616
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 15505200,
+                "weight": 3524513215011933888920007548
+            },
+            {
+                "account": "cnUaYk6qo6eYV9nfd2hDYyu5jTrQvq7ySzBrHPYr7MxGUFn8E",
+                "block": 15903600,
+                "weight": 22222225530579195149014168
+            },
+            {
+                "account": "cnV5d93J89p5kC4dRqF5WWtDNCk1XZ3HQo9dEhGUxBQnohxEB",
+                "block": 5788800,
+                "weight": 678116129439938148668027726
+            },
+            {
+                "account": "cnV7F1ANa3BTTN8hxY5sFNQ5PgFW5hxdRcFVpujm7Akgp3oKP",
+                "block": 16730400,
+                "weight": 6070608404853571929792864
+            },
+            {
+                "account": "cnV9k3D7TNQaESSXi8rGNz4cfZ8ACSCoSjCbMdoaqfgtgT2kj",
+                "block": 15963600,
+                "weight": 16573852592184264755617166
+            },
+            {
+                "account": "cnVDTd5S7AvMbdqGz9vJMZgCaUDfguaFWiVkxiHXq8euSSxsx",
+                "block": 16316400,
+                "weight": 8830906725274210918459954
+            },
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1244400,
+                "weight": 55355840741567437892898570
+            },
+            {
+                "account": "cnVz4uwLBretrquEPaS7A4CN6mgWiaaWij5vfYucMVw48yBmW",
+                "block": 12979200,
+                "weight": 46834435117252128377641550
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 7405200,
+                "weight": 133981135650563833723292972
+            },
+            {
+                "account": "cnWP3DYJ5afJZaZsvJ84REqBjqLDRbknejXtCqzj5DC6eQX1R",
+                "block": 16610400,
+                "weight": 102304683834921096542457120
+            },
+            {
+                "account": "cnWRkLkFXzeanMEyiTH6LsSe3cnjJPkSfAvUKthsSLmgsF1Ld",
+                "block": 16096800,
+                "weight": 12842894951152661417103538
+            },
+            {
+                "account": "cnWSMTs3Z5sWZbS2GyaQQf2J9q9vdFHzeWBiCh3bWo9qK4ayd",
+                "block": 16111200,
+                "weight": 12417895957824930462913012
+            },
+            {
+                "account": "cnWeJVvTZLg6piaSFUNgoiYHFhpFRizc5Hrt7z944qTAJJ7Uy",
+                "block": 14896800,
+                "weight": 143891164769619967520025254
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 28792006326335909129025552
+            },
+            {
+                "account": "cnWtJdMMoRPqv6pV7tbebS1auhW2rCYZuJ8tfu4SydERkdXyf",
+                "block": 16557600,
+                "weight": 6627737847934316142122292
+            },
+            {
+                "account": "cnX4bgFxbJZvTB86i4186415TWMuUshjxWXkvjt6QdzchhKdT",
+                "block": 3403200,
+                "weight": 64175111642492280111274352
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jU1sMBMoFKXZZuQqJtaihp1kW": [
+            {
+                "account": "cnVq6JEztnLB3NMsrqSN5XDCTp62c6in3X82a4SZDPwCyXMFi",
+                "block": 12770400,
+                "weight": 64082227771284828807013750
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jUYZP7DQbzmyjxcKS9DQJyucB": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jVMw6t6kV9Zd1jKxBoVs4tQXq": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jXPAzoxkJT7Y8jqkgcw6RXKYD": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jcquG97wyqqpMJxDFw94eAkct": [
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 16342800,
+                "weight": 17641050390573986483712670
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jerr4YQtsEeEVr9oCC9Ck9VH8": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 15907200,
+                "weight": 8560666729144555055383354
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7ju9WjZoAAb2CBKx3zHpVgyMET": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jxg5Ccoeh2bdkwnK2TumpwurU": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 17177226795439260297174601
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jzC89fpZcZwRzH2uEN2thSjpG": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7k6dBJ6G2Dk8dh4ksHi47NJaL8": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7k8N8PHWZU3Yfc5Ms6H4gEuWeh": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kLFD4hcK15m3WYh9XXC1dZpSj": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kNKiBJhEaHSLLphSZntuR3yip": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kT1DdQFQpmFYiLTd87cDtA686": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kVxuaNQb1MhpFuW4pwyf4G9ss": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kW2ZedzcsmdMRtqaKj8Z39KZg": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kYch8f1G3AQXS4BZCmwW8AxG8": [
+            {
+                "account": "cnRfwT9Puo85oM15fs28ZrvTXyRAsSaQTeUt98boGiYM6KXCa",
+                "block": 15814800,
+                "weight": 32823921866281600592539508
+            },
+            {
+                "account": "cnRrxPuAH4fV5JMjfuNpX93FoUVfqUvU4MNU2FYeXCvAikag9",
+                "block": 15674400,
+                "weight": 22247653070420722200959928
+            },
+            {
+                "account": "cnRuHiYXAU6srgGEBUkiRRaQ69AQkLcNusuGFtmus4Ki3rXFf",
+                "block": 16730400,
+                "weight": 3144255450625748870421389
+            },
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 5340000,
+                "weight": 11761492715408663311839006
+            },
+            {
+                "account": "cnSAm6QMHEcRNR8ZJihW9mc1EGy4iqcXXahutuxe7ynvjHdjp",
+                "block": 16327200,
+                "weight": 3554476765686327853836313
+            },
+            {
+                "account": "cnSBSAMWBB6gSXhgWsqKkSwf8MR4eW2AhMqFK7waNBBYiNMT5",
+                "block": 12523200,
+                "weight": 7917399199318235329434743
+            },
+            {
+                "account": "cnSE5M5YzxEpYyWRAmJL8TwhwewoMBsBrCZiaXG4WXYt2n86L",
+                "block": 15990000,
+                "weight": 7486461596064988927452599
+            },
+            {
+                "account": "cnSVXjMnZkT4zrNvyi1ixArE94rE6rbH8cxRQhmje47ABHQVh",
+                "block": 15340800,
+                "weight": 30558008496380227640048642
+            },
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 16413600,
+                "weight": 54896642460531721234697533
+            },
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 15669600,
+                "weight": 22226416928181637758811414
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 5448000,
+                "weight": 10188771098178927765339217
+            },
+            {
+                "account": "cnSrTfBBnUeZrjenAj2kcgsjZP4Jz2jxvEZwCcsmpbzrp5PLz",
+                "block": 15962400,
+                "weight": 5960958679426182387369012
+            },
+            {
+                "account": "cnSwRJbNPpEV9o6JhcE399StSFpShaeyo2eTexeAcnUQFcuL1",
+                "block": 16729200,
+                "weight": 3171577644234614004872520
+            },
+            {
+                "account": "cnTFcTWPStttz6LXNSvTdCJn3vTxgUA6cvHzKkiXACyJt5Ays",
+                "block": 12274800,
+                "weight": 18279657515383801511699372
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16028400,
+                "weight": 89413927462850135430195076
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 6298800,
+                "weight": 10906000985858179108336686
+            },
+            {
+                "account": "cnTyvaNTfhd8fbg7p9m7dsz3Gg4mxSgrc8awpCKiQqTwdztgq",
+                "block": 15901200,
+                "weight": 4961193853422368401924137
+            },
+            {
+                "account": "cnU2ktemsTqujB3HLMuWsuFrBuQsViUw1xpEV8TqnJMTvAvmS",
+                "block": 15879600,
+                "weight": 72681604071886727126896232
+            },
+            {
+                "account": "cnU3MTk4Vcgq7PZEU8hoaZUeb1x7hnVx18vUVYMcGaW6hU8VG",
+                "block": 16722000,
+                "weight": 3278611269049095608333497
+            },
+            {
+                "account": "cnUFq9P5vk67M8juGhzzFrbvLiyHqFSspBEBNpNEkk57g5pkv",
+                "block": 16706400,
+                "weight": 4438060763100310725160957
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 15559200,
+                "weight": 7277269479526993402809522
+            },
+            {
+                "account": "cnVJeo3ugcSKFTTojdi34Knj7iFd6VG3QPSUizoaT7vmPxb4t",
+                "block": 13731600,
+                "weight": 6908043914523391945027009
+            },
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 5446800,
+                "weight": 13066083087778831998754247
+            },
+            {
+                "account": "cnVkXUiYXENK1FmrvWKMsZCmmGviaXWdusT9ZUodQn36mCBiC",
+                "block": 14026800,
+                "weight": 9829566221880310837876209
+            },
+            {
+                "account": "cnVsrk8vaV5anyrSTvT93DzrEbQ1f9VUtAKoRHznVYkTjbVSb",
+                "block": 16185600,
+                "weight": 4096480650615138650539778
+            },
+            {
+                "account": "cnWEhQy5B5Fiq4qQsU2WgVxyx47VvcpAL9eZgW3euQ82v8dm6",
+                "block": 15759600,
+                "weight": 16644767827648108549564665
+            },
+            {
+                "account": "cnWfHBt8dvwz1BUhVMc65qWXmfPZnhXkDoiP49EubzKutnifH",
+                "block": 16309200,
+                "weight": 5165729272010917397080580
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 5434800,
+                "weight": 10625313306220631356723279
+            },
+            {
+                "account": "cnXCSHj5P1gQJxmDVfPe2pKNHgGPThbftbc6r66zZuysjVR6b",
+                "block": 16450800,
+                "weight": 4713122636157355438208825
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kcbhVeCGwQx1FS4XZU5jdcQG4": [
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1244400,
+                "weight": 13323523491130451027215097
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kkTViQmyAoNMHbxHaixzKqEfG": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 21725345254077159549112847
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7krBNCtuHsoRcZKB9nFwd1vEsG": [
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 16395600,
+                "weight": 109131481095195159674185055
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16369200,
+                "weight": 45588576878342988068639515
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7kswbeSEHARiGKXP5JXyXdrDT5": [
+            {
+                "account": "cnRxkYvqfgnd4gh2XCoqkagV6RgMHjt6ZJmeMJX2oVxwzD8u4",
+                "block": 9955200,
+                "weight": 182234483250896194718290899
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7m5LVcmsvudLjNWXFkFrw8R5S4": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7m79PvGTqXEyvXjRhZ2W6GodNL": [
+            {
+                "account": "cnRs77sVgSmFLdHtZUygoBAuPm31P3FwCQt47VRXH1Yq1a8T6",
+                "block": 16107600,
+                "weight": 24101120000087000064807286
+            },
+            {
+                "account": "cnTTCLJbjpr3F6YzxvANZqf2uHgXBitjT9ttPV6mp5e7c8378",
+                "block": 9954000,
+                "weight": 105947989056486901569014882
+            },
+            {
+                "account": "cnTXPUPP55CU6E8KsVKa2XJCFzSosx3fFtPLfKyocKEVtWKmc",
+                "block": 16258800,
+                "weight": 10645050756347194431235500
+            },
+            {
+                "account": "cnTuX856gAznJevgS14LozmPgVd2VTJuoGrFXk89Qi8afXBKK",
+                "block": 9954000,
+                "weight": 260857348995106659668997812
+            },
+            {
+                "account": "cnVq6JEztnLB3NMsrqSN5XDCTp62c6in3X82a4SZDPwCyXMFi",
+                "block": 12784800,
+                "weight": 242306336012854768542467404
+            },
+            {
+                "account": "cnVtWArPcfGxUxGaqWDe6bEVgeRSJg2tSMRypTdMQR3FeCgiv",
+                "block": 16689600,
+                "weight": 8282571019815838352812294
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7m91gtLvG1rhxQLxCR5x2xu3Do": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mApitorMaNmZpqd4abh3sxhGu": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 10706120456183386661677838
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mLcAtJa9VWb2xYYBRehDBgkDz": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 15907200,
+                "weight": 7773685072481941198361265
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mPLJEqi9ChZdKAJ4iPf4KV5pq": [
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 1244400,
+                "weight": 26610518376834585027389612
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mUXynTD1MieZkf7zCN3vDyPsK": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 14854836627001354187309377
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mV8eafXP2BeCS3b8LxnMmJKoT": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7meGyF6ciWeLATKeNoovfM482k": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mgS5LExsCZiBCvxBtiWCqbVRZ": [
+            {
+                "account": "cnW1fZrGqoz6fTrX3AWV3FYLoJciqNdt9URgfC4vyE8QJSbbC",
+                "block": 16747200,
+                "weight": 3015666377865091271847891
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mmN7pkCpvQK33kWB8P48snePK": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 19289136026835492627992216
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7moo87A9EBKMgJ8FoxXKEEdXqy": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mptZ8vjBMftSZre9nqVc4QHXi": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mrE9cT6FuTVW5aYHbWAfsSSJM": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7msNLJ1wckTp97uyQkdo4XhsDn": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mtT9BgVJrbbin4G9JJdKM8rFg": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mv6CdnCRJDW189f3HAbUS5WwR": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7myiaT9q8FQyMk9CwriBQ516V5": [
+            {
+                "account": "cnTTCLJbjpr3F6YzxvANZqf2uHgXBitjT9ttPV6mp5e7c8378",
+                "block": 16622400,
+                "weight": 4433083768154558504440227
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mz5CHUMDPzatjDCnKcs2MCMTv": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nCEXkvskiniERRJiE4qE6dUnf": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nFGakRr8ypcjXChBqkon1at8D": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nFxitAJbPr7ohzP3oAHSe8rzp": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nKhjkUgcBMffTaFJ5uodvsybs": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nMpm1dFyFphgeKsWvKj3QUjmP": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nQVJgWLaeoYLFDANgPNMndG3w": [
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 16698000,
+                "weight": 5757529063503982572591258
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nRxzfo5aR4qkuRi71Hx1oa4B1": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nifuSM5pfssKCgXLYfG9AetRP": [
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 25089872943599994348330858
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nmBg5yCrm2H914oTtscFD5dvz": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nn4mi2k89psEajyuESXEDMJ62": [
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 24474720791638540132082642
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7no1ArmxfrSFcAVQXKCvtBGFxA": [
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 15906000,
+                "weight": 10044388972643986290061797
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nwqcxjJfPNLH8mtRo2vZ2tKwm": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7o295M91ic1wGGbmtL4jmH9Rbj": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7o32AxA6oQU4AzkUMnmMwM6Tk7": [
+            {
+                "account": "cnRgmN1LzSgpUJwwBdMF5xJw5YbTayqKXBYuRuH8JXQZFzFNn",
+                "block": 15440400,
+                "weight": 17112990972888246356327280
+            },
+            {
+                "account": "cnRn4UZpSLZ4uK3cVtBwWKtKtkwwRfDPwd3jCeZRuxh5np55F",
+                "block": 16108800,
+                "weight": 14484793763191691990356382
+            },
+            {
+                "account": "cnRrxPuAH4fV5JMjfuNpX93FoUVfqUvU4MNU2FYeXCvAikag9",
+                "block": 16635600,
+                "weight": 28015745025481106678798164
+            },
+            {
+                "account": "cnRuHiYXAU6srgGEBUkiRRaQ69AQkLcNusuGFtmus4Ki3rXFf",
+                "block": 16170000,
+                "weight": 17030551260743848886155916
+            },
+            {
+                "account": "cnS8NpukdxM9U1L9WtDWr6zVr5jTM2gnrVhxyzJmTyqBd6W2H",
+                "block": 1244400,
+                "weight": 16899133957688592618931796
+            },
+            {
+                "account": "cnSApSabAC69Z4cQZLoiXv9cHiERcJHjRaQox3TFEfb4GSfFA",
+                "block": 1244400,
+                "weight": 13623415816268051855190618
+            },
+            {
+                "account": "cnSBSAMWBB6gSXhgWsqKkSwf8MR4eW2AhMqFK7waNBBYiNMT5",
+                "block": 1244400,
+                "weight": 19797399789487566733692586
+            },
+            {
+                "account": "cnSBspcaj6p6FkLGy9jUHo9gzxxRdmvA2dC1HPcK74HTmUwQ7",
+                "block": 1244400,
+                "weight": 26103781938740459141343274
+            },
+            {
+                "account": "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm",
+                "block": 16045200,
+                "weight": 9383285189843765256099366
+            },
+            {
+                "account": "cnSVXjMnZkT4zrNvyi1ixArE94rE6rbH8cxRQhmje47ABHQVh",
+                "block": 15770400,
+                "weight": 68263759003442588621854364
+            },
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 16412400,
+                "weight": 27970535259372776810792502
+            },
+            {
+                "account": "cnSiRKBLjsDrhNejYESgMa6WP9cLCoCuiCg4yPN5LMNgVEJWd",
+                "block": 15962400,
+                "weight": 28193690615254951723722010
+            },
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 1244400,
+                "weight": 25095650570522311288237898
+            },
+            {
+                "account": "cnSzvpXUvrSwdWZixtdkFynoCsoS4WRHYbd4RNUvGrvFjHRk4",
+                "block": 15927600,
+                "weight": 17230949276540265144328064
+            },
+            {
+                "account": "cnTQ9erQGsm8fFrjj76pxSMn32kY6PZtWruFcKfiZEoEivmur",
+                "block": 13606800,
+                "weight": 20173895492428935341365420
+            },
+            {
+                "account": "cnTdA96vs4okPqpfSaPwSCPunkEn6AYTLek6rBvP9LbXbinAh",
+                "block": 1244400,
+                "weight": 1046558664021191955688566342
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16056000,
+                "weight": 267396593250957942928986622
+            },
+            {
+                "account": "cnTieJHQLNRS8Rm484K67whWC8zz4g2QVhT9nNpn4nhin1BSd",
+                "block": 1244400,
+                "weight": 27298252892193253561086142
+            },
+            {
+                "account": "cnTmBrrR4CFs3GDA1DjWhAMsXXAJQJwUCkFtbsRsXhXJWTB3J",
+                "block": 4160400,
+                "weight": 94499370584745394609214224
+            },
+            {
+                "account": "cnTuX856gAznJevgS14LozmPgVd2VTJuoGrFXk89Qi8afXBKK",
+                "block": 16492800,
+                "weight": 7484271441634183898866536
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 15967200,
+                "weight": 10406952527067271149922380
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13863600,
+                "weight": 35952931633939755600378042
+            },
+            {
+                "account": "cnUPQCSYmFwGUaWY4JYXVyCqzZKiydsd4hXR8NJAg5GcdK3Kk",
+                "block": 16675200,
+                "weight": 28233323157774892852579008
+            },
+            {
+                "account": "cnUSbSdW2psmGe5Z2QGqv5Z1FVqeUiiooov1KTM6s5V7QZU6A",
+                "block": 16282800,
+                "weight": 12136434569495394137806866
+            },
+            {
+                "account": "cnUXLhfFvNyN4jLPiGYGd12DD7ENiYHmLiw6C6ddgHVPddjrK",
+                "block": 16492800,
+                "weight": 7533585136926241007746602
+            },
+            {
+                "account": "cnUXkuwtv912viJ6VNVBRidod3vSJJqVAqHDxCdhmcQYVWMWk",
+                "block": 16656000,
+                "weight": 6577497152438097788466078
+            },
+            {
+                "account": "cnUZgFkU5nT4wYxfjjhsvwrT5SiKu5RGAGRDVSHYoFeM1ybPq",
+                "block": 16656000,
+                "weight": 6521823977973554502147768
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 8744400,
+                "weight": 16555716717326130336278640
+            },
+            {
+                "account": "cnUaYk6qo6eYV9nfd2hDYyu5jTrQvq7ySzBrHPYr7MxGUFn8E",
+                "block": 15921600,
+                "weight": 11633017116661246998288784
+            },
+            {
+                "account": "cnUdEYi7UWU7L9bF2QXphgWkXRHveDr9NzCuAR8qoxpMt66iX",
+                "block": 16171200,
+                "weight": 8449567807622344780645420
+            },
+            {
+                "account": "cnUf7RpdCevfRoSK3DzTYvXaBnr1JaE8K3PNHxsnVxtrYnGmd",
+                "block": 16492800,
+                "weight": 7716210144131184341974424
+            },
+            {
+                "account": "cnUhzbRT3HN63nZYLSE9f8fkf5YYL7PQm4PVBmiw5Lbc9jzwW",
+                "block": 16616400,
+                "weight": 19083911088495215526568340
+            },
+            {
+                "account": "cnUtbkf3deCBwZzfv2KKo8w4UiuaptJ1tYQRWs69LkJxdQDgC",
+                "block": 1244400,
+                "weight": 44844013201343544395847238
+            },
+            {
+                "account": "cnUyw4rEZonX23PKnmqpFYV5w5kCzWjcxSoffQh1GL6cgecvW",
+                "block": 16129200,
+                "weight": 8708154187433148338915258
+            },
+            {
+                "account": "cnV21a8zn14wUTuxUK6wy5Fmus8PXaGrsBUchz33MqavYqxHE",
+                "block": 16027200,
+                "weight": 9888466486230660330146312
+            },
+            {
+                "account": "cnVJeo3ugcSKFTTojdi34Knj7iFd6VG3QPSUizoaT7vmPxb4t",
+                "block": 13650000,
+                "weight": 13837926314395322235416092
+            },
+            {
+                "account": "cnVNvwksAo8nX2Usm5BUedUqLnuTkMUAwYY7up6QmFDWyZw7h",
+                "block": 16492800,
+                "weight": 7573505340099201272069238
+            },
+            {
+                "account": "cnVPSZsbmXEq18GtdunQyZjfqUgR73JGCxSuBXcgfdi2jD9BD",
+                "block": 16051200,
+                "weight": 9005580776968375664622228
+            },
+            {
+                "account": "cnVU5GCTwpue7WvBiVbKs4moiFHGJubZvdFDeQKb649huGpP7",
+                "block": 1244400,
+                "weight": 26835607668630948563549232
+            },
+            {
+                "account": "cnVXgMSNr4QDLqnWV4jPz7c8jU9XjZ1RWod2o2nPpDSFWwEwm",
+                "block": 16746000,
+                "weight": 12125050823299259459262256
+            },
+            {
+                "account": "cnVcz9m5gfAwt2K6oRX5NGSZL9zG4WfCYUQoma5DRgjcbVWuB",
+                "block": 15153600,
+                "weight": 19825222266258650046996842
+            },
+            {
+                "account": "cnVqnjAiFxCEoe1XwEhyeYtkzMonNxDsKuLJb9QpwALBZLeHh",
+                "block": 16034400,
+                "weight": 15379778112155972359939036
+            },
+            {
+                "account": "cnVswNgj5kbaanfUq96CvsCiYadKaQJ3y3htpDvsDQfakWaNA",
+                "block": 16659600,
+                "weight": 6274153514170855752763474
+            },
+            {
+                "account": "cnW2aX1KMDGoiLQp1hj5ZzafJoQyjdVbo9skfXza4FzpMeC13",
+                "block": 16612800,
+                "weight": 6912821035888769164303824
+            },
+            {
+                "account": "cnWCEmDz6ZKtreCXaPzKefFUd7asp2YVksqn5VfWGXsomiPMm",
+                "block": 1244400,
+                "weight": 18900229004065825645585890
+            },
+            {
+                "account": "cnWJ7oFCfdgeqQLJDyDv8Aj6Pfhi3jhzFn78QDrQuDbHnHKE6",
+                "block": 16027200,
+                "weight": 9920380302802459890038032
+            },
+            {
+                "account": "cnWL6MTMffa1s6UWxrpT3ijsMLeUt1vacGEyfhXVfYgpQ5i6c",
+                "block": 7749600,
+                "weight": 51933715749687087864014764
+            },
+            {
+                "account": "cnWeZ2a7GjzQp6PAT4T4yLYCpygtD3XxumgNd8hW9WzBpAmiG",
+                "block": 2230800,
+                "weight": 56486098593947079070763792
+            },
+            {
+                "account": "cnWjZubAFeX4AKJvfbjbxynVuyQ94vKezG35Lg2cGq7JSvEwd",
+                "block": 1244400,
+                "weight": 26198821869485278604133430
+            },
+            {
+                "account": "cnWy2YV9Yd6vWqJa5DEm5t1JVYcBta1dXBsRjsSsf8pQ6RDQW",
+                "block": 15524400,
+                "weight": 419076804816555480848456446
+            },
+            {
+                "account": "cnX4bgFxbJZvTB86i4186415TWMuUshjxWXkvjt6QdzchhKdT",
+                "block": 1713600,
+                "weight": 39790218495598567882009590
+            }
+        ],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7o86yBA5ksv7wTANjjneBqWdg9": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7oEu7ud2mKLvwWGuqdpH854JSZ": [],
+        "cnTQ1kbv7PBNNQrEb1tZpmK7oEzvhujDybSaWmTzV95g2HnAz": [
+            {
+                "account": "cnSrPmvJ4JxVJw4859U9wkwhW89KZQtGAfG5y5JyfvGZdZMyG",
+                "block": 1244400,
+                "weight": 10851168988085637279311211
+            }
+        ]
+    },
+    "16755787": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7iagkjJWJVFU27Jq7TUqESGKqP": [
+            {
+                "account": "cnWFQRgpSPSsLBzogEnR45nECaRsRxpEHvQbWzy8oMh7PY8vz",
+                "block": 16755600,
+                "weight": 4653596983368961232813167723000000
+            }
+        ]
+    },
+    "16755788": {},
+    "16755789": {},
+    "16755790": {},
+    "16755791": {},
+    "16755792": {},
+    "16755793": {},
+    "16755794": {},
+    "16755795": {},
+    "16755796": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fJZcWKiZJrSFaG64yimzaxiD4": [
+            {
+                "account": "cnSBWumWo5znr9FwYeSWPvE87m6fuW5sMAvWr8vyYiK687zNn",
+                "block": 16755600,
+                "weight": 2179425043667798659000000000000000000
+            },
+            {
+                "account": "cnVHito7NnhcdzsS3vK1opdjAvupSjtEaMa78eK26qdRR5EVx",
+                "block": 16755600,
+                "weight": 178014139744398782756936000000000000000000
+            },
+            {
+                "account": "cnVUvQ6cvAgCBYiDWF91wh3XhWTLSeUWNQB6zawwtPn1VQTT4",
+                "block": 16755600,
+                "weight": 523500204881035453559000000000000000000
+            },
+            {
+                "account": "cnVr6t77QeJkaTemFFj7bbWox2C4u6GG9GFPMEsxA1FV2QwNG",
+                "block": 16370400,
+                "weight": 3855879038382532164670737000000000000000000
+            },
+            {
+                "account": "cnW1pm3hDysWLCD4xvQAKFmW9QPjMG5zmnRxBpc6hd3P7CWP3",
+                "block": 16660800,
+                "weight": 3604446932052489030153128000000000000000000
+            }
+        ]
+    },
+    "16755797": {},
+    "16755798": {},
+    "16755799": {},
+    "16755800": {},
+    "16755801": {},
+    "16755802": {},
+    "16755803": {},
+    "16755804": {},
+    "16755805": {},
+    "16755806": {},
+    "16755807": {},
+    "16755808": {},
+    "16755809": {},
+    "16755810": {},
+    "16755811": {},
+    "16755812": {},
+    "16755813": {},
+    "16755814": {},
+    "16755815": {},
+    "16755816": {},
+    "16755817": {},
+    "16755818": {},
+    "16755819": {},
+    "16755820": {},
+    "16755821": {},
+    "16755822": {},
+    "16755823": {},
+    "16755824": {},
+    "16755825": {},
+    "16755826": {},
+    "16755827": {},
+    "16755828": {},
+    "16755829": {},
+    "16755830": {},
+    "16755831": {},
+    "16755832": {},
+    "16755833": {},
+    "16755834": {},
+    "16755835": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gKE4QrZJTRgJwpMUaeS9i6Tia": [
+            {
+                "account": "cnWeF44LLi13kEiWJrWbRPvnAnB5nzpju8GchrPqufFkTuzdF",
+                "block": 16755600,
+                "weight": 196705007095754367608601105900000000000000
+            }
+        ]
+    },
+    "16755836": {},
+    "16755837": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gFhbjSHnMW8GLTYmZt2Aq7ugV": [
+            {
+                "account": "cnRzwQGdvrjdsXy7bkd49vPx1b6pRKdDvZgyZPGejJn84dQZ5",
+                "block": 16755600,
+                "weight": 87872591784011929000000000000000000
+            },
+            {
+                "account": "cnSDmuHntkTmEo248P8vpYr2TXFupbRkRtwWJz7qGV9ovUjbE",
+                "block": 16755600,
+                "weight": 148525207523130514000000000000000000
+            },
+            {
+                "account": "cnSzH4acoQqS5UHScDW8BomV3b3D6jHSnvNXmwZXKDx38SQB8",
+                "block": 16755600,
+                "weight": 94341097533654342000000000000000000
+            },
+            {
+                "account": "cnTGGjK5qNKovYkbmaKYAtXNPgzMefwmaTuVDrgEnZumssZez",
+                "block": 16755600,
+                "weight": 5523580221197404920000000000000000000
+            },
+            {
+                "account": "cnTQhLeKx1Ek7Q4xf7kXJwTsrSDnczoxLxozoT1vWAG8K9siV",
+                "block": 16755600,
+                "weight": 157212503803603862000000000000000000
+            },
+            {
+                "account": "cnTiPcqHsTqJWjS2GdXeQoLg3zWVzeGkzhDV5xxsVpBHAxoTb",
+                "block": 16755600,
+                "weight": 85979011213131646000000000000000000
+            },
+            {
+                "account": "cnTkhfEpdzUmpMVYzQ9Uhu57jprXd8fN7ggeBdzEk3iotKncd",
+                "block": 16755600,
+                "weight": 254531191452943000000000000000000000
+            },
+            {
+                "account": "cnUAcNM42emAkMjh8Awm3omCmKHmMFxcGSD9vNJaHdncVR9L8",
+                "block": 16755600,
+                "weight": 100267864344519005000000000000000000
+            },
+            {
+                "account": "cnUXCARRLbDzqyjGk7532Ugvi5PbUFXymTXvFScgeo35TYB3E",
+                "block": 16755600,
+                "weight": 1225553958231145810000000000000000000
+            },
+            {
+                "account": "cnV51GaCnSmHp1zCv2788kZzbQ4Yg9ZXHjEyUoQf9C2pke5Lk",
+                "block": 16755600,
+                "weight": 95593824355070642000000000000000000
+            },
+            {
+                "account": "cnV9jSi5xHqzaT4sLLeT5J8QpqoFMXTGjHUawuSaGAroonjhN",
+                "block": 16755600,
+                "weight": 138555421463604940000000000000000000
+            },
+            {
+                "account": "cnVAUBq2P7AHs1n8x44H7wzJfHcRkPPGZkw6Qf4t5F9kH8pon",
+                "block": 16755600,
+                "weight": 453879108624812991000000000000000000
+            },
+            {
+                "account": "cnVSVrZyzt8cfrXUxcKL21b29VD88SWamvMJ9aBJjQmzZVBUw",
+                "block": 16755600,
+                "weight": 63220789251463302000000000000000000
+            },
+            {
+                "account": "cnVSbBFhPW3AbhXZXTsabwP939tbxNTrxjwdDckuxuA6D1uPw",
+                "block": 16755600,
+                "weight": 105025211818522886000000000000000000
+            },
+            {
+                "account": "cnVfgPXGQrEU2rfGcjm9iw2qQ48w9iX8SRLtpzkY89fr4tzaV",
+                "block": 16755600,
+                "weight": 148525207523130514000000000000000000
+            },
+            {
+                "account": "cnVfm5Ua9vhjkNRYy1cHePFebaGnc7N8hJdEKZdAFCN8DQ4xe",
+                "block": 16755600,
+                "weight": 95593824355070642000000000000000000
+            },
+            {
+                "account": "cnVwWkJxVGA29AidvWtYaNGAgojjd6FZGLbg68YHtNY2ByDo4",
+                "block": 16755600,
+                "weight": 69277710731802469000000000000000000
+            },
+            {
+                "account": "cnVyA9JFdCYAyMr4ATswyY8WQQbuSfBYTA7ejZkFq3TqY5Cip",
+                "block": 16755600,
+                "weight": 77050744492423272000000000000000000
+            },
+            {
+                "account": "cnVyTPJ62URsCN71RsrfxmTyvo3ri7ByhUT1d9CqwTCKGcT7C",
+                "block": 16755600,
+                "weight": 94341097533654342000000000000000000
+            },
+            {
+                "account": "cnWHr3bRcmQJXbVzX8ebS3U5ttApYx8CRXdRxPGafYpXBAnZE",
+                "block": 16755600,
+                "weight": 85695921013038806000000000000000000
+            },
+            {
+                "account": "cnWRq2zdutYwPRuLhSPTqjFiop5EvoKXCRFu1PyQGGMsRCALc",
+                "block": 16755600,
+                "weight": 85979011213131646000000000000000000
+            },
+            {
+                "account": "cnWep8hi1a5QHfRFL8PpCsmW6mKHDkWKQWGipr7NBSNTpDSZj",
+                "block": 16755600,
+                "weight": 88125896194863600000000000000000000
+            },
+            {
+                "account": "cnWerWrq83wgU71M3fF31hMT9RtVk6A1ZASRMhLM5W74RjLaf",
+                "block": 16755600,
+                "weight": 32801349282335004000000000000000000
+            }
+        ]
+    },
+    "16755838": {},
+    "16755839": {},
+    "16755840": {},
+    "16755841": {},
+    "16755842": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7h6ksvcL1ZeAcANYmAYJoo1W75": [
+            {
+                "account": "cnRYYYkT54MPCgjvY3CLFHSya7QsN7RLrosFf4WoCozXMhjRG",
+                "block": 16755600,
+                "weight": 19847642132374443897139000000000000000000
+            },
+            {
+                "account": "cnSbVkPQC3Dh8MX4nfHwN7FLQbWR82sEz5iCfUBxZ3xb4UA82",
+                "block": 16755600,
+                "weight": 2530759191805747415622000000000000000000
+            },
+            {
+                "account": "cnTAUcvQfwcm5QW1RTpFAcfJnb4bw7vsV7x5DJn64jzNghzyw",
+                "block": 16755600,
+                "weight": 2277278490369889305000000000000000000
+            },
+            {
+                "account": "cnTaDan3qMzSKZQWzJn54kNp1ptFyS3DDMiUXg92EzoqD68d9",
+                "block": 16755600,
+                "weight": 1507140219130646221304000000000000000000
+            },
+            {
+                "account": "cnU2ktemsTqujB3HLMuWsuFrBuQsViUw1xpEV8TqnJMTvAvmS",
+                "block": 16755600,
+                "weight": 1276311828192408493705000000000000000000
+            },
+            {
+                "account": "cnVfgPXGQrEU2rfGcjm9iw2qQ48w9iX8SRLtpzkY89fr4tzaV",
+                "block": 16755600,
+                "weight": 593965094161642418789000000000000000000
+            },
+            {
+                "account": "cnW1uSvmLbAnbjjEYsaD2cBjaFePBJHes1bU1gWY1ddFnwbJC",
+                "block": 16755600,
+                "weight": 1718597117420904013132000000000000000000
+            },
+            {
+                "account": "cnWA57V9CB4BfuMpsmkFutRQSwF9d1n32koeYDAKyaaz729jw",
+                "block": 16755600,
+                "weight": 6840525895741269410143000000000000000000
+            },
+            {
+                "account": "cnWWUSs3c6eCwjDNbPMvAkns4JtbJpgvffz3b4AYDtsJJ2MLZ",
+                "block": 16755600,
+                "weight": 6786916657371227465873000000000000000000
+            },
+            {
+                "account": "cnXFLqymjFnjrwhkmM5f88ZzktSghhRsVqqTCQ1H1sibXVZtb",
+                "block": 16755600,
+                "weight": 22781433621700026660938000000000000000000
+            }
+        ]
+    },
+    "16755843": {},
+    "16755844": {},
+    "16755845": {},
+    "16755846": {},
+    "16755847": {},
+    "16755848": {},
+    "16755849": {},
+    "16755850": {},
+    "16755851": {},
+    "16755852": {},
+    "16755853": {},
+    "16755854": {},
+    "16755855": {},
+    "16755856": {},
+    "16755857": {},
+    "16755858": {},
+    "16755859": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7krBNCtuHsoRcZKB9nFwd1vEsG": [
+            {
+                "account": "cnSfdHXoCdRb9kNr5zi4wZKAwZk6Mg4skznryQ4EASQzpViGy",
+                "block": 16395600,
+                "weight": 109146712698466942962682223000000000000000000
+            },
+            {
+                "account": "cnTdFCSAPm2YVsziATQnr7WHbrMkv2dKAa6ciErFuRsJWasZi",
+                "block": 16369200,
+                "weight": 45594939727172377649609106000000000000000000
+            },
+            {
+                "account": "cnU2Vven7f17UT7LBSaGXqZCWAnCSgtra8iHm9zhn1Cb4YS8d",
+                "block": 16755600,
+                "weight": 1176517223532200059115212000000000000000000
+            }
+        ]
+    },
+    "16755860": {},
+    "16755861": {},
+    "16755862": {},
+    "16755863": {},
+    "16755864": {},
+    "16755865": {},
+    "16755866": {},
+    "16755867": {},
+    "16755868": {},
+    "16755869": {},
+    "16755870": {},
+    "16755871": {},
+    "16755872": {},
+    "16755873": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fctaoNgah2tWibghzBvLLUkUX": [
+            {
+                "account": "cnUaYk6qo6eYV9nfd2hDYyu5jTrQvq7ySzBrHPYr7MxGUFn8E",
+                "block": 16755600,
+                "weight": 200000000000000005857945000000000000000000
+            },
+            {
+                "account": "cnUcsEPStUYXZyhLY9xcQ6HJZ8YfdTZuExt7tS7cM54kSHUuC",
+                "block": 16755600,
+                "weight": 5255109999999994142054000000000000000000
+            }
+        ]
+    },
+    "16755874": {},
+    "16755875": {},
+    "16755876": {},
+    "16755877": {},
+    "16755878": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fKvXsmmdsb3M5RypNDK2kMRAt": [
+            {
+                "account": "cnWDCAeHgE79a8Liz8kcTqMS3nHdfgMQmsszBD7h2emnXYt8m",
+                "block": 16755600,
+                "weight": 3611561011149000000000000000000
+            }
+        ]
+    },
+    "16755879": {},
+    "16755880": {},
+    "16755881": {},
+    "16755882": {},
+    "16755883": {},
+    "16755884": {},
+    "16755885": {},
+    "16755886": {},
+    "16755887": {},
+    "16755888": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7oEu7ud2mKLvwWGuqdpH854JSZ": [
+            {
+                "account": "cnVhQ2igkz4PzQDCgXt2mhpwXQT8nuLiVfMPL3PgJmMQGMLdQ",
+                "block": 16755600,
+                "weight": 39618856569709127383000000000000000000
+            }
+        ]
+    },
+    "16755889": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nFGakRr8ypcjXChBqkon1at8D": [
+            {
+                "account": "cnSN9X2HNU3uYjRbGvTwpgUdtVDuNk1g29XkcQNoNBQxgt1ii",
+                "block": 16755600,
+                "weight": 101250000000000000009000000000000000000
+            }
+        ]
+    },
+    "16755890": {},
+    "16755891": {},
+    "16755892": {},
+    "16755893": {},
+    "16755894": {},
+    "16755895": {},
+    "16755896": {},
+    "16755897": {},
+    "16755898": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dm1HKXnwheGZ4iorLCGF6gRzr": [
+            {
+                "account": "cnRgRKYJMPW8s3tmBi8QUw9eGbB7YL1qukBZrczJTE2CDZVhz",
+                "block": 16755600,
+                "weight": 16410475632939667952246000000000000000000
+            },
+            {
+                "account": "cnRmookSHt1VYGi7Nu9Te66ZqMpT6XvejouKR2nX2KAZnvrAu",
+                "block": 16755600,
+                "weight": 15612623677423220498827000000000000000000
+            },
+            {
+                "account": "cnRuhPL8EWYpLrJdoNiPHjTZ6FrbC3qdieSuHKQtPcK8XtUNq",
+                "block": 16755600,
+                "weight": 94333565210014156785000000000000000000
+            },
+            {
+                "account": "cnS8FEg53cCS6HUU7VTjKAVdgikjE3poziTU6Vz2wuiBLikfm",
+                "block": 16755600,
+                "weight": 1042442544799945841000000000000000000
+            },
+            {
+                "account": "cnSAn8p9VoZwu2rsZwLDARKyVxW21AKBkjWrqmkTdDzG5JKQ4",
+                "block": 16755600,
+                "weight": 38894021790198050730177000000000000000000
+            },
+            {
+                "account": "cnST3aVqbVnRc94xHSwuCCs8iHSXwjKYtBMZmKktiC8cGBDN1",
+                "block": 16755600,
+                "weight": 120020270141571447538540000000000000000000
+            },
+            {
+                "account": "cnST7wgbrjW4tBQX7vNipqsn8yCYBX4bpuMkUFPuH9PhoEThm",
+                "block": 16755600,
+                "weight": 739641916845875977214269000000000000000000
+            },
+            {
+                "account": "cnSVsdJNBgHf2tkwW9w2K7dtYuKWcPYTkdVTG8qMpici9PQgC",
+                "block": 16755600,
+                "weight": 10518611664022804887879000000000000000000
+            },
+            {
+                "account": "cnSYGXmgg3YQPpEuLUMVLhGpMEUrU2rgvZAvSp6cm6FmHgWvv",
+                "block": 16755600,
+                "weight": 55859833590842448415620000000000000000000
+            },
+            {
+                "account": "cnSYrpj9kYCz3DjnyhVpEjoC7a6JD4NzuYGsT6viPheGEPcGh",
+                "block": 15007200,
+                "weight": 39751665650481358146561367000000000000000000
+            },
+            {
+                "account": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+                "block": 16755600,
+                "weight": 1002381934816796202000000000000000000
+            },
+            {
+                "account": "cnSgGVY9o8DxajeXknVb8m4VtWxuasRvtddAMeVMGBV7EQg9W",
+                "block": 16755600,
+                "weight": 1186640441740582350354000000000000000000
+            },
+            {
+                "account": "cnSgR7W7vJfCsgnYdpTAjkFzw7GJGE9b5i6aewbDdXezKduST",
+                "block": 16755600,
+                "weight": 40185287830663998284000000000000000000
+            },
+            {
+                "account": "cnSwRJbNPpEV9o6JhcE399StSFpShaeyo2eTexeAcnUQFcuL1",
+                "block": 16755600,
+                "weight": 221253760854993179377604000000000000000000
+            },
+            {
+                "account": "cnT2iz1QTDqmjWHRarne7Wz35xuaBzuy5rkZDo9drDsQDWHfr",
+                "block": 16755600,
+                "weight": 5491680988902159345102000000000000000000
+            },
+            {
+                "account": "cnTEEcEBR4hrLyeLymTDyi1ujgg6eTFmGEUyfXsyXi5RyUYvQ",
+                "block": 16755600,
+                "weight": 35759253525212252999798000000000000000000
+            },
+            {
+                "account": "cnTGkfeQsErnyB9Jp1s34RC2JNFyLg5GRE8o2NhqJdNtnx5Hr",
+                "block": 16755600,
+                "weight": 17282976860712420850558000000000000000000
+            },
+            {
+                "account": "cnTPhizjx4riLyRkpsCkKgEVkv2Naa2GX4b6rakvjGYF3YQ6z",
+                "block": 16755600,
+                "weight": 3260474424971559196233000000000000000000
+            },
+            {
+                "account": "cnU8bu1tu6eNHLoZYYNmnDdZ9pbwF8CRdrwM9Pze5RQBbqaQW",
+                "block": 15847200,
+                "weight": 10735764058408642296842850000000000000000000
+            },
+            {
+                "account": "cnUDiZeVnadv9vsW7jTk4vXrdGsra9gyBDkGCdN1aQhqD91dh",
+                "block": 16755600,
+                "weight": 58634451607796149063640000000000000000000
+            },
+            {
+                "account": "cnUJDb8QNJHAd15soRoa3cDKc8qMHR6TKRA1ZAy8wBepggxGJ",
+                "block": 16755600,
+                "weight": 75402754512437153721232000000000000000000
+            },
+            {
+                "account": "cnUJLpkub2EVttQSNkzqMsWnzvctm8irTVTWvUHMhHgYZaoUf",
+                "block": 16755600,
+                "weight": 103586530604768335553418000000000000000000
+            },
+            {
+                "account": "cnUJuavc5ZVeMj4kFJynwCv7c4THKGxknNrfS3TnjoMwMZLak",
+                "block": 16755600,
+                "weight": 69526354387255611074342000000000000000000
+            },
+            {
+                "account": "cnULigpyuX7gMWiaLauLyTAvG5kbZXJoSY4yF8HPbhnneETmf",
+                "block": 16755600,
+                "weight": 805589797615524980046000000000000000000
+            },
+            {
+                "account": "cnULnwXJWiZdd9kDJqVmi2JfbnqdknygtWNYuVm13Y7TYXTRf",
+                "block": 13861200,
+                "weight": 25007550771652077330290349000000000000000000
+            },
+            {
+                "account": "cnUMaC1neG4Fa1fxJX5qYpJNXvoWrbycyQunn5ABKPeiZGbCB",
+                "block": 16755600,
+                "weight": 385376912085564073452814000000000000000000
+            },
+            {
+                "account": "cnUVbFg7rz3CB6jkFpEkCu1agsbUep3NucZsmJ5RKqKt4DHwT",
+                "block": 16755600,
+                "weight": 242786061145886096228000000000000000000
+            },
+            {
+                "account": "cnUXLhfFvNyN4jLPiGYGd12DD7ENiYHmLiw6C6ddgHVPddjrK",
+                "block": 16755600,
+                "weight": 82491791509859994330298000000000000000000
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 9608400,
+                "weight": 118356304134573648545937437000000000000000000
+            },
+            {
+                "account": "cnUkNjWQEkv911iVkQ5dn2ooADbyKY935JAjMYXRTMQ3J6mhA",
+                "block": 16755600,
+                "weight": 730556131433180587537005000000000000000000
+            },
+            {
+                "account": "cnUvwibjKqTBkP2Dt5j18XQBWXe8ShPg3BuqQauhyxuVxHC3D",
+                "block": 16755600,
+                "weight": 1931196255098928173745000000000000000000
+            },
+            {
+                "account": "cnUzMv3TpcM3j1WVBtaQCzpVHwbZPBmGgRGSWi8NaTJkfE1yZ",
+                "block": 16755600,
+                "weight": 105563425266962438905164000000000000000000
+            },
+            {
+                "account": "cnV4UkPitGdR2nG3xkC2d5Thm6PsxAZFafkPJT5ibsN9DYoeb",
+                "block": 16755600,
+                "weight": 1070434170507142295734000000000000000000
+            },
+            {
+                "account": "cnV7ExvTocHEKbnc8NSTN3eGa7BpWtLEnMBE54sXwSx1XccYx",
+                "block": 16510800,
+                "weight": 52034858467036749558749924000000000000000000
+            },
+            {
+                "account": "cnVDU9AL1hLofRfV36pWzknsj7PBHkVoP5f3snr8gh9Jn3Chb",
+                "block": 16755600,
+                "weight": 32366231334000000000000000000
+            },
+            {
+                "account": "cnVSDAXBf7qczBenVfsvRksrwL1T1U5Bg4RaZoruaBEK2KsdJ",
+                "block": 16755600,
+                "weight": 2333625091635998427460000000000000000000
+            },
+            {
+                "account": "cnVSJw956Fj2EhUHBeveqw6Q4LRuxuqr391hNHinkWMytW32w",
+                "block": 16755600,
+                "weight": 13712027105499976252548000000000000000000
+            },
+            {
+                "account": "cnVWsZn4bVo1UJUz4az3rSmspusjPDVXhh6pRr2h8UEo3vcMC",
+                "block": 16755600,
+                "weight": 69301862971362684209342000000000000000000
+            },
+            {
+                "account": "cnVfJeGvmmr71CGcziSXUcvecJnaEgHHyz2nykdmuDamHEEeZ",
+                "block": 16755600,
+                "weight": 1196687910898816247832000000000000000000
+            },
+            {
+                "account": "cnVtGGFh1PuXVKx8E5AdX6qLVMwDjpit74jKAuTi3VKM7hwQY",
+                "block": 16755600,
+                "weight": 2465243291889692489000000000000000000
+            },
+            {
+                "account": "cnW7v31wkWU4C9RkX2oZbyqAnqzke2RvQnFZQPHiMbcc9TWnr",
+                "block": 16755600,
+                "weight": 6394725047631905848582000000000000000000
+            },
+            {
+                "account": "cnW83R7hR8jLrfsi2As6oW3pzhwQM362EeDeH52jQbsqaQZnR",
+                "block": 16755600,
+                "weight": 4511241032841975858654000000000000000000
+            },
+            {
+                "account": "cnWZGmnKxQmD4kC9scTsTaCzctY6wzvxAuonYu9e38Xvc4cX2",
+                "block": 16755600,
+                "weight": 105663842863348476194000000000000000000
+            },
+            {
+                "account": "cnWcqW7FRb2sN8HA3zLU5iGHK8LGop5CGBR3hpLFCLzifpCDG",
+                "block": 16755600,
+                "weight": 13959608638869754246796000000000000000000
+            },
+            {
+                "account": "cnWeF44LLi13kEiWJrWbRPvnAnB5nzpju8GchrPqufFkTuzdF",
+                "block": 16755600,
+                "weight": 54743873710920099962924000000000000000000
+            },
+            {
+                "account": "cnWfHBt8dvwz1BUhVMc65qWXmfPZnhXkDoiP49EubzKutnifH",
+                "block": 16755600,
+                "weight": 49993037884559920181122000000000000000000
+            },
+            {
+                "account": "cnWpx9x7KoRaYH4FSCF5xLYqrf7hExsq7VcqAehXc5GLEMibK",
+                "block": 16755600,
+                "weight": 171773232910160825673000000000000000000
+            },
+            {
+                "account": "cnWvCJhjiKc3FfmGH4hrieieeEoR6QG9GE9cSFJM53rNcSwcb",
+                "block": 16755600,
+                "weight": 67613252258899581054000000000000000000
+            },
+            {
+                "account": "cnX1KTW1mqz5XrMpqLm4ULYY9WKiTyj7AkrDTjX6fiP5W2fkD",
+                "block": 16755600,
+                "weight": 3299415402165199932440000000000000000000
+            },
+            {
+                "account": "cnX1NxncLjfYBNcb2hpYMWb3hfiLNd49Cd84vVMSK2L91DFrz",
+                "block": 16755600,
+                "weight": 10606614877112502562351000000000000000000
+            },
+            {
+                "account": "cnX1fjnEaEiGfXb445K1BU3pivuP6woED4kU95upBgaiEUpG8",
+                "block": 16755600,
+                "weight": 6660285132466080659268000000000000000000
+            },
+            {
+                "account": "cnX3uTJw82RyZdv2y1JgM5vR1hGrMFP3QqJvN7XfTp7dUUfMb",
+                "block": 16755600,
+                "weight": 106085207652519293005310000000000000000000
+            },
+            {
+                "account": "cnX4bgFxbJZvTB86i4186415TWMuUshjxWXkvjt6QdzchhKdT",
+                "block": 16755600,
+                "weight": 8708369610166992713712000000000000000000
+            },
+            {
+                "account": "cnXCSHj5P1gQJxmDVfPe2pKNHgGPThbftbc6r66zZuysjVR6b",
+                "block": 16755600,
+                "weight": 27377702566473721111117000000000000000000
+            },
+            {
+                "account": "cnXEU1UHnp9SF2D2P6EVPYs1FaCJRXrcXuf86qYncjYADxaC7",
+                "block": 16755600,
+                "weight": 16210530422595476472543000000000000000000
+            }
+        ]
+    },
+    "16755899": {},
+    "16755900": {},
+    "16755901": {},
+    "16755902": {},
+    "16755903": {},
+    "16755904": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7mhgkzPwJ5Dd4PgnYfeTG8EEFq": [
+            {
+                "account": "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le",
+                "block": 16755600,
+                "weight": 335160091763982957000000000000000000
+            }
+        ]
+    },
+    "16755905": {},
+    "16755906": {},
+    "16755907": {},
+    "16755908": {},
+    "16755909": {},
+    "16755910": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jKR6Xw4aeUpWuMydzaLf63qD5": [
+            {
+                "account": "cnU37jUYz51gcxZFUBWMSoCptujMWTPCcMdWbAXj6JLXxqXxE",
+                "block": 16755600,
+                "weight": 43706293706293706293706000000000000000000
+            }
+        ]
+    },
+    "16755911": {},
+    "16755912": {},
+    "16755913": {},
+    "16755914": {},
+    "16755915": {},
+    "16755916": {},
+    "16755917": {},
+    "16755918": {},
+    "16755919": {},
+    "16755920": {},
+    "16755921": {},
+    "16755922": {},
+    "16755923": {},
+    "16755924": {},
+    "16755925": {},
+    "16755926": {},
+    "16755927": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jGftdENRFkGcAA7gCVi2txehc": [
+            {
+                "account": "cnWtZSJUAVd4ZtqnkhbeCqoxnTEZQgapFb8vm2ixRZ5eYSFoc",
+                "block": 16755600,
+                "weight": 5500000000000000000000000000000000
+            }
+        ]
+    },
+    "16755928": {},
+    "16755929": {},
+    "16755930": {},
+    "16755931": {},
+    "16755932": {},
+    "16755933": {},
+    "16755934": {},
+    "16755935": {},
+    "16755936": {},
+    "16755937": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7f1WLYFuMLsXKH3BmLFTvTHrRn": [
+            {
+                "account": "cnTmNoAgGvYTGPWtJ7MWdvYYhLsxJF9JhH3b5zuU5RBmQmWgW",
+                "block": 16755600,
+                "weight": 1397379766968934699089110216000000000000000
+            },
+            {
+                "account": "cnToiSkbK6q5hXQrsp2Husm1ugkTEJUgrUqJyVpVv6RMs9JUF",
+                "block": 14106000,
+                "weight": 26586857553333287677959961880000000000000000
+            },
+            {
+                "account": "cnUqgHaAM1z68jG4ExtcHLub1pqhbQCSoxKsPwyrfzSrHLPFp",
+                "block": 16755600,
+                "weight": 6258737676557888423763821909000000000000
+            }
+        ]
+    },
+    "16755938": {},
+    "16755939": {},
+    "16755940": {},
+    "16755941": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7j3fiKU8hD8JnLjBMbmcSWmvzg": [
+            {
+                "account": "cnSzUG8rVKZoUToSBx8o5sCXzh5of3wZP6CT2GVgxS8c6V6TX",
+                "block": 16755600,
+                "weight": 14219235397825653776769744000000000000000
+            },
+            {
+                "account": "cnULigpyuX7gMWiaLauLyTAvG5kbZXJoSY4yF8HPbhnneETmf",
+                "block": 16755600,
+                "weight": 39915719830178480825053525010000000000000
+            },
+            {
+                "account": "cnUZkAbtX2u9ko8g6uwihfGNUrXTVEiG2oB4ZTU5VF98eqe43",
+                "block": 9955200,
+                "weight": 10928459539507179044405204470000000000000000
+            },
+            {
+                "account": "cnW7v31wkWU4C9RkX2oZbyqAnqzke2RvQnFZQPHiMbcc9TWnr",
+                "block": 16755600,
+                "weight": 2812572146545522159928391982000000000000000
+            },
+            {
+                "account": "cnWFQRgpSPSsLBzogEnR45nECaRsRxpEHvQbWzy8oMh7PY8vz",
+                "block": 16755600,
+                "weight": 1916048712484896424968991717000000000000
+            }
+        ]
+    },
+    "16755942": {},
+    "16755943": {},
+    "16755944": {},
+    "16755945": {},
+    "16755946": {},
+    "16755947": {},
+    "16755948": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7f7g3wXo4k6c2XgHm9sNiCVeRW": [
+            {
+                "account": "cnS84VE7gv8W7Fodr9wWCe1XzhMvcXzVTCUrvNHs7NXiasz49",
+                "block": 16755600,
+                "weight": 10000000000000000000000000000000000
+            }
+        ]
+    },
+    "16755949": {},
+    "16755950": {},
+    "16755951": {},
+    "16755952": {},
+    "16755953": {},
+    "16755954": {},
+    "16755955": {},
+    "16755956": {},
+    "16755957": {},
+    "16755958": {},
+    "16755959": {},
+    "16755960": {},
+    "16755961": {},
+    "16755962": {},
+    "16755963": {},
+    "16755964": {},
+    "16755965": {},
+    "16755966": {},
+    "16755967": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7nCEXkvskiniERRJiE4qE6dUnf": [
+            {
+                "account": "cnRdDA4BDbhjsvyyKa1HqzJzKaegTpsMAoa7b7ED3xrkesMXa",
+                "block": 16755600,
+                "weight": 4272082139426985913193000000000000000000
+            },
+            {
+                "account": "cnTDCfzJGeCDec8ZrFt8dPzNU8aWmH66NwtzuB6TtkpSvXxse",
+                "block": 16755600,
+                "weight": 8630635647191161331175000000000000000000
+            },
+            {
+                "account": "cnVsrk8vaV5anyrSTvT93DzrEbQ1f9VUtAKoRHznVYkTjbVSb",
+                "block": 16755600,
+                "weight": 174436901697008380454820000000000000000000
+            },
+            {
+                "account": "cnWXc9UKBksFiYB6FqG7PrxQjwub9GG9hbYbEy6U5XDsx1WKV",
+                "block": 16755600,
+                "weight": 5377339616767591432816000000000000000000
+            },
+            {
+                "account": "cnX1NxncLjfYBNcb2hpYMWb3hfiLNd49Cd84vVMSK2L91DFrz",
+                "block": 16755600,
+                "weight": 1849721724776327977772000000000000000000
+            }
+        ]
+    },
+    "16755968": {},
+    "16755969": {},
+    "16755970": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7m91gtLvG1rhxQLxCR5x2xu3Do": [
+            {
+                "account": "cnU2xh5XUUk7o7uogZpqtuPtDzMWfupMWRKAe9H2pth8vMhGn",
+                "block": 16755600,
+                "weight": 305589717848181220482961000000000000000000
+            }
+        ]
+    },
+    "16755971": {},
+    "16755972": {},
+    "16755973": {},
+    "16755974": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7h5a5Db3VnjFQTdwW56nn23syt": [
+            {
+                "account": "cnSfdp1G7eHNcYsTSyp6wcaxW3Fi525ANseonx1LNiU2NgpH6",
+                "block": 16755600,
+                "weight": 1000000000000001000000000000000000
+            }
+        ]
+    },
+    "16755975": {},
+    "16755976": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7gjxz1uHQ19Wt9z7N3uy44aQeP": [
+            {
+                "account": "cnToiSkbK6q5hXQrsp2Husm1ugkTEJUgrUqJyVpVv6RMs9JUF",
+                "block": 16755600,
+                "weight": 2666036002322452058551253222000000000000000
+            }
+        ]
+    },
+    "16755977": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7eLDpqBfR9KR7exqn4rvrPtBZS": [
+            {
+                "account": "cnVcMvabKbvd9mpdeJRUAd9B8qypEiHDqSisC5JS42Jff8JEg",
+                "block": 16755600,
+                "weight": 113548837818080914026000000000000000000
+            }
+        ]
+    },
+    "16755978": {},
+    "16755979": {},
+    "16755980": {},
+    "16755981": {},
+    "16755982": {},
+    "16755983": {},
+    "16755984": {},
+    "16755985": {},
+    "16755986": {},
+    "16755987": {},
+    "16755988": {},
+    "16755989": {},
+    "16755990": {},
+    "16755991": {},
+    "16755992": {},
+    "16755993": {},
+    "16755994": {},
+    "16755995": {},
+    "16755996": {},
+    "16755997": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7dLxzfeXTFKvz99hjnMX5Em9h7": [
+            {
+                "account": "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+                "block": 16755600,
+                "weight": 5383746884179530720354000000000000000000
+            },
+            {
+                "account": "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le",
+                "block": 16755600,
+                "weight": 4432520520089647012253000000000000000000
+            }
+        ]
+    },
+    "16755998": {},
+    "16755999": {},
+    "16756000": {},
+    "16756001": {},
+    "16756002": {},
+    "16756003": {},
+    "16756004": {},
+    "16756005": {},
+    "16756006": {},
+    "16756007": {},
+    "16756008": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7fCuXXd7jhhppCjwxQkWJB3ZSC": [
+            {
+                "account": "cnV5d93J89p5kC4dRqF5WWtDNCk1XZ3HQo9dEhGUxBQnohxEB",
+                "block": 16755600,
+                "weight": 356065207042811729062704000000000000000000
+            }
+        ]
+    },
+    "16756009": {},
+    "16756010": {},
+    "16756011": {},
+    "16756012": {},
+    "16756013": {},
+    "16756014": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7hPeTrYnwVjZbzDU6gQza1Uirf": [
+            {
+                "account": "cnT3D4Ve8oHh6V26yZZwfDTYtasHoAK5CmK5515xKGR2FTep5",
+                "block": 16755600,
+                "weight": 909091727512926000000000000000000
+            }
+        ]
+    },
+    "16756015": {},
+    "16756016": {},
+    "16756017": {},
+    "16756018": {
+        "cnTQ1kbv7PBNNQrEb1tZpmK7jU1sMBMoFKXZZuQqJtaihp1kW": [
+            {
+                "account": "cnVq6JEztnLB3NMsrqSN5XDCTp62c6in3X82a4SZDPwCyXMFi",
+                "block": 12770400,
+                "weight": 63301773296162750487610811010000000000000000
+            }
+        ]
+    },
+    "16756019": {},
+    "16756020": {},
+    "16756021": {},
+    "16756022": {},
+    "16756023": {},
+    "16756024": {},
+    "16756025": {},
+    "16756026": {},
+    "16756027": {},
+    "16756028": {},
+    "16756029": {},
+    "16756030": {},
+    "16756031": {},
+    "16756032": {},
+    "16756033": {},
+    "16756034": {},
+    "16756035": {},
+    "16756036": {},
+    "16756037": {},
+    "16756038": {},
+    "16756039": {},
+    "16756040": {},
+    "16756041": {}
+}
