@@ -365,7 +365,7 @@ pub mod pallet {
         #[pallet::constant]
         type MaxCdpsPerOwner: Get<u32>;
 
-        /// Minimal uncollected fee in KUSD that triggers offchain worker to call accrue.
+        /// Minimal uncollected fee in stablecoin that triggers offchain worker to call accrue.
         #[pallet::constant]
         type MinimalStabilityFeeAccrue: Get<Balance>;
 

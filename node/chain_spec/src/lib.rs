@@ -41,7 +41,7 @@ use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1676,7 +1676,8 @@ fn testnet_genesis(
         kensetsu: KensetsuConfig {
             predefined_stablecoin_sora_peg: vec![
                 (KUSD, DAI, balance!(1)),
-                (KXOR, XOR, balance!(100000))
+                (KXOR, XOR, balance!(100000)),
+                (SB, DAI, balance!(1)),
             ],
             predefined_stablecoin_oracle_peg: vec![
                 (KGOLD, SymbolName::xau(), balance!(0.001)),
@@ -2536,7 +2537,8 @@ fn mainnet_genesis(
         kensetsu: KensetsuConfig {
             predefined_stablecoin_sora_peg: vec![
                 (KUSD, DAI, balance!(1)),
-                (KXOR, XOR, balance!(100000))
+                (KXOR, XOR, balance!(100000)),
+                (SB, DAI, balance!(1)),
             ],
             predefined_stablecoin_oracle_peg: vec![
                 (KGOLD, SymbolName::xau(), balance!(0.001)),

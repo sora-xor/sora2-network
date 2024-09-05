@@ -249,6 +249,9 @@ pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0083a6b3fbc6edae06f115c8953ddd7cbfba0b74579d6ea190f96853073b76f4"
 ));
+pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "007f66067c940aeb968b19c8dbf9768447e80c52f73aa175aa8c3936c1bb7e5b"
+));
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
