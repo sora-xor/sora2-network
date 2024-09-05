@@ -13,13 +13,15 @@ substrate = get_substrate_connection()
 cache = {}
 
 
+
 def GetChameleonPools(base):
     if base == XOR_ID:
         return (KXOR_ID, [ETH_ID])
     return None  
 
-def refresh_pools(now: BlockNumber):
-    _, data = load_json_file('./data', 'pool_farmers.json')
+def refresh_pools(now: BlockNumber, data):
+    print(f'is it there? {str(now) in data}')
+    
     if str(now) in data:
         return
     
@@ -34,9 +36,8 @@ def refresh_pools(now: BlockNumber):
             print(pool_farmers, end='\n\n')
     
     
-    with open('./data/pool_farmers.json',  'w') as f:
-        data[str(now)] = new_farmer_pools
-        json.dump(data, f, indent=4)
+    data[str(now)] = new_farmer_pools
+    
 
 def refresh_pool(pool, now: BlockNumber, block_num: BlockNumber):
     block_hash = substrate.get_block_hash(block_num)
@@ -253,12 +254,18 @@ def main():
     # start_block = 16755767
     start_block = 16755787
     end_block = 17053065
-    
-    for block_num in range(start_block, end_block + 1):
-        print(f'Processing Block: {block_num}\n')
-        refresh_pools(block_num)
-        print('\n\n\n---------------------------------------------\n\n')
-
+    _, data = load_json_file('./data', 'pool_farmers.json')
+    try:
+        for block_num in range(start_block, end_block + 1):
+            print(f'Processing Block: {block_num}\n')
+            refresh_pools(block_num, data)
+            print('\n\n\n---------------------------------------------\n\n')
+    except Exception:
+            print(e)
+    finally:
+        with open('./data/pool_farmers.json', 'w') as f:
+            json.dump(data, f, indent=4)
+            
 if __name__ == '__main__':
     try:
         main()
