@@ -34,8 +34,8 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use common::{
-    balance, AssetIdOf, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry,
-    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR, XSTUSD,
+    balance, AssetIdOf, DEXId, DexInfoProvider, LiquidityRegistry, LiquiditySourceFilter,
+    LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
