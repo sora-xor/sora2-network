@@ -2640,6 +2640,8 @@
 <a href="#2625" id="2625">2625</a>
 <a href="#2626" id="2626">2626</a>
 <a href="#2627" id="2627">2627</a>
+<a href="#2628" id="2628">2628</a>
+<a href="#2629" id="2629">2629</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2683,7 +2685,7 @@
 <span class="kw">use </span>common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_support::sp_runtime::Percent;
 <span class="kw">use </span>framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -4318,7 +4320,8 @@
         kensetsu: KensetsuConfig {
             predefined_stablecoin_sora_peg: <span class="macro">vec!</span>[
                 (KUSD, DAI, <span class="macro">balance!</span>(<span class="number">1</span>)),
-                (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>))
+                (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>)),
+                (SB, DAI, <span class="macro">balance!</span>(<span class="number">1</span>)),
             ],
             predefined_stablecoin_oracle_peg: <span class="macro">vec!</span>[
                 (KGOLD, SymbolName::xau(), <span class="macro">balance!</span>(<span class="number">0.001</span>)),
@@ -5178,7 +5181,8 @@
         kensetsu: KensetsuConfig {
             predefined_stablecoin_sora_peg: <span class="macro">vec!</span>[
                 (KUSD, DAI, <span class="macro">balance!</span>(<span class="number">1</span>)),
-                (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>))
+                (KXOR, XOR, <span class="macro">balance!</span>(<span class="number">100000</span>)),
+                (SB, DAI, <span class="macro">balance!</span>(<span class="number">1</span>)),
             ],
             predefined_stablecoin_oracle_peg: <span class="macro">vec!</span>[
                 (KGOLD, SymbolName::xau(), <span class="macro">balance!</span>(<span class="number">0.001</span>)),
