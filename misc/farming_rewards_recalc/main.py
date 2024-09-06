@@ -12,9 +12,9 @@ def dump_pool_farmers_previous_state_if_not_exist(blocknum):
     pool_farmers_at_block = {}
     for record in records:
         pool_farmers_at_block[record[0].value] = record[1].value
-    with open('./data/pool_farmers.json', 'w') as f:
-        data  = {}
-        data[str(blocknum)] = pool_farmers_at_block
+    with open('./data/initial_pool_farmers.json', 'w') as f:
+        _, data  = load_json_file('./data', 'initial_pool_farmers.json')
+        data = pool_farmers_at_block
         json.dump(data, f, indent=4)
         
         
