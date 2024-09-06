@@ -226,7 +226,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -365,7 +365,7 @@ pub mod pallet {
         #[pallet::constant]
         type MaxCdpsPerOwner: Get<u32>;
 
-        /// Minimal uncollected fee in KUSD that triggers offchain worker to call accrue.
+        /// Minimal uncollected fee in stablecoin that triggers offchain worker to call accrue.
         #[pallet::constant]
         type MinimalStabilityFeeAccrue: Get<Balance>;
 

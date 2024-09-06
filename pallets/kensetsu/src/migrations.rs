@@ -495,3 +495,101 @@ pub mod v2_to_v3 {
         }
     }
 }
+
+/// Registers SB as predefined stable pegged to DAI.
+pub mod v3_to_v4 {
+    use crate::{Config, Pallet, PegAsset, StablecoinInfo, StablecoinInfos, StablecoinParameters};
+    use common::permissions::{BURN, MINT};
+    use common::{balance, AssetIdOf, DAI, SB};
+    use core::marker::PhantomData;
+    use frame_support::dispatch::GetStorageVersion;
+    use frame_support::log::error;
+    use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
+    use permissions::Scope;
+    use sp_core::Get;
+
+    pub struct UpgradeToV4<T>(PhantomData<T>);
+
+    impl<T: Config + permissions::Config + technical::Config + pallet_timestamp::Config>
+        OnRuntimeUpgrade for UpgradeToV4<T>
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::zero();
+            let version = Pallet::<T>::on_chain_storage_version();
+            if version == 3 {
+                if let Ok(technical_account_id) =
+                    technical::Pallet::<T>::tech_account_id_to_account_id(
+                        &T::TreasuryTechAccount::get(),
+                    )
+                {
+                    let scope = Scope::Limited(common::hash(&SB));
+                    for permission_id in &[MINT, BURN] {
+                        match permissions::Pallet::<T>::assign_permission(
+                            technical_account_id.clone(),
+                            &technical_account_id,
+                            *permission_id,
+                            scope,
+                        ) {
+                            Ok(()) => {
+                                weight += <T as frame_system::Config>::DbWeight::get().writes(1)
+                            }
+                            Err(err) => {
+                                error!(
+                                "Failed to grant permission to technical account id: {:?}, error: {:?}",
+                                technical_account_id, err
+                            );
+                                weight += <T as frame_system::Config>::DbWeight::get().reads(1);
+                            }
+                        }
+                    }
+                }
+                StablecoinInfos::<T>::insert(
+                    AssetIdOf::<T>::from(SB),
+                    StablecoinInfo {
+                        bad_debt: balance!(0),
+                        stablecoin_parameters: StablecoinParameters {
+                            peg_asset: PegAsset::SoraAssetId(AssetIdOf::<T>::from(DAI)),
+                            minimal_stability_fee_accrue: balance!(1),
+                        },
+                    },
+                );
+
+                StorageVersion::new(4).put::<Pallet<T>>();
+                weight += <T as frame_system::Config>::DbWeight::get().reads_writes(3, 3)
+            }
+
+            weight
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::migrations::v3_to_v4::UpgradeToV4;
+        use crate::mock::{new_test_ext, TestRuntime};
+        use crate::{Pallet, PegAsset, StablecoinInfos, StablecoinParameters};
+        use common::{balance, DAI, SB};
+        use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+
+        #[test]
+        fn test() {
+            new_test_ext().execute_with(|| {
+                StorageVersion::new(3).put::<Pallet<TestRuntime>>();
+
+                UpgradeToV4::<TestRuntime>::on_runtime_upgrade();
+
+                assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 4);
+
+                assert_eq!(1, StablecoinInfos::<TestRuntime>::iter().count());
+                let sb_info = StablecoinInfos::<TestRuntime>::get(SB).unwrap();
+                assert_eq!(
+                    StablecoinParameters {
+                        peg_asset: PegAsset::SoraAssetId(DAI),
+                        minimal_stability_fee_accrue: balance!(1),
+                    },
+                    sb_info.stablecoin_parameters
+                );
+            });
+        }
+    }
+}
