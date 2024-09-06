@@ -226,7 +226,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
