@@ -7,7 +7,7 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-fixnum = { git = "https://github.com/sora-xor/fixnum", default-features = false, branch = "sora-v2.1.0", features = [
+fixnum = { workspace = true, default-features = false, features = [
     "i128",
 ] }
 reqwest = { version = "0.11.2", features = ["blocking", "json"] }

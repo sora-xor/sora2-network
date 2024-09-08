@@ -13,11 +13,11 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 ] }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+sp-api = { workspace = true }
+sp-blockchain = { workspace = true }
+sp-core = { workspace = true }
+sp-rpc = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
 vested-rewards-runtime-api = { path = "../runtime-api" }

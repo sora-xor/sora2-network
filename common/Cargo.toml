@@ -13,39 +13,39 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-fixnum = { git = "https://github.com/sora-xor/fixnum", branch = "sora-v2.1.0", default-features = false, features = [
+currencies = { workspace = true, default-features = false }
+fixnum = { workspace = true, default-features = false, features = [
     "i128",
     "parity",
     "scale-info",
     "serde",
 ] }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
 secp256k1 = { version = "0.7", features = [
     'hmac',
 ], default-features = false, package = "libsecp256k1" }
 thiserror = "1.0"
 num-traits = { version = "0.2.12", default-features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+orml-traits = { workspace = true, default-features = false }
 paste = "1.0.0"
-pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
 serde = { version = "1.0", features = [
     "derive",
 ], default-features = false }
 smallvec = "1.7.0"
 strum = { version = "0.25.0", features = ["derive"], default-features = false }
-sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-arithmetic = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-api = { workspace = true, default-features = false }
+sp-arithmetic = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
 static_assertions = "1.1.0"
 hex-literal = "0.4.1"
 env_logger = { version = "0.10.0", optional = true }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+bridge-types = { workspace = true, default-features = false }
 log = "0.4.20"
 
 [dev-dependencies]

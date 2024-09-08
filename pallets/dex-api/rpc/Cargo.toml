@@ -10,11 +10,11 @@ repository = 'https://github.com/sora-xor/sora2-network'
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3" }
 jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
-sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-blockchain = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-api = { workspace = true, default-features = false }
+sp-blockchain = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-rpc = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
 common = { path = "../../../common" }
 dex-runtime-api = { path = "../runtime-api" }
