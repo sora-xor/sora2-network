@@ -3520,12 +3520,6 @@
 <a href="#3505" id="3505">3505</a>
 <a href="#3506" id="3506">3506</a>
 <a href="#3507" id="3507">3507</a>
-<a href="#3508" id="3508">3508</a>
-<a href="#3509" id="3509">3509</a>
-<a href="#3510" id="3510">3510</a>
-<a href="#3511" id="3511">3511</a>
-<a href="#3512" id="3512">3512</a>
-<a href="#3513" id="3513">3513</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -6529,10 +6523,6 @@
             selected_source_types: Vec&lt;LiquiditySourceType&gt;,
             filter_mode: FilterMode,
         ) -&gt; <span class="prelude-ty">Option</span>&lt;liquidity_proxy_runtime_api::SwapOutcomeInfo&lt;Balance, AssetId&gt;&gt; {
-            <span class="kw">if </span>LiquidityProxy::is_forbidden_filter(<span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id, <span class="kw-2">&amp;</span>selected_source_types, <span class="kw-2">&amp;</span>filter_mode) {
-                <span class="kw">return </span><span class="prelude-val">None</span>;
-            }
-
             LiquidityProxy::inner_quote(
                 dex_id,
                 <span class="kw-2">&amp;</span>input_asset_id,
@@ -6570,9 +6560,7 @@
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -&gt; Vec&lt;LiquiditySourceType&gt; {
-            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
-                dex_id, input_asset_id, output_asset_id
-            ).unwrap_or(Vec::new())
+            LiquidityProxy::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id).unwrap_or(Vec::new())
         }
     }
 

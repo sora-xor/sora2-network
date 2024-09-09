@@ -2886,78 +2886,6 @@
 <a href="#2871" id="2871">2871</a>
 <a href="#2872" id="2872">2872</a>
 <a href="#2873" id="2873">2873</a>
-<a href="#2874" id="2874">2874</a>
-<a href="#2875" id="2875">2875</a>
-<a href="#2876" id="2876">2876</a>
-<a href="#2877" id="2877">2877</a>
-<a href="#2878" id="2878">2878</a>
-<a href="#2879" id="2879">2879</a>
-<a href="#2880" id="2880">2880</a>
-<a href="#2881" id="2881">2881</a>
-<a href="#2882" id="2882">2882</a>
-<a href="#2883" id="2883">2883</a>
-<a href="#2884" id="2884">2884</a>
-<a href="#2885" id="2885">2885</a>
-<a href="#2886" id="2886">2886</a>
-<a href="#2887" id="2887">2887</a>
-<a href="#2888" id="2888">2888</a>
-<a href="#2889" id="2889">2889</a>
-<a href="#2890" id="2890">2890</a>
-<a href="#2891" id="2891">2891</a>
-<a href="#2892" id="2892">2892</a>
-<a href="#2893" id="2893">2893</a>
-<a href="#2894" id="2894">2894</a>
-<a href="#2895" id="2895">2895</a>
-<a href="#2896" id="2896">2896</a>
-<a href="#2897" id="2897">2897</a>
-<a href="#2898" id="2898">2898</a>
-<a href="#2899" id="2899">2899</a>
-<a href="#2900" id="2900">2900</a>
-<a href="#2901" id="2901">2901</a>
-<a href="#2902" id="2902">2902</a>
-<a href="#2903" id="2903">2903</a>
-<a href="#2904" id="2904">2904</a>
-<a href="#2905" id="2905">2905</a>
-<a href="#2906" id="2906">2906</a>
-<a href="#2907" id="2907">2907</a>
-<a href="#2908" id="2908">2908</a>
-<a href="#2909" id="2909">2909</a>
-<a href="#2910" id="2910">2910</a>
-<a href="#2911" id="2911">2911</a>
-<a href="#2912" id="2912">2912</a>
-<a href="#2913" id="2913">2913</a>
-<a href="#2914" id="2914">2914</a>
-<a href="#2915" id="2915">2915</a>
-<a href="#2916" id="2916">2916</a>
-<a href="#2917" id="2917">2917</a>
-<a href="#2918" id="2918">2918</a>
-<a href="#2919" id="2919">2919</a>
-<a href="#2920" id="2920">2920</a>
-<a href="#2921" id="2921">2921</a>
-<a href="#2922" id="2922">2922</a>
-<a href="#2923" id="2923">2923</a>
-<a href="#2924" id="2924">2924</a>
-<a href="#2925" id="2925">2925</a>
-<a href="#2926" id="2926">2926</a>
-<a href="#2927" id="2927">2927</a>
-<a href="#2928" id="2928">2928</a>
-<a href="#2929" id="2929">2929</a>
-<a href="#2930" id="2930">2930</a>
-<a href="#2931" id="2931">2931</a>
-<a href="#2932" id="2932">2932</a>
-<a href="#2933" id="2933">2933</a>
-<a href="#2934" id="2934">2934</a>
-<a href="#2935" id="2935">2935</a>
-<a href="#2936" id="2936">2936</a>
-<a href="#2937" id="2937">2937</a>
-<a href="#2938" id="2938">2938</a>
-<a href="#2939" id="2939">2939</a>
-<a href="#2940" id="2940">2940</a>
-<a href="#2941" id="2941">2941</a>
-<a href="#2942" id="2942">2942</a>
-<a href="#2943" id="2943">2943</a>
-<a href="#2944" id="2944">2944</a>
-<a href="#2945" id="2945">2945</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3348,36 +3276,6 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-    <span class="doccomment">/// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
-    </span><span class="kw">pub fn </span>is_forbidden_filter(
-        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-        selected_source_types: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceType&gt;,
-        filter_mode: <span class="kw-2">&amp;</span>FilterMode,
-    ) -&gt; bool {
-        <span class="kw">let </span>tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
-
-        <span class="comment">// check if user has selected only xyk either explicitly or by excluding other types
-        // FIXME: such detection approach is unreliable, come up with better way
-        </span><span class="kw">let </span>is_xyk_only = selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XYKPool)
-            &amp;&amp; !selected_source_types
-                .contains(<span class="kw-2">&amp;</span>LiquiditySourceType::MulticollateralBondingCurvePool)
-            &amp;&amp; !selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XSTPool)
-            &amp;&amp; !selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::OrderBook)
-            &amp;&amp; filter_mode == <span class="kw-2">&amp;</span>FilterMode::AllowSelected
-            || selected_source_types
-                .contains(<span class="kw-2">&amp;</span>LiquiditySourceType::MulticollateralBondingCurvePool)
-                &amp;&amp; selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XSTPool)
-                &amp;&amp; !selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::XYKPool)
-                &amp;&amp; selected_source_types.contains(<span class="kw-2">&amp;</span>LiquiditySourceType::OrderBook)
-                &amp;&amp; filter_mode == <span class="kw-2">&amp;</span>FilterMode::ForbidSelected;
-        <span class="comment">// check if either of tbc reserve assets is present
-        </span><span class="kw">let </span>reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
-            || tbc_reserve_assets.contains(output_asset_id);
-
-        is_xyk_only &amp;&amp; reserve_asset_present
-    }
-
     <span class="kw">pub fn </span>check_indivisible_assets(
         input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
@@ -3402,17 +3300,6 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Weight, DispatchError&gt; {
         <span class="self">Self</span>::check_indivisible_assets(<span class="kw-2">&amp;</span>input_asset_id, <span class="kw-2">&amp;</span>output_asset_id)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>total_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::check_indivisible_assets();
-
-        <span class="kw">if </span><span class="self">Self</span>::is_forbidden_filter(
-            <span class="kw-2">&amp;</span>input_asset_id,
-            <span class="kw-2">&amp;</span>output_asset_id,
-            <span class="kw-2">&amp;</span>selected_source_types,
-            <span class="kw-2">&amp;</span>filter_mode,
-        ) {
-            <span class="macro">fail!</span>(Error::&lt;T&gt;::ForbiddenFilter);
-        }
-        total_weight =
-            total_weight.saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter());
 
         <span class="kw">let </span>(outcome, sources, weight) = <span class="self">Self</span>::inner_exchange(
             dex_id,
@@ -4350,7 +4237,6 @@
     /// swap()
     ///     inner_swap()
     ///         check_indivisible_assets()
-    ///         is_forbidden_filter()
     ///         inner_exchange()
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
@@ -4369,7 +4255,6 @@
         <span class="kw">let </span>inner_exchange_weight = <span class="self">Self</span>::inner_exchange_weight(dex_id, input, output, filter);
 
         <span class="kw">let </span>weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::check_indivisible_assets()
-            .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter())
             .saturating_add(inner_exchange_weight);
 
         weight
@@ -4385,7 +4270,6 @@
     ///         loop - call swap_batches.len() times
     ///             exchange_batch_tokens
     ///                 check_indivisible_assets
-    ///                 is_forbidden_filter
     ///                 inner_exchange
     ///             transfer_batch_tokens_unchecked
     ///                 loop - call swap_batch_info.receivers.len() times
@@ -4418,7 +4302,6 @@
 
                 weight = weight
                     .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::check_indivisible_assets())
-                    .saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter())
                     .saturating_add(&lt;T <span class="kw">as </span>assets::Config&gt;::WeightInfo::transfer()) <span class="comment">// ADAR fee
                     </span>.saturating_add(inner_exchange_weight);
             }
@@ -4474,22 +4357,6 @@
                     .map(|set| Vec::from_iter(set.into_iter()))
             },
         )
-    }
-
-    <span class="kw">pub fn </span>list_enabled_sources_for_path_with_xyk_forbidden(
-        dex_id: T::DEXId,
-        input_asset_id: AssetIdOf&lt;T&gt;,
-        output_asset_id: AssetIdOf&lt;T&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LiquiditySourceType&gt;, DispatchError&gt; {
-        <span class="kw">let </span>tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
-        <span class="kw">let </span><span class="kw-2">mut </span>initial_result =
-            <span class="self">Self</span>::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)<span class="question-mark">?</span>;
-        <span class="kw">if </span>tbc_reserve_assets.contains(<span class="kw-2">&amp;</span>input_asset_id)
-            || tbc_reserve_assets.contains(<span class="kw-2">&amp;</span>output_asset_id)
-        {
-            initial_result.retain(|<span class="kw-2">&amp;</span>lst| lst != LiquiditySourceType::XYKPool);
-        }
-        <span class="prelude-val">Ok</span>(initial_result)
     }
 
     <span class="comment">// Not full sort, just ensure that if there is base asset then it&#39;s sorted, otherwise order is unchanged.
@@ -5065,17 +4932,6 @@
             filter_mode.clone(),
             selected_source_types.clone(),
         );
-
-        <span class="kw">if </span><span class="self">Self</span>::is_forbidden_filter(
-            <span class="kw-2">&amp;</span>input_asset_id,
-            <span class="kw-2">&amp;</span>output_asset_id,
-            <span class="kw-2">&amp;</span>selected_source_types,
-            <span class="kw-2">&amp;</span>filter_mode,
-        ) {
-            <span class="macro">fail!</span>(Error::&lt;T&gt;::ForbiddenFilter);
-        }
-        total_weight =
-            total_weight.saturating_add(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::is_forbidden_filter());
 
         <span class="kw">let </span>(
             SwapOutcome {

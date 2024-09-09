@@ -189,18 +189,6 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -237,8 +225,8 @@
 #![cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
 
 </span><span class="kw">use </span>common::{
-    balance, AssetIdOf, DEXId, DexInfoProvider, FilterMode, LiquidityRegistry,
-    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR, XSTUSD,
+    balance, AssetIdOf, DEXId, DexInfoProvider, LiquidityRegistry, LiquiditySourceFilter,
+    LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 <span class="kw">use </span>frame_benchmarking::benchmarks;
 <span class="kw">use </span>frame_system::{EventRecord, RawOrigin};
@@ -331,17 +319,6 @@
     verify {
     }
 
-    is_forbidden_filter {
-        <span class="kw">let </span>from_asset: T::AssetId = XOR.into();
-        <span class="kw">let </span>to_asset: T::AssetId = VAL.into();
-        <span class="kw">let </span>sources = <span class="macro">vec!</span>[LiquiditySourceType::XYKPool, LiquiditySourceType::MulticollateralBondingCurvePool, LiquiditySourceType::XSTPool];
-        <span class="kw">let </span>filter = FilterMode::Disabled;
-    }: {
-        liquidity_proxy::Pallet::&lt;T&gt;::is_forbidden_filter(<span class="kw-2">&amp;</span>from_asset.into(), <span class="kw-2">&amp;</span>to_asset.into(), <span class="kw-2">&amp;</span>sources, <span class="kw-2">&amp;</span>filter);
-    }
-    verify {
-    }
-
     list_liquidity_sources {
         <span class="kw">let </span>from_asset: T::AssetId = XOR.into();
         <span class="kw">let </span>to_asset: T::AssetId = VAL.into();
@@ -384,7 +361,6 @@
             <span class="macro">assert_ok!</span>(Pallet::&lt;Runtime&gt;::test_benchmark_disable_liquidity_source());
             <span class="macro">assert_ok!</span>(Pallet::&lt;Runtime&gt;::test_benchmark_check_indivisible_assets());
             <span class="macro">assert_ok!</span>(Pallet::&lt;Runtime&gt;::test_benchmark_new_trivial());
-            <span class="macro">assert_ok!</span>(Pallet::&lt;Runtime&gt;::test_benchmark_is_forbidden_filter());
             <span class="macro">assert_ok!</span>(Pallet::&lt;Runtime&gt;::test_benchmark_list_liquidity_sources());
         });
     }
