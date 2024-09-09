@@ -64,7 +64,6 @@ pub trait WeightInfo {
 	fn disable_liquidity_source() -> Weight;
 	fn check_indivisible_assets() -> Weight;
 	fn new_trivial() -> Weight;
-	fn is_forbidden_filter() -> Weight;
 	fn list_liquidity_sources() -> Weight;
 	fn set_adar_commission_ratio() -> Weight;
 }
@@ -113,16 +112,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Minimum execution time: 17_835_000 picoseconds.
 		Weight::from_parts(18_267_000, 5295)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
-	}
-	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
-	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
-	fn is_forbidden_filter() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `358`
-		//  Estimated: `853`
-		// Minimum execution time: 6_140_000 picoseconds.
-		Weight::from_parts(6_471_000, 853)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
 	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
@@ -195,16 +184,6 @@ impl WeightInfo for () {
 		// Minimum execution time: 17_835_000 picoseconds.
 		Weight::from_parts(18_267_000, 5295)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
-	}
-	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
-	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
-	fn is_forbidden_filter() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `358`
-		//  Estimated: `853`
-		// Minimum execution time: 6_140_000 picoseconds.
-		Weight::from_parts(6_471_000, 853)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
 	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
