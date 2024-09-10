@@ -64,7 +64,7 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId};
+use common::{AssetId32, Description, PredefinedAssetId, KUSD};
 use common::{DOT, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 93,
+    spec_version: 94,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 93,
+    transaction_version: 94,
     state_version: 0,
 };
 
@@ -1022,29 +1022,14 @@ parameter_type_with_key! {
             base_asset_id,
             target_asset_id
         } = trading_pair;
-        (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into())
+        (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+        (base_asset_id, target_asset_id) == (&KUSD.into(), &XOR.into())
     };
 }
 
-#[cfg(not(feature = "wip"))] // Chameleon pools
 parameter_type_with_key! {
-    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
-        if *base == common::XOR {
-            Some((common::KXOR, [common::ETH].into_iter().collect()))
-        } else {
-            None
-        }
-    };
-}
-
-#[cfg(feature = "wip")] // Chameleon pools
-parameter_type_with_key! {
-    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
-        if *base == common::XOR {
-            Some((common::KXOR, [common::ETH, common::PSWAP, common::VAL].into_iter().collect()))
-        } else {
-            None
-        }
+    pub GetChameleonPools: |_base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+        None
     };
 }
 
@@ -3016,10 +3001,6 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
-            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, &selected_source_types, &filter_mode) {
-                return None;
-            }
-
             LiquidityProxy::inner_quote(
                 dex_id,
                 &input_asset_id,
@@ -3057,9 +3038,7 @@ impl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType> {
-            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
-                dex_id, input_asset_id, output_asset_id
-            ).unwrap_or(Vec::new())
+            LiquidityProxy::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id).unwrap_or(Vec::new())
         }
     }
 

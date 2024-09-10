@@ -388,36 +388,6 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
 }
 
 impl<T: Config> Pallet<T> {
-    /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
-    pub fn is_forbidden_filter(
-        input_asset_id: &AssetIdOf<T>,
-        output_asset_id: &AssetIdOf<T>,
-        selected_source_types: &Vec<LiquiditySourceType>,
-        filter_mode: &FilterMode,
-    ) -> bool {
-        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
-
-        // check if user has selected only xyk either explicitly or by excluding other types
-        // FIXME: such detection approach is unreliable, come up with better way
-        let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
-            && !selected_source_types
-                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
-            && !selected_source_types.contains(&LiquiditySourceType::XSTPool)
-            && !selected_source_types.contains(&LiquiditySourceType::OrderBook)
-            && filter_mode == &FilterMode::AllowSelected
-            || selected_source_types
-                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
-                && selected_source_types.contains(&LiquiditySourceType::XSTPool)
-                && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
-                && selected_source_types.contains(&LiquiditySourceType::OrderBook)
-                && filter_mode == &FilterMode::ForbidSelected;
-        // check if either of tbc reserve assets is present
-        let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
-            || tbc_reserve_assets.contains(output_asset_id);
-
-        is_xyk_only && reserve_asset_present
-    }
-
     pub fn check_indivisible_assets(
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
@@ -442,17 +412,6 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Weight, DispatchError> {
         Self::check_indivisible_assets(&input_asset_id, &output_asset_id)?;
         let mut total_weight = <T as Config>::WeightInfo::check_indivisible_assets();
-
-        if Self::is_forbidden_filter(
-            &input_asset_id,
-            &output_asset_id,
-            &selected_source_types,
-            &filter_mode,
-        ) {
-            fail!(Error::<T>::ForbiddenFilter);
-        }
-        total_weight =
-            total_weight.saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
         let (outcome, sources, weight) = Self::inner_exchange(
             dex_id,
@@ -1390,7 +1349,6 @@ impl<T: Config> Pallet<T> {
     /// swap()
     ///     inner_swap()
     ///         check_indivisible_assets()
-    ///         is_forbidden_filter()
     ///         inner_exchange()
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
@@ -1409,7 +1367,6 @@ impl<T: Config> Pallet<T> {
         let inner_exchange_weight = Self::inner_exchange_weight(dex_id, input, output, filter);
 
         let weight = <T as Config>::WeightInfo::check_indivisible_assets()
-            .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
             .saturating_add(inner_exchange_weight);
 
         weight
@@ -1425,7 +1382,6 @@ impl<T: Config> Pallet<T> {
     ///         loop - call swap_batches.len() times
     ///             exchange_batch_tokens
     ///                 check_indivisible_assets
-    ///                 is_forbidden_filter
     ///                 inner_exchange
     ///             transfer_batch_tokens_unchecked
     ///                 loop - call swap_batch_info.receivers.len() times
@@ -1458,7 +1414,6 @@ impl<T: Config> Pallet<T> {
 
                 weight = weight
                     .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
-                    .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
                     .saturating_add(<T as assets::Config>::WeightInfo::transfer()) // ADAR fee
                     .saturating_add(inner_exchange_weight);
             }
@@ -1514,22 +1469,6 @@ impl<T: Config> Pallet<T> {
                     .map(|set| Vec::from_iter(set.into_iter()))
             },
         )
-    }
-
-    pub fn list_enabled_sources_for_path_with_xyk_forbidden(
-        dex_id: T::DEXId,
-        input_asset_id: AssetIdOf<T>,
-        output_asset_id: AssetIdOf<T>,
-    ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
-        let mut initial_result =
-            Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
-        if tbc_reserve_assets.contains(&input_asset_id)
-            || tbc_reserve_assets.contains(&output_asset_id)
-        {
-            initial_result.retain(|&lst| lst != LiquiditySourceType::XYKPool);
-        }
-        Ok(initial_result)
     }
 
     // Not full sort, just ensure that if there is base asset then it's sorted, otherwise order is unchanged.
@@ -2105,17 +2044,6 @@ impl<T: Config> Pallet<T> {
             filter_mode.clone(),
             selected_source_types.clone(),
         );
-
-        if Self::is_forbidden_filter(
-            &input_asset_id,
-            &output_asset_id,
-            &selected_source_types,
-            &filter_mode,
-        ) {
-            fail!(Error::<T>::ForbiddenFilter);
-        }
-        total_weight =
-            total_weight.saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
         let (
             SwapOutcome {
