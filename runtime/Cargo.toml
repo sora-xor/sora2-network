@@ -306,11 +306,6 @@ private-net = [
 
 wip = [
     "framenode-chain-spec/wip",
-    "dex-manager/wip",
-    "order-book/wip",
-    "liquidity-proxy/wip",
-    "liquidity-proxy-runtime-api/wip",
-    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -323,7 +318,12 @@ wip = [
     "soratopia",
 ]
 
-stage = ["framenode-chain-spec/stage"]
+stage = [
+    "framenode-chain-spec/stage",
+    "liquidity-proxy/stage",
+    "liquidity-proxy-runtime-api/stage",
+    "liquidity-proxy-benchmarking/stage",
+]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
