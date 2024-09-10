@@ -606,6 +606,46 @@ pub mod pallet {
             )?;
             Ok(().into())
         }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::redistribute_lost_pswap_rewards(accounts_reward_diff.len() as u32))]
+        pub fn redistribute_lost_pswap_rewards(
+            origin: OriginFor<T>,
+            accounts_reward_diff: BTreeMap<T::AccountId, i128>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let mut total_rewards_diff = 0i128;
+            for (account, diff) in accounts_reward_diff {
+                Rewards::<T>::try_mutate(&account, |reward_info| {
+                    let v: &mut Balance = reward_info
+                        .rewards
+                        .entry(RewardReason::LiquidityProvisionFarming)
+                        .or_insert(0);
+                    if diff < 0 {
+                        *v -= diff.abs() as Balance;
+                    } else {
+                        *v += diff as Balance
+                    }
+                    let total: i128 = reward_info
+                        .rewards
+                        .iter_mut()
+                        .map(|(_, amount)| *amount as i128)
+                        .sum();
+                    total_rewards_diff += total - reward_info.total_available as i128;
+                    reward_info.total_available = total as u128;
+                    Ok::<(), Error<T>>(().into())
+                })?;
+            }
+            TotalRewards::<T>::mutate(|value| {
+                if total_rewards_diff < 0 {
+                    *value -= total_rewards_diff.abs() as Balance;
+                } else {
+                    *value += total_rewards_diff as Balance;
+                }
+            });
+
+            Ok(().into())
+        }
     }
 
     #[pallet::error]

@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::BTreeMap;
+
 use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos};
 use crate::{Error, RewardInfo};
 use common::mock::charlie;
@@ -1008,6 +1010,126 @@ fn update_rewards_works() {
             ]
             .into_iter()
             .collect()
+        );
+    });
+}
+
+#[test]
+fn redistribute_lost_pswap_rewards_works() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        VestedRewards::add_pending_reward(
+            &alice(),
+            RewardReason::LiquidityProvisionFarming,
+            balance!(200),
+        )
+        .unwrap();
+
+        VestedRewards::add_pending_reward(&alice(), RewardReason::BuyOnBondingCurve, balance!(200))
+            .unwrap();
+
+        VestedRewards::add_pending_reward(
+            &bob(),
+            RewardReason::LiquidityProvisionFarming,
+            balance!(300),
+        )
+        .unwrap();
+
+        VestedRewards::add_pending_reward(&bob(), RewardReason::BuyOnBondingCurve, balance!(300))
+            .unwrap();
+
+        // total = (200 + 200 , Alice) + (300 + 300, Bob) = 1000
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(1000));
+
+        // Check for Alice
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).total_available,
+            balance!(400)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).rewards,
+            vec![
+                (RewardReason::LiquidityProvisionFarming, balance!(200)),
+                (RewardReason::BuyOnBondingCurve, balance!(200))
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        // Check for Bob
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).total_available,
+            balance!(600)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).rewards,
+            vec![
+                (RewardReason::LiquidityProvisionFarming, balance!(300)),
+                (RewardReason::BuyOnBondingCurve, balance!(300))
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        // Check for Charlie
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).total_available,
+            balance!(0)
+        );
+
+        // Do the redistribuation
+        let negative_diff = balance!(100) as i128 * -1;
+        let positive_diff = balance!(100) as i128;
+        let rewards: BTreeMap<AccountId, i128> =
+            vec![(alice(), negative_diff), (charlie(), positive_diff * 3)]
+                .into_iter()
+                .collect();
+        assert_ok!(VestedRewards::redistribute_lost_pswap_rewards(
+            RawOrigin::Root.into(),
+            rewards
+        ));
+
+        // Total Should be increased by 200 as we deduced from alice 100 and added to charlie 300
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(1200));
+
+        // initially was 400 -> -100 so it becomes 300
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).total_available,
+            balance!(300)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).rewards,
+            vec![
+                (RewardReason::LiquidityProvisionFarming, balance!(100)),
+                (RewardReason::BuyOnBondingCurve, balance!(200))
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).total_available,
+            balance!(600)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).rewards,
+            vec![
+                (RewardReason::LiquidityProvisionFarming, balance!(300)),
+                (RewardReason::BuyOnBondingCurve, balance!(300))
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).total_available,
+            balance!(300)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).rewards,
+            vec![(RewardReason::LiquidityProvisionFarming, balance!(300)),]
+                .into_iter()
+                .collect()
         );
     });
 }
