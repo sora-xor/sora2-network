@@ -37,4 +37,3 @@ def load_json_file(path: str, filename: str):
     except Exception as e:
         print(f'Error: {str(e)}')
         return False, {}
-

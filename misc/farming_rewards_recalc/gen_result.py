@@ -30,4 +30,3 @@ if '17042400' not in calculated_rewards:
     print("Warning: Block 17042400 not found in calculated rewards. This block may need special handling.")
 
 update_result_file(result)
-
