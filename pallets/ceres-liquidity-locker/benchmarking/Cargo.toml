@@ -17,7 +17,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 frame-benchmarking = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
@@ -33,11 +33,11 @@ trading-pair = { path = "../../trading-pair", default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
 permissions = { path = "../../permissions", default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
-serde = { version = "1.0.101", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 pallet-balances = { workspace = true }

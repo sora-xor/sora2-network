@@ -29,7 +29,7 @@ price-tools = { path = "../../price-tools", default-features = false }
 
 technical = { path = "../../technical", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
-hex-literal = { version = "0.4", optional = true }
+hex-literal = { workspace = true, optional = true }
 
 [features]
 default = ["std"]

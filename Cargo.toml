@@ -2,10 +2,6 @@
 # sp-io = { path = "../sora-polkadot-sdk/substrate/primitives/io"}
 # The latest versions of thread_local (1.1.2) had a memory leak. This version doesn't have it.
 thread_local = { git = "https://github.com/sora-xor/thread_local-rs.git", branch = "patch-1.0.1" }
-sp-api-proc-macro = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "release-polkadot-v1.6.0" }
-
-[patch."https://github.com/open-web3-stack/open-runtime-module-library"]
-sp-api-proc-macro = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "release-polkadot-v1.6.0" }
 
 # TODO: Decide to stay with patch there or change at sdk repository
 # patch check only url changes, not rev, so add to url ignored filter
@@ -72,12 +68,12 @@ fixnum = { git = "https://github.com/sora-xor/fixnum", branch = "sora-v2.1.0", d
 jsonrpc-core = { git = "https://github.com/sora-xor/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
 
 # ORML
-currencies = { version = "0.7.0", package = "orml-currencies", default-features = false }
-tokens = { version = "0.7.0", package = "orml-tokens", default-features = false }
-traits = { version = "0.7.0", package = "orml-traits", default-features = false }
-orml-currencies = { version = "0.7.0", default-features = false }
-orml-tokens = { version = "0.7.0", default-features = false }
-orml-traits = { version = "0.7.0", default-features = false }
+currencies = { version = "1.0.0", package = "orml-currencies", default-features = false }
+tokens = { version = "1.0.0", package = "orml-tokens", default-features = false }
+traits = { version = "1.0.0", package = "orml-traits", default-features = false }
+orml-currencies = { version = "1.0.0", default-features = false }
+orml-tokens = { version = "1.0.0", default-features = false }
+orml-traits = { version = "1.0.0", default-features = false }
 
 
 # Polkadot SDK
@@ -183,79 +179,79 @@ sp-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "rel
 xcm = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "release-polkadot-v1.6.0", package = "staging-xcm", default-features = false }
 
 # Common
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
-bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", package = "pallet-multisig", default-features = false }
 
-# Crates.io
-ahash = "=0.8.7"
-ansi_term = "0.12.1"
-anyhow = "1.0.51"
-assert_cmd = "=2.0.13"
-async-std = { version = "1.5" }
-bstr = "=1.9.1"
-bumpalo = "=3.14.0"
-cargo-platform = "=0.1.7"
-chrono = { version = "0.4.19" }
-clap = { version = "=4.5.4" }
-clap_lex = { version = "=0.5.0" }
-codec = { package = "parity-scale-codec", version = "3" }
-enum-as-inner = "=0.5.1"
-env_logger = "0.10.0"
-futures = "0.3"
-futures-timer = "3.0.2"
-hex = { version = "0.4.2" }
-hex-literal = "0.4.1"
-itertools = { version = "0.10.5" }
-parity-scale-codec-derive = "3"
-parity-util-mem = { version = "0.12.0" }
-parking_lot = "0.12.0"
-paste = "1.0.0"
-predicates = "=3.1.0"
-predicates-core = "=1.0.6"
-predicates-tree = "=1.0.9"
-static_assertions = "1.1.0"
-strum = { version = "0.25.0" }
-substrate-bip39 = "=0.4.5"
-thiserror = "1.0"
-tiny-keccak = { version = "2.0.2" }
-substrate-build-script-utils = "3"
-twox-hash = { version = "1.5.0" }
-tokio = { version = "1.10.1" }
-blake2-rfc = { version = "0.2.18" }
-ethereum-types = { version = "0.14.0" }
-fallible-iterator = { version = "0.2.0" }
-jsonrpsee = { version = "0.16.2" }
-scale-info = { version = "2" }
-schnellru = "=0.2.1"
-secp256k1 = { version = "0.7", package = "libsecp256k1" }
-serde = { version = "1.0.101" }
-serde_bytes = { version = "0.11" }
-serde_json = "1.0.61"
-sha3 = { version = "0.9.1" }
-smallvec = "1.5.0"
-rand = { version = "0.8.5" }
-rand_chacha = { version = "0.3.1" }
-rustc-hex = { version = "2.1.0" }
-log = "0.4.8"
-num-format = { version = "0.4.0" }
-num-traits = { version = "0.2.12" }
-once_cell = { version = "1.5.2" }
+# Crates.io (Use this in members of workspace for consistency)
+ahash = { version = "=0.8.7", default-features = false }
+ansi_term = { version = "0.12.1", default-features = false }
+anyhow = { version = "1.0.51", default-features = false }
+assert_cmd = { version = "=2.0.13", default-features = false }
+bstr = { version = "=1.9.1", default-features = false }
+bumpalo = { version = "=3.14.0", default-features = false }
+cargo-platform = { version = "=0.1.7", default-features = false }
+enum-as-inner = { version = "=0.5.1", default-features = false }
+env_logger = { version = "0.10.0", default-features = false }
+futures = { version = "0.3", default-features = false }
+futures-timer = { version = "3.0.2", default-features = false }
+hex-literal = { version = "0.4.1", default-features = false }
+parity-scale-codec-derive = { version = "3", default-features = false }
+parking_lot = { version = "0.12.0", default-features = false }
+paste = { version = "1.0.0", default-features = false }
+predicates = { version = "=3.1.0", default-features = false }
+predicates-core = { version = "=1.0.6", default-features = false }
+predicates-tree = { version = "=1.0.9", default-features = false }
+static_assertions = { version = "1.1.0", default-features = false }
+substrate-bip39 = { version = "=0.4.5", default-features = false }
+thiserror = { version = "1.0", default-features = false }
+substrate-build-script-utils = { version = "3", default-features = false }
+schnellru = { version = "=0.2.1", default-features = false }
+serde_json = { version = "1.0.61", default-features = false }
+smallvec = { version = "1.5.0", default-features = false }
+log = { version = "0.4.8", default-features = false }
 
+itertools = { version = "0.10.5", default-features = false }
+serde_bytes = { version = "0.11", default-features = false }
+parity-util-mem = { version = "0.12.0", default-features = false }
+ethereum-types = { version = "0.14.0", default-features = false }
+jsonrpsee = { version = "0.16.2", default-features = false }
+fallible-iterator = { version = "0.2.0", default-features = false }
+num-traits = { version = "0.2.12", default-features = false }
+blake2-rfc = { version = "0.2.18", default-features = false }
+strum = { version = "0.25.0", default-features = false }
+rand_chacha = { version = "0.3.1", default-features = false }
+num-format = { version = "0.4.0", default-features = false }
+chrono = { version = "0.4.19", default-features = false }
+hex = { version = "0.4.2", default-features = false }
+secp256k1 = { version = "0.7", package = "libsecp256k1", default-features = false }
+rand = { version = "0.8.5", default-features = false }
+sha3 = { version = "0.9.1", default-features = false }
+serde = { version = "1.0.101", default-features = false }
+tokio = { version = "1.10.1", default-features = false }
+async-std = { version = "1.5", default-features = false }
+twox-hash = { version = "1.5.0", default-features = false }
+once_cell = { version = "1.5.2", default-features = false }
+scale-info = { version = "2", default-features = false }
+tiny-keccak = { version = "2.0.2", default-features = false }
+rustc-hex = { version = "2.1.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false }
+clap_lex = { version = "=0.5.0", default-features = false }
+clap = { version = "=4.5.4", default-features = false }
 
 
 [profile.release]

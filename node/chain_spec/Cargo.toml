@@ -10,7 +10,7 @@ codec = { package = "parity-scale-codec", version = "3", features = [
     "chain-error",
 ] }
 frame-support = { workspace = true }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 sc-consensus-grandpa = { workspace = true }
 # sc-finality-grandpa = { workspace = true, package = "finality-grandpa" }
 sc-network = { workspace = true }
@@ -22,8 +22,8 @@ sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 
-serde = { version = "1.0.101", features = ["derive"] }
-serde_json = "1.0.61"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 
 bridge-multisig = { workspace = true, default-features = false }
 

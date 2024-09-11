@@ -14,13 +14,13 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 currencies = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 orml-traits = { workspace = true, default-features = false }
 serde = { version = "1.0.101", default-features = false, features = [
     "derive",
@@ -41,7 +41,7 @@ pallet-timestamp = { workspace = true, default-features = false }
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 pallet-balances = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }

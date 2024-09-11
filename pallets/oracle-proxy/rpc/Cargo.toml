@@ -12,7 +12,7 @@ repository = 'https://github.com/sora-xor/sora2-network'
 [dependencies]
 oracle-proxy-runtime-api = { path = "../runtime-api" }
 codec = { package = "parity-scale-codec", version = "3" }
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
+jsonrpsee = { workspace = true, features = ["server", "macros"] }
 sp-runtime = { workspace = true, default-features = false }
 sp-blockchain = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }

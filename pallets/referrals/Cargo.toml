@@ -15,13 +15,13 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 common = { path = "../../common", default-features = false }
-hex-literal = { version = "0.4.1", default-features = false, optional = true }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
+hex-literal = { workspace = true, default-features = false, optional = true }
+serde = { workspace = true, optional = true, features = ["derive"] }
 sp-std = { workspace = true, default-features = false }
 traits = { workspace = true, default-features = false, optional = true }
 

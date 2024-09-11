@@ -16,7 +16,7 @@ currencies = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 frame-benchmarking = { workspace = true, default-features = false }
-hex-literal = { version = "0.4.1" }
+hex-literal = { workspace = true }
 sp-core = { workspace = true, default-features = false }
 sp-runtime = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
@@ -30,7 +30,7 @@ band = { path = "../../band", default-features = false }
 oracle-proxy = { path = "../../oracle-proxy", default-features = false }
 xst = { path = "../../xst", default-features = false }
 assets = { path = "../../assets", default-features = false }
-scale-info = { version = "2", default-features = false }
+scale-info = { workspace = true, default-features = false }
 tokens = { workspace = true, default-features = false }
 price-tools = { path = "../../price-tools", default-features = false }
 

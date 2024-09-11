@@ -15,12 +15,12 @@ rustdoc-args = ["--html-in-header", "misc/docs-katex-header.html"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 currencies = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-hex-literal = { version = "0.4.1" }
+hex-literal = { workspace = true }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
     "derive",
 ] }
@@ -42,7 +42,7 @@ pallet-timestamp = { workspace = true, default-features = false }
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker" }
 demeter-farming-platform = { path = "../demeter-farming-platform" }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 pallet-balances = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }

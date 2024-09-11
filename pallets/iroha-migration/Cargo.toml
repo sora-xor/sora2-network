@@ -14,18 +14,18 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-hex = { version = "0.4.2", default-features = false }
-hex-literal = { version = "0.4.1", optional = true }
+hex = { workspace = true, default-features = false }
+hex-literal = { workspace = true, optional = true }
 pallet-multisig = { workspace = true, default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
     "derive",
 ] }
-sha3 = { version = "0.9.1", default-features = false }
+sha3 = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 
 ed25519-dalek-iroha = { workspace = true, default-features = false, features = [

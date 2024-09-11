@@ -15,12 +15,12 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-hex-literal = { version = "0.4.1", optional = true }
+hex-literal = { workspace = true, optional = true }
 pallet-scheduler = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
 sp-arithmetic = { workspace = true, default-features = false }
@@ -41,13 +41,13 @@ vested-rewards = { path = "../vested-rewards", default-features = false }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 currencies = { workspace = true }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-env_logger = "0.10.0"
-hex-literal = { version = "0.4.1" }
+env_logger = { workspace = true }
+hex-literal = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-scheduler = { workspace = true }
 sp-io = { workspace = true }
 tokens = { workspace = true }
-log = "0.4.14"
+log = { workspace = true }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }

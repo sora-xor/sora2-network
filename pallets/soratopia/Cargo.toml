@@ -19,8 +19,8 @@ common = { path = "../../common", default-features = false }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-hex-literal = { version = "0.4", optional = true }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+hex-literal = { workspace = true, optional = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 sp-arithmetic = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, optional = true }

@@ -14,7 +14,7 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 currencies = { workspace = true, default-features = false }
 tokens = { workspace = true, default-features = false }
 traits = { workspace = true, default-features = false }
@@ -29,14 +29,14 @@ assets = { path = "../assets", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
-itertools = { version = "0.10.5", default-features = false }
-fallible-iterator = { version = "0.2.0", default-features = false }
-log = "0.4.20"
+itertools = { workspace = true, default-features = false }
+fallible-iterator = { workspace = true, default-features = false }
+log = { workspace = true }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-serde = { version = "1.0.101", default-features = false, features = ["derive"] }
+serde = { workspace = true, default-features = false, features = ["derive"] }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
 dex-api = { path = "../dex-api" }
@@ -53,7 +53,7 @@ pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
 extended-assets = { path = "../extended-assets", features = ["test"] }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 
 
 [features]

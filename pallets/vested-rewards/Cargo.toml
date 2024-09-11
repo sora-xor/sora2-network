@@ -14,14 +14,14 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 currencies = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
-hex-literal = { version = "0.4.1" }
-serde = { version = "1.0.101", features = ["derive"], default-features = false }
+hex-literal = { workspace = true }
+serde = { workspace = true, features = ["derive"], default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
@@ -30,15 +30,15 @@ traits = { workspace = true, default-features = false }
 common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 sp-runtime = { workspace = true, default-features = false }
-hex = { version = "0.4", default-features = false, features = ["serde"] }
+hex = { workspace = true, default-features = false, features = ["serde"] }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 serde_bytes = { version = "0.11", default-features = false, features = [
     "alloc",
 ] }
-serde_json = { version = "1.0", default-features = false }
+serde_json = { workspace = true, default-features = false }
 technical = { path = "../technical", default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
-itertools = { version = "0.10.5", default-features = false }
+itertools = { workspace = true, default-features = false }
 
 [dev-dependencies]
 pallet-balances = { workspace = true }

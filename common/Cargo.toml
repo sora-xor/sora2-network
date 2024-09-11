@@ -8,11 +8,11 @@ repository = 'https://github.com/sora-xor/sora2-network'
 edition = "2021"
 
 [dependencies]
-blake2-rfc = { version = "0.2.18", default-features = false }
+blake2-rfc = { workspace = true, default-features = false }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 currencies = { workspace = true, default-features = false }
 fixnum = { workspace = true, default-features = false, features = [
     "i128",
@@ -26,31 +26,31 @@ secp256k1 = { version = "0.7", features = [
     'hmac',
 ], default-features = false, package = "libsecp256k1" }
 thiserror = "1.0"
-num-traits = { version = "0.2.12", default-features = false }
+num-traits = { workspace = true, default-features = false }
 orml-traits = { workspace = true, default-features = false }
-paste = "1.0.0"
+paste = { workspace = true }
 pallet-timestamp = { workspace = true, default-features = false }
-rustc-hex = { version = "2.1.0", default-features = false }
+rustc-hex = { workspace = true, default-features = false }
 serde = { version = "1.0", features = [
     "derive",
 ], default-features = false }
-smallvec = "1.7.0"
-strum = { version = "0.25.0", features = ["derive"], default-features = false }
+smallvec = { workspace = true }
+strum = { workspace = true, features = ["derive"], default-features = false }
 sp-api = { workspace = true, default-features = false }
 sp-arithmetic = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
 sp-runtime = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
-static_assertions = "1.1.0"
-hex-literal = "0.4.1"
-env_logger = { version = "0.10.0", optional = true }
+static_assertions = { workspace = true }
+hex-literal = { workspace = true }
+env_logger = { workspace = true, optional = true }
 bridge-types = { workspace = true, default-features = false }
-log = "0.4.20"
+log = { workspace = true }
 
 [dev-dependencies]
-serde_json = "1.0.41"
-env_logger = { version = "0.10.0" }
+serde_json = { workspace = true }
+env_logger = { workspace = true }
 
 [features]
 default = ['std']

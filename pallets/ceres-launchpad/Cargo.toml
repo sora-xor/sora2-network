@@ -19,7 +19,7 @@ ceres-token-locker = { path = "../ceres-token-locker", default-features = false 
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
@@ -37,7 +37,7 @@ vested-rewards = { path = "../vested-rewards", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical", default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 
 [dev-dependencies]
 assets = { path = "../assets" }

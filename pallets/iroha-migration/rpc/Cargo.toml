@@ -8,7 +8,7 @@ homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
+jsonrpsee = { workspace = true, features = ["server", "macros"] }
 sp-runtime = { workspace = true }
 sp-api = { workspace = true }
 sp-blockchain = { workspace = true }

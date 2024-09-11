@@ -14,7 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 sp-runtime = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
@@ -24,7 +24,7 @@ assets = { path = "../../assets", default-features = false }
 common = { path = "../../../common", default-features = false }
 order-book = { path = "..", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
-log = "0.4.20"
+log = { workspace = true }
 
 [dev-dependencies]
 sp-core = { workspace = true, default-features = false }
@@ -36,7 +36,7 @@ framenode-runtime = { path = "../../../runtime", default-features = false, featu
 pallet-balances = { workspace = true }
 pallet-collective = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
-log = "0.4.20"
+log = { workspace = true }
 
 [features]
 default = ["std"]

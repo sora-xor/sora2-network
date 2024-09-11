@@ -11,9 +11,9 @@ repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
-serde = { version = "1.0.101", features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+jsonrpsee = { workspace = true, features = ["server", "macros"] }
+serde = { workspace = true, features = ["derive"] }
 sp-api = { workspace = true }
 sp-blockchain = { workspace = true }
 sp-core = { workspace = true }

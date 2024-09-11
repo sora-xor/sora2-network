@@ -20,9 +20,9 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 ] }
 # Does not compile with newer version
 parity-scale-codec-derive = "3"
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = "0.4.1"
-log = { version = "0.4.14" }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+hex-literal = { workspace = true }
+log = { workspace = true }
 serde = { features = [
     'derive',
 ], default-features = false, optional = true, version = '1.0.101' }
@@ -164,15 +164,15 @@ frame-election-provider-support = { workspace = true, default-features = false }
 
 # Other
 currencies = { workspace = true, default-features = false }
-static_assertions = "1.1.0"
+static_assertions = { workspace = true }
 tokens = { workspace = true, default-features = false }
 traits = { workspace = true, default-features = false }
 bridge-types = { workspace = true, default-features = false, optional = true }
 
 [dev-dependencies]
-env_logger = "0.10.0"
+env_logger = { workspace = true }
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
-tokio = { version = "1.19.2", features = ["macros"] }
+tokio = { workspace = true, features = ["macros"] }
 sp-tracing = { workspace = true }
 frame-remote-externalities = { workspace = true }
 

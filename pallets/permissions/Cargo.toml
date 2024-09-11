@@ -16,10 +16,10 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 common = { path = "../../common", default-features = false }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-serde = { version = "1.0.101", features = ["derive"], default-features = false }
+serde = { workspace = true, features = ["derive"], default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 

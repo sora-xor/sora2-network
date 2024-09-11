@@ -16,13 +16,13 @@ assets = { path = "../assets", default-features = false }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
 	"derive",
 ] }
-log = { version = "0.4.20" }
+log = { workspace = true }
 common = { path = "../../common", default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-hex-literal = { version = "0.4", optional = true }
+hex-literal = { workspace = true, optional = true }
 pallet-timestamp = { workspace = true, default-features = false }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 permissions = { path = "../permissions", default-features = false }
 sp-arithmetic = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }

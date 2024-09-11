@@ -15,7 +15,7 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 common = { path = "../../common", default-features = false }
 currencies = { workspace = true, default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
@@ -29,16 +29,16 @@ serde = { version = "1.0.101", optional = true, features = [
 ], default-features = false }
 sp-arithmetic = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
-strum = { version = "0.25.0", default-features = false }
+strum = { workspace = true, default-features = false }
 tokens = { workspace = true, default-features = false }
 traits = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
-log = "0.4.20"
+log = { workspace = true }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-hex-literal = "0.4.1"
+hex-literal = { workspace = true }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
 sp-runtime = { workspace = true, default-features = false }

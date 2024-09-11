@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "=4.5.4", features = ["derive"] }
+clap = { workspace = true, features = ["derive"] }
 
 sp-io = { workspace = true }
 frame-support = { workspace = true }
@@ -14,8 +14,8 @@ frame-system = { workspace = true }
 frame-election-provider-support = { workspace = true }
 pallet-staking = { workspace = true }
 
-chrono = { version = "0.4.19" }
-num-format = { version = "0.4.0" }
+chrono = { workspace = true }
+num-format = { workspace = true }
 
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
     "std",
