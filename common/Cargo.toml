@@ -25,7 +25,8 @@ frame-system = { workspace = true, default-features = false }
 secp256k1 = { version = "0.7", features = [
     'hmac',
 ], default-features = false, package = "libsecp256k1" }
-thiserror = "1.0"
+# Need for build, while not added no_std (https://github.com/dtolnay/thiserror/issues/318)
+thiserror = "=1.0.60"
 num-traits = { workspace = true, default-features = false }
 orml-traits = { workspace = true, default-features = false }
 paste = { workspace = true }

@@ -29,7 +29,21 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // pub const ASSET_ID_PREFIX_PREDEFINED: u8 = 2;
 //
+
+// TODO: For build use in the way, but it is duplicate, so need try use pallets::order_book::src::types (maybe make `types` - package?)
+#[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, Hash)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub struct OrderBookId<AssetId, DEXId> {
+    /// DEX id
+    pub dex_id: DEXId,
+    /// Base asset.
+    pub base: AssetId,
+    /// Quote asset. It should be a base asset of DEX.
+    pub quote: AssetId,
+}
+
 pub type OrderId = u128;
+
 // pub type DEXId = u32;
 // pub type Balance = u128;
 //
@@ -72,13 +86,3 @@ pub type OrderId = u128;
 //     }
 // }
 //
-// #[derive(Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, Hash)]
-// #[ink::scale_derive(Encode, Decode, TypeInfo)]
-// pub struct OrderBookId<AssetId, DEXId> {
-//     /// DEX id
-//     pub dex_id: DEXId,
-//     /// Base asset.
-//     pub base: AssetId,
-//     /// Quote asset. It should be a base asset of DEX.
-//     pub quote: AssetId,
-// }

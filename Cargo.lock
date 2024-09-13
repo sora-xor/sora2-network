@@ -218,10 +218,10 @@ dependencies = [
  "price-tools",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -463,19 +463,6 @@ dependencies = [
 
 [[package]]
 name = "ark-scale"
-version = "0.0.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49b08346a3e38e2be792ef53ee168623c9244d968ff00cd70fb9932f6fe36393"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "parity-scale-codec",
-]
-
-[[package]]
-name = "ark-scale"
 version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f69c00b3b529be29528a6f2fd5fa7b1790f8bed81b9cdca17e326538545a179"
@@ -486,21 +473,6 @@ dependencies = [
  "ark-std",
  "parity-scale-codec",
  "scale-info",
-]
-
-[[package]]
-name = "ark-secret-scalar"
-version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "ark-transcript 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=4125212)",
- "digest 0.10.7",
- "rand_core 0.6.4",
- "zeroize",
 ]
 
 [[package]]
@@ -548,21 +520,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94893f1e0c6eeab764ade8dc4c0db24caf4fe7cbbaafc0eba0a9030f447b5185"
 dependencies = [
  "num-traits",
- "rand 0.8.5",
+ "rand",
  "rayon",
-]
-
-[[package]]
-name = "ark-transcript"
-version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
-dependencies = [
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "digest 0.10.7",
- "rand_core 0.6.4",
- "sha3 0.10.8",
 ]
 
 [[package]]
@@ -708,10 +667,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "tiny-keccak",
 ]
 
@@ -725,10 +684,10 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -741,8 +700,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -952,32 +911,11 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "xst",
-]
-
-[[package]]
-name = "bandersnatch_vrfs"
-version = "0.0.1"
-source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
-dependencies = [
- "ark-bls12-381",
- "ark-ec",
- "ark-ed-on-bls12-381-bandersnatch",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "dleq_vrf 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=4125212)",
- "fflonk",
- "merlin 3.0.0",
- "rand_chacha 0.3.1",
- "rand_core 0.6.4",
- "ring 0.1.0 (git+https://github.com/w3f/ring-proof?rev=0e948f3)",
- "sha2 0.10.8",
- "zeroize",
 ]
 
 [[package]]
@@ -991,12 +929,12 @@ dependencies = [
  "ark-ff",
  "ark-serialize",
  "ark-std",
- "dleq_vrf 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=e9782f9)",
+ "dleq_vrf",
  "fflonk",
  "merlin 3.0.0",
- "rand_chacha 0.3.1",
+ "rand_chacha",
  "rand_core 0.6.4",
- "ring 0.1.0 (git+https://github.com/w3f/ring-proof)",
+ "ring 0.1.0",
  "sha2 0.10.8",
  "sp-ark-bls12-381",
  "sp-ark-ed-on-bls12-381-bandersnatch",
@@ -1061,10 +999,10 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1078,9 +1016,9 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1093,8 +1031,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1143,7 +1081,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93f2635620bf0b9d4576eb7bb9a38a55df78bd1205d26fa994b25911a69f212f"
 dependencies = [
  "bitcoin_hashes 0.11.0",
- "rand 0.8.5",
+ "rand",
  "rand_core 0.6.4",
  "serde",
  "unicode-normalization",
@@ -1363,10 +1301,10 @@ dependencies = [
  "rlp",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1383,9 +1321,9 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -1402,10 +1340,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1430,11 +1368,11 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
  "sp-keyring",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "staging-xcm 1.0.0",
  "technical",
 ]
@@ -1451,10 +1389,10 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1466,8 +1404,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -1495,10 +1433,10 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "staging-xcm 1.0.0",
 ]
 
@@ -1663,10 +1601,10 @@ dependencies = [
  "price-tools",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -1696,10 +1634,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -1729,10 +1667,10 @@ dependencies = [
  "price-tools",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -1761,10 +1699,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -1786,10 +1724,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -1817,10 +1755,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -1974,7 +1912,7 @@ dependencies = [
  "anstream",
  "anstyle",
  "clap_lex 0.7.2",
- "strsim 0.11.1",
+ "strsim",
  "terminal_size",
 ]
 
@@ -2034,7 +1972,6 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
- "bridge-types",
  "env_logger",
  "fixnum",
  "frame-support 4.0.0-dev",
@@ -2054,28 +1991,14 @@ dependencies = [
  "serde_json",
  "smallvec",
  "sp-api 4.0.0-dev",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "static_assertions",
  "strum 0.25.0",
  "thiserror",
-]
-
-[[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/w3f/ring-proof?rev=0e948f3#0e948f3c28cbacecdd3020403c4841c0eb339213"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "ark-std",
- "fflonk",
- "merlin 3.0.0",
 ]
 
 [[package]]
@@ -2191,8 +2114,8 @@ version = "0.1.0"
 dependencies = [
  "common 0.1.0",
  "ink",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2542,41 +2465,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "darling"
-version = "0.14.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b750cb3417fd1b327431a470f388520309479ab0bf5e323505daf0290cd3850"
-dependencies = [
- "darling_core",
- "darling_macro",
-]
-
-[[package]]
-name = "darling_core"
-version = "0.14.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "109c1ca6e6b7f82cc233a97004ea8ed7ca123a9af07a8230878fcfda9b158bf0"
-dependencies = [
- "fnv",
- "ident_case",
- "proc-macro2",
- "quote",
- "strsim 0.10.0",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "darling_macro"
-version = "0.14.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4aab4dbc9f7611d8b55048a3a16d2d010c2c8334e46304b40ac1cc14bf3b48e"
-dependencies = [
- "darling_core",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "data-encoding"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2627,10 +2515,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -2660,11 +2548,11 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -2775,11 +2663,11 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "strum 0.25.0",
  "technical",
 ]
@@ -2794,10 +2682,10 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2816,10 +2704,10 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2831,10 +2719,10 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2844,8 +2732,8 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2857,8 +2745,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2951,10 +2839,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2971,29 +2859,12 @@ dependencies = [
 [[package]]
 name = "dleq_vrf"
 version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf?rev=4125212#4125212332d46b3e0d636f0c3074f5c1b6c293e6"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-scale 0.0.10",
- "ark-secret-scalar 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=4125212)",
- "ark-serialize",
- "ark-std",
- "ark-transcript 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=4125212)",
- "arrayvec 0.7.6",
- "rand_core 0.6.4",
- "zeroize",
-]
-
-[[package]]
-name = "dleq_vrf"
-version = "0.0.2"
 source = "git+https://github.com/w3f/ring-vrf?rev=e9782f9#e9782f938629c90f3adb3fff2358bc8d1386af3e"
 dependencies = [
  "ark-ec",
  "ark-ff",
- "ark-scale 0.0.12",
- "ark-secret-scalar 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=e9782f9)",
+ "ark-scale",
+ "ark-secret-scalar",
  "ark-serialize",
  "ark-std",
  "ark-transcript 0.0.2 (git+https://github.com/w3f/ring-vrf?rev=e9782f9)",
@@ -3303,11 +3174,11 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "tokio",
 ]
 
@@ -3320,8 +3191,8 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -3331,8 +3202,8 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -3451,10 +3322,10 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -3498,10 +3369,10 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -3544,11 +3415,11 @@ dependencies = [
  "pool-xyk",
  "pswap-distribution",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -3563,7 +3434,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -3572,7 +3443,7 @@ version = "0.1.0"
 dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -3598,11 +3469,11 @@ dependencies = [
  "permissions",
  "rewards",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -3700,7 +3571,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "835c052cb0c08c1acf6ffd71c022172e18723949c8282f2b9f27efbc51e64534"
 dependencies = [
  "byteorder",
- "rand 0.8.5",
+ "rand",
  "rustc-hex",
  "static_assertions",
 ]
@@ -3788,13 +3659,13 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-runtime-interface 17.0.0",
+ "sp-std 8.0.0",
+ "sp-storage 13.0.0",
  "static_assertions",
 ]
 
@@ -3818,7 +3689,7 @@ dependencies = [
  "linked-hash-map",
  "log",
  "parity-scale-codec",
- "rand 0.8.5",
+ "rand",
  "rand_pcg",
  "sc-block-builder",
  "sc-cli",
@@ -3831,17 +3702,17 @@ dependencies = [
  "serde_json",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-database",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-externalities 0.19.0",
  "sp-inherents 4.0.0-dev",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
+ "sp-storage 13.0.0",
+ "sp-trie 22.0.0",
+ "sp-wasm-interface 14.0.0",
  "thiserror",
  "thousands",
 ]
@@ -3867,11 +3738,11 @@ dependencies = [
  "frame-system 4.0.0-dev",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
  "sp-npos-elections",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -3885,11 +3756,11 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-tracing 10.0.0",
 ]
 
 [[package]]
@@ -3915,10 +3786,10 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
  "spinners",
  "substrate-rpc-client",
  "tokio",
@@ -3948,20 +3819,20 @@ dependencies = [
  "serde_json",
  "smallvec",
  "sp-api 4.0.0-dev",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
  "sp-core-hashing-proc-macro",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-debug-derive 8.0.0",
  "sp-genesis-builder 0.1.0",
  "sp-inherents 4.0.0-dev",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
  "sp-metadata-ir 0.1.0",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-state-machine 0.28.0",
+ "sp-std 8.0.0",
+ "sp-tracing 10.0.0",
+ "sp-weights 20.0.0",
  "static_assertions",
  "tt-call",
 ]
@@ -4023,7 +3894,7 @@ dependencies = [
  "proc-macro-warning",
  "proc-macro2",
  "quote",
- "sp-core-hashing 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core-hashing",
  "syn 2.0.77",
 ]
 
@@ -4105,12 +3976,12 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "sp-version 22.0.0",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-weights 20.0.0",
 ]
 
 [[package]]
@@ -4144,9 +4015,9 @@ dependencies = [
  "frame-system 4.0.0-dev",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -4166,8 +4037,8 @@ dependencies = [
  "frame-support 4.0.0-dev",
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -4246,24 +4117,24 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api 4.0.0-dev",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-keystore 0.27.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-statement-store",
  "sp-timestamp",
  "sp-transaction-pool",
  "sp-transaction-storage-proof",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-trie 22.0.0",
  "substrate-bip39 0.4.5",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
@@ -4296,9 +4167,9 @@ dependencies = [
  "serde_json",
  "sp-consensus-aura",
  "sp-consensus-babe",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "technical",
  "xor-fee",
 ]
@@ -4425,17 +4296,17 @@ dependencies = [
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
  "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-session",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
+ "sp-tracing 10.0.0",
  "sp-transaction-pool",
  "sp-version 22.0.0",
  "static_assertions",
@@ -4668,7 +4539,7 @@ version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ea1015b5a70616b688dc230cfe50c8af89d972cb132d5a622814d29773b10b9"
 dependencies = [
- "rand 0.8.5",
+ "rand",
  "rand_core 0.6.4",
 ]
 
@@ -4853,10 +4724,10 @@ dependencies = [
  "price-tools",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -5073,12 +4944,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ident_case"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
-
-[[package]]
 name = "idna"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5234,13 +5099,11 @@ dependencies = [
  "derive_more",
  "ink_env",
  "ink_macro",
- "ink_metadata",
  "ink_prelude",
  "ink_primitives",
  "ink_storage",
  "pallet-contracts-uapi-next",
  "parity-scale-codec",
- "scale-info",
 ]
 
 [[package]]
@@ -5275,33 +5138,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "ink_engine"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f357e2e867f4e222ffc4015a6e61d1073548de89f70a4e36a8b0385562777fa"
-dependencies = [
- "blake2 0.10.6",
- "derive_more",
- "ink_primitives",
- "pallet-contracts-uapi-next",
- "parity-scale-codec",
- "secp256k1 0.28.2",
- "sha2 0.10.8",
- "sha3 0.10.8",
-]
-
-[[package]]
 name = "ink_env"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42cec50b7e4f8406aab25801b015d3802a52d76cfbe48ce11cfb4200fa88e296"
 dependencies = [
- "blake2 0.10.6",
  "cfg-if",
  "const_env",
  "derive_more",
  "ink_allocator",
- "ink_engine",
  "ink_prelude",
  "ink_primitives",
  "ink_storage_traits",
@@ -5310,13 +5155,6 @@ dependencies = [
  "parity-scale-codec",
  "paste",
  "rlibc",
- "scale-decode",
- "scale-encode",
- "scale-info",
- "schnorrkel 0.11.4",
- "secp256k1 0.28.2",
- "sha2 0.10.8",
- "sha3 0.10.8",
  "static_assertions",
 ]
 
@@ -5353,23 +5191,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ink_metadata"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a98fcc0ff9292ff68c7ee7b84c93533c9ff13859ec3b148faa822e2da9954fe6"
-dependencies = [
- "derive_more",
- "impl-serde",
- "ink_prelude",
- "ink_primitives",
- "linkme",
- "parity-scale-codec",
- "scale-info",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "ink_prelude"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5387,9 +5208,6 @@ dependencies = [
  "derive_more",
  "ink_prelude",
  "parity-scale-codec",
- "scale-decode",
- "scale-encode",
- "scale-info",
  "xxhash-rust",
 ]
 
@@ -5403,13 +5221,11 @@ dependencies = [
  "cfg-if",
  "derive_more",
  "ink_env",
- "ink_metadata",
  "ink_prelude",
  "ink_primitives",
  "ink_storage_traits",
  "pallet-contracts-uapi-next",
  "parity-scale-codec",
- "scale-info",
 ]
 
 [[package]]
@@ -5418,11 +5234,9 @@ version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83ce49e3d2935fc1ec3e73117119712b187d3123339f6a31624e92f75fa2293d"
 dependencies = [
- "ink_metadata",
  "ink_prelude",
  "ink_primitives",
  "parity-scale-codec",
- "scale-info",
 ]
 
 [[package]]
@@ -5512,10 +5326,10 @@ dependencies = [
  "scale-info",
  "serde",
  "sha3 0.9.1",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -5528,7 +5342,7 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-blockchain",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -5605,10 +5419,10 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -5695,7 +5509,7 @@ dependencies = [
  "hyper",
  "jsonrpsee-types",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -5825,11 +5639,11 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -5846,10 +5660,10 @@ dependencies = [
  "parity-scale-codec",
  "pool-xyk",
  "price-tools",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -5918,11 +5732,11 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -5937,9 +5751,9 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -5952,8 +5766,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -6061,7 +5875,7 @@ dependencies = [
  "parking_lot 0.12.3",
  "pin-project",
  "quick-protobuf",
- "rand 0.8.5",
+ "rand",
  "rw-stream-sink",
  "smallvec",
  "thiserror",
@@ -6117,7 +5931,7 @@ dependencies = [
  "multiaddr",
  "multihash",
  "quick-protobuf",
- "rand 0.8.5",
+ "rand",
  "sha2 0.10.8",
  "thiserror",
  "zeroize",
@@ -6142,7 +5956,7 @@ dependencies = [
  "libp2p-swarm",
  "log",
  "quick-protobuf",
- "rand 0.8.5",
+ "rand",
  "sha2 0.10.8",
  "smallvec",
  "thiserror",
@@ -6164,7 +5978,7 @@ dependencies = [
  "libp2p-identity",
  "libp2p-swarm",
  "log",
- "rand 0.8.5",
+ "rand",
  "smallvec",
  "socket2 0.4.10",
  "tokio",
@@ -6200,7 +6014,7 @@ dependencies = [
  "log",
  "once_cell",
  "quick-protobuf",
- "rand 0.8.5",
+ "rand",
  "sha2 0.10.8",
  "snow",
  "static_assertions",
@@ -6222,7 +6036,7 @@ dependencies = [
  "libp2p-core",
  "libp2p-swarm",
  "log",
- "rand 0.8.5",
+ "rand",
  "void",
 ]
 
@@ -6242,7 +6056,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.3",
  "quinn-proto",
- "rand 0.8.5",
+ "rand",
  "rustls 0.20.9",
  "thiserror",
  "tokio",
@@ -6260,7 +6074,7 @@ dependencies = [
  "libp2p-core",
  "libp2p-identity",
  "libp2p-swarm",
- "rand 0.8.5",
+ "rand",
  "smallvec",
 ]
 
@@ -6279,7 +6093,7 @@ dependencies = [
  "libp2p-identity",
  "libp2p-swarm-derive",
  "log",
- "rand 0.8.5",
+ "rand",
  "smallvec",
  "tokio",
  "void",
@@ -6416,7 +6230,7 @@ dependencies = [
  "libsecp256k1-core",
  "libsecp256k1-gen-ecmult",
  "libsecp256k1-gen-genmult",
- "rand 0.8.5",
+ "rand",
  "serde",
  "sha2 0.9.9",
  "typenum",
@@ -6487,26 +6301,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "linkme"
-version = "0.3.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c943daedff228392b791b33bba32e75737756e80a613e32e246c6ce9cbab20a"
-dependencies = [
- "linkme-impl",
-]
-
-[[package]]
-name = "linkme-impl"
-version = "0.3.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb26336e6dc7cc76e7927d2c9e7e3bb376d7af65a6f56a0b16c47d18a9b1abc5"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.77",
-]
-
-[[package]]
 name = "linregress"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6573,11 +6367,11 @@ dependencies = [
  "qa-tools",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -6612,10 +6406,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -6631,10 +6425,10 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -6647,8 +6441,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -6918,8 +6712,8 @@ dependencies = [
  "lioness",
  "log",
  "parking_lot 0.12.3",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
+ "rand",
+ "rand_chacha",
  "rand_distr",
  "subtle 2.4.1",
  "thiserror",
@@ -6940,9 +6734,9 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -6956,9 +6750,9 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -6979,11 +6773,11 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -7071,11 +6865,11 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "vested-rewards",
@@ -7132,10 +6926,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7185,7 +6979,7 @@ version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7bddcd3bf5144b6392de80e04c347cd7fab2508f6df16a85fc496ecd5cec39bc"
 dependencies = [
- "rand 0.8.5",
+ "rand",
 ]
 
 [[package]]
@@ -7459,10 +7253,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7474,8 +7268,8 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7487,8 +7281,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7510,11 +7304,11 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-tracing 10.0.0",
  "technical",
  "trading-pair",
 ]
@@ -7537,10 +7331,10 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "trading-pair",
 ]
 
@@ -7634,10 +7428,10 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-consensus-aura",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7650,8 +7444,8 @@ dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7668,14 +7462,14 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-consensus-babe",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "sp-session",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7692,8 +7486,8 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7707,8 +7501,8 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7725,10 +7519,10 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-consensus-beefy",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-session",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7749,11 +7543,11 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7767,10 +7561,10 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7789,16 +7583,16 @@ dependencies = [
  "pallet-contracts-proc-macro",
  "pallet-contracts-uapi",
  "parity-scale-codec",
- "rand 0.8.5",
+ "rand",
  "rand_pcg",
  "scale-info",
  "serde",
  "smallvec",
  "sp-api 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "staging-xcm 1.0.0",
  "staging-xcm-builder",
  "wasm-instrument 0.4.0",
@@ -7850,10 +7644,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7867,12 +7661,12 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
  "sp-npos-elections",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7886,12 +7680,12 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
  "sp-npos-elections",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7907,14 +7701,14 @@ dependencies = [
  "pallet-session",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-consensus-grandpa",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "sp-session",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7929,9 +7723,9 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7946,12 +7740,12 @@ dependencies = [
  "pallet-authorship",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7964,8 +7758,8 @@ dependencies = [
  "parity-scale-codec",
  "safe-mix",
  "scale-info",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7979,10 +7773,10 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7996,11 +7790,11 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8013,10 +7807,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8030,9 +7824,9 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8047,9 +7841,9 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8063,10 +7857,10 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8081,10 +7875,10 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-weights 20.0.0",
 ]
 
 [[package]]
@@ -8099,14 +7893,14 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "sp-session",
  "sp-staking 4.0.0-dev",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-state-machine 0.28.0",
+ "sp-std 8.0.0",
+ "sp-trie 22.0.0",
 ]
 
 [[package]]
@@ -8125,11 +7919,11 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8143,9 +7937,9 @@ dependencies = [
  "frame-system 4.0.0-dev",
  "parity-scale-codec",
  "scale-info",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8161,10 +7955,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-inherents 4.0.0-dev",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-storage 13.0.0",
  "sp-timestamp",
 ]
 
@@ -8178,10 +7972,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8194,10 +7988,10 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-weights 20.0.0",
 ]
 
 [[package]]
@@ -8208,8 +8002,8 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-weights 20.0.0",
 ]
 
 [[package]]
@@ -8222,10 +8016,10 @@ dependencies = [
  "frame-system 4.0.0-dev",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8246,10 +8040,10 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "staging-xcm 1.0.0",
 ]
 
@@ -8260,7 +8054,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e69bf016dc406eff7d53a7d3f7cf1c2e72c82b9088aac1118591e36dd2cd3e9"
 dependencies = [
  "bitcoin_hashes 0.13.0",
- "rand 0.8.5",
+ "rand",
  "rand_core 0.6.4",
  "serde",
  "unicode-normalization",
@@ -8287,7 +8081,7 @@ dependencies = [
  "lz4",
  "memmap2",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "siphasher",
  "snap",
  "winapi",
@@ -8444,15 +8238,6 @@ dependencies = [
 
 [[package]]
 name = "pbkdf2"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
-dependencies = [
- "digest 0.10.7",
-]
-
-[[package]]
-name = "pbkdf2"
 version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
@@ -8493,10 +8278,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8632,9 +8417,9 @@ source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkad
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -8648,10 +8433,10 @@ dependencies = [
  "polkadot-core-primitives",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-weights 20.0.0",
 ]
 
 [[package]]
@@ -8811,10 +8596,10 @@ dependencies = [
  "price-tools",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "xst",
@@ -8845,10 +8630,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -8959,10 +8744,10 @@ dependencies = [
  "pool-xyk",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -9168,11 +8953,11 @@ dependencies = [
  "pool-xyk",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -9200,10 +8985,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -9217,10 +9002,10 @@ dependencies = [
  "pswap-distribution-runtime-api",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -9233,8 +9018,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -9255,14 +9040,14 @@ dependencies = [
  "parity-scale-codec",
  "pool-xyk",
  "price-tools",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
+ "rand",
+ "rand_chacha",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "xst",
 ]
@@ -9313,7 +9098,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94b0b33c13a79f669c85defaf4c275dc86a0c0372807d0ca3d78e0bb87274863"
 dependencies = [
  "bytes",
- "rand 0.8.5",
+ "rand",
  "ring 0.16.20",
  "rustc-hash",
  "rustls 0.20.9",
@@ -9341,36 +9126,13 @@ checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 
 [[package]]
 name = "rand"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
-dependencies = [
- "getrandom 0.1.16",
- "libc",
- "rand_chacha 0.2.2",
- "rand_core 0.5.1",
- "rand_hc",
-]
-
-[[package]]
-name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
  "libc",
- "rand_chacha 0.3.1",
+ "rand_chacha",
  "rand_core 0.6.4",
-]
-
-[[package]]
-name = "rand_chacha"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.5.1",
 ]
 
 [[package]]
@@ -9408,16 +9170,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
- "rand 0.8.5",
-]
-
-[[package]]
-name = "rand_hc"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3129af7b92a17112d59ad498c6f81eaf463253766b90396d39ea7a39d6613c"
-dependencies = [
- "rand_core 0.5.1",
+ "rand",
 ]
 
 [[package]]
@@ -9534,10 +9287,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -9626,10 +9379,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -9643,10 +9396,10 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -9658,8 +9411,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -9670,21 +9423,6 @@ checksum = "f8dd2a808d456c4a54e300a23e9f5a67e122c3024119acbfd73e3bf664491cb2"
 dependencies = [
  "hmac 0.12.1",
  "subtle 2.4.1",
-]
-
-[[package]]
-name = "ring"
-version = "0.1.0"
-source = "git+https://github.com/w3f/ring-proof?rev=0e948f3#0e948f3c28cbacecdd3020403c4841c0eb339213"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "ark-std",
- "common 0.1.0 (git+https://github.com/w3f/ring-proof?rev=0e948f3)",
- "fflonk",
- "merlin 3.0.0",
 ]
 
 [[package]]
@@ -9979,8 +9717,8 @@ version = "4.1.0-dev"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "log",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-wasm-interface 14.0.0",
  "thiserror",
 ]
 
@@ -10000,9 +9738,9 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-blockchain",
  "sp-consensus",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
 ]
 
@@ -10015,10 +9753,10 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-block-builder",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-trie 22.0.0",
 ]
 
 [[package]]
@@ -10039,11 +9777,11 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-genesis-builder 0.1.0",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
 ]
 
 [[package]]
@@ -10073,7 +9811,7 @@ dependencies = [
  "log",
  "names",
  "parity-scale-codec",
- "rand 0.8.5",
+ "rand",
  "regex",
  "rpassword",
  "sc-client-api",
@@ -10088,11 +9826,11 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-keyring",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-panic-handler 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-keystore 0.27.0",
+ "sp-panic-handler 8.0.0",
+ "sp-runtime 24.0.0",
  "sp-version 22.0.0",
  "thiserror",
  "tokio",
@@ -10114,14 +9852,14 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-blockchain",
  "sp-consensus",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-database",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-externalities 0.19.0",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
  "sp-statement-store",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-storage 13.0.0",
+ "sp-trie 22.0.0",
  "substrate-prometheus-endpoint",
 ]
 
@@ -10142,13 +9880,13 @@ dependencies = [
  "sc-client-api",
  "sc-state-db",
  "schnellru",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-database",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
+ "sp-trie 22.0.0",
 ]
 
 [[package]]
@@ -10169,9 +9907,9 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-blockchain",
  "sp-consensus",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -10191,16 +9929,16 @@ dependencies = [
  "sc-consensus-slots",
  "sc-telemetry",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-slots",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -10226,16 +9964,16 @@ dependencies = [
  "sc-telemetry",
  "sc-transaction-pool-api",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-babe",
  "sp-consensus-slots",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -10252,13 +9990,13 @@ dependencies = [
  "sc-rpc-api",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-babe",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
  "thiserror",
 ]
 
@@ -10282,15 +10020,15 @@ dependencies = [
  "sc-network-sync",
  "sc-utils",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-arithmetic 16.0.0",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "thiserror",
  "tokio",
@@ -10311,8 +10049,8 @@ dependencies = [
  "sc-rpc",
  "serde",
  "sp-consensus-beefy",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
  "thiserror",
 ]
 
@@ -10326,7 +10064,7 @@ dependencies = [
  "sc-client-api",
  "sc-consensus",
  "sp-blockchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -10345,7 +10083,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "sc-block-builder",
  "sc-chain-spec",
  "sc-client-api",
@@ -10359,14 +10097,14 @@ dependencies = [
  "sc-utils",
  "serde_json",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-arithmetic 16.0.0",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-grandpa",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -10384,14 +10122,14 @@ dependencies = [
  "sc-client-api",
  "sc-consensus",
  "sc-telemetry",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-slots",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
 ]
 
 [[package]]
@@ -10405,14 +10143,14 @@ dependencies = [
  "sc-executor-wasmtime",
  "schnellru",
  "sp-api 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-panic-handler 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-io 23.0.0",
+ "sp-panic-handler 8.0.0",
+ "sp-runtime-interface 17.0.0",
+ "sp-trie 22.0.0",
  "sp-version 22.0.0",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-wasm-interface 14.0.0",
  "tracing",
 ]
 
@@ -10423,7 +10161,7 @@ source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkad
 dependencies = [
  "sc-allocator",
  "sp-maybe-compressed-blob",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-wasm-interface 14.0.0",
  "thiserror",
  "wasm-instrument 0.3.0",
 ]
@@ -10441,8 +10179,8 @@ dependencies = [
  "rustix 0.36.17",
  "sc-allocator",
  "sc-executor-common",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime-interface 17.0.0",
+ "sp-wasm-interface 14.0.0",
  "wasmtime",
 ]
 
@@ -10460,7 +10198,7 @@ dependencies = [
  "sc-network-common",
  "sc-network-sync",
  "sp-blockchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -10471,9 +10209,9 @@ dependencies = [
  "array-bytes 6.2.3",
  "parking_lot 0.12.3",
  "serde_json",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
  "thiserror",
 ]
 
@@ -10499,10 +10237,10 @@ dependencies = [
  "sc-transaction-pool-api",
  "sp-api 4.0.0-dev",
  "sp-consensus",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
  "sp-mixnet",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "thiserror",
 ]
 
@@ -10529,17 +10267,17 @@ dependencies = [
  "parking_lot 0.12.3",
  "partial_sort",
  "pin-project",
- "rand 0.8.5",
+ "rand",
  "sc-client-api",
  "sc-network-common",
  "sc-utils",
  "serde",
  "serde_json",
  "smallvec",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "thiserror",
  "tokio",
@@ -10564,7 +10302,7 @@ dependencies = [
  "sc-client-api",
  "sc-network",
  "sp-blockchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "thiserror",
  "unsigned-varint",
 ]
@@ -10583,7 +10321,7 @@ dependencies = [
  "sc-consensus",
  "sp-consensus",
  "sp-consensus-grandpa",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -10600,7 +10338,7 @@ dependencies = [
  "sc-network-common",
  "sc-network-sync",
  "schnellru",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "tracing",
 ]
@@ -10621,8 +10359,8 @@ dependencies = [
  "sc-client-api",
  "sc-network",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
  "thiserror",
 ]
 
@@ -10650,12 +10388,12 @@ dependencies = [
  "sc-utils",
  "schnellru",
  "smallvec",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-grandpa",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
  "thiserror",
  "tokio",
@@ -10677,7 +10415,7 @@ dependencies = [
  "sc-network-sync",
  "sc-utils",
  "sp-consensus",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "substrate-prometheus-endpoint",
 ]
 
@@ -10699,18 +10437,18 @@ dependencies = [
  "once_cell",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "sc-client-api",
  "sc-network",
  "sc-network-common",
  "sc-transaction-pool-api",
  "sc-utils",
  "sp-api 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-keystore 0.27.0",
  "sp-offchain",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "threadpool",
  "tracing",
 ]
@@ -10745,11 +10483,11 @@ dependencies = [
  "serde_json",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
  "sp-offchain",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-session",
  "sp-statement-store",
  "sp-version 22.0.0",
@@ -10769,9 +10507,9 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-version 22.0.0",
  "thiserror",
 ]
@@ -10811,9 +10549,9 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
  "sp-version 22.0.0",
  "thiserror",
  "tokio",
@@ -10835,7 +10573,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.12.3",
  "pin-project",
- "rand 0.8.5",
+ "rand",
  "sc-chain-spec",
  "sc-client-api",
  "sc-client-db",
@@ -10863,16 +10601,16 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-blockchain",
  "sp-consensus",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
  "sp-session",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-state-machine 0.28.0",
+ "sp-storage 13.0.0",
  "sp-transaction-pool",
  "sp-transaction-storage-proof",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-trie 22.0.0",
  "sp-version 22.0.0",
  "static_init",
  "substrate-prometheus-endpoint",
@@ -10891,7 +10629,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
 ]
 
 [[package]]
@@ -10903,15 +10641,15 @@ dependencies = [
  "futures",
  "libc",
  "log",
- "rand 0.8.5",
+ "rand",
  "rand_pcg",
  "regex",
  "sc-telemetry",
  "serde",
  "serde_json",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -10925,7 +10663,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.3",
  "pin-project",
- "rand 0.8.5",
+ "rand",
  "sc-utils",
  "serde",
  "serde_json",
@@ -10953,10 +10691,10 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-tracing 10.0.0",
  "thiserror",
  "tracing",
  "tracing-log 0.1.4",
@@ -10992,9 +10730,9 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-tracing 10.0.0",
  "sp-transaction-pool",
  "substrate-prometheus-endpoint",
  "thiserror",
@@ -11011,8 +10749,8 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
  "thiserror",
 ]
 
@@ -11028,70 +10766,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.3",
  "prometheus",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
-]
-
-[[package]]
-name = "scale-bits"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "036575c29af9b6e4866ffb7fa055dbf623fe7a9cc159b33786de6013a6969d89"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
-]
-
-[[package]]
-name = "scale-decode"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7caaf753f8ed1ab4752c6afb20174f03598c664724e0e32628e161c21000ff76"
-dependencies = [
- "derive_more",
- "parity-scale-codec",
- "scale-bits",
- "scale-decode-derive",
- "scale-info",
- "smallvec",
-]
-
-[[package]]
-name = "scale-decode-derive"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3475108a1b62c7efd1b5c65974f30109a598b2f45f23c9ae030acb9686966db"
-dependencies = [
- "darling",
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "scale-encode"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d70cb4b29360105483fac1ed567ff95d65224a14dd275b6303ed0a654c78de5"
-dependencies = [
- "derive_more",
- "parity-scale-codec",
- "scale-encode-derive",
- "scale-info",
- "smallvec",
-]
-
-[[package]]
-name = "scale-encode-derive"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "995491f110efdc6bea96d6a746140e32bfceb4ea47510750a5467295a4707a25"
-dependencies = [
- "darling",
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
+ "sp-arithmetic 16.0.0",
 ]
 
 [[package]]
@@ -11105,7 +10780,6 @@ dependencies = [
  "derive_more",
  "parity-scale-codec",
  "scale-info-derive",
- "schemars",
  "serde",
 ]
 
@@ -11131,30 +10805,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "schemars"
-version = "0.8.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09c024468a378b7e36765cd36702b7a90cc3cba11654f6685c8f233408e89e92"
-dependencies = [
- "dyn-clone",
- "schemars_derive",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "schemars_derive"
-version = "0.8.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1eee588578aff73f856ab961cd2f79e36bc45d7ded33a7562adba4667aecc0e"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn 2.0.77",
-]
-
-[[package]]
 name = "schnellru"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11174,9 +10824,7 @@ dependencies = [
  "arrayref",
  "arrayvec 0.5.2",
  "curve25519-dalek 2.1.3",
- "getrandom 0.1.16",
  "merlin 2.0.1",
- "rand 0.7.3",
  "rand_core 0.5.1",
  "sha2 0.8.2",
  "subtle 2.4.1",
@@ -11241,29 +10889,11 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.24.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b1629c9c557ef9b293568b338dddfc8208c98a18c59d722a9d53f859d9c9b62"
-dependencies = [
- "secp256k1-sys 0.6.1",
-]
-
-[[package]]
-name = "secp256k1"
 version = "0.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d24b59d129cdadea20aea4fb2352fa053712e5d713eee47d700cd4b2bc002f10"
 dependencies = [
- "secp256k1-sys 0.9.2",
-]
-
-[[package]]
-name = "secp256k1-sys"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83080e2c2fc1006e625be82e5d1eb6a43b7fd9578b617fcc55814daf286bba4b"
-dependencies = [
- "cc",
+ "secp256k1-sys",
 ]
 
 [[package]]
@@ -11363,17 +10993,6 @@ name = "serde_derive"
 version = "1.0.210"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "243902eda00fad750862fc144cea25caca5e20d615af0a81bee94ca738f1df1f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.77",
-]
-
-[[package]]
-name = "serde_derive_internals"
-version = "0.29.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18d26a20a969b9e3fdf2fc2d9f21eda6c40e2de84c9408bb5d3b05d499aae711"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -11629,7 +11248,7 @@ dependencies = [
  "http",
  "httparse",
  "log",
- "rand 0.8.5",
+ "rand",
  "sha-1",
 ]
 
@@ -11649,11 +11268,11 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -11667,13 +11286,13 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api-proc-macro 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
  "sp-metadata-ir 0.1.0",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
+ "sp-std 8.0.0",
+ "sp-trie 22.0.0",
  "sp-version 22.0.0",
  "thiserror",
 ]
@@ -11733,27 +11352,14 @@ dependencies = [
 [[package]]
 name = "sp-application-crypto"
 version = "23.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
-]
-
-[[package]]
-name = "sp-application-crypto"
-version = "23.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -11772,20 +11378,6 @@ dependencies = [
 [[package]]
 name = "sp-arithmetic"
 version = "16.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "integer-sqrt",
- "num-traits",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "static_assertions",
-]
-
-[[package]]
-name = "sp-arithmetic"
-version = "16.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "integer-sqrt",
@@ -11793,7 +11385,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
  "static_assertions",
 ]
 
@@ -11838,8 +11430,8 @@ source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkad
 dependencies = [
  "sp-api 4.0.0-dev",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -11855,8 +11447,8 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-consensus",
  "sp-database",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
  "thiserror",
 ]
 
@@ -11868,10 +11460,10 @@ dependencies = [
  "async-trait",
  "futures",
  "log",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
  "thiserror",
 ]
 
@@ -11884,11 +11476,11 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-consensus-slots",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "sp-timestamp",
 ]
 
@@ -11902,12 +11494,12 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
  "sp-consensus-slots",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "sp-timestamp",
 ]
 
@@ -11921,12 +11513,12 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
  "sp-mmr-primitives",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "strum 0.24.1",
 ]
 
@@ -11941,11 +11533,11 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -11956,55 +11548,8 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
  "sp-timestamp",
-]
-
-[[package]]
-name = "sp-core"
-version = "21.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "array-bytes 6.2.3",
- "arrayvec 0.7.6",
- "bandersnatch_vrfs 0.0.1",
- "bitflags 1.3.2",
- "blake2 0.10.6",
- "bounded-collections 0.1.9",
- "bs58 0.5.1",
- "dyn-clonable",
- "ed25519-zebra 3.1.0",
- "futures",
- "hash-db",
- "hash256-std-hasher",
- "impl-serde",
- "lazy_static",
- "libsecp256k1",
- "log",
- "merlin 2.0.1",
- "parity-scale-codec",
- "parking_lot 0.12.3",
- "paste",
- "primitive-types",
- "rand 0.8.5",
- "regex",
- "scale-info",
- "schnorrkel 0.9.1",
- "secp256k1 0.24.3",
- "secrecy",
- "serde",
- "sp-core-hashing 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "ss58-registry",
- "substrate-bip39 0.4.5",
- "thiserror",
- "tiny-bip39",
- "tracing",
- "zeroize",
 ]
 
 [[package]]
@@ -12013,7 +11558,7 @@ version = "21.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "array-bytes 6.2.3",
- "bandersnatch_vrfs 0.0.4",
+ "bandersnatch_vrfs",
  "bip39",
  "bitflags 1.3.2",
  "blake2 0.10.6",
@@ -12033,18 +11578,18 @@ dependencies = [
  "parking_lot 0.12.3",
  "paste",
  "primitive-types",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "schnorrkel 0.11.4",
- "secp256k1 0.28.2",
+ "secp256k1",
  "secrecy",
  "serde",
- "sp-core-hashing 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core-hashing",
+ "sp-debug-derive 8.0.0",
+ "sp-externalities 0.19.0",
+ "sp-runtime-interface 17.0.0",
+ "sp-std 8.0.0",
+ "sp-storage 13.0.0",
  "ss58-registry",
  "substrate-bip39 0.4.5",
  "thiserror",
@@ -12080,10 +11625,10 @@ dependencies = [
  "parking_lot 0.12.3",
  "paste",
  "primitive-types",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "schnorrkel 0.11.4",
- "secp256k1 0.28.2",
+ "secp256k1",
  "secrecy",
  "serde",
  "sp-crypto-hashing",
@@ -12098,19 +11643,6 @@ dependencies = [
  "tracing",
  "w3f-bls",
  "zeroize",
-]
-
-[[package]]
-name = "sp-core-hashing"
-version = "9.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "blake2b_simd",
- "byteorder",
- "digest 0.10.7",
- "sha2 0.10.8",
- "sha3 0.10.8",
- "twox-hash",
 ]
 
 [[package]]
@@ -12132,7 +11664,7 @@ version = "9.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "quote",
- "sp-core-hashing 9.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core-hashing",
  "syn 2.0.77",
 ]
 
@@ -12152,7 +11684,7 @@ dependencies = [
  "ark-ed-on-bls12-377-ext",
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ed-on-bls12-381-bandersnatch-ext",
- "ark-scale 0.0.12",
+ "ark-scale",
  "sp-runtime-interface 24.0.0",
 ]
 
@@ -12193,16 +11725,6 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "8.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.77",
-]
-
-[[package]]
-name = "sp-debug-derive"
-version = "8.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "proc-macro2",
@@ -12234,23 +11756,12 @@ dependencies = [
 [[package]]
 name = "sp-externalities"
 version = "0.19.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "environmental",
- "parity-scale-codec",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
-]
-
-[[package]]
-name = "sp-externalities"
-version = "0.19.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "environmental",
  "parity-scale-codec",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
+ "sp-storage 13.0.0",
 ]
 
 [[package]]
@@ -12281,8 +11792,8 @@ source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkad
 dependencies = [
  "serde_json",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12307,8 +11818,8 @@ dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "thiserror",
 ]
 
@@ -12329,30 +11840,6 @@ dependencies = [
 [[package]]
 name = "sp-io"
 version = "23.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "bytes",
- "ed25519-dalek",
- "libsecp256k1",
- "log",
- "parity-scale-codec",
- "rustversion",
- "secp256k1 0.24.3",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "tracing",
- "tracing-core",
-]
-
-[[package]]
-name = "sp-io"
-version = "23.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "bytes",
@@ -12361,15 +11848,15 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "rustversion",
- "secp256k1 0.28.2",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "secp256k1",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime-interface 17.0.0",
+ "sp-state-machine 0.28.0",
+ "sp-std 8.0.0",
+ "sp-tracing 10.0.0",
+ "sp-trie 22.0.0",
  "tracing",
  "tracing-core",
 ]
@@ -12388,7 +11875,7 @@ dependencies = [
  "parity-scale-codec",
  "polkavm-derive 0.9.1",
  "rustversion",
- "secp256k1 0.28.2",
+ "secp256k1",
  "sp-core 34.0.0",
  "sp-crypto-hashing",
  "sp-externalities 0.29.0",
@@ -12406,21 +11893,9 @@ name = "sp-keyring"
 version = "24.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
  "strum 0.24.1",
-]
-
-[[package]]
-name = "sp-keystore"
-version = "0.27.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "parity-scale-codec",
- "parking_lot 0.12.3",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "thiserror",
 ]
 
 [[package]]
@@ -12430,8 +11905,8 @@ source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkad
 dependencies = [
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
  "thiserror",
 ]
 
@@ -12464,7 +11939,7 @@ dependencies = [
  "frame-metadata",
  "parity-scale-codec",
  "scale-info",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12486,8 +11961,8 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12501,10 +11976,10 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-debug-derive 8.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "thiserror",
 ]
 
@@ -12516,10 +11991,10 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12528,18 +12003,8 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "sp-api 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
-]
-
-[[package]]
-name = "sp-panic-handler"
-version = "8.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "backtrace",
- "lazy_static",
- "regex",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -12570,29 +12035,7 @@ source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkad
 dependencies = [
  "rustc-hash",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
-]
-
-[[package]]
-name = "sp-runtime"
-version = "24.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "either",
- "hash256-std-hasher",
- "impl-trait-for-tuples",
- "log",
- "parity-scale-codec",
- "paste",
- "rand 0.8.5",
- "scale-info",
- "serde",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
+ "sp-core 21.0.0",
 ]
 
 [[package]]
@@ -12607,16 +12050,16 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "paste",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "serde",
  "simple-mermaid 0.1.0",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-std 8.0.0",
+ "sp-weights 20.0.0",
 ]
 
 [[package]]
@@ -12633,7 +12076,7 @@ dependencies = [
  "num-traits",
  "parity-scale-codec",
  "paste",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "serde",
  "simple-mermaid 0.1.1",
@@ -12649,36 +12092,18 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface"
 version = "17.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "bytes",
- "impl-trait-for-tuples",
- "parity-scale-codec",
- "primitive-types",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-runtime-interface-proc-macro 11.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "static_assertions",
-]
-
-[[package]]
-name = "sp-runtime-interface"
-version = "17.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "bytes",
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "primitive-types",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime-interface-proc-macro 11.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-storage 13.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-tracing 10.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-wasm-interface 14.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-externalities 0.19.0",
+ "sp-runtime-interface-proc-macro 11.0.0",
+ "sp-std 8.0.0",
+ "sp-storage 13.0.0",
+ "sp-tracing 10.0.0",
+ "sp-wasm-interface 14.0.0",
  "static_assertions",
 ]
 
@@ -12719,18 +12144,6 @@ dependencies = [
  "sp-tracing 17.0.0",
  "sp-wasm-interface 21.0.0",
  "static_assertions",
-]
-
-[[package]]
-name = "sp-runtime-interface-proc-macro"
-version = "11.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "Inflector",
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "syn 2.0.77",
 ]
 
 [[package]]
@@ -12781,11 +12194,11 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api 4.0.0-dev",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-keystore 0.27.0",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12797,9 +12210,9 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12819,40 +12232,19 @@ dependencies = [
 [[package]]
 name = "sp-state-machine"
 version = "0.28.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "hash-db",
- "log",
- "parity-scale-codec",
- "parking_lot 0.12.3",
- "rand 0.8.5",
- "smallvec",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-panic-handler 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "thiserror",
- "tracing",
- "trie-db 0.27.1",
-]
-
-[[package]]
-name = "sp-state-machine"
-version = "0.28.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "hash-db",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "smallvec",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-panic-handler 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-panic-handler 8.0.0",
+ "sp-std 8.0.0",
+ "sp-trie 22.0.0",
  "thiserror",
  "tracing",
  "trie-db 0.28.0",
@@ -12868,7 +12260,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "smallvec",
  "sp-core 34.0.0",
  "sp-externalities 0.29.0",
@@ -12889,24 +12281,19 @@ dependencies = [
  "ed25519-dalek",
  "hkdf",
  "parity-scale-codec",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "sha2 0.10.8",
  "sp-api 4.0.0-dev",
- "sp-application-crypto 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime-interface 17.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-application-crypto 23.0.0",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-runtime 24.0.0",
+ "sp-runtime-interface 17.0.0",
+ "sp-std 8.0.0",
  "thiserror",
  "x25519-dalek 2.0.1",
 ]
-
-[[package]]
-name = "sp-std"
-version = "8.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
 
 [[package]]
 name = "sp-std"
@@ -12927,27 +12314,14 @@ source = "git+https://github.com/paritytech/polkadot-sdk#d66dee3c3da836bcf41a12c
 [[package]]
 name = "sp-storage"
 version = "13.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "impl-serde",
- "parity-scale-codec",
- "ref-cast",
- "serde",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
-]
-
-[[package]]
-name = "sp-storage"
-version = "13.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "impl-serde",
  "parity-scale-codec",
  "ref-cast",
  "serde",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-debug-derive 8.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -12983,21 +12357,9 @@ dependencies = [
  "async-trait",
  "parity-scale-codec",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "thiserror",
-]
-
-[[package]]
-name = "sp-tracing"
-version = "10.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "parity-scale-codec",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "tracing",
- "tracing-core",
- "tracing-subscriber 0.2.25",
 ]
 
 [[package]]
@@ -13006,7 +12368,7 @@ version = "10.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "parity-scale-codec",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
  "tracing",
  "tracing-core",
  "tracing-subscriber 0.2.25",
@@ -13041,7 +12403,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -13052,34 +12414,11 @@ dependencies = [
  "async-trait",
  "parity-scale-codec",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-inherents 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-trie 22.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
-]
-
-[[package]]
-name = "sp-trie"
-version = "22.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "ahash 0.8.7",
- "hash-db",
- "hashbrown 0.13.2",
- "lazy_static",
- "memory-db",
- "nohash-hasher",
- "parity-scale-codec",
- "parking_lot 0.12.3",
- "scale-info",
- "schnellru",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "thiserror",
- "tracing",
- "trie-db 0.27.1",
- "trie-root",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-trie 22.0.0",
 ]
 
 [[package]]
@@ -13094,12 +12433,12 @@ dependencies = [
  "nohash-hasher",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "schnellru",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-std 8.0.0",
  "thiserror",
  "tracing",
  "trie-db 0.28.0",
@@ -13119,7 +12458,7 @@ dependencies = [
  "nohash-hasher",
  "parity-scale-codec",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "scale-info",
  "schnellru",
  "sp-core 34.0.0",
@@ -13141,8 +12480,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core-hashing-proc-macro",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "sp-version-proc-macro 8.0.0",
  "thiserror",
 ]
@@ -13191,26 +12530,13 @@ dependencies = [
 [[package]]
 name = "sp-wasm-interface"
 version = "14.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "anyhow",
- "impl-trait-for-tuples",
- "log",
- "parity-scale-codec",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "wasmtime",
-]
-
-[[package]]
-name = "sp-wasm-interface"
-version = "14.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "anyhow",
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
  "wasmtime",
 ]
 
@@ -13239,21 +12565,6 @@ dependencies = [
 [[package]]
 name = "sp-weights"
 version = "20.0.0"
-source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0#1c9ea6e889501ce4601a7b636c000e54d52e5d83"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "smallvec",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=polkadot-v1.1.0)",
-]
-
-[[package]]
-name = "sp-weights"
-version = "20.0.0"
 source = "git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0#bf78f41be01a4ca633af8fa7166b685c27af1522"
 dependencies = [
  "bounded-collections 0.1.9",
@@ -13261,9 +12572,9 @@ dependencies = [
  "scale-info",
  "serde",
  "smallvec",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-debug-derive 8.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -13349,7 +12660,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-weights 20.0.0",
  "xcm-procedural 1.0.0",
 ]
 
@@ -13385,11 +12696,11 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-weights 20.0.0",
  "staging-xcm 1.0.0",
  "staging-xcm-executor",
 ]
@@ -13406,12 +12717,12 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+ "sp-weights 20.0.0",
  "staging-xcm 1.0.0",
 ]
 
@@ -13448,12 +12759,6 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
-
-[[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "strsim"
@@ -13568,10 +12873,10 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -13592,11 +12897,11 @@ dependencies = [
  "rlp",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-externalities 0.19.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -13623,8 +12928,8 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-block-builder",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -13649,7 +12954,7 @@ dependencies = [
  "log",
  "sc-rpc-api",
  "serde",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
 ]
 
 [[package]]
@@ -13779,10 +13084,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "twox-hash",
 ]
 
@@ -13826,18 +13131,18 @@ checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
 name = "thiserror"
-version = "1.0.63"
+version = "1.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0342370b38b6a11b6cc11d6a805569958d54cfa061a29969c3b5ce2ea405724"
+checksum = "579e9083ca58dd9dcf91a9923bb9054071b9ebbd800b342194c9feb0ee89fc18"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.63"
+version = "1.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4558b58466b9ad7ca0f102865eccc95938dca1a74a856f2b57b6629050da261"
+checksum = "e2470041c06ec3ac1ab38d0356a6119054dedaea53e12fbefc0de730a1c08524"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -13909,25 +13214,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiny-bip39"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62cc94d358b5a1e84a5cb9109f559aa3c4d634d2b1b4de3d0fa4adc7c78e2861"
-dependencies = [
- "anyhow",
- "hmac 0.12.1",
- "once_cell",
- "pbkdf2 0.11.0",
- "rand 0.8.5",
- "rustc-hash",
- "sha2 0.10.8",
- "thiserror",
- "unicode-normalization",
- "wasm-bindgen",
- "zeroize",
-]
-
-[[package]]
 name = "tiny-keccak"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13987,7 +13273,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f57eb36ecbe0fc510036adff84824dd3c24bb781e21bfa67b69d556aa85214f"
 dependencies = [
  "pin-project",
- "rand 0.8.5",
+ "rand",
  "tokio",
 ]
 
@@ -14247,10 +13533,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -14261,10 +13547,10 @@ dependencies = [
  "parity-scale-codec",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "trading-pair-runtime-api",
 ]
 
@@ -14276,21 +13562,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
-]
-
-[[package]]
-name = "trie-db"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "767abe6ffed88a1889671a102c2861ae742726f52e0a5a425b92c9fbfa7e9c85"
-dependencies = [
- "hash-db",
- "hashbrown 0.13.2",
- "log",
- "rustc-hex",
- "smallvec",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -14343,7 +13616,7 @@ dependencies = [
  "idna 0.2.3",
  "ipnet",
  "lazy_static",
- "rand 0.8.5",
+ "rand",
  "smallvec",
  "socket2 0.4.10",
  "thiserror",
@@ -14398,19 +13671,19 @@ dependencies = [
  "sp-api 4.0.0-dev",
  "sp-consensus-aura",
  "sp-consensus-babe",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-debug-derive 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-externalities 0.19.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-debug-derive 8.0.0",
+ "sp-externalities 0.19.0",
  "sp-inherents 4.0.0-dev",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-keystore 0.27.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-io 23.0.0",
+ "sp-keystore 0.27.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-state-machine 0.28.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-state-machine 0.28.0",
  "sp-timestamp",
  "sp-transaction-storage-proof",
  "sp-version 22.0.0",
- "sp-weights 20.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-weights 20.0.0",
  "substrate-rpc-client",
  "zstd 0.12.4",
 ]
@@ -14429,7 +13702,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand",
  "static_assertions",
 ]
 
@@ -14589,10 +13862,10 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
 ]
 
@@ -14605,10 +13878,10 @@ dependencies = [
  "serde",
  "sp-api 4.0.0-dev",
  "sp-blockchain",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
  "sp-rpc",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "vested-rewards-runtime-api",
 ]
 
@@ -14621,8 +13894,8 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api 4.0.0-dev",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -14646,8 +13919,8 @@ dependencies = [
  "arrayref",
  "constcat",
  "digest 0.10.7",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
+ "rand",
+ "rand_chacha",
  "rand_core 0.6.4",
  "sha2 0.10.8",
  "sha3 0.10.8",
@@ -15069,7 +14342,7 @@ dependencies = [
  "memfd",
  "memoffset",
  "paste",
- "rand 0.8.5",
+ "rand",
  "rustix 0.36.17",
  "wasmtime-asm-macros",
  "wasmtime-environ",
@@ -15561,12 +14834,12 @@ dependencies = [
  "scale-info",
  "serde",
  "smallvec",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
  "sp-staking 4.0.0-dev",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -15597,11 +14870,11 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 16.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-arithmetic 16.0.0",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
 ]
@@ -15633,10 +14906,10 @@ dependencies = [
  "price-tools",
  "pswap-distribution",
  "scale-info",
- "sp-core 21.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-io 23.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-runtime 24.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
- "sp-std 8.0.0 (git+https://github.com/sora-xor/polkadot-sdk.git?branch=release-polkadot-v1.6.0)",
+ "sp-core 21.0.0",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
  "technical",
  "trading-pair",
  "xst",
@@ -15658,7 +14931,7 @@ dependencies = [
  "log",
  "nohash-hasher",
  "parking_lot 0.12.3",
- "rand 0.8.5",
+ "rand",
  "static_assertions",
 ]
 

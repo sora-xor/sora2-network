@@ -40,6 +40,7 @@ pub mod primitives;
 /// It is a part of the runtime dispatchables API.
 /// `Ink!` doesn't expose the real enum, so we need a partial definition matching our targets.
 /// You should get or count index of the pallet, using `construct_runtime!`, it is zero based
+/// # Note: All calls are executed with contract as caller
 #[ink::scale_derive(Encode)]
 pub enum ExtrinsicCall {
     #[codec(index = 21)]
