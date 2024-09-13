@@ -16,7 +16,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "chain-error",
 ] }
 framenode-runtime = { path = "../../runtime", default-features = false, features = ["std"] }
-hex = "0.4.3"
+hex = { workspace = true }
 
 [features]
 private-net = ["framenode-runtime/private-net"]

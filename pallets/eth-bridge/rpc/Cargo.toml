@@ -10,9 +10,9 @@ version = "0.1.0"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3" }
-jsonrpsee = { version = "0.16.2", features = ["server", "macros"] }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+jsonrpsee = { workspace = true, features = ["server", "macros"] }
+sp-runtime = { workspace = true }
+sp-api = { workspace = true }
+sp-blockchain = { workspace = true }
+sp-std = { workspace = true }
 eth-bridge-runtime-api = { path = "../runtime-api" }

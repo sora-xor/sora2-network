@@ -231,9 +231,9 @@ pub fn run() -> sc_cli::Result<()> {
             let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
                 .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
 
-            runner.async_run(|_config| {
+            runner.async_run(|config| {
                 Ok((
-                    cmd.try_run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
+                    cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>, _>(Some(config)),
                     task_manager,
                 ))
             })

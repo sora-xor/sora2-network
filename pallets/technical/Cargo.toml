@@ -15,28 +15,28 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-hex-literal = { version = "0.4.1", optional = true }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-twox-hash = { version = "1.5.0", default-features = false }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+currencies = { workspace = true, default-features = false }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+hex-literal = { workspace = true, optional = true }
+orml-traits = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+serde = { workspace = true, optional = true, features = ["derive"] }
+sp-core = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+twox-hash = { workspace = true, default-features = false }
 
 common = { path = "../../common", default-features = false }
 permissions = { path = "../permissions", default-features = false, optional = true }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-hex-literal = "0.4.1"
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+tokens = { workspace = true, default-features = false }
+hex-literal = { workspace = true }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }

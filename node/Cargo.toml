@@ -10,21 +10,21 @@ name = "framenode"
 path = "src/main.rs"
 
 [dependencies]
-futures-timer = "3.0.2"
+futures-timer = { workspace = true }
 futures = "0.3"
-log = "0.4.8"
+log = { workspace = true }
 codec = { package = "parity-scale-codec", version = "3", features = [
     "derive",
     "chain-error",
 ] }
-clap = { version = "=4.5.4", features = ["derive"] }
-clap_lex = { version = "=0.5.0" }
-ansi_term = "0.12.1"
-serde = { version = "1.0.101", features = ["derive"] }
-serde_json = "1.0.61"
-jsonrpsee = { version = "0.16.2", features = ["server"] }
+clap = { workspace = true, features = ["derive"] }
+clap_lex = { workspace = true }
+ansi_term = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+jsonrpsee = { workspace = true, features = ["server"] }
 # bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v1.1.0", package = "pallet-multisig" }
-secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
+secp256k1 = { workspace = true, features = ["hmac"], package = "libsecp256k1" }
 
 framenode-chain-spec = { path = "chain_spec" }
 common = { path = "../common" }
@@ -39,11 +39,11 @@ eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 farming-rpc = { path = "../pallets/farming/rpc" }
 pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
 vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", optional = true }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", optional = true }
+beefy-light-client = { workspace = true, optional = true }
+beefy-light-client-rpc = { workspace = true, optional = true }
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
 
-bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
+bridge-multisig = { workspace = true, default-features = false }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }
@@ -51,76 +51,76 @@ framenode-runtime = { path = "../runtime" }
 # Substrate dependencies
 
 bridge-proxy-rpc = { path = "../pallets/bridge-proxy/rpc" }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-arithmetic = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-block-builder = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-inherents = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-consensus = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-slots = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-babe = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-aura = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-grandpa = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-cli = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-client-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-client-db = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-executor = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-service = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-keystore = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-try-runtime-cli = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", optional = true }
-sp-transaction-pool = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-telemetry = { package = "sc-telemetry", git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-network = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-basic-authorship = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-rpc-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-trie = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-# sc-finality-grandpa = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-# sp-finality-grandpa = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-informant = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-offchain = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-chain-spec = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-transaction-storage-proof = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-pallet-transaction-payment-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-frame-benchmarking-cli = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", optional = true }
-substrate-frame-rpc-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", package = "sp-consensus-beefy" }
-# beefy-gadget = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-beefy-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-mmr-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-mmr-gadget = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0" }
-sc-transaction-pool = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-transaction-pool-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-frame-remote-externalities = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-enum-as-inner = "=0.5.1"
-sc-consensus-babe-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sc-consensus-epochs = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-keystore = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-statement-store = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+sp-runtime = { workspace = true }
+sp-arithmetic = { workspace = true }
+sp-io = { workspace = true }
+sp-api = { workspace = true }
+sp-block-builder = { workspace = true }
+sp-blockchain = { workspace = true }
+sp-core = { workspace = true }
+sp-inherents = { workspace = true }
+sp-consensus = { workspace = true }
+sc-consensus = { workspace = true }
+sc-consensus-slots = { workspace = true }
+sc-consensus-babe = { workspace = true }
+sp-consensus-babe = { workspace = true }
+sc-consensus-beefy = { workspace = true }
+sc-consensus-aura = { workspace = true }
+sp-consensus-aura = { workspace = true }
+sc-consensus-grandpa = { workspace = true }
+sc-cli = { workspace = true }
+sc-client-api = { workspace = true }
+sc-client-db = { workspace = true }
+sc-executor = { workspace = true }
+sc-service = { workspace = true }
+sc-keystore = { workspace = true }
+try-runtime-cli = { workspace = true, optional = true }
+sp-transaction-pool = { workspace = true }
+telemetry = { workspace = true }
+sc-network = { workspace = true }
+sc-basic-authorship = { workspace = true }
+sc-rpc = { workspace = true }
+sc-rpc-api = { workspace = true }
+sp-timestamp = { workspace = true }
+sp-trie = { workspace = true }
+# sc-finality-grandpa = { workspace = true }
+# sp-finality-grandpa = { workspace = true }
+sc-informant = { workspace = true }
+sc-offchain = { workspace = true }
+sc-chain-spec = { workspace = true }
+sp-transaction-storage-proof = { workspace = true }
+pallet-transaction-payment-rpc = { workspace = true }
+frame-benchmarking = { workspace = true }
+frame-benchmarking-cli = { workspace = true, optional = true }
+substrate-frame-rpc-system = { workspace = true }
+sp-beefy = { workspace = true }
+# beefy-gadget = { workspace = true }
+sp-mmr-primitives = { workspace = true }
+prometheus-endpoint = { workspace = true }
+sc-consensus-beefy-rpc = { workspace = true }
+mmr-rpc = { workspace = true }
+mmr-gadget = { workspace = true }
+leaf-provider-rpc = { workspace = true }
+sc-transaction-pool = { workspace = true }
+sc-transaction-pool-api = { workspace = true }
+frame-remote-externalities = { workspace = true }
+enum-as-inner = { workspace = true }
+sc-consensus-babe-rpc = { workspace = true }
+sc-consensus-epochs = { workspace = true }
+sp-keystore = { workspace = true }
+sp-statement-store = { workspace = true }
 
 # TODO remove after toolchain is updated
 # newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
-ahash = "=0.8.7"
-bumpalo = "=3.14.0"
-cargo-platform = "=0.1.7"
-substrate-bip39 = "=0.4.5"
-schnellru = "=0.2.1"
-bstr = "=1.9.1"
-predicates-tree = "=1.0.9"
-predicates-core = "=1.0.6"
-predicates = "=3.1.0"
+ahash = { workspace = true }
+bumpalo = { workspace = true }
+cargo-platform = { workspace = true }
+substrate-bip39 = { workspace = true }
+schnellru = { workspace = true }
+bstr = { workspace = true }
+predicates-tree = { workspace = true }
+predicates-core = { workspace = true }
+predicates = { workspace = true }
 
 [build-dependencies]
 substrate-build-script-utils = "3"
@@ -128,11 +128,11 @@ substrate-build-script-utils = "3"
 [dev-dependencies]
 # TODO remove after toolchain is updated
 # newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
-assert_cmd = "=2.0.13"
-tokio = { version = "1.10.1", features = ["macros"] }
+assert_cmd = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
 
 # Substrate dependencies
-pallet-sudo = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+pallet-sudo = { workspace = true }
 
 framenode-chain-spec = { path = "chain_spec", features = ["test"] }
 

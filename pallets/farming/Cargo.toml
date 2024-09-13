@@ -15,39 +15,39 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-hex-literal = { version = "0.4.1", optional = true }
-pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-arithmetic = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+hex-literal = { workspace = true, optional = true }
+pallet-scheduler = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
+sp-arithmetic = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
 
 common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 technical = { path = "../technical", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+tokens = { workspace = true, default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 vested-rewards = { path = "../vested-rewards", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+currencies = { workspace = true }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-env_logger = "0.11"
-hex-literal = { version = "0.4.1" }
-pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-log = "0.4.14"
+env_logger = { workspace = true }
+hex-literal = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-scheduler = { workspace = true }
+sp-io = { workspace = true }
+tokens = { workspace = true, default-features = false }
+log = { workspace = true }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }

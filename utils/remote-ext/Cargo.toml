@@ -11,23 +11,23 @@ repository = "https://github.com/sora-xor/sora2-network"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0" }
-clap = { version = "=4.5.4", features = ["derive"] }
-jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
-tokio = { version = "1.18.2", features = ["macros", "rt-multi-thread", "sync"] }
-anyhow = "1.0.51"
-env_logger = "0.11"
-hex = "0.4.3"
+clap = { workspace = true, features = ["derive"] }
+jsonrpsee = { workspace = true, features = ["ws-client", "macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+anyhow = { workspace = true }
+env_logger = { workspace = true }
+hex = { workspace = true }
 
-frame-remote-externalities = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+frame-remote-externalities = { workspace = true }
 
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-version = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+sp-core = { workspace = true }
+sp-version = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
 
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-frame-election-provider-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+frame-system = { workspace = true }
+frame-support = { workspace = true }
+frame-election-provider-support = { workspace = true }
 
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
     "std",

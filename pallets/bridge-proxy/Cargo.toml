@@ -9,39 +9,39 @@ edition = "2021"
 codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
     "derive",
 ] }
-log = { version = "0.4.20" }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+log = { workspace = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
 common = { path = "../../common", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+bridge-types = { workspace = true, default-features = false }
 technical = { path = "../technical", default-features = false }
 permissions = { path = "../permissions", default-features = false }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+traits = { workspace = true, default-features = false }
 
 # delete after migration LiberlandGenericAccount pass
-xcm = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, package = "staging-xcm" }
+xcm = { workspace = true, default-features = false }
 
 [dev-dependencies]
 common = { path = "../../common", features = ["test"] }
 assets = { path = "../assets" }
 
-dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0" }
-evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0" }
-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0" }
+dispatch = { workspace = true }
+evm-fungible-app = { workspace = true }
+bridge-channel = { workspace = true }
 
-sp-keyring = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+sp-keyring = { workspace = true }
+pallet-balances = { workspace = true }
 
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits" }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+tokens = { workspace = true }
+traits = { workspace = true }
+currencies = { workspace = true }
 
 [features]
 default = ["std"]
