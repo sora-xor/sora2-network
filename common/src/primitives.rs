@@ -30,7 +30,7 @@
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid};
-use bridge_types::GenericAssetId;
+// use bridge_types::GenericAssetId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::traits::ConstU32;
@@ -323,16 +323,17 @@ where
     }
 }
 
-impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
-    type Error = &'static str;
-
-    fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
-        match asset_id {
-            GenericAssetId::Sora(id) => Ok(id.into()),
-            _ => Err("Non SORA assets is not supported"),
-        }
-    }
-}
+// TODO: Not sure not used
+// impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
+//     type Error = &'static str;
+//
+//     fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
+//         match asset_id {
+//             GenericAssetId::Sora(id) => Ok(id.into()),
+//             _ => Err("Non SORA assets is not supported"),
+//         }
+//     }
+// }
 
 impl<AssetId> FromStr for AssetId32<AssetId> {
     type Err = &'static str;

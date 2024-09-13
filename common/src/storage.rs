@@ -55,11 +55,12 @@ impl<K, V, S: Get<u32>> StorageDecodeIsFull for BoundedBTreeMap<K, V, S> {
     }
 }
 
-impl<T, S: Get<u32>> StorageDecodeIsFull for BoundedBTreeSet<T, S> {
-    fn bound() -> usize {
-        S::get() as usize
-    }
-}
+// TODO: commited for build
+// impl<T, S: Get<u32>> StorageDecodeIsFull for BoundedBTreeSet<T, S> {
+//     fn bound() -> usize {
+//         S::get() as usize
+//     }
+// }
 
 impl<T, S: Get<u32>> StorageDecodeIsFull for BoundedVec<T, S> {
     fn bound() -> usize {
