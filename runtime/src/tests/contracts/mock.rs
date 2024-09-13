@@ -207,7 +207,7 @@ pub fn instantiate_contract(code: Vec<u8>) -> AccountId32 {
         balance!(10),
         GAS_LIMIT,
         None,
-        pallet_contracts_primitives::Code::Upload(code),
+        pallet_contracts::Code::Upload(code),
         vec![],
         vec![0],
         pallet_contracts::DebugInfo::Skip,

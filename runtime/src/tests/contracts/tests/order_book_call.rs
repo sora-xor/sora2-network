@@ -41,8 +41,8 @@ use common::{balance, DEXId, LiquiditySource, PriceVariant, VAL, XOR};
 use frame_support::{assert_ok, weights::Weight};
 use frame_system::RawOrigin;
 use order_book::{OrderBookId, WeightInfo};
+use pallet_contracts::ContractResult;
 use pallet_contracts::{CollectEvents, DebugInfo, Determinism};
-use pallet_contracts_primitives::ContractResult;
 use sp_core::crypto::AccountId32;
 
 #[test]
