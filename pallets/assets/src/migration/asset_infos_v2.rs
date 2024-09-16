@@ -60,11 +60,12 @@ where
                         description,
                     },
                 );
-                weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+                weight = weight
+                    .saturating_add(<T as frame_system::Config>::DbWeight::get().reads_writes(1, 1))
             },
         );
 
-        weight.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+        weight.saturating_add(<T as frame_system::Config>::DbWeight::get().reads_writes(1, 1))
     }
 }
 

@@ -200,8 +200,8 @@ pub mod pallet {
             + scale_info::TypeInfo
             + Eq
             + PartialEq
-            + From<Self::AccountId>
-            + Into<Self::AccountId>;
+            + From<AccountIdOf<Self>>
+            + Into<AccountIdOf<Self>>;
         type ExtraAssetRecordArg: Clone
             + Copy
             + Encode
@@ -241,13 +241,17 @@ pub mod pallet {
         type GetBuyBackPercentage: Get<u8>;
 
         /// Account which will be used to buy-back and burn [`GetBuyBackAssetId`]
-        type GetBuyBackAccountId: Get<Self::AccountId>;
+        type GetBuyBackAccountId: Get<AccountIdOf<Self>>;
 
         /// DEX id to buy-back and burn [`GetBuyBackAssetId`] through [`BuyBackLiquidityProxy`]
         type GetBuyBackDexId: Get<Self::DEXId>;
 
         /// Liquidity proxy to perform [`GetBuyBackAssetId`] buy-back and burn
-        type BuyBackLiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type BuyBackLiquidityProxy: LiquidityProxyTrait<
+            Self::DEXId,
+            AccountIdOf<Self>,
+            Self::AssetId,
+        >;
 
         /// Currency to transfer, reserve/unreserve, lock/unlock assets
         type Currency: MultiLockableCurrency<
@@ -265,7 +269,7 @@ pub mod pallet {
         type GetTotalBalance: GetTotalBalance<Self>;
 
         /// Regulator of asset operations
-        type AssetRegulator: AssetRegulator<Self::AccountId, Self::AssetId>;
+        type AssetRegulator: AssetRegulator<AccountIdOf<Self>, Self::AssetId>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -1094,7 +1098,7 @@ impl<T: Config>
     type AssetId = T::AssetId;
     type GetBaseAssetId = T::GetBaseAssetId;
 
-    fn gen_asset_id(account_id: &T::AccountId) -> Self::AssetId {
+    fn gen_asset_id(account_id: &AccountIdOf<T>) -> Self::AssetId {
         Self::gen_asset_id(account_id)
     }
 

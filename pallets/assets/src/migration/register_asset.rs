@@ -39,6 +39,8 @@ pub struct RegisterAsset<T, AssetId, AssetName, AssetSymbol, AssetOwner>(
     PhantomData<(T, AssetId, AssetName, AssetSymbol, AssetOwner)>,
 );
 
+pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+
 impl<T, AssetId, AssetName, AssetSymbol, AssetOwner> OnRuntimeUpgrade
     for RegisterAsset<T, AssetId, AssetName, AssetSymbol, AssetOwner>
 where
@@ -46,7 +48,7 @@ where
     AssetId: Get<T::AssetId>,
     AssetName: Get<common::AssetName>,
     AssetSymbol: Get<common::AssetSymbol>,
-    AssetOwner: Get<T::AccountId>,
+    AssetOwner: Get<AccountIdOf<T>>,
 {
     fn on_runtime_upgrade() -> frame_support::weights::Weight {
         if let Err(err) = crate::Pallet::<T>::register_asset_id(
