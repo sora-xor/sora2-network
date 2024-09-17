@@ -31,6 +31,7 @@
 use super::{alice, register_custom_asset, QaToolsPallet};
 use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, QuoteAmount};
+use common::PriceToolsProvider;
 use common::{
     assert_approx_eq, balance, AccountIdOf, AssetInfoProvider, Balance, DEXId, LiquiditySource,
     PriceVariant, CERES_ASSET_ID, ETH, TBCD, VAL, XOR,

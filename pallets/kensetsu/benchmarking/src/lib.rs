@@ -226,7 +226,7 @@ fn initialize_liquidity_sources<T: Config>() {
 }
 
 fn incoming_spot_price<T: price_tools::Config>(asset_id: AssetIdOf<T>, price: Balance) {
-    price_tools::FastPriceInfos::<T>::mutate(&asset_id, |opt_val| {
+    price_tools::FastPriceInfos::<T>::mutate(asset_id, |opt_val| {
         let val = opt_val.as_mut().unwrap();
         val.price_mut_of(PriceVariant::Buy)
             .incoming_spot_price(price, PriceVariant::Buy, &price_tools::FAST_PARAMETERS)
