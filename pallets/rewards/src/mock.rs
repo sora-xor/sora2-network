@@ -29,23 +29,22 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{Everything, OnFinalize, OnInitialize};
 use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_frame_system_config, mock_permissions_config, mock_technical_config, mock_tokens_config,
+    Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL,
+    XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -58,7 +57,6 @@ type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId32 {
@@ -82,6 +80,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const ExistentialDeposit: u128 = 1;
     pub const DbWeight: RuntimeDbWeight = RuntimeDbWeight {
         read: 100,
         write: 1000,
@@ -89,17 +88,13 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Runtime {
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
@@ -108,12 +103,11 @@ construct_runtime! {
 mock_technical_config!(Runtime);
 // Required by assets::Config
 mock_currencies_config!(Runtime);
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 impl Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 20;
@@ -130,9 +124,21 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-// Required by assets::Config
-impl permissions::Config for Runtime {
+// Required by currencies::Config
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 pub struct ExtBuilder {
@@ -151,13 +157,13 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let tech_account_id = tech_account_id();
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(150)), (alice(), balance!(0))],
+            balances: vec![(account_id.clone(), balance!(150)), (alice(), balance!(1))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

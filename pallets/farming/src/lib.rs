@@ -86,7 +86,7 @@ impl<T: Config> Pallet<T> {
         });
     }
 
-    fn refresh_pools(now: T::BlockNumber) -> Weight {
+    fn refresh_pools(now: BlockNumberFor<T>) -> Weight {
         let mut total_weight = Weight::zero();
         let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
         for pool in pools {
@@ -108,48 +108,48 @@ impl<T: Config> Pallet<T> {
                 QuoteAmount::with_desired_output(balance!(1)),
                 false,
             )?;
-            frame_support::log::debug!("{outcome:?}");
+            log::debug!("{outcome:?}");
             Ok(FixedWrapper::from(outcome.amount))
         }
     }
 
-    fn refresh_pool(pool: T::AccountId, now: T::BlockNumber) -> u32 {
+    fn refresh_pool(pool: T::AccountId, now: BlockNumberFor<T>) -> u32 {
         let trading_pair = match pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
             Ok(trading_pair) => trading_pair,
             Err(err) => {
-                frame_support::log::warn!("Failed to get trading pair for {pool:?} pool: {err:?}",);
+                log::warn!("Failed to get trading pair for {pool:?} pool: {err:?}",);
                 return 0;
             }
         };
         let multiplier = match Self::get_multiplier(&trading_pair.base_asset_id) {
             Ok(multiplier) => multiplier,
             Err(err) => {
-                frame_support::log::warn!(
+                log::warn!(
                     "Failed to get farming rewards multiplier for {:?} asset: {err:?}",
                     trading_pair.base_asset_id
                 );
                 return 0;
             }
         };
-        frame_support::log::debug!("Multiplier for TP {trading_pair:?}: {multiplier:?}");
+        log::debug!("Multiplier for TP {trading_pair:?}: {multiplier:?}");
         let mut read_count = 0;
         let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
         let Some(pool_total_liquidity) = pool_xyk::TotalIssuances::<T>::get(&pool) else {
-                frame_support::log::warn!(
-                    "Failed to get total issuance for pool {:?}",
-                    pool
-                );
-                return 0;
+            log::warn!("Failed to get total issuance for pool {:?}", pool);
+            return 0;
         };
-        let Ok((pool_base_reserves, _, _)) = pool_xyk::Pallet::<T>::get_actual_reserves(&pool, &trading_pair.base_asset_id, &trading_pair.base_asset_id, &trading_pair.target_asset_id).map_err(|e| {
-                frame_support::log::warn!(
-                    "Failed to get base reserves for pool {:?}: {:?}",
-                    pool, e
-                );
+        let Ok((pool_base_reserves, _, _)) = pool_xyk::Pallet::<T>::get_actual_reserves(
+            &pool,
+            &trading_pair.base_asset_id,
+            &trading_pair.base_asset_id,
+            &trading_pair.target_asset_id,
+        )
+        .map_err(|e| {
+            log::warn!("Failed to get base reserves for pool {:?}: {:?}", pool, e);
             e
         }) else {
-                return 0;
+            return 0;
         };
         for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
             read_count += 1;
@@ -219,7 +219,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn vest(now: T::BlockNumber) -> Weight {
+    fn vest(now: BlockNumberFor<T>) -> Weight {
         let mut accounts = BTreeMap::new();
         let function_weight: Weight = Self::prepare_accounts_for_vesting(now, &mut accounts);
         let function_weight = function_weight.saturating_add(
@@ -230,7 +230,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn prepare_accounts_for_vesting(
-        now: T::BlockNumber,
+        now: BlockNumberFor<T>,
         accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
     ) -> Weight {
         let mut pool_count = 0;
@@ -247,8 +247,8 @@ impl<T: Config> Pallet<T> {
 
     fn get_farmer_weight_amplified_by_time(
         farmer_weight: u128,
-        farmer_block: T::BlockNumber,
-        now: T::BlockNumber,
+        farmer_block: BlockNumberFor<T>,
+        now: BlockNumberFor<T>,
     ) -> FixedWrapper {
         // Ti
         let farmer_farming_time: u32 = (now - farmer_block).unique_saturated_into();
@@ -265,7 +265,7 @@ impl<T: Config> Pallet<T> {
 
     fn prepare_pool_accounts_for_vesting(
         farmers: Vec<PoolFarmer<T>>,
-        now: T::BlockNumber,
+        now: BlockNumberFor<T>,
         accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
     ) {
         if farmers.is_empty() {
@@ -359,7 +359,7 @@ pub mod pallet {
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
         type RuntimeCall: Parameter;
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
-        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
+        type Scheduler: Anon<BlockNumberFor<Self>, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
@@ -370,14 +370,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             if now.is_zero() {
                 return Weight::zero();
             }
@@ -417,7 +416,7 @@ pub mod pallet {
     /// Pools whose farmers are refreshed at the specific block. Block => Pools
     #[pallet::storage]
     pub type Pools<T: Config> =
-        StorageMap<_, Identity, T::BlockNumber, Vec<T::AccountId>, ValueQuery>;
+        StorageMap<_, Identity, BlockNumberFor<T>, Vec<T::AccountId>, ValueQuery>;
 
     /// Farmers of the pool. Pool => Farmers
     #[pallet::storage]
@@ -469,7 +468,7 @@ pub struct PoolFarmer<T: Config> {
     /// The account of the farmer
     account: T::AccountId,
     /// The block that the farmer started farming at
-    block: T::BlockNumber,
+    block: BlockNumberFor<T>,
     /// The weight the farmer has in the pool
     weight: Balance,
 }

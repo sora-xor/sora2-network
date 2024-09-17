@@ -30,7 +30,15 @@
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, OutcomeFee};
+use common::AssetId32;
+use sp_core::crypto::AccountId32;
 use sp_runtime::RuntimeDebug;
+
+type DEXId = common::DEXId;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+pub type AccountId = AccountId32;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 use crate::bounds::*;
 
@@ -88,4 +96,8 @@ pub enum PolySwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     PairSwap(PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>),
     DepositLiquidity(DepositLiquidityAction<AssetId, AccountId, TechAccountId>),
     WithdrawLiquidity(WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>),
+}
+
+impl Into<()> for PolySwapAction<DEXId, AssetId, AccountId, TechAccountId> {
+    fn into(self) -> () {}
 }

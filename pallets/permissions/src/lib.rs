@@ -48,14 +48,16 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use codec::{Decode, Encode};
 use common::permissions::TRANSFER;
 use common::{hash, AssetRegulator};
-use frame_support::codec::{Decode, Encode};
-use frame_support::sp_runtime::DispatchError;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::ensure;
 #[cfg(feature = "std")]
+use frame_support::sp_runtime;
+use frame_support::sp_runtime::DispatchError;
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
+use sp_core::RuntimeDebug;
 use sp_std::vec::Vec;
 #[cfg(test)]
 mod mock;
@@ -73,8 +75,19 @@ pub type OwnerId<T> = <T as frame_system::Config>::AccountId;
 pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
+)]
+// #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Scope {
     Limited(H512),
     Unlimited,
@@ -262,7 +275,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -328,7 +340,6 @@ pub mod pallet {
         pub initial_permissions: Vec<(HolderId<T>, Scope, Vec<PermissionId>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -339,7 +350,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.initial_permission_owners
                 .iter()

@@ -33,25 +33,22 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, DEXId, XST,
+    mock_permissions_config, mock_tokens_config, DEXId, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::mock::*;
-pub use common::TechAssetId::*;
 pub use common::TechPurpose::*;
 pub use common::TradingPair;
 
@@ -63,8 +60,6 @@ type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 type TechAmount = Amount;
 type TechBalance = Balance;
-
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
@@ -73,15 +68,12 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -91,15 +83,27 @@ construct_runtime! {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_assets_config!(Runtime);
 
-impl permissions::Config for Runtime {
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 parameter_types! {
@@ -402,10 +406,10 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(get_alice(), 0), (get_bob(), 0)],
+            balances: vec![(get_alice(), 1), (get_bob(), 1)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

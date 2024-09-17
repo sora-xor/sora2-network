@@ -45,17 +45,17 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
+use frame_support::traits::{ConstU64, Everything, Randomness};
 use frame_system::offchain::SendTransactionTypes;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
 use sp_core::{ConstU32, H256};
 use sp_runtime::{
-    testing::{Header, TestXt},
+    testing::TestXt,
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
 };
-use sp_runtime::{DispatchError, MultiSignature};
+use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
@@ -67,7 +67,6 @@ type Moment = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
 pub struct MockRandomness;
 
@@ -271,14 +270,10 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
 }
 
 frame_support::construct_runtime!(
-    pub enum TestRuntime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum TestRuntime {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -375,8 +370,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         )
         .unwrap();
 
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
+    let mut storage = frame_system::GenesisConfig::<TestRuntime>::default()
+        .build_storage()
         .unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![
@@ -393,6 +388,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 assets_and_permissions_tech_account_id,
             ),
         ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    BalancesConfig {
+        balances: vec![(assets_and_permissions_account_id.clone(), balance!(1))],
     }
     .assimilate_storage(&mut storage)
     .unwrap();

@@ -63,9 +63,10 @@ use common::{
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_core::RuntimeDebug;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
@@ -166,7 +167,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -429,7 +429,6 @@ pub mod pallet {
         pub initial_synthetic_assets: Vec<(AssetIdOf<T>, T::Symbol, Fixed)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -445,7 +444,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
 

@@ -36,12 +36,13 @@ use codec::{Codec, Decode, Encode};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::Balance;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[derive(Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct RateInfo {
     #[cfg_attr(

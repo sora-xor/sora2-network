@@ -83,8 +83,7 @@ use common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
 use core::stringify;
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::log::{debug, error, info, warn};
+use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
@@ -94,17 +93,19 @@ use frame_support::sp_runtime::traits::{
 use frame_support::sp_runtime::KeyTypeId;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, Parameter, RuntimeDebug};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction};
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
+use log::{debug, error, info, warn};
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, H256};
+use sp_core::{RuntimeDebug, H160, H256};
+use sp_runtime::DispatchError;
 use sp_std::borrow::Cow;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug};
@@ -176,7 +177,8 @@ const RE_HANDLE_TXS_PERIOD: u32 = 200;
 pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
+// type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
+type Timepoint<T> = bridge_multisig::BridgeTimepoint<BlockNumberFor<T>>;
 type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
@@ -206,8 +208,9 @@ pub struct NetworkParams<AccountId: Ord> {
 }
 
 /// Network configuration.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
@@ -267,8 +270,9 @@ impl Default for BridgeStatus {
 }
 
 /// Bridge asset parameters.
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
 pub enum AssetConfig<AssetId> {
     Thischain {
         id: AssetId,
@@ -333,13 +337,13 @@ pub mod pallet {
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use common::{ContentSource, Description};
-    use frame_support::log;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
-    use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use log;
 
     #[pallet::config]
     pub trait Config:
@@ -397,7 +401,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -410,7 +413,7 @@ pub mod pallet {
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!("Entering off-chain workers {:?}", block_number);
             let value_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
             if value_ref.get::<Vec<u8>>().ok().flatten().is_none() {
@@ -1288,7 +1291,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Identity,
         H256,
-        T::BlockNumber,
+        BlockNumberFor<T>,
         ValueQuery,
     >;
 
@@ -1468,7 +1471,6 @@ pub mod pallet {
         pub networks: Vec<NetworkConfig<T>>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -1481,7 +1483,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             AuthorityAccount::<T>::put(&self.authority_account.as_ref().unwrap());
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);

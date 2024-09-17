@@ -46,6 +46,7 @@ use framenode_runtime::order_book::{
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::TokenError;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::vec_deque::VecDeque;
 
@@ -403,7 +404,7 @@ fn should_not_lock_insufficient_base_asset() {
                 &XOR,
                 amount_to_lock.into()
             ),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            TokenError::FundsUnavailable
         );
     });
 }
@@ -512,7 +513,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
                 &XOR,
                 amount_to_try_unlock.into()
             ),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            TokenError::FundsUnavailable
         );
     });
 }

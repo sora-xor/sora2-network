@@ -33,6 +33,7 @@ use common::prelude::constants::SMALL_FEE;
 use common::{AssetInfoProvider, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
+use sp_runtime::TokenError;
 
 use crate::{Assets, Currencies, Referrals, Runtime, RuntimeOrigin};
 
@@ -70,7 +71,7 @@ fn reserve_insufficient_balance() {
     ext().execute_with(|| {
         assert_err!(
             Referrals::reserve(RuntimeOrigin::signed(alice()), 1),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            TokenError::FundsUnavailable
         );
     })
 }

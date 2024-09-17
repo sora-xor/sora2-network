@@ -14,9 +14,10 @@ serde = { version = "1.0.101", optional = true, features = ["derive"], default-f
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 common = { path = "../../../common", default-features = false }
 
 [features]

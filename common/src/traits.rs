@@ -38,12 +38,11 @@ use crate::{
 };
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
-use frame_support::pallet_prelude::MaybeSerializeDeserialize;
+use frame_support::pallet_prelude::{DispatchError, MaybeSerializeDeserialize};
 use frame_support::sp_runtime::traits::BadOrigin;
-use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use frame_support::Parameter;
-use frame_system::pallet_prelude::OriginFor;
+use frame_system::pallet_prelude::{BlockNumberFor, OriginFor};
 use frame_system::RawOrigin;
 use orml_traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
@@ -598,7 +597,7 @@ pub trait Config: frame_system::Config {
     /// Currency to transfer, reserve/unreserve, lock/unlock assets
     type MultiCurrency: MultiLockableCurrency<
             Self::AccountId,
-            Moment = Self::BlockNumber,
+            Moment = BlockNumberFor<Self>,
             CurrencyId = AssetIdOf<Self>,
             Balance = Balance,
         > + MultiReservableCurrency<Self::AccountId, CurrencyId = AssetIdOf<Self>, Balance = Balance>
@@ -608,7 +607,7 @@ pub trait Config: frame_system::Config {
 /// Definition of a pending atomic swap action. It contains the following three phrases:
 ///
 /// - **Reserve**: reserve the resources needed for a swap. This is to make sure that **Claim**
-/// succeeds with best efforts.
+///   succeeds with best efforts.
 /// - **Claim**: claim any resources reserved in the first phrase.
 /// - **Cancel**: cancel any resources reserved in the first phrase.
 pub trait SwapAction<SourceAccountId, TargetAccountId, AssetId, T: Config> {

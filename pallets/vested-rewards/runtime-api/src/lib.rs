@@ -34,12 +34,13 @@
 use codec::{Codec, Decode, Encode};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
 use sp_std::prelude::*;
 
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[derive(Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BalanceInfo<Balance> {
     #[cfg_attr(
@@ -55,7 +56,7 @@ pub struct BalanceInfo<Balance> {
     pub balance: Balance,
 }
 
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[derive(Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct CrowdloanLease {
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]

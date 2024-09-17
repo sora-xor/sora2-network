@@ -35,10 +35,12 @@
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
+use sp_runtime::DispatchError;
 use sp_runtime::RuntimeDebug;
+use sp_std::vec::Vec;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
 use sp_core::H256;
@@ -318,7 +320,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -424,7 +425,6 @@ pub mod pallet {
         pub register_tech_accounts: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -434,7 +434,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.register_tech_accounts.iter().for_each(|(k, v)| {
                 frame_system::Pallet::<T>::inc_providers(k);

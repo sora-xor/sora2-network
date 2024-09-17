@@ -35,13 +35,14 @@ pub mod liquidity_sources {
     use crate::pallet_tools::price_tools::AssetPrices;
     use crate::Config;
     use common::{AssetIdOf, DexIdOf};
-    use frame_support::dispatch::{DispatchError, DispatchResult};
+    use frame_support::dispatch::DispatchResult;
     use frame_support::ensure;
     use frame_system::pallet_prelude::BlockNumberFor;
     use order_book::{MomentOf, OrderBookId};
     use pallet_tools::mcbc::{BaseSupply, OtherCollateralInput};
     use pallet_tools::pool_xyk::AssetPairInput;
     use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};
+    use sp_runtime::DispatchError;
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
 
@@ -49,7 +50,7 @@ pub mod liquidity_sources {
     ///
     /// Parameters:
     /// - `caller`: Some account to use during the initialization; assets are minted and extrinsics
-    /// are called with it.
+    ///   are called with it.
     /// - `pairs`: Asset pairs to initialize.
     pub fn initialize_xyk<T: Config + pool_xyk::Config>(
         caller: T::AccountId,
@@ -66,7 +67,7 @@ pub mod liquidity_sources {
     /// - `bids_owner`: Creator of the buy orders placed on the order books,
     /// - `asks_owner`: Creator of the sell orders placed on the order books,
     /// - `settings`: Parameters for creation of the order book and placing the orders in each
-    /// order book.
+    ///   order book.
     pub fn create_and_fill_order_book_batch<T: Config>(
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,

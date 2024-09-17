@@ -379,7 +379,7 @@ fn should_mint_initial_supply_for_owner() {
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
-            Balance::from(123u32),
+            Balance::from(123u32 + 1),
         );
         assert_ok!(Assets::register_asset_id(
             ALICE,
@@ -542,7 +542,7 @@ fn should_burn_from() {
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
-            Balance::from(10u32),
+            Balance::from(10u32 + 1),
         );
         assert_ok!(Assets::burn_from(
             &XOR,
@@ -552,7 +552,7 @@ fn should_burn_from() {
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
-            Balance::from(0u32),
+            Balance::from(1u32),
         );
     })
 }
@@ -599,12 +599,12 @@ fn should_allow_burn_from_self_without_a_permissions() {
         assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)));
         assert_eq!(
             Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
-            Balance::from(10u32)
+            Balance::from(10u32 + 1)
         );
         assert_ok!(Assets::burn_from(&XOR, &BOB, &BOB, Balance::from(10u32)));
         assert_eq!(
             Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
-            Balance::from(0u32)
+            Balance::from(1u32)
         );
     })
 }
@@ -628,13 +628,13 @@ fn should_update_balance_correctly() {
         assert_ok!(Assets::update_balance(RuntimeOrigin::root(), BOB, XOR, 100));
         assert_eq!(
             Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
-            Balance::from(100u32)
+            Balance::from(100u32 + 1)
         );
 
         assert_ok!(Assets::update_balance(RuntimeOrigin::root(), BOB, XOR, -10));
         assert_eq!(
             Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
-            Balance::from(90u32)
+            Balance::from(90u32 + 1)
         );
 
         assert_err!(
@@ -643,7 +643,7 @@ fn should_update_balance_correctly() {
         );
         assert_eq!(
             Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
-            Balance::from(90u32)
+            Balance::from(90u32 + 1)
         );
 
         assert_noop!(
@@ -652,7 +652,7 @@ fn should_update_balance_correctly() {
         );
         assert_eq!(
             Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
-            Balance::from(90u32)
+            Balance::from(90u32 + 1)
         );
     })
 }

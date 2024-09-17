@@ -37,6 +37,7 @@ use common::prelude::OutcomeFee;
 #[cfg(feature = "std")]
 use common::utils::{fee_serialization, string_serialization};
 use common::BalanceWrapper;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::de::DeserializeOwned;
 #[cfg(feature = "std")]
@@ -44,7 +45,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr, Zero};
 use sp_std::prelude::*;
 
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[derive(Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct SwapOutcomeInfo<Balance, AssetId>
 where
@@ -87,7 +88,7 @@ where
     }
 }
 
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[derive(Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct SwapOutcomeInfoV1<Balance> {
     #[cfg_attr(

@@ -30,6 +30,7 @@
 
 use super::XST;
 use crate::{mock::*, pallet::Pallet, DEXInfos};
+#[allow(unused_imports)]
 use frame_support::traits::{GetStorageVersion as _, StorageVersion};
 
 #[test]

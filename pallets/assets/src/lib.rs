@@ -62,8 +62,8 @@ use common::{
     AssetType, BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
     LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
+use frame_support::dispatch::DispatchResult;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::{ensure, Parameter};
@@ -72,6 +72,7 @@ use frame_system::pallet_prelude::OriginFor;
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use tiny_keccak::{Hasher, Keccak};
 use traits::{
@@ -162,13 +163,14 @@ pub enum AssetRecord<T: Config> {
 }
 
 pub trait GetTotalBalance<T: Config> {
-    fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError>;
+    fn total_balance(asset_id: &T::AssetId, who: &AccountIdOf<T>)
+        -> Result<Balance, DispatchError>;
 }
 
 impl<T: Config> GetTotalBalance<T> for () {
     fn total_balance(
         _asset_id: &T::AssetId,
-        _who: &T::AccountId,
+        _who: &AccountIdOf<T>,
     ) -> Result<Balance, DispatchError> {
         Ok(0)
     }
@@ -180,7 +182,7 @@ pub use pallet::*;
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{AssetRegulator, AssetType, ContentSource, Description};
+    use common::{AccountIdOf, AssetRegulator, AssetType, ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
 
@@ -193,7 +195,6 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
-            + Copy
             + Encode
             + Decode
             + scale_info::TypeInfo
@@ -250,12 +251,15 @@ pub mod pallet {
 
         /// Currency to transfer, reserve/unreserve, lock/unlock assets
         type Currency: MultiLockableCurrency<
-                Self::AccountId,
-                Moment = Self::BlockNumber,
-                CurrencyId = Self::AssetId,
+                AccountIdOf<Self>,
+                Moment = BlockNumberFor<Self>,
+                CurrencyId = AssetIdOf<Self>,
                 Balance = Balance,
-            > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
-            + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
+            > + MultiReservableCurrency<
+                AccountIdOf<Self>,
+                CurrencyId = AssetIdOf<Self>,
+                Balance = Balance,
+            > + MultiCurrencyExtended<AccountIdOf<Self>, Amount = Amount>;
 
         /// Get the balance from other components
         type GetTotalBalance: GetTotalBalance<Self>;
@@ -271,7 +275,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -337,7 +340,7 @@ pub mod pallet {
         pub fn transfer(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
-            to: T::AccountId,
+            to: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin.clone())?;
@@ -357,7 +360,7 @@ pub mod pallet {
         pub fn mint(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
-            to: T::AccountId,
+            to: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let issuer = ensure_signed(origin.clone())?;
@@ -383,7 +386,7 @@ pub mod pallet {
         pub fn force_mint(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
-            to: T::AccountId,
+            to: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin.clone())?;
@@ -436,7 +439,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::update_balance())]
         pub fn update_balance(
             origin: OriginFor<T>,
-            who: T::AccountId,
+            who: AccountIdOf<T>,
             currency_id: CurrencyIdOf<T>,
             amount: AmountOf<T>,
         ) -> DispatchResult {
@@ -556,7 +559,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_owner)]
     pub type AssetOwners<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
+        StorageMap<_, Twox64Concat, T::AssetId, AccountIdOf<T>, OptionQuery>;
 
     /// Asset Id -> (Symbol, Name, Precision, Is Mintable, Content Source, Description)
     #[pallet::storage]
@@ -593,7 +596,7 @@ pub mod pallet {
     pub struct GenesisConfig<T: Config> {
         pub endowed_assets: Vec<(
             T::AssetId,
-            T::AccountId,
+            AccountIdOf<T>,
             AssetSymbol,
             AssetName,
             BalancePrecision,
@@ -604,7 +607,6 @@ pub mod pallet {
         )>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -614,7 +616,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.endowed_assets.iter().cloned().for_each(
                 |(
@@ -675,7 +677,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Generates an `AssetId` for the given `AccountId`.
-    pub fn gen_asset_id(account_id: &T::AccountId) -> T::AssetId {
+    pub fn gen_asset_id(account_id: &AccountIdOf<T>) -> T::AssetId {
         let mut keccak = Keccak::v256();
         keccak.update(b"Sora Asset Id");
         keccak.update(&account_id.encode());
@@ -690,7 +692,7 @@ impl<T: Config> Pallet<T> {
     /// Register the given `AssetId`.
     #[allow(clippy::too_many_arguments)]
     pub fn register_asset_id(
-        account_id: T::AccountId,
+        account_id: AccountIdOf<T>,
         asset_id: T::AssetId,
         symbol: AssetSymbol,
         name: AssetName,
@@ -763,7 +765,7 @@ impl<T: Config> Pallet<T> {
     /// Generates new `AssetId` and registers it from the `account_id`.
     #[allow(clippy::too_many_arguments)]
     pub fn register_from(
-        account_id: &T::AccountId,
+        account_id: &AccountIdOf<T>,
         symbol: AssetSymbol,
         name: AssetName,
         precision: BalancePrecision,
@@ -800,8 +802,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn transfer_from(
         asset_id: &T::AssetId,
-        from: &T::AccountId,
-        to: &T::AccountId,
+        from: &AccountIdOf<T>,
+        to: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         T::AssetRegulator::check_permission(from, to, asset_id, &TRANSFER)?;
@@ -815,8 +817,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn mint_to(
         asset_id: &T::AssetId,
-        issuer: &T::AccountId,
-        to: &T::AccountId,
+        issuer: &AccountIdOf<T>,
+        to: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         // No need to check if asset exist.
@@ -828,7 +830,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn mint_unchecked(
         asset_id: &T::AssetId,
-        to: &T::AccountId,
+        to: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         T::Currency::deposit(*asset_id, to, amount)
@@ -836,8 +838,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn burn_from(
         asset_id: &T::AssetId,
-        issuer: &T::AccountId,
-        from: &T::AccountId,
+        issuer: &AccountIdOf<T>,
+        from: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         T::AssetRegulator::check_permission(issuer, from, asset_id, &BURN)?;
@@ -846,7 +848,7 @@ impl<T: Config> Pallet<T> {
 
     fn burn_unchecked(
         asset_id: &T::AssetId,
-        from: &T::AccountId,
+        from: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         let r = T::Currency::withdraw(*asset_id, from, amount);
@@ -881,7 +883,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn update_own_balance(
         asset_id: &T::AssetId,
-        who: &T::AccountId,
+        who: &AccountIdOf<T>,
         by_amount: Amount,
     ) -> DispatchResult {
         T::AssetRegulator::check_permission(who, who, asset_id, &BURN)?;
@@ -892,11 +894,11 @@ impl<T: Config> Pallet<T> {
         T::Currency::update_balance(*asset_id, who, by_amount)
     }
 
-    pub fn can_reserve(asset_id: T::AssetId, who: &T::AccountId, amount: Balance) -> bool {
+    pub fn can_reserve(asset_id: T::AssetId, who: &AccountIdOf<T>, amount: Balance) -> bool {
         T::Currency::can_reserve(asset_id, who, amount)
     }
 
-    pub fn reserve(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
+    pub fn reserve(asset_id: &T::AssetId, who: &AccountIdOf<T>, amount: Balance) -> DispatchResult {
         let r = T::Currency::reserve(*asset_id, who, amount);
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
@@ -906,7 +908,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn unreserve(
         asset_id: &T::AssetId,
-        who: &T::AccountId,
+        who: &AccountIdOf<T>,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let amount = T::Currency::unreserve(*asset_id, who, amount);
@@ -916,7 +918,7 @@ impl<T: Config> Pallet<T> {
         Ok(amount)
     }
 
-    pub fn set_non_mintable_from(asset_id: &T::AssetId, who: &T::AccountId) -> DispatchResult {
+    pub fn set_non_mintable_from(asset_id: &T::AssetId, who: &AccountIdOf<T>) -> DispatchResult {
         ensure!(
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
@@ -975,7 +977,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config>
     AssetInfoProvider<
         T::AssetId,
-        T::AccountId,
+        AccountIdOf<T>,
         AssetSymbol,
         AssetName,
         BalancePrecision,
@@ -997,7 +999,7 @@ impl<T: Config>
     }
 
     #[inline]
-    fn is_asset_owner(asset_id: &T::AssetId, account_id: &T::AccountId) -> bool {
+    fn is_asset_owner(asset_id: &T::AssetId, account_id: &AccountIdOf<T>) -> bool {
         Self::asset_owner(asset_id)
             .map(|x| &x == account_id)
             .unwrap_or(false)
@@ -1044,7 +1046,10 @@ impl<T: Config>
         Ok(r)
     }
 
-    fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
+    fn total_balance(
+        asset_id: &T::AssetId,
+        who: &AccountIdOf<T>,
+    ) -> Result<Balance, DispatchError> {
         let r = T::Currency::total_balance(*asset_id, who);
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
@@ -1052,7 +1057,7 @@ impl<T: Config>
         Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
     }
 
-    fn free_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
+    fn free_balance(asset_id: &T::AssetId, who: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
         let r = T::Currency::free_balance(*asset_id, who);
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
@@ -1062,7 +1067,7 @@ impl<T: Config>
 
     fn ensure_can_withdraw(
         asset_id: &T::AssetId,
-        who: &T::AccountId,
+        who: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         let r = T::Currency::ensure_can_withdraw(*asset_id, who, amount);
@@ -1072,7 +1077,7 @@ impl<T: Config>
         r
     }
 
-    fn get_asset_owner(asset_id: &T::AssetId) -> Result<T::AccountId, DispatchError> {
+    fn get_asset_owner(asset_id: &T::AssetId) -> Result<AccountIdOf<T>, DispatchError> {
         let owner = Self::asset_owner(asset_id).ok_or(Error::<T>::AssetIdNotExists)?;
         Ok(owner)
     }
@@ -1099,7 +1104,7 @@ impl<T: Config>
 
     fn update_balance(
         origin: OriginFor<T>,
-        who: T::AccountId,
+        who: AccountIdOf<T>,
         currency_id: common::CurrencyIdOf<T>,
         amount: AmountOf<T>,
     ) -> DispatchResult {
@@ -1107,7 +1112,7 @@ impl<T: Config>
     }
 
     fn register_from(
-        account_id: &T::AccountId,
+        account_id: &AccountIdOf<T>,
         symbol: AssetSymbol,
         name: AssetName,
         precision: BalancePrecision,
@@ -1131,7 +1136,7 @@ impl<T: Config>
     }
 
     fn register_asset_id(
-        account_id: T::AccountId,
+        account_id: AccountIdOf<T>,
         asset_id: Self::AssetId,
         symbol: AssetSymbol,
         name: AssetName,
@@ -1157,8 +1162,8 @@ impl<T: Config>
     }
     fn burn_from(
         asset_id: &Self::AssetId,
-        issuer: &T::AccountId,
-        from: &T::AccountId,
+        issuer: &AccountIdOf<T>,
+        from: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         Self::burn_from(asset_id, issuer, from, amount)
@@ -1166,8 +1171,8 @@ impl<T: Config>
 
     fn transfer_from(
         asset_id: &Self::AssetId,
-        from: &T::AccountId,
-        to: &T::AccountId,
+        from: &AccountIdOf<T>,
+        to: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         Self::transfer_from(asset_id, from, to, amount)
@@ -1175,8 +1180,8 @@ impl<T: Config>
 
     fn mint_to(
         asset_id: &Self::AssetId,
-        issuer: &T::AccountId,
-        to: &T::AccountId,
+        issuer: &AccountIdOf<T>,
+        to: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         Self::mint_to(asset_id, issuer, to, amount)
@@ -1184,7 +1189,7 @@ impl<T: Config>
 
     fn mint_unchecked(
         asset_id: &Self::AssetId,
-        to: &T::AccountId,
+        to: &AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
         Self::mint_unchecked(asset_id, to, amount)
@@ -1200,7 +1205,7 @@ impl<T: Config>
     fn mint(
         origin: OriginFor<T>,
         asset_id: Self::AssetId,
-        to: T::AccountId,
+        to: AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResultWithPostInfo {
         Self::mint(origin, asset_id, to, amount)

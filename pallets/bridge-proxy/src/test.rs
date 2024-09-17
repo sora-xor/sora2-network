@@ -49,6 +49,8 @@ use sp_keyring::AccountKeyring as Keyring;
 
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
+use sp_runtime::ArithmeticError::Underflow;
+use sp_runtime::DispatchError::Arithmetic;
 
 fn assert_event(event: RuntimeEvent) {
     System::events()
@@ -134,16 +136,16 @@ fn burn_successfull() {
 #[test]
 fn burn_failed() {
     new_tester().execute_with(|| {
-        let caller: AccountId = Keyring::Alice.into();
+        let caller: AccountId = Keyring::Bob.into();
         assert_noop!(
             BridgeProxy::burn(
                 RawOrigin::Signed(caller.clone()).into(),
                 BASE_EVM_NETWORK_ID.into(),
                 XOR,
                 GenericAccount::EVM(H160::default()),
-                1000,
+                balance!(1.1),
             ),
-            pallet_balances::Error::<Test>::InsufficientBalance
+            Arithmetic(Underflow)
         );
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),

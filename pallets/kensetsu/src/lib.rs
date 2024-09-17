@@ -43,7 +43,7 @@ pub use pallet::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, AssetIdOf, AssetManager, Balance, DataFeed, Rate, SymbolName};
-use frame_support::log::{debug, warn};
+use log::{debug, warn};
 use scale_info::TypeInfo;
 use sp_arithmetic::{FixedU128, Perbill, Percent};
 
@@ -212,7 +212,7 @@ pub mod pallet {
         DEFAULT_BALANCE_PRECISION, KXOR, XOR,
     };
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::Randomness;
+    use frame_support::traits::{BuildGenesisConfig, Randomness};
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
@@ -229,14 +229,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Resets liquidation flag.
-        fn on_initialize(_now: T::BlockNumber) -> Weight {
+        fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
             LiquidatedThisBlock::<T>::put(false);
             T::DbWeight::get().writes(1)
         }
@@ -244,7 +243,7 @@ pub mod pallet {
         /// Main off-chain worker procedure.
         ///
         /// Accrues fees and calls liquidations
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -333,7 +332,7 @@ pub mod pallet {
         + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
+        type Randomness: Randomness<Option<Self::Hash>, BlockNumberFor<Self>>;
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
             Self::AccountId,
@@ -464,7 +463,6 @@ pub mod pallet {
         pub predefined_stablecoin_oracle_peg: Vec<(AssetIdOf<T>, SymbolName, Balance)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -477,7 +475,7 @@ pub mod pallet {
     /// Populates StablecoinInfos with passed parameters. Used for populating with predefined
     /// stable assets.
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.predefined_stablecoin_sora_peg
                 .iter()

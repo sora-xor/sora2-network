@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
+use common::mock::alice;
 use common::prelude::*;
 use common::{balance, fixed};
 

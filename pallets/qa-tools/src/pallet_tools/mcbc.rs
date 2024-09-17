@@ -35,10 +35,11 @@ use common::prelude::FixedWrapper;
 use common::{
     AssetIdOf, AssetInfoProvider, Balance, DEXId, GetBaseAssetIdOf, TradingPairSourceManager, TBCD,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use pallet_tools::price_tools::AssetPrices;
+use sp_runtime::DispatchError;
 
 /// Parameters relevant for TBCD and other collaterals
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]

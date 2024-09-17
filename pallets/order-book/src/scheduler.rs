@@ -44,6 +44,7 @@ use crate::{
 use common::weights::check_accrue_n;
 use common::AssetIdOf;
 use frame_support::weights::WeightMeter;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::{DispatchError, Saturating};
 use sp_std::collections::btree_map::BTreeMap;
@@ -74,8 +75,12 @@ impl<T: Config> Pallet<T> {
             }
         };
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-            debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule; \
-                order {:?} is set to expire but corresponding order book {:?} is not found", order_id, order_book_id);
+            debug_assert!(
+                false,
+                "apparently removal of order book did not cleanup expiration schedule; \
+                order {:?} is set to expire but corresponding order book {:?} is not found",
+                order_id, order_book_id
+            );
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: *order_book_id,
                 order_id,
@@ -112,10 +117,13 @@ impl<T: Config> Pallet<T> {
     /// need to be retried when more weight is available.
     pub fn service_expiration_block(
         data_layer: &mut impl DataLayer<T>,
-        block: T::BlockNumber,
+        block: BlockNumberFor<T>,
         weight: &mut WeightMeter,
     ) -> bool {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_block_base()) {
+        if weight
+            .try_consume(<T as Config>::WeightInfo::service_expiration_block_base())
+            .is_err()
+        {
             return false;
         }
 
@@ -172,15 +180,18 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config>
     ExpirationScheduler<
-        T::BlockNumber,
+        BlockNumberFor<T>,
         OrderBookId<AssetIdOf<T>, T::DEXId>,
         T::DEXId,
         T::OrderId,
         DispatchError,
     > for Pallet<T>
 {
-    fn service_expiration(current_block: T::BlockNumber, weight: &mut WeightMeter) {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_expiration_base()) {
+    fn service_expiration(current_block: BlockNumberFor<T>, weight: &mut WeightMeter) {
+        if weight
+            .try_consume(<T as Config>::WeightInfo::service_expiration_base())
+            .is_err()
+        {
             return;
         }
 
@@ -189,7 +200,7 @@ impl<T: Config>
 
         let service_block_base_weight = <T as Config>::WeightInfo::service_expiration_block_base();
         let mut data_layer = CacheDataLayer::<T>::new();
-        while when <= current_block && weight.can_accrue(service_block_base_weight) {
+        while when <= current_block && weight.can_consume(service_block_base_weight) {
             if !Self::service_expiration_block(&mut data_layer, when, weight) {
                 incomplete_since = incomplete_since.min(when);
             }
@@ -203,7 +214,7 @@ impl<T: Config>
     }
 
     fn schedule_expiration(
-        when: T::BlockNumber,
+        when: BlockNumberFor<T>,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
@@ -215,12 +226,15 @@ impl<T: Config>
     }
 
     fn unschedule_expiration(
-        when: T::BlockNumber,
+        when: BlockNumberFor<T>,
         order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
-            let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, order_id)) else {
+            let Some(remove_index) = block_expirations
+                .iter()
+                .position(|next| next == &(order_book_id, order_id))
+            else {
                 return Err(Error::<T>::ExpirationNotFound.into());
             };
             block_expirations.remove(remove_index);
@@ -232,7 +246,7 @@ impl<T: Config>
 impl<T: Config> AlignmentScheduler for Pallet<T> {
     fn service_alignment(weight: &mut WeightMeter) {
         // return if it cannot align even 1 limit order
-        if !weight.can_accrue(<T as Config>::WeightInfo::align_single_order()) {
+        if !weight.can_consume(<T as Config>::WeightInfo::align_single_order()) {
             return;
         }
 
@@ -243,12 +257,15 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
 
         for (order_book_id, cursor) in <AlignmentCursor<T>>::iter() {
             // break if it cannot align even 1 limit order for the order-book
-            if !weight.can_accrue(<T as Config>::WeightInfo::align_single_order()) {
+            if !weight.can_consume(<T as Config>::WeightInfo::align_single_order()) {
                 break;
             }
 
             let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-                debug_assert!(false, "order-book {order_book_id:?} was not found during alignment");
+                debug_assert!(
+                    false,
+                    "order-book {order_book_id:?} was not found during alignment"
+                );
                 Self::deposit_event(Event::<T>::AlignmentFailure {
                     order_book_id,
                     error: Error::<T>::UnknownOrderBook.into(),
@@ -273,7 +290,7 @@ impl<T: Config> AlignmentScheduler for Pallet<T> {
                 continue;
             };
 
-            weight.defensive_saturating_accrue(
+            weight.consume(
                 <T as Config>::WeightInfo::align_single_order()
                     .saturating_mul(limit_orders.len() as u64),
             );

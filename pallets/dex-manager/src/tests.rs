@@ -31,6 +31,7 @@
 use crate::mock::*;
 use crate::{Error, Pallet};
 use common::prelude::DEXInfo;
+#[allow(unused_imports)]
 use common::{hash, DexInfoProvider, EnsureDEXManager, ManagementMode, VAL, XOR, XST};
 use frame_support::assert_noop;
 use frame_support::assert_ok;

@@ -3374,6 +3374,8 @@ fn test_batch_swap_asset_reuse_fails() {
 fn test_xorless_transfer_works() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
+        let ed = ExistentialDeposit::get();
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
@@ -3381,7 +3383,7 @@ fn test_xorless_transfer_works() {
         );
         assert_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356400)
+            balance!(356400).saturating_add(ed)
         );
 
         let filter_mode = FilterMode::AllowSelected;
@@ -3423,6 +3425,8 @@ fn test_xorless_transfer_works() {
 fn test_xorless_transfer_without_swap_works() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
+        let ed = ExistentialDeposit::get();
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(
             Assets::free_balance(&USDT, &alice()).unwrap(),
@@ -3430,7 +3434,7 @@ fn test_xorless_transfer_without_swap_works() {
         );
         assert_eq!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356400)
+            balance!(356400).saturating_add(ed)
         );
 
         let filter_mode = FilterMode::AllowSelected;
