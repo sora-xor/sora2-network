@@ -2964,14 +2964,14 @@
 <span class="kw">use </span>sp_std::{cmp::Ord, cmp::Ordering, vec};
 <span class="kw">pub use </span>weights::WeightInfo;
 
-<span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
 </span><span class="kw">use </span>{
     common::prelude::fixnum::ops::{Bounded, Zero <span class="kw">as _</span>},
     common::XSTUSD,
     sp_runtime::traits::CheckedSub,
 };
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
 </span><span class="kw">use </span>liquidity_aggregator::LiquidityAggregator;
 
 <span class="kw">type </span>LiquiditySourceIdOf&lt;T&gt; = LiquiditySourceId&lt;&lt;T <span class="kw">as </span>common::Config&gt;::DEXId, LiquiditySourceType&gt;;
@@ -3900,7 +3900,7 @@
         sources.retain(|x| !locked.contains(<span class="kw-2">&amp;</span>x.liquidity_source_index));
 
         <span class="comment">// the old mechanism cannot combine Order Book source with others
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
         </span><span class="kw">if </span>sources.len() &gt; <span class="number">1 </span>{
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
@@ -3979,7 +3979,7 @@
             ));
         }
 
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
         </span>{
             <span class="comment">// Check if we have exactly two sources: the primary market and the secondary market
             // Do the &quot;smart&quot; swap split (with fallback)
@@ -4020,7 +4020,7 @@
             }
         }
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
         </span>{
             <span class="kw">let </span>(outcome, rewards, weight) = <span class="self">Self</span>::new_smart_split(
                 <span class="kw-2">&amp;</span>sources,
@@ -4036,7 +4036,7 @@
             <span class="prelude-val">Ok</span>((outcome, rewards, sources, total_weight))
         }
 
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
         </span><span class="macro">fail!</span>(Error::&lt;T&gt;::UnavailableExchangePath);
     }
 
@@ -4177,12 +4177,12 @@
             <span class="kw">return </span>REJECTION_WEIGHT;
         };
 
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
         </span><span class="kw">let </span>quote_single_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources()
             .saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(<span class="number">4</span>))
             .saturating_add(T::LiquidityRegistry::check_rewards_weight().saturating_mul(<span class="number">2</span>));
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
         </span><span class="kw">let </span>quote_single_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::list_liquidity_sources()
             .saturating_add(<span class="self">Self</span>::smart_split_weight());
 
@@ -4395,7 +4395,7 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>new_smart_split(
         sources: <span class="kw-2">&amp;</span>Vec&lt;LiquiditySourceIdOf&lt;T&gt;&gt;,
         base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
@@ -4478,7 +4478,7 @@
     /// - `amount` - the amount with &quot;direction&quot; (sell or buy) together with the maximum price impact (slippage).
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
-    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>smart_split(
         primary_source_id: <span class="kw-2">&amp;</span>LiquiditySourceIdOf&lt;T&gt;,
         secondary_source_id: <span class="kw-2">&amp;</span>LiquiditySourceIdOf&lt;T&gt;,
@@ -4722,7 +4722,7 @@
     /// - `amount` - the swap amount with &quot;direction&quot; (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
-    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>decide_primary_market_amount_buying_base_asset(
         base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
@@ -4823,7 +4823,7 @@
     /// - `amount` - the swap amount with &quot;direction&quot; (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
-    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// ALT
+    </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// ALT
     </span><span class="kw">fn </span>decide_primary_market_amount_selling_base_asset(
         base_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         collateral_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,

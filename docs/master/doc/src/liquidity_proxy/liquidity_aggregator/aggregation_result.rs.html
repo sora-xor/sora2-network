@@ -170,10 +170,10 @@
 <span class="kw">use </span>common::prelude::{OutcomeFee, SwapAmount};
 <span class="kw">use </span>frame_support::RuntimeDebug;
 <span class="kw">use </span>sp_std::vec::Vec;
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
 </span><span class="kw">use </span>{common::prelude::SwapVariant, sp_std::collections::btree_map::BTreeMap};
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
 </span><span class="doccomment">/// Result of aggregation
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub struct </span>AggregationResult&lt;AssetId: Ord, LiquiditySourceType, AmountType&gt; {
@@ -189,7 +189,7 @@
     </span><span class="kw">pub </span>fee: OutcomeFee&lt;AssetId, AmountType&gt;,
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
 </span><span class="kw">impl</span>&lt;AssetId: Ord, LiquiditySourceType, AmountType&gt;
     AggregationResult&lt;AssetId, LiquiditySourceType, AmountType&gt;
 {
@@ -213,7 +213,7 @@
 }
 
 <span class="doccomment">/// Info with input &amp; output amounts for liquidity source
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
 </span><span class="kw">pub type </span>SwapInfo&lt;LiquiditySourceType, AmountType&gt; =
     BTreeMap&lt;LiquiditySourceType, (AmountType, AmountType)&gt;;
 
@@ -246,7 +246,7 @@
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ALT
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// ALT
 </span><span class="kw">impl</span>&lt;AssetId: Ord, LiquiditySourceType, AmountType&gt;
     From&lt;AggregationResult&lt;AssetId, LiquiditySourceType, AmountType&gt;&gt;
     <span class="kw">for </span>AggregatedSwapOutcome&lt;AssetId, LiquiditySourceType, AmountType&gt;
