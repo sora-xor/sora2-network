@@ -32,10 +32,10 @@ use codec::{Decode, Encode};
 use common::prelude::{OutcomeFee, SwapAmount};
 use frame_support::RuntimeDebug;
 use sp_std::vec::Vec;
-#[cfg(feature = "wip")] // ALT
+#[cfg(feature = "stage")] // ALT
 use {common::prelude::SwapVariant, sp_std::collections::btree_map::BTreeMap};
 
-#[cfg(feature = "wip")] // ALT
+#[cfg(feature = "stage")] // ALT
 /// Result of aggregation
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AggregationResult<AssetId: Ord, LiquiditySourceType, AmountType> {
@@ -51,7 +51,7 @@ pub struct AggregationResult<AssetId: Ord, LiquiditySourceType, AmountType> {
     pub fee: OutcomeFee<AssetId, AmountType>,
 }
 
-#[cfg(feature = "wip")] // ALT
+#[cfg(feature = "stage")] // ALT
 impl<AssetId: Ord, LiquiditySourceType, AmountType>
     AggregationResult<AssetId, LiquiditySourceType, AmountType>
 {
@@ -75,7 +75,7 @@ impl<AssetId: Ord, LiquiditySourceType, AmountType>
 }
 
 /// Info with input & output amounts for liquidity source
-#[cfg(feature = "wip")] // ALT
+#[cfg(feature = "stage")] // ALT
 pub type SwapInfo<LiquiditySourceType, AmountType> =
     BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
 
@@ -108,7 +108,7 @@ impl<AssetId: Ord, LiquiditySourceIdType, AmountType>
     }
 }
 
-#[cfg(feature = "wip")] // ALT
+#[cfg(feature = "stage")] // ALT
 impl<AssetId: Ord, LiquiditySourceType, AmountType>
     From<AggregationResult<AssetId, LiquiditySourceType, AmountType>>
     for AggregatedSwapOutcome<AssetId, LiquiditySourceType, AmountType>

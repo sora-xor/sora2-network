@@ -76,14 +76,14 @@ use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 pub use weights::WeightInfo;
 
-#[cfg(not(feature = "wip"))] // ALT
+#[cfg(not(feature = "stage"))] // ALT
 use {
     common::prelude::fixnum::ops::{Bounded, Zero as _},
     common::XSTUSD,
     sp_runtime::traits::CheckedSub,
 };
 
-#[cfg(feature = "wip")] // ALT
+#[cfg(feature = "stage")] // ALT
 use liquidity_aggregator::LiquidityAggregator;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
@@ -1012,7 +1012,7 @@ impl<T: Config> Pallet<T> {
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
 
         // the old mechanism cannot combine Order Book source with others
-        #[cfg(not(feature = "wip"))] // ALT
+        #[cfg(not(feature = "stage"))] // ALT
         if sources.len() > 1 {
             sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
         }
@@ -1091,7 +1091,7 @@ impl<T: Config> Pallet<T> {
             ));
         }
 
-        #[cfg(not(feature = "wip"))] // ALT
+        #[cfg(not(feature = "stage"))] // ALT
         {
             // Check if we have exactly two sources: the primary market and the secondary market
             // Do the "smart" swap split (with fallback)
@@ -1132,7 +1132,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        #[cfg(feature = "wip")] // ALT
+        #[cfg(feature = "stage")] // ALT
         {
             let (outcome, rewards, weight) = Self::new_smart_split(
                 &sources,
@@ -1148,7 +1148,7 @@ impl<T: Config> Pallet<T> {
             Ok((outcome, rewards, sources, total_weight))
         }
 
-        #[cfg(not(feature = "wip"))] // ALT
+        #[cfg(not(feature = "stage"))] // ALT
         fail!(Error::<T>::UnavailableExchangePath);
     }
 
@@ -1289,12 +1289,12 @@ impl<T: Config> Pallet<T> {
             return REJECTION_WEIGHT;
         };
 
-        #[cfg(not(feature = "wip"))] // ALT
+        #[cfg(not(feature = "stage"))] // ALT
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(4))
             .saturating_add(T::LiquidityRegistry::check_rewards_weight().saturating_mul(2));
 
-        #[cfg(feature = "wip")] // ALT
+        #[cfg(feature = "stage")] // ALT
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(Self::smart_split_weight());
 
@@ -1507,7 +1507,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(feature = "wip")] // ALT
+    #[cfg(feature = "stage")] // ALT
     fn new_smart_split(
         sources: &Vec<LiquiditySourceIdOf<T>>,
         base_asset_id: &AssetIdOf<T>,
@@ -1590,7 +1590,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the amount with "direction" (sell or buy) together with the maximum price impact (slippage).
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
-    #[cfg(not(feature = "wip"))] // ALT
+    #[cfg(not(feature = "stage"))] // ALT
     fn smart_split(
         primary_source_id: &LiquiditySourceIdOf<T>,
         secondary_source_id: &LiquiditySourceIdOf<T>,
@@ -1834,7 +1834,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
-    #[cfg(not(feature = "wip"))] // ALT
+    #[cfg(not(feature = "stage"))] // ALT
     fn decide_primary_market_amount_buying_base_asset(
         base_asset_id: &AssetIdOf<T>,
         collateral_asset_id: &AssetIdOf<T>,
@@ -1935,7 +1935,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
-    #[cfg(not(feature = "wip"))] // ALT
+    #[cfg(not(feature = "stage"))] // ALT
     fn decide_primary_market_amount_selling_base_asset(
         base_asset_id: &AssetIdOf<T>,
         collateral_asset_id: &AssetIdOf<T>,
