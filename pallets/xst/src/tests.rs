@@ -49,6 +49,7 @@ mod tests {
     use sp_arithmetic::traits::Zero;
     use sp_arithmetic::FixedU128;
     use sp_std::collections::vec_deque::VecDeque;
+    use common::PriceToolsProvider;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;
