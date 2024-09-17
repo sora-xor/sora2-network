@@ -90,6 +90,37 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_proof_size(2475).saturating_mul(a.into()))
 	}
+	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfos (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Technical TechAccounts (r:1 w:0)
+	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Permissions Permissions (r:1 w:0)
+	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
+	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
+	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// The range of component `a` is `[1, 100]`.
+	fn bind_sidechain_asset(a: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1709`
+		//  Estimated: `28522 + a * (2475 ±0)`
+		// Minimum execution time: 68_373 nanoseconds.
+		Weight::from_parts(66_646_938, 28522)
+			// Standard Error: 1_731
+			.saturating_add(Weight::from_ref_time(2_540_977).saturating_mul(a.into()))
+			.saturating_add(T::DbWeight::get().reads(6))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
+			.saturating_add(T::DbWeight::get().writes(2))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
+			.saturating_add(Weight::from_proof_size(2475).saturating_mul(a.into()))
+	}
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
