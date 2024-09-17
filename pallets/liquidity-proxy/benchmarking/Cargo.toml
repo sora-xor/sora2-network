@@ -84,4 +84,4 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
 ]
 
-wip = ["liquidity-proxy/wip"]
+stage = ["liquidity-proxy/stage"]
