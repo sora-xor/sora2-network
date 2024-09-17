@@ -17,4 +17,4 @@ liquidity-proxy-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../common" }
 
 [features]
-wip = ["liquidity-proxy-runtime-api/wip"]
+stage = ["liquidity-proxy-runtime-api/stage"]
