@@ -36,25 +36,28 @@
 #[macro_use]
 extern crate alloc;
 
+use crate::vesting_currencies::VestingSchedule;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::CrowdloanTag;
 use common::FromGenericPair;
 use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetManager, OnPswapBurned, PswapRemintInfo,
     RewardReason, Vesting, PSWAP,
 };
+use common::{BalanceOf, CrowdloanTag};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::fail;
-use frame_support::traits::{Get, IsType};
+use frame_support::traits::{Get, IsType, LockIdentifier};
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{CheckedSub, Zero};
+use sp_core::bounded::BoundedVec;
+use sp_runtime::traits::{BlockNumberProvider, CheckedSub, StaticLookup, Zero};
 use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
 use sp_std::str;
 use sp_std::vec::Vec;
+use traits::{MultiCurrency, MultiLockableCurrency};
 
 pub mod weights;
 
@@ -68,9 +71,12 @@ mod tests;
 
 pub mod migrations;
 
+pub mod vesting_currencies;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
+pub const VESTING_LOCK_ID: LockIdentifier = *b"multvest";
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -120,6 +126,100 @@ pub struct CrowdloanUserInfo<AssetId> {
 pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
+    fn do_claim_unlocked(
+        asset_id: AssetIdOf<T>,
+        who: &T::AccountId,
+    ) -> Result<BalanceOf<T>, DispatchError> {
+        let locked: Balance = Self::locked_balance(who);
+        if locked.is_zero() {
+            // cleanup the storage and unlock the fund
+            <VestingSchedules<T>>::remove(who);
+            T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
+        } else {
+            T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, locked)?;
+        }
+        Ok(locked)
+    }
+
+    /// Returns locked balance based on current block number.
+    fn locked_balance(who: &T::AccountId) -> BalanceOf<T> {
+        let now = frame_system::Pallet::<T>::current_block_number();
+        <VestingSchedules<T>>::mutate_exists(who, |maybe_schedules| {
+            let total = if let Some(schedules) = maybe_schedules.as_mut() {
+                let mut total: BalanceOf<T> = Zero::zero();
+                schedules.retain(|s| {
+                    let amount = s.locked_amount(now);
+                    total = total.saturating_add(amount);
+                    !amount.is_zero()
+                });
+                total
+            } else {
+                Zero::zero()
+            };
+            if total.is_zero() {
+                *maybe_schedules = None;
+            }
+            total
+        })
+    }
+
+    fn do_vested_transfer(
+        asset_id: AssetIdOf<T>,
+        from: &T::AccountId,
+        to: &T::AccountId,
+        schedule: VestingScheduleOf<T>,
+    ) -> DispatchResult {
+        let schedule_amount = schedule.ensure_valid_vesting_schedule::<T>()?;
+
+        let total_amount = Self::locked_balance(to)
+            .checked_add(schedule_amount)
+            .ok_or(Error::<T>::ArithmeticError)?;
+
+        T::Currency::transfer(asset_id, from, to, schedule_amount)?;
+        T::Currency::set_lock(VESTING_LOCK_ID, asset_id, to, total_amount)?;
+        <VestingSchedules<T>>::try_append(to, schedule)
+            .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+        Ok(())
+    }
+
+    fn do_update_vesting_schedules(
+        asset_id: AssetIdOf<T>,
+        who: &T::AccountId,
+        schedules: Vec<VestingScheduleOf<T>>,
+    ) -> DispatchResult {
+        let bounded_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> = schedules
+            .try_into()
+            .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+
+        // empty vesting schedules cleanup the storage and unlock the fund
+        if bounded_schedules.len().is_zero() {
+            <VestingSchedules<T>>::remove(who);
+            T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
+            return Ok(());
+        }
+
+        let total_amount = bounded_schedules
+            .iter()
+            .try_fold::<_, _, Result<BalanceOf<T>, DispatchError>>(
+                Zero::zero(),
+                |acc_amount, schedule| {
+                    let amount = schedule.ensure_valid_vesting_schedule::<T>()?;
+                    Ok(acc_amount
+                        .checked_add(amount)
+                        .ok_or_else(|| Error::<T>::ArithmeticError)?)
+                },
+            )?;
+        ensure!(
+            T::Currency::free_balance(asset_id, who) >= total_amount,
+            Error::<T>::InsufficientBalanceToLock,
+        );
+
+        T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, total_amount)?;
+        <VestingSchedules<T>>::insert(who, bounded_schedules);
+
+        Ok(())
+    }
+
     /// Stores a new reward for a given account_id, supported by a reward reason.
     /// Returns error in case of failure during incrementing the reference counter on an account.
     /// Interacts with the `Rewards` StorageMap and the `TotalRewards` StorageValue;
@@ -481,13 +581,19 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AssetIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
+    use common::{
+        AssetIdOf, AssetName, AssetSymbol, BalanceOf, BalancePrecision, ContentSource, Description,
+    };
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use sp_std::collections::btree_map::BTreeMap;
+    use vesting_currencies::VestingScheduleVariant;
+
+    pub(crate) type VestingScheduleOf<T> =
+        VestingScheduleVariant<<T as frame_system::Config>::BlockNumber, AssetIdOf<T>>;
 
     #[pallet::config]
     pub trait Config:
@@ -514,6 +620,18 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        // Vesting and locking for multi assets
+        /// The maximum vesting schedules
+        type MaxVestingSchedules: Get<u32>;
+        type Currency: MultiLockableCurrency<
+            Self::AccountId,
+            Moment = Self::BlockNumber,
+            CurrencyId = AssetIdOf<Self>,
+            Balance = Balance,
+        >;
+        #[pallet::constant]
+        /// The minimum amount transferred to call `vested_transfer`.
+        type MinVestedTransfer: Get<BalanceOf<Self>>;
     }
 
     /// The current storage version.
@@ -606,6 +724,88 @@ pub mod pallet {
             )?;
             Ok(().into())
         }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked(<T as Config>::MaxVestingSchedules::get() / 2))]
+        pub fn claim_unlocked(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
+
+            Self::deposit_event(Event::ClaimedVesting {
+                who,
+                amount: locked_amount,
+            });
+            Ok(().into())
+        }
+
+        #[transactional]
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
+        pub fn vested_transfer(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+            schedule: VestingScheduleOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let from = ensure_signed(origin)?;
+            let to = T::Lookup::lookup(dest)?;
+
+            if to == from {
+                ensure!(
+                    T::Currency::free_balance(asset_id, &from)
+                        >= VestingScheduleVariant::total_amount(&schedule)
+                            .ok_or(Error::<T>::ArithmeticError)?,
+                    Error::<T>::InsufficientBalanceToLock,
+                );
+            }
+
+            Self::do_vested_transfer(asset_id, &from, &to, schedule.clone())?;
+
+            Self::deposit_event(Event::VestingScheduleAdded {
+                from,
+                to,
+                vesting_schedule: schedule,
+            });
+            Ok(().into())
+        }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_vesting_schedules(vesting_schedules.len() as u32))]
+        pub fn update_vesting_schedules(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            who: <T::Lookup as StaticLookup>::Source,
+            vesting_schedules: Vec<VestingScheduleOf<T>>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let account = T::Lookup::lookup(who)?;
+            Self::do_update_vesting_schedules(asset_id, &account, vesting_schedules)?;
+
+            Self::deposit_event(Event::VestingSchedulesUpdated { who: account });
+            Ok(().into())
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked(<T as Config>::MaxVestingSchedules::get() / 2))]
+        pub fn claim_for(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+        ) -> DispatchResultWithPostInfo {
+            let _ = ensure_signed(origin)?;
+            let who = T::Lookup::lookup(dest)?;
+            let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
+
+            Self::deposit_event(Event::ClaimedVesting {
+                who,
+                amount: locked_amount,
+            });
+            Ok(().into())
+        }
     }
 
     #[pallet::error]
@@ -643,6 +843,16 @@ pub mod pallet {
         CrowdloanDoesNotExists,
         /// User is not crowdloan participant
         NotCrowdloanParticipant,
+        /// Vesting period is zero
+        ZeroVestingPeriod,
+        /// Number of vests is zero
+        ZeroVestingPeriodCount,
+        /// Insufficient amount of balance to lock
+        InsufficientBalanceToLock,
+        /// The vested transfer amount is too low
+        AmountLow,
+        /// Failed because the maximum vesting schedules was exceeded
+        MaxVestingSchedulesExceeded,
     }
 
     #[pallet::event]
@@ -656,7 +866,33 @@ pub mod pallet {
         FailedToSaveCalculatedReward(AccountIdOf<T>),
         /// Claimed crowdloan rewards
         CrowdloanClaimed(T::AccountId, AssetIdOf<T>, Balance),
+        /// Added new vesting schedule.
+        VestingScheduleAdded {
+            from: T::AccountId,
+            to: T::AccountId,
+            vesting_schedule: VestingScheduleOf<T>,
+        },
+        /// Claimed vesting.
+        ClaimedVesting {
+            who: T::AccountId,
+            amount: BalanceOf<T>,
+        },
+        /// Updated vesting schedules.
+        VestingSchedulesUpdated { who: T::AccountId },
     }
+
+    /// Vesting schedules of an account.
+    ///
+    /// VestingSchedules: map AccountId => Vec<VestingSchedule>
+    #[pallet::storage]
+    #[pallet::getter(fn vesting_schedules)]
+    pub type VestingSchedules<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
+        ValueQuery,
+    >;
 
     /// Reserved for future use
     /// Mapping between users and their owned rewards of different kinds, which are vested.

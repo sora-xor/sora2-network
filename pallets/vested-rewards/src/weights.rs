@@ -64,6 +64,9 @@ pub trait WeightInfo {
 	fn update_rewards(n: u32, ) -> Weight;
 	fn register_crowdloan(m: u32, ) -> Weight;
 	fn claim_crowdloan_rewards() -> Weight;
+	fn vested_transfer() -> Weight;
+	fn claim_unlocked(i: u32, ) -> Weight;
+	fn update_vesting_schedules(i: u32, ) -> Weight;
 }
 
 /// Weights for vested_rewards using the Substrate node and recommended hardware.
@@ -151,6 +154,26 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(24_u64))
 			.saturating_add(T::DbWeight::get().writes(12_u64))
 	}
+
+	fn vested_transfer() -> Weight {
+		Weight::from_parts(69_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+	}
+	fn claim_unlocked(i: u32, ) -> Weight {
+		Weight::from_parts(31_747_000, 0)
+			// Standard Error: 4_000
+			.saturating_add(Weight::from_parts(63_000, 0).saturating_mul(i as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+	}
+	fn update_vesting_schedules(i: u32, ) -> Weight {
+		Weight::from_parts(29_457_000, 0)
+			// Standard Error: 4_000
+			.saturating_add(Weight::from_parts(117_000, 0).saturating_mul(i as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -236,5 +259,24 @@ impl WeightInfo for () {
 		Weight::from_parts(308_421_000, 1681947)
 			.saturating_add(RocksDbWeight::get().reads(24_u64))
 			.saturating_add(RocksDbWeight::get().writes(12_u64))
+	}
+	fn vested_transfer() -> Weight {
+		Weight::from_parts(69_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(4 as u64))
+			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+	}
+	fn claim_unlocked(i: u32, ) -> Weight {
+		Weight::from_parts(31_747_000, 0)
+			// Standard Error: 4_000
+			.saturating_add(Weight::from_parts(63_000, 0).saturating_mul(i as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+	}
+	fn update_vesting_schedules(i: u32, ) -> Weight {
+		Weight::from_parts(29_457_000, 0)
+			// Standard Error: 4_000
+			.saturating_add(Weight::from_parts(117_000, 0).saturating_mul(i as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(3 as u64))
 	}
 }
