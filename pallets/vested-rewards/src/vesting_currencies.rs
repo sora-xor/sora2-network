@@ -7,7 +7,7 @@ use sp_core::Get;
 use sp_runtime::traits::{AtLeast32Bit, Zero};
 use sp_runtime::DispatchError;
 
-pub trait VestingSchedule<BlockNumber, Balance, AssetId> {
+pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
     /// Returns the end of all periods, `None` if calculation overflows.
     fn end(&self) -> Option<BlockNumber>;
     /// Returns all locked amount, `None` if calculation overflows.
@@ -15,14 +15,16 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId> {
     /// Returns locked amount for a given `time`.
     fn locked_amount(&self, time: BlockNumber) -> Balance;
     fn ensure_valid_vesting_schedule<T: Config>(&self) -> Result<Balance, DispatchError>;
+    /// Returns asset id, need to get from enum
+    fn asset_id(&self) -> AssetId;
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub enum VestingScheduleVariant<BlockNumber, AssetId> {
+pub enum VestingScheduleVariant<BlockNumber, AssetId: Copy> {
     LinearVestingSchedule(LinearVestingSchedule<BlockNumber, AssetId>),
 }
 
-impl<BlockNumber: AtLeast32Bit + Copy, AssetId> VestingSchedule<BlockNumber, Balance, AssetId>
+impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumber, Balance, AssetId>
     for VestingScheduleVariant<BlockNumber, AssetId>
 {
     fn end(&self) -> Option<BlockNumber> {
@@ -50,6 +52,12 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId> VestingSchedule<BlockNumber, Bal
             }
         }
     }
+
+    fn asset_id(&self) -> AssetId {
+        match self {
+            VestingScheduleVariant::LinearVestingSchedule(variant) => variant.asset_id(),
+        }
+    }
 }
 
 /// The vesting schedule.
@@ -57,7 +65,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId> VestingSchedule<BlockNumber, Bal
 /// Benefits would be granted gradually, `per_period` amount every `period`
 /// of blocks after `start`.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub struct LinearVestingSchedule<BlockNumber, AssetId> {
+pub struct LinearVestingSchedule<BlockNumber, AssetId: Copy> {
     /// Vesting asset id
     pub asset_id: AssetId,
     /// Vesting starting block
@@ -71,7 +79,7 @@ pub struct LinearVestingSchedule<BlockNumber, AssetId> {
     pub per_period: Balance,
 }
 
-impl<BlockNumber: AtLeast32Bit + Copy, AssetId> VestingSchedule<BlockNumber, Balance, AssetId>
+impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumber, Balance, AssetId>
     for LinearVestingSchedule<BlockNumber, AssetId>
 {
     fn end(&self) -> Option<BlockNumber> {
@@ -119,5 +127,9 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId> VestingSchedule<BlockNumber, Bal
         );
 
         Ok(total_total)
+    }
+
+    fn asset_id(&self) -> AssetId {
+        self.asset_id
     }
 }

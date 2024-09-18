@@ -130,7 +130,7 @@ impl<T: Config> Pallet<T> {
         asset_id: AssetIdOf<T>,
         who: &T::AccountId,
     ) -> Result<BalanceOf<T>, DispatchError> {
-        let locked: Balance = Self::locked_balance(who);
+        let locked: Balance = Self::locked_balance(asset_id, who);
         if locked.is_zero() {
             // cleanup the storage and unlock the fund
             <VestingSchedules<T>>::remove(who);
@@ -142,36 +142,41 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns locked balance based on current block number.
-    fn locked_balance(who: &T::AccountId) -> BalanceOf<T> {
+    fn locked_balance(asset_id: AssetIdOf<T>, who: &T::AccountId) -> BalanceOf<T> {
         let now = frame_system::Pallet::<T>::current_block_number();
         <VestingSchedules<T>>::mutate_exists(who, |maybe_schedules| {
-            let total = if let Some(schedules) = maybe_schedules.as_mut() {
-                let mut total: BalanceOf<T> = Zero::zero();
+            let (total_other, total_asset) = if let Some(schedules) = maybe_schedules.as_mut() {
+                // Calculated to delete if there are no locks
+                let mut total_other: BalanceOf<T> = Zero::zero();
+                let mut total_asset: BalanceOf<T> = Zero::zero();
                 schedules.retain(|s| {
                     let amount = s.locked_amount(now);
-                    total = total.saturating_add(amount);
+                    if s.asset_id() == asset_id {
+                        total_asset = total_asset.saturating_add(amount);
+                    } else {
+                        total_other = total_other.saturating_add(amount);
+                    }
                     !amount.is_zero()
                 });
-                total
+                (total_other, total_asset)
             } else {
-                Zero::zero()
+                (Zero::zero(), Zero::zero())
             };
-            if total.is_zero() {
+            if total_other.saturating_add(total_asset).is_zero() {
                 *maybe_schedules = None;
             }
-            total
+            total_asset
         })
     }
 
     fn do_vested_transfer(
-        asset_id: AssetIdOf<T>,
         from: &T::AccountId,
         to: &T::AccountId,
         schedule: VestingScheduleOf<T>,
     ) -> DispatchResult {
         let schedule_amount = schedule.ensure_valid_vesting_schedule::<T>()?;
-
-        let total_amount = Self::locked_balance(to)
+        let asset_id = schedule.asset_id();
+        let total_amount = Self::locked_balance(asset_id, to)
             .checked_add(schedule_amount)
             .ok_or(Error::<T>::ArithmeticError)?;
 
@@ -762,7 +767,7 @@ pub mod pallet {
                 );
             }
 
-            Self::do_vested_transfer(asset_id, &from, &to, schedule.clone())?;
+            Self::do_vested_transfer(&from, &to, schedule.clone())?;
 
             Self::deposit_event(Event::VestingScheduleAdded {
                 from,
