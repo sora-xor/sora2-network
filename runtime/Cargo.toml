@@ -318,12 +318,7 @@ wip = [
     "soratopia",
 ]
 
-stage = [
-    "framenode-chain-spec/stage",
-    "liquidity-proxy/stage",
-    "liquidity-proxy-runtime-api/stage",
-    "liquidity-proxy-benchmarking/stage",
-]
+stage = ["framenode-chain-spec/stage"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
