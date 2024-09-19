@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 94,
+    spec_version: 95,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 94,
+    transaction_version: 95,
     state_version: 0,
 };
 
@@ -2036,7 +2036,10 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
+    #[cfg(feature = "wip")]
     type PriceTools = price_tools::FastPriceTools<Runtime>;
+    #[cfg(not(feature = "wip"))]
+    type PriceTools = price_tools::Pallet<Runtime>;
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
