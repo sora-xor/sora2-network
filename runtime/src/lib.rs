@@ -2036,7 +2036,7 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
