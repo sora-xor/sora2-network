@@ -28,4 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type Migrations = (kensetsu::migrations::v3_to_v4::UpgradeToV4<crate::Runtime>,);
+pub type Migrations = (
+    kensetsu::migrations::v3_to_v4::UpgradeToV4<crate::Runtime>,
+    WipMigrations,
+);
+
+#[cfg(feature = "wip")]
+pub type WipMigrations = (price_tools::migrations::v3::AddFastPriceInfos<crate::Runtime>,);
+
+#[cfg(not(feature = "wip"))]
+pub type WipMigrations = ();
