@@ -855,7 +855,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "anyhow",
  "beefy-merkle-tree",
@@ -879,7 +879,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee",
@@ -895,7 +895,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1096,7 +1096,7 @@ dependencies = [
 [[package]]
 name = "bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -1119,7 +1119,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bitvec",
  "bridge-types",
@@ -1137,7 +1137,7 @@ dependencies = [
 [[package]]
 name = "bridge-data-signer"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -1211,7 +1211,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "derivative",
  "ethabi",
@@ -2575,7 +2575,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -3028,7 +3028,7 @@ dependencies = [
 [[package]]
 name = "evm-fungible-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "dispatch",
@@ -4756,7 +4756,7 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 [[package]]
 name = "jetton-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "dispatch",
@@ -5053,7 +5053,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -5073,7 +5073,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "jsonrpsee",
  "leaf-provider-runtime-api",
@@ -5090,7 +5090,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -6243,7 +6243,7 @@ checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 [[package]]
 name = "multisig-verifier"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-common",
  "bridge-types",
@@ -7255,7 +7255,7 @@ dependencies = [
 [[package]]
 name = "parachain-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -11350,7 +11350,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor/sora2-common.git#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -11374,7 +11374,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.26#2269286b0fc28c9df31e3b9d32f68ade27379b03"
+source = "git+https://github.com/sora-xor//sora2-common.git?tag=1.0.27#f38ef9d584d6dfe341af5b2788c5446528a53bf4"
 dependencies = [
  "bridge-types",
  "ethabi",
