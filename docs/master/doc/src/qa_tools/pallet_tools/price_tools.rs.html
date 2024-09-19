@@ -259,6 +259,29 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -346,14 +369,37 @@
 ) -&gt; DispatchResult {
     <span class="kw">let _ </span>= price_tools::Pallet::&lt;T&gt;::register_asset(asset_id);
 
-    <span class="comment">// feed failures in order to ignore the limits
-    </span><span class="kw">for _ in </span><span class="number">0</span>..price_tools::AVG_BLOCK_SPAN {
-        price_tools::Pallet::&lt;T&gt;::incoming_spot_price_failure(asset_id, variant);
-    }
+    price_tools::PriceInfos::&lt;T&gt;::mutate(asset_id, |opt_val| {
+        <span class="kw">let </span>val = opt_val.as_mut().unwrap();
+        <span class="comment">// feed failures in order to ignore the limits
+        </span><span class="kw">for _ in </span><span class="number">0</span>..price_tools::AVG_BLOCK_SPAN {
+            val.price_mut_of(variant).incoming_spot_price_failure();
+        }
 
-    <span class="kw">for _ in </span><span class="number">0</span>..price_tools::AVG_BLOCK_SPAN + <span class="number">1 </span>{
-        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(asset_id, price, variant)<span class="question-mark">?</span>;
-    }
+        <span class="kw">for _ in </span><span class="number">0</span>..price_tools::AVG_BLOCK_SPAN + <span class="number">1 </span>{
+            <span class="kw">let _ </span>= val.price_mut_of(variant).incoming_spot_price(
+                price,
+                variant,
+                <span class="kw-2">&amp;</span>price_tools::DEFAULT_PARAMETERS,
+            );
+        }
+    });
+
+    price_tools::FastPriceInfos::&lt;T&gt;::mutate(asset_id, |opt_val| {
+        <span class="kw">let </span>val = opt_val.as_mut().unwrap();
+        <span class="comment">// feed failures in order to ignore the limits
+        </span><span class="kw">for _ in </span><span class="number">0</span>..price_tools::AVG_BLOCK_SPAN {
+            val.price_mut_of(variant).incoming_spot_price_failure();
+        }
+
+        <span class="kw">for _ in </span><span class="number">0</span>..price_tools::AVG_BLOCK_SPAN + <span class="number">1 </span>{
+            <span class="kw">let _ </span>= val.price_mut_of(variant).incoming_spot_price(
+                price,
+                variant,
+                <span class="kw-2">&amp;</span>price_tools::FAST_PARAMETERS,
+            );
+        }
+    });
     <span class="prelude-val">Ok</span>(())
 }
 

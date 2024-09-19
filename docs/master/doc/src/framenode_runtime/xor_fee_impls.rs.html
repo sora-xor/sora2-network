@@ -622,7 +622,7 @@
 </span><span class="kw">use </span>bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Dynamic fee
 </span><span class="kw">use </span>common::prelude::FixedWrapper;
-<span class="kw">use </span>common::LiquidityProxyTrait;
+<span class="kw">use </span>common::{LiquidityProxyTrait, PriceToolsProvider};
 <span class="kw">use </span>frame_support::dispatch::DispatchResult;
 <span class="kw">use </span>pallet_utility::Call <span class="kw">as </span>UtilityCall;
 <span class="kw">use </span>sp_runtime::traits::Zero;

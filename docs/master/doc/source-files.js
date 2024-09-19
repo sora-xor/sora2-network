@@ -55,7 +55,7 @@ var sourcesIndex = JSON.parse('{\
 "permissions":["",[],["lib.rs"]],\
 "pool_xyk":["",[["migrations",[],["mod.rs","v1_1.rs","v1_2.rs","v2.rs","v3.rs"]]],["action_deposit_liquidity.rs","action_pair_swap.rs","action_poly_swap.rs","action_withdraw_liquidity.rs","aliases.rs","bounds.rs","lib.rs","macros.rs","math.rs","operations.rs","utils.rs","weights.rs"]],\
 "pool_xyk_benchmarking":["",[],["lib.rs"]],\
-"price_tools":["",[],["lib.rs","migration.rs","weights.rs"]],\
+"price_tools":["",[["migrations",[],["mod.rs","v2.rs","v3.rs"]]],["lib.rs","weights.rs"]],\
 "pswap_distribution":["",[],["lib.rs","migrations.rs","weights.rs"]],\
 "pswap_distribution_benchmarking":["",[],["lib.rs"]],\
 "pswap_distribution_rpc":["",[],["lib.rs"]],\

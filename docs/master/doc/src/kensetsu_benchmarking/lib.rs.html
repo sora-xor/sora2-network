@@ -654,6 +654,8 @@
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -876,19 +878,21 @@
     initialize_xyk_pool::&lt;T&gt;(KUSD.into());
     price_tools::Pallet::&lt;T&gt;::register_asset(<span class="kw-2">&amp;</span>KUSD.into()).unwrap();
     <span class="kw">for _ in </span><span class="number">1</span>..=AVG_BLOCK_SPAN {
-        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(<span class="kw-2">&amp;</span>DAI.into(), <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Buy)
-            .unwrap();
-        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(<span class="kw-2">&amp;</span>DAI.into(), <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Sell)
-            .unwrap();
-        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(<span class="kw-2">&amp;</span>KUSD.into(), <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Buy)
-            .unwrap();
-        price_tools::Pallet::&lt;T&gt;::incoming_spot_price(
-            <span class="kw-2">&amp;</span>KUSD.into(),
-            <span class="macro">balance!</span>(<span class="number">1</span>),
-            PriceVariant::Sell,
-        )
-        .unwrap();
+        incoming_spot_price::&lt;T&gt;(DAI.into(), <span class="macro">balance!</span>(<span class="number">1</span>));
+        incoming_spot_price::&lt;T&gt;(KUSD.into(), <span class="macro">balance!</span>(<span class="number">1</span>));
     }
+}
+
+<span class="kw">fn </span>incoming_spot_price&lt;T: price_tools::Config&gt;(asset_id: AssetIdOf&lt;T&gt;, price: Balance) {
+    price_tools::FastPriceInfos::&lt;T&gt;::mutate(asset_id, |opt_val| {
+        <span class="kw">let </span>val = opt_val.as_mut().unwrap();
+        val.price_mut_of(PriceVariant::Buy)
+            .incoming_spot_price(price, PriceVariant::Buy, <span class="kw-2">&amp;</span>price_tools::FAST_PARAMETERS)
+            .unwrap();
+        val.price_mut_of(PriceVariant::Sell)
+            .incoming_spot_price(price, PriceVariant::Sell, <span class="kw-2">&amp;</span>price_tools::FAST_PARAMETERS)
+            .unwrap();
+    })
 }
 
 <span class="macro">benchmarks! </span>{

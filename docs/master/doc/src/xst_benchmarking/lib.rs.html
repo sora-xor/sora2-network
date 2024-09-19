@@ -319,6 +319,18 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -411,11 +423,23 @@
         <span class="kw">let _ </span>= PriceTools::&lt;T&gt;::register_asset(asset_id);
 
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">31 </span>{
-            PriceTools::&lt;T&gt;::incoming_spot_price(asset_id, <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Buy)
-                .expect(<span class="string">&quot;Failed to relay spot price&quot;</span>);
-            PriceTools::&lt;T&gt;::incoming_spot_price(asset_id, <span class="macro">balance!</span>(<span class="number">1</span>), PriceVariant::Sell)
-                .expect(<span class="string">&quot;Failed to relay spot price&quot;</span>);
+            incoming_spot_price::&lt;T&gt;(asset_id, <span class="macro">balance!</span>(<span class="number">1</span>));
         }
+    }
+
+    <span class="kw">fn </span>incoming_spot_price&lt;T: price_tools::Config&gt;(
+        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        price: common::Balance,
+    ) {
+        price_tools::PriceInfos::&lt;T&gt;::mutate(asset_id, |opt_val| {
+            <span class="kw">let </span>val = opt_val.as_mut().unwrap();
+            val.price_mut_of(PriceVariant::Buy)
+                .incoming_spot_price(price, PriceVariant::Buy, <span class="kw-2">&amp;</span>price_tools::DEFAULT_PARAMETERS)
+                .unwrap();
+            val.price_mut_of(PriceVariant::Sell)
+                .incoming_spot_price(price, PriceVariant::Sell, <span class="kw-2">&amp;</span>price_tools::DEFAULT_PARAMETERS)
+                .unwrap();
+        })
     }
 
     <span class="kw">pub fn </span>setup_exchange_benchmark&lt;T: Config&gt;() {

@@ -495,6 +495,109 @@
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
 <a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -544,7 +647,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
 
-<span class="kw">pub mod </span>migration;
+<span class="kw">pub mod </span>migrations;
+
+<span class="kw">use </span>core::marker::PhantomData;
 
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::{
@@ -558,25 +663,41 @@
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{ensure, fail};
-<span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
+<span class="kw">use </span>frame_support::{IterableStorageMap, StorageMap <span class="kw">as </span>StorageMapT};
+<span class="kw">use </span>sp_std::collections::{btree_map::BTreeMap, vec_deque::VecDeque};
 <span class="kw">use </span>sp_std::convert::TryInto;
 
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Count of blocks to participate in avg value calculation.
-</span><span class="kw">pub const </span>AVG_BLOCK_SPAN: u32 = <span class="number">30</span>;
+</span><span class="kw">pub const </span>AVG_BLOCK_SPAN: usize = <span class="number">30</span>;
 
-<span class="doccomment">/// Max percentage difference for average value between blocks when price goes down for buy price.
-</span><span class="kw">const </span>MAX_BUY_BLOCK_DEC_AVG_DIFFERENCE: Fixed = <span class="macro">fixed_const!</span>(<span class="number">0.00002</span>); <span class="comment">// 0.002%
-</span><span class="doccomment">/// Max percentage difference for average value between blocks when price goes up for buy price.
-</span><span class="kw">const </span>MAX_BUY_BLOCK_INC_AVG_DIFFERENCE: Fixed = <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>); <span class="comment">// 0.197%
+<span class="kw">pub struct </span>AdjustParameters {
+    <span class="doccomment">/// Max percentage difference for average value between blocks when price goes down for buy price.
+    </span>max_buy_dec: Fixed,
+    <span class="doccomment">/// Max percentage difference for average value between blocks when price goes up for buy price.
+    </span>max_buy_inc: Fixed,
+    <span class="doccomment">/// Max percentage difference for average value between blocks when price goes down for sell price.
+    </span>max_sell_dec: Fixed,
+    <span class="doccomment">/// Max percentage difference for average value between blocks when price goes up for sell price.
+    </span>max_sell_inc: Fixed,
+}
 
-</span><span class="doccomment">/// Max percentage difference for average value between blocks when price goes down for sell price.
-</span><span class="kw">const </span>MAX_SELL_BLOCK_DEC_AVG_DIFFERENCE: Fixed = <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>); <span class="comment">// 0.197%
-</span><span class="doccomment">/// Max percentage difference for average value between blocks when price goes up for sell price.
-</span><span class="kw">const </span>MAX_SELL_BLOCK_INC_AVG_DIFFERENCE: Fixed = <span class="macro">fixed_const!</span>(<span class="number">0.00002</span>); <span class="comment">// 0.002%
+<span class="kw">pub const </span>DEFAULT_PARAMETERS: AdjustParameters = AdjustParameters {
+    max_buy_dec: <span class="macro">fixed_const!</span>(<span class="number">0.00002</span>),  <span class="comment">// 0.002%
+    </span>max_buy_inc: <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>),  <span class="comment">// 0.197%
+    </span>max_sell_dec: <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>), <span class="comment">// 0.197%
+    </span>max_sell_inc: <span class="macro">fixed_const!</span>(<span class="number">0.00002</span>), <span class="comment">// 0.002%
+</span>};
 
-</span><span class="kw">pub use </span>weights::WeightInfo;
+<span class="kw">pub const </span>FAST_PARAMETERS: AdjustParameters = AdjustParameters {
+    max_buy_dec: <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>),  <span class="comment">// 0.197%
+    </span>max_buy_inc: <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>),  <span class="comment">// 0.197%
+    </span>max_sell_dec: <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>), <span class="comment">// 0.197%
+    </span>max_sell_inc: <span class="macro">fixed_const!</span>(<span class="number">0.00197</span>), <span class="comment">// 0.197%
+</span>};
+
+<span class="kw">pub use </span>weights::WeightInfo;
 
 <span class="attr">#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 </span><span class="kw">pub struct </span>PriceInfo {
@@ -585,6 +706,131 @@
     average_price: Balance,
     needs_update: bool,
     last_spot_price: Balance,
+}
+
+<span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub enum </span>PriceError {
+    UpdateAverageWithSpotPriceFailed,
+    AveragePriceCalculationFailed,
+}
+
+<span class="kw">impl </span>PriceInfo {
+    <span class="doccomment">/// Register spot price quote failure, continuous failure has to block average price quotation.
+    </span><span class="kw">pub fn </span>incoming_spot_price_failure(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>(<span class="self">self</span>.price_failures <span class="kw">as </span>usize) &lt; AVG_BLOCK_SPAN {
+            <span class="self">self</span>.price_failures += <span class="number">1</span>;
+            <span class="kw">if </span>(<span class="self">self</span>.price_failures <span class="kw">as </span>usize) == AVG_BLOCK_SPAN {
+                <span class="self">self</span>.spot_prices.clear();
+            }
+        }
+    }
+
+    <span class="doccomment">/// Add new price to queue and recalculate average.
+    </span><span class="kw">pub fn </span>incoming_spot_price(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        price: Balance,
+        price_variant: PriceVariant,
+        adjust_params: <span class="kw-2">&amp;</span>AdjustParameters,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), PriceError&gt; {
+        <span class="comment">// reset failure streak
+        </span><span class="self">self</span>.price_failures = <span class="number">0</span>;
+        <span class="self">self</span>.needs_update = <span class="bool-val">false</span>;
+        <span class="comment">// spot price history is consistent, normal behavior
+        </span><span class="kw">if </span><span class="self">self</span>.spot_prices.len() == AVG_BLOCK_SPAN {
+            <span class="kw">let </span>old_value = <span class="self">self</span>.spot_prices.pop_front().expect(<span class="string">&quot;Checked above&quot;</span>);
+
+            <span class="kw">let </span><span class="kw-2">mut </span>new_avg =
+                <span class="self">Self</span>::replace_in_average(<span class="self">self</span>.average_price, old_value, price, AVG_BLOCK_SPAN)<span class="question-mark">?</span>;
+            new_avg = <span class="self">Self</span>::adjust_to_difference(
+                <span class="self">self</span>.average_price,
+                new_avg,
+                price_variant,
+                adjust_params,
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>adjusted_incoming_price =
+                <span class="self">Self</span>::adjusted_spot_price(<span class="self">self</span>.average_price, new_avg, old_value, AVG_BLOCK_SPAN)<span class="question-mark">?</span>;
+            <span class="self">self</span>.spot_prices.push_back(adjusted_incoming_price);
+            <span class="self">self</span>.average_price = new_avg;
+        <span class="comment">// spot price history has been recovered/initiated, create initial average value
+        </span>} <span class="kw">else if </span><span class="self">self</span>.spot_prices.len() == AVG_BLOCK_SPAN - <span class="number">1 </span>{
+            <span class="self">self</span>.spot_prices.push_back(price);
+            <span class="kw">let </span>sum = <span class="self">self
+                </span>.spot_prices
+                .iter()
+                .fold(FixedWrapper::from(<span class="number">0</span>), |a, b| a + <span class="kw-2">*</span>b);
+            <span class="kw">let </span>avg = (sum / <span class="macro">balance!</span>(<span class="self">self</span>.spot_prices.len()))
+                .try_into_balance()
+                .map_err(|<span class="kw">_</span>| PriceError::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
+            <span class="self">self</span>.average_price = avg;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.spot_prices.push_back(price);
+        }
+        <span class="self">self</span>.last_spot_price = price;
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>replace_in_average(
+        average: Balance,
+        old_value: Balance,
+        new_value: Balance,
+        count: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, PriceError&gt; {
+        <span class="kw">let </span>average = FixedWrapper::from(average);
+        <span class="kw">let </span>new_value = FixedWrapper::from(new_value);
+        <span class="kw">let </span>old_value = FixedWrapper::from(old_value);
+        <span class="kw">let </span>count: FixedWrapper = <span class="macro">balance!</span>(count).into();
+        <span class="kw">let </span>new_avg: FixedWrapper = (count.clone() * average - old_value + new_value) / count;
+        <span class="prelude-val">Ok</span>(new_avg
+            .try_into_balance()
+            .map_err(|<span class="kw">_</span>| PriceError::AveragePriceCalculationFailed)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Calculate fitting incoming spot price to satisfy given average price change.
+    </span><span class="kw">fn </span>adjusted_spot_price(
+        old_average: Balance,
+        new_average: Balance,
+        old_value: Balance,
+        count: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, PriceError&gt; {
+        <span class="kw">let </span>old_average = FixedWrapper::from(old_average);
+        <span class="kw">let </span>new_average = FixedWrapper::from(new_average);
+        <span class="kw">let </span>old_value = FixedWrapper::from(old_value);
+        <span class="kw">let </span>count: FixedWrapper = <span class="macro">balance!</span>(count).into();
+        <span class="kw">let </span>adjusted_new_value = new_average * count.clone() + old_value - old_average * count;
+        <span class="prelude-val">Ok</span>(adjusted_new_value
+            .try_into_balance()
+            .map_err(|<span class="kw">_</span>| PriceError::AveragePriceCalculationFailed)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Bound `new_avg` value by percentage difference with respect to `old_avg` value. Result will be capped
+    /// by `MAX_BLOCK_AVG_DIFFERENCE` either in positive or negative difference.
+    </span><span class="kw">pub fn </span>adjust_to_difference(
+        old_avg: Balance,
+        new_avg: Balance,
+        price_variant: PriceVariant,
+        adjust_params: <span class="kw-2">&amp;</span>AdjustParameters,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, PriceError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>adjusted_avg = FixedWrapper::from(new_avg);
+        <span class="kw">let </span>old_avg = FixedWrapper::from(old_avg);
+        <span class="kw">let </span>diff: Fixed = ((adjusted_avg.clone() - old_avg.clone()) / old_avg.clone())
+            .get()
+            .map_err(|<span class="kw">_</span>| PriceError::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(max_inc, max_dec) = <span class="kw">match </span>price_variant {
+            PriceVariant::Buy =&gt; (adjust_params.max_buy_inc, adjust_params.max_buy_dec),
+            PriceVariant::Sell =&gt; (adjust_params.max_sell_inc, adjust_params.max_sell_dec),
+        };
+
+        <span class="kw">if </span>diff &gt; max_inc {
+            adjusted_avg = old_avg * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) + max_inc);
+        } <span class="kw">else if </span>diff &lt; max_dec.cneg().unwrap() {
+            adjusted_avg = old_avg * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - max_dec);
+        }
+        <span class="kw">let </span>adjusted_avg = adjusted_avg
+            .try_into_balance()
+            .map_err(|<span class="kw">_</span>| PriceError::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(adjusted_avg)
+    }
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>PriceInfo {
@@ -642,7 +888,7 @@
     }
 
     <span class="doccomment">/// The current storage version.
-    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">2</span>);
+    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">3</span>);
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]
@@ -653,9 +899,8 @@
     <span class="attr">#[pallet::hooks]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Hooks&lt;BlockNumberFor&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
         <span class="kw">fn </span>on_initialize(_block_num: T::BlockNumber) -&gt; Weight {
-            <span class="kw">let </span>(n_b, m_b) = Pallet::&lt;T&gt;::average_prices_calculation_routine(PriceVariant::Buy);
-            <span class="kw">let </span>(n_s, m_s) = Pallet::&lt;T&gt;::average_prices_calculation_routine(PriceVariant::Sell);
-            &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::on_initialize(n_b + n_s, m_b + m_s)
+            <span class="kw">let </span>(n, m) = Pallet::&lt;T&gt;::average_prices_calculation_routine();
+            &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::on_initialize(n, m)
         }
     }
 
@@ -692,25 +937,32 @@
     <span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>price_infos)]
     </span><span class="kw">pub type </span>PriceInfos&lt;T: Config&gt; = StorageMap&lt;<span class="kw">_</span>, Identity, AssetIdOf&lt;T&gt;, AggregatedPriceInfo&gt;;
+
+    <span class="attr">#[pallet::storage]
+    #[pallet::getter(<span class="kw">fn </span>fast_price_infos)]
+    </span><span class="kw">pub type </span>FastPriceInfos&lt;T: Config&gt; = StorageMap&lt;<span class="kw">_</span>, Identity, AssetIdOf&lt;T&gt;, AggregatedPriceInfo&gt;;
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="doccomment">/// Query averaged price from past data for supported paths, i.e. paths with enabled targets or XOR.
-    </span><span class="kw">pub fn </span>get_average_price(
+    </span><span class="kw">fn </span>get_average_price&lt;S&gt;(
         input_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         output_asset: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt;
+    <span class="kw">where
+        </span>S: StorageMapT&lt;AssetIdOf&lt;T&gt;, AggregatedPriceInfo, Query = <span class="prelude-ty">Option</span>&lt;AggregatedPriceInfo&gt;&gt;,
+    {
         <span class="kw">if </span>input_asset == output_asset {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">balance!</span>(<span class="number">1</span>));
         }
         <span class="kw">match </span>(input_asset, output_asset) {
             (xor, output) <span class="kw">if </span>xor == <span class="kw-2">&amp;</span>XOR.into() =&gt; {
-                <span class="self">Self</span>::get_asset_average_price(output, price_variant)
+                <span class="self">Self</span>::get_asset_average_price::&lt;S&gt;(output, price_variant)
             }
             (input, xor) <span class="kw">if </span>xor == <span class="kw-2">&amp;</span>XOR.into() =&gt; {
                 <span class="comment">// Buy price should always be greater or equal to sell price, so we need to invert price_variant here
-                </span><span class="self">Self</span>::get_asset_average_price(input, price_variant.switched()).and_then(
+                </span><span class="self">Self</span>::get_asset_average_price::&lt;S&gt;(input, price_variant.switched()).and_then(
                     |average_price| {
                         (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) / average_price)
                             .try_into_balance()
@@ -719,9 +971,12 @@
                 )
             }
             (input, output) =&gt; {
-                <span class="kw">let </span>quote_a =
-                    FixedWrapper::from(<span class="self">Self</span>::get_average_price(input, <span class="kw-2">&amp;</span>XOR.into(), price_variant)<span class="question-mark">?</span>);
-                <span class="kw">let </span>quote_b = FixedWrapper::from(<span class="self">Self</span>::get_average_price(
+                <span class="kw">let </span>quote_a = FixedWrapper::from(<span class="self">Self</span>::get_average_price::&lt;S&gt;(
+                    input,
+                    <span class="kw-2">&amp;</span>XOR.into(),
+                    price_variant,
+                )<span class="question-mark">?</span>);
+                <span class="kw">let </span>quote_b = FixedWrapper::from(<span class="self">Self</span>::get_average_price::&lt;S&gt;(
                     <span class="kw-2">&amp;</span>XOR.into(),
                     output,
                     price_variant,
@@ -733,134 +988,25 @@
         }
     }
 
-    <span class="kw">fn </span>get_asset_average_price(
+    <span class="kw">fn </span>get_asset_average_price&lt;S&gt;(
         asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>avg_count: usize = AVG_BLOCK_SPAN
-            .try_into()
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::FailedToQuoteAveragePrice)<span class="question-mark">?</span>;
-
-        PriceInfos::&lt;T&gt;::get(asset_id)
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt;
+    <span class="kw">where
+        </span>S: StorageMapT&lt;AssetIdOf&lt;T&gt;, AggregatedPriceInfo, Query = <span class="prelude-ty">Option</span>&lt;AggregatedPriceInfo&gt;&gt;,
+    {
+        S::get(asset_id)
             .map(|aggregated_price_info| aggregated_price_info.price_of(price_variant))
             .map_or_else(
                 || <span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnsupportedQuotePath.into()),
                 |price_info| {
                     <span class="macro">ensure!</span>(
-                        price_info.spot_prices.len() == avg_count,
+                        price_info.spot_prices.len() == AVG_BLOCK_SPAN,
                         Error::&lt;T&gt;::InsufficientSpotPriceData
                     );
                     <span class="prelude-val">Ok</span>(price_info.average_price)
                 },
             )
-    }
-
-    <span class="doccomment">/// Add new price to queue and recalculate average.
-    </span><span class="kw">pub fn </span>incoming_spot_price(
-        asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
-        price: Balance,
-        price_variant: PriceVariant,
-    ) -&gt; DispatchResult {
-        <span class="comment">// reset failure streak for spot prices if needed
-        </span><span class="kw">if </span>PriceInfos::&lt;T&gt;::get(asset_id).is_some() {
-            <span class="kw">let </span>avg_count: usize = AVG_BLOCK_SPAN
-                .try_into()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
-            PriceInfos::&lt;T&gt;::mutate(asset_id, |opt| {
-                <span class="kw">let </span>val = opt.as_mut().unwrap().price_mut_of(price_variant);
-                <span class="comment">// reset failure streak
-                </span>val.price_failures = <span class="number">0</span>;
-                val.needs_update = <span class="bool-val">false</span>;
-                <span class="comment">// spot price history is consistent, normal behavior
-                </span><span class="kw">if </span>val.spot_prices.len() == avg_count {
-                    <span class="kw">let </span>old_value = val.spot_prices.pop_front().unwrap();
-
-                    <span class="kw">let </span><span class="kw-2">mut </span>new_avg = <span class="self">Self</span>::replace_in_average(
-                        val.average_price,
-                        old_value,
-                        price,
-                        AVG_BLOCK_SPAN,
-                    )<span class="question-mark">?</span>;
-                    new_avg =
-                        <span class="self">Self</span>::adjust_to_difference(val.average_price, new_avg, price_variant)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>adjusted_incoming_price = <span class="self">Self</span>::adjusted_spot_price(
-                        val.average_price,
-                        new_avg,
-                        old_value,
-                        AVG_BLOCK_SPAN,
-                    )<span class="question-mark">?</span>;
-                    val.spot_prices.push_back(adjusted_incoming_price);
-                    val.average_price = new_avg;
-                <span class="comment">// spot price history has been recovered/initiated, create initial average value
-                </span>} <span class="kw">else if </span>val.spot_prices.len() == avg_count - <span class="number">1 </span>{
-                    val.spot_prices.push_back(price);
-                    <span class="kw">let </span>sum = val
-                        .spot_prices
-                        .iter()
-                        .fold(FixedWrapper::from(<span class="number">0</span>), |a, b| a + <span class="kw-2">*</span>b);
-                    <span class="kw">let </span>avg = (sum / <span class="macro">balance!</span>(val.spot_prices.len()))
-                        .try_into_balance()
-                        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
-                    val.average_price = avg;
-                } <span class="kw">else </span>{
-                    val.spot_prices.push_back(price);
-                }
-                val.last_spot_price = price;
-
-                <span class="prelude-val">Ok</span>(())
-            })
-        } <span class="kw">else </span>{
-            <span class="macro">fail!</span>(Error::&lt;T&gt;::UnsupportedQuotePath);
-        }
-    }
-
-    <span class="doccomment">/// Register spot price quote failure, continuous failure has to block average price quotation.
-    </span><span class="kw">pub fn </span>incoming_spot_price_failure(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;, price_variant: PriceVariant) {
-        PriceInfos::&lt;T&gt;::mutate(asset_id, |opt| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(agg_price_info) = opt.as_mut() {
-                <span class="kw">let </span>val = agg_price_info.price_mut_of(price_variant);
-                <span class="kw">if </span>val.price_failures &lt; AVG_BLOCK_SPAN {
-                    val.price_failures += <span class="number">1</span>;
-                    <span class="kw">if </span>val.price_failures == AVG_BLOCK_SPAN {
-                        val.spot_prices.clear();
-                    }
-                }
-            }
-        })
-    }
-
-    <span class="doccomment">/// Bound `new_avg` value by percentage difference with respect to `old_avg` value. Result will be capped
-    /// by `MAX_BLOCK_AVG_DIFFERENCE` either in positive or negative difference.
-    </span><span class="kw">pub fn </span>adjust_to_difference(
-        old_avg: Balance,
-        new_avg: Balance,
-        price_variant: PriceVariant,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>adjusted_avg = FixedWrapper::from(new_avg);
-        <span class="kw">let </span>old_avg = FixedWrapper::from(old_avg);
-        <span class="kw">let </span>diff: Fixed = ((adjusted_avg.clone() - old_avg.clone()) / old_avg.clone())
-            .get()
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
-        <span class="kw">let </span>(max_inc, max_dec) = <span class="kw">match </span>price_variant {
-            PriceVariant::Buy =&gt; (
-                MAX_BUY_BLOCK_INC_AVG_DIFFERENCE,
-                MAX_BUY_BLOCK_DEC_AVG_DIFFERENCE,
-            ),
-            PriceVariant::Sell =&gt; (
-                MAX_SELL_BLOCK_INC_AVG_DIFFERENCE,
-                MAX_SELL_BLOCK_DEC_AVG_DIFFERENCE,
-            ),
-        };
-
-        <span class="kw">if </span>diff &gt; max_inc {
-            adjusted_avg = old_avg * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) + max_inc);
-        } <span class="kw">else if </span>diff &lt; max_dec.cneg().unwrap() {
-            adjusted_avg = old_avg * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - max_dec);
-        }
-        <span class="kw">let </span>adjusted_avg = adjusted_avg
-            .try_into_balance()
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::UpdateAverageWithSpotPriceFailed)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(adjusted_avg)
     }
 
     <span class="kw">fn </span>secondary_market_filter() -&gt; LiquiditySourceFilter&lt;T::DEXId, LiquiditySourceType&gt; {
@@ -883,61 +1029,103 @@
         .map(|so| so.amount)
     }
 
-    <span class="kw">fn </span>replace_in_average(
-        average: Balance,
-        old_value: Balance,
-        new_value: Balance,
-        count: u32,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>average = FixedWrapper::from(average);
-        <span class="kw">let </span>new_value = FixedWrapper::from(new_value);
-        <span class="kw">let </span>old_value = FixedWrapper::from(old_value);
-        <span class="kw">let </span>count: FixedWrapper = <span class="macro">balance!</span>(count).into();
-        <span class="kw">let </span>new_avg: FixedWrapper = (count.clone() * average - old_value + new_value) / count;
-        <span class="prelude-val">Ok</span>(new_avg
-            .try_into_balance()
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AveragePriceCalculationFailed)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Calculate fitting incoming spot price to satisfy given average price change.
-    </span><span class="kw">fn </span>adjusted_spot_price(
-        old_average: Balance,
-        new_average: Balance,
-        old_value: Balance,
-        count: u32,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        <span class="kw">let </span>old_average = FixedWrapper::from(old_average);
-        <span class="kw">let </span>new_average = FixedWrapper::from(new_average);
-        <span class="kw">let </span>old_value = FixedWrapper::from(old_value);
-        <span class="kw">let </span>count: FixedWrapper = <span class="macro">balance!</span>(count).into();
-        <span class="kw">let </span>adjusted_new_value = new_average * count.clone() + old_value - old_average * count;
-        <span class="prelude-val">Ok</span>(adjusted_new_value
-            .try_into_balance()
-            .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::AveragePriceCalculationFailed)<span class="question-mark">?</span>)
+    <span class="kw">fn </span>update_price&lt;S&gt;(
+        price_cache: <span class="kw-2">&amp;mut </span>BTreeMap&lt;AssetIdOf&lt;T&gt;, <span class="prelude-ty">Option</span>&lt;Balance&gt;&gt;,
+        adjust_params: <span class="kw-2">&amp;</span>AdjustParameters,
+    ) -&gt; (u32, u32)
+    <span class="kw">where
+        </span>S: IterableStorageMap&lt;
+            AssetIdOf&lt;T&gt;,
+            AggregatedPriceInfo,
+            Query = <span class="prelude-ty">Option</span>&lt;AggregatedPriceInfo&gt;,
+        &gt;,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>count_active = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>count_updated = <span class="number">0</span>;
+        <span class="kw">for </span>asset_id <span class="kw">in </span>S::iter_keys() {
+            S::mutate(asset_id, |opt_value| {
+                <span class="kw">let </span><span class="prelude-val">Some</span>(value) = opt_value.as_mut() <span class="kw">else </span>{
+                <span class="comment">// Should not happen, because we get asset_id from iter_keys() call
+                </span><span class="kw">return</span>;
+            };
+                <span class="kw">for </span>price_variant <span class="kw">in </span>[PriceVariant::Buy, PriceVariant::Sell] {
+                    <span class="kw">let </span>price_info = value.price_mut_of(price_variant);
+                    <span class="kw">let </span>price = <span class="kw">if </span>price_info.needs_update {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(price) = price_cache.get(<span class="kw-2">&amp;</span>asset_id).cloned() {
+                            price
+                        } <span class="kw">else </span>{
+                            count_updated += <span class="number">1</span>;
+                            <span class="kw">let </span>price = <span class="self">Self</span>::spot_price(<span class="kw-2">&amp;</span>asset_id)
+                                .map_err(|err| {
+                                    <span class="macro">frame_support::log::warn!</span>(
+                                        <span class="string">&quot;Failed to get spot price for {asset_id:?}: {err:?}&quot;
+                                    </span>);
+                                    err
+                                })
+                                .ok();
+                            price_cache.insert(asset_id, price);
+                            price
+                        }
+                    } <span class="kw">else </span>{
+                        <span class="comment">// if price hasn&#39;t changed duplicate latest known to update average
+                        </span><span class="prelude-val">Some</span>(price_info.last_spot_price)
+                    };
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(val) = price {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                            price_info.incoming_spot_price(val, price_variant, adjust_params)
+                        {
+                            <span class="macro">frame_support::log::warn!</span>(<span class="string">&quot;Failed to add spot price for {asset_id:?} with {price_variant:?} variant and {val} price: {err:?}&quot;</span>);
+                        }
+                    } <span class="kw">else </span>{
+                        price_info.incoming_spot_price_failure();
+                    }
+                    count_active += <span class="number">1</span>;
+                }
+            })
+        }
+        (count_active, count_updated)
     }
 
     <span class="doccomment">/// Returns (number of active pairs, number of pairs with needed update)
-    </span><span class="kw">pub fn </span>average_prices_calculation_routine(price_variant: PriceVariant) -&gt; (u32, u32) {
-        <span class="kw">let </span><span class="kw-2">mut </span>count_active = <span class="number">0</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>count_updated = <span class="number">0</span>;
-        <span class="kw">let </span>price_infos_iter = PriceInfos::&lt;T&gt;::iter()
-            .map(|(a, <span class="kw-2">mut </span>agg_price_info)| (a, agg_price_info.price_mut_of(price_variant).clone()));
-        <span class="kw">for </span>(asset_id, price_info) <span class="kw">in </span>price_infos_iter {
-            <span class="kw">let </span>price = <span class="kw">if </span>price_info.needs_update {
-                count_updated += <span class="number">1</span>;
-                <span class="self">Self</span>::spot_price(<span class="kw-2">&amp;</span>asset_id)
+    </span><span class="kw">pub fn </span>average_prices_calculation_routine() -&gt; (u32, u32) {
+        <span class="kw">let </span><span class="kw-2">mut </span>price_cache = BTreeMap::new();
+        <span class="kw">let </span>(count_active, count_updated) =
+            <span class="self">Self</span>::update_price::&lt;PriceInfos&lt;T&gt;&gt;(<span class="kw-2">&amp;mut </span>price_cache, <span class="kw-2">&amp;</span>DEFAULT_PARAMETERS);
+        <span class="kw">let </span>(fast_count_active, fast_count_updated) =
+            <span class="self">Self</span>::update_price::&lt;FastPriceInfos&lt;T&gt;&gt;(<span class="kw-2">&amp;mut </span>price_cache, <span class="kw-2">&amp;</span>FAST_PARAMETERS);
+        (
+            count_active + fast_count_active,
+            count_updated + fast_count_updated,
+        )
+    }
+
+    <span class="kw">pub fn </span>register_asset_inner&lt;S&gt;(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; DispatchResult
+    <span class="kw">where
+        </span>S: StorageMapT&lt;AssetIdOf&lt;T&gt;, AggregatedPriceInfo, Query = <span class="prelude-ty">Option</span>&lt;AggregatedPriceInfo&gt;&gt;,
+    {
+        S::try_mutate(asset_id, |opt_value| {
+            <span class="kw">if </span>opt_value.is_none() {
+                <span class="kw-2">*</span>opt_value = <span class="prelude-val">Some</span>(Default::default());
+                DispatchResult::Ok(())
             } <span class="kw">else </span>{
-                <span class="comment">// if price hasn&#39;t changed duplicate latest known to update average
-                </span><span class="prelude-val">Ok</span>(price_info.last_spot_price)
-            };
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(val) = price {
-                <span class="kw">let _ </span>= <span class="self">Self</span>::incoming_spot_price(<span class="kw-2">&amp;</span>asset_id, val, price_variant);
-            } <span class="kw">else </span>{
-                <span class="self">Self</span>::incoming_spot_price_failure(<span class="kw-2">&amp;</span>asset_id, price_variant);
+                <span class="macro">fail!</span>(Error::&lt;T&gt;::AssetAlreadyRegistered);
             }
-            count_active += <span class="number">1</span>;
-        }
-        (count_active, count_updated)
+        })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub fn </span>on_reserves_changed&lt;S&gt;(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;)
+    <span class="kw">where
+        </span>S: StorageMapT&lt;AssetIdOf&lt;T&gt;, AggregatedPriceInfo, Query = <span class="prelude-ty">Option</span>&lt;AggregatedPriceInfo&gt;&gt;,
+    {
+        S::mutate(asset_id, |opt_val| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(agg_price_info) = opt_val {
+                <span class="kw">if </span>!agg_price_info.buy.needs_update || !agg_price_info.sell.needs_update {
+                    agg_price_info.buy.needs_update = <span class="bool-val">true</span>;
+                    agg_price_info.sell.needs_update = <span class="bool-val">true</span>;
+                }
+            }
+        })
     }
 }
 
@@ -951,30 +1139,48 @@
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         price_variant: PriceVariant,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
-        Pallet::&lt;T&gt;::get_average_price(input_asset_id, output_asset_id, price_variant)
+        Pallet::&lt;T&gt;::get_average_price::&lt;PriceInfos&lt;T&gt;&gt;(
+            input_asset_id,
+            output_asset_id,
+            price_variant,
+        )
     }
 
     <span class="kw">fn </span>register_asset(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; DispatchResult {
-        <span class="kw">if </span>PriceInfos::&lt;T&gt;::get(asset_id).is_none() {
-            PriceInfos::&lt;T&gt;::insert(asset_id.clone(), AggregatedPriceInfo::default());
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else </span>{
-            <span class="macro">fail!</span>(Error::&lt;T&gt;::AssetAlreadyRegistered);
-        }
+        Pallet::&lt;T&gt;::register_asset_inner::&lt;PriceInfos&lt;T&gt;&gt;(asset_id)<span class="question-mark">?</span>;
+        Pallet::&lt;T&gt;::register_asset_inner::&lt;FastPriceInfos&lt;T&gt;&gt;(asset_id)
+    }
+}
+
+<span class="kw">pub struct </span>FastPriceTools&lt;T&gt;(PhantomData&lt;T&gt;);
+
+<span class="kw">impl</span>&lt;T: Config&gt; PriceToolsProvider&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>FastPriceTools&lt;T&gt; {
+    <span class="kw">fn </span>is_asset_registered(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; bool {
+        FastPriceInfos::&lt;T&gt;::get(asset_id).is_some()
+    }
+
+    <span class="kw">fn </span>get_average_price(
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        price_variant: PriceVariant,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+        Pallet::&lt;T&gt;::get_average_price::&lt;FastPriceInfos&lt;T&gt;&gt;(
+            input_asset_id,
+            output_asset_id,
+            price_variant,
+        )
+    }
+
+    <span class="kw">fn </span>register_asset(asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) -&gt; DispatchResult {
+        Pallet::&lt;T&gt;::register_asset_inner::&lt;PriceInfos&lt;T&gt;&gt;(asset_id)<span class="question-mark">?</span>;
+        Pallet::&lt;T&gt;::register_asset_inner::&lt;FastPriceInfos&lt;T&gt;&gt;(asset_id)
     }
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; OnPoolReservesChanged&lt;AssetIdOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>reserves_changed(target_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(agg_price_info) = PriceInfos::&lt;T&gt;::get(target_asset_id) {
-            <span class="kw">if </span>!agg_price_info.buy.needs_update || !agg_price_info.sell.needs_update {
-                PriceInfos::&lt;T&gt;::mutate(target_asset_id, |opt| {
-                    <span class="kw">let </span>agg_price_info = opt.as_mut().unwrap();
-                    agg_price_info.buy.needs_update = <span class="bool-val">true</span>;
-                    agg_price_info.sell.needs_update = <span class="bool-val">true</span>;
-                })
-            }
-        }
+        <span class="self">Self</span>::on_reserves_changed::&lt;PriceInfos&lt;T&gt;&gt;(target_asset_id);
+        <span class="self">Self</span>::on_reserves_changed::&lt;FastPriceInfos&lt;T&gt;&gt;(target_asset_id);
     }
 }
 </code></pre></div>

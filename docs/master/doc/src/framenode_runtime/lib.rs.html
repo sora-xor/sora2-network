@@ -5558,7 +5558,7 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
     <span class="kw">type </span>AssetInfoProvider = Assets;
-    <span class="kw">type </span>PriceTools = PriceTools;
+    <span class="kw">type </span>PriceTools = price_tools::FastPriceTools&lt;Runtime&gt;;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>Oracle = OracleProxy;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
