@@ -51,7 +51,6 @@ pub mod migrations;
 
 use core::marker::PhantomData;
 
-use alloc::collections::BTreeMap;
 use codec::{Decode, Encode};
 use common::prelude::{
     AssetIdOf, Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsProvider, QuoteAmount,
@@ -65,7 +64,7 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use frame_support::{IterableStorageMap, StorageMap as StorageMapT};
-use sp_std::collections::vec_deque::VecDeque;
+use sp_std::collections::{btree_map::BTreeMap, vec_deque::VecDeque};
 use sp_std::convert::TryInto;
 
 pub use pallet::*;

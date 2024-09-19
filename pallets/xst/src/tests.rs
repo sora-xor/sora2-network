@@ -41,7 +41,7 @@ mod tests {
         self, balance, fixed,
         prelude::{Balance, OutcomeFee, QuoteAmount, SwapAmount},
         AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo, LiquiditySource,
-        PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD,
+        PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD, PriceToolsProvider
     };
     use frame_support::traits::Hooks;
     use frame_support::{assert_noop, assert_ok};
@@ -49,7 +49,6 @@ mod tests {
     use sp_arithmetic::traits::Zero;
     use sp_arithmetic::FixedU128;
     use sp_std::collections::vec_deque::VecDeque;
-    use common::PriceToolsProvider;
 
     type XSTPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;

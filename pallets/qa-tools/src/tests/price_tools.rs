@@ -30,8 +30,7 @@
 
 use super::QaToolsPallet;
 use assets::AssetIdOf;
-use common::PriceToolsProvider;
-use common::{balance, PriceVariant, ETH, XOR};
+use common::{balance, PriceToolsProvider, PriceVariant, ETH, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
