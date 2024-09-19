@@ -358,6 +358,9 @@ macro_rules! mock_technical_config {
 #[macro_export]
 macro_rules! mock_tokens_config {
     ($runtime:ty) => {
+        parameter_types! {
+            pub const MaxLocks: u32 = 20;
+        }
         impl tokens::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
@@ -366,7 +369,7 @@ macro_rules! mock_tokens_config {
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();
-            type MaxLocks = ();
+            type MaxLocks = MaxLocks;
             type MaxReserves = ();
             type ReserveIdentifier = ();
             type DustRemovalWhitelist = Everything;

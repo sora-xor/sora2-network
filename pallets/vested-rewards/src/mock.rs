@@ -40,7 +40,7 @@ use common::{
     KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -159,6 +159,8 @@ parameter_types! {
     pub const CrowdloanVestingPeriod: u64 = 14400;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub const MaxVestingSchedules: u32 = 5;
+    pub const MinVestedTransfer: Balance = 5;
 }
 
 impl Config for Runtime {
@@ -169,6 +171,9 @@ impl Config for Runtime {
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxVestingSchedules = MaxVestingSchedules;
+    type Currency = Tokens;
+    type MinVestedTransfer = MinVestedTransfer;
 }
 
 parameter_types! {
@@ -275,6 +280,8 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
+pub const ALICE_DOT_BALANCE: Balance = 200;
+
 pub struct ExtBuilder {
     endowed_assets: Vec<(
         AssetId,
@@ -310,11 +317,11 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DOT,
-                    initial_assets_owner(),
+                    alice(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
+                    ALICE_DOT_BALANCE,
                     true,
                     None,
                     None,
@@ -414,5 +421,14 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_initialize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_finalize(System::block_number());
+        VestedRewards::on_initialize(System::block_number());
     }
 }
