@@ -188,39 +188,66 @@ impl<T: Config> Pallet<T> {
     }
 
     fn do_update_vesting_schedules(
-        asset_id: AssetIdOf<T>,
         who: &T::AccountId,
         schedules: Vec<VestingScheduleOf<T>>,
     ) -> DispatchResult {
-        let bounded_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> = schedules
-            .try_into()
-            .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+        let new_bounded_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
+            schedules
+                .try_into()
+                .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+        let current_schedules = <VestingSchedules<T>>::get(who);
+        let mut new_asset_ids: Vec<AssetIdOf<T>> = new_bounded_schedules
+            .iter()
+            .map(|schedule| schedule.asset_id())
+            .collect();
+        new_asset_ids.sort();
+        new_asset_ids.dedup();
+        let mut assets_to_remove: Vec<AssetIdOf<T>> = current_schedules
+            .iter()
+            .filter(|schedule| !new_asset_ids.contains(&schedule.asset_id()))
+            .map(|schedule| schedule.asset_id())
+            .collect();
+        assets_to_remove.sort();
+        assets_to_remove.dedup();
 
         // empty vesting schedules cleanup the storage and unlock the fund
-        if bounded_schedules.len().is_zero() {
-            <VestingSchedules<T>>::remove(who);
+        for asset_id in assets_to_remove {
             T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
+        }
+        if new_asset_ids.len().is_zero() {
+            <VestingSchedules<T>>::remove(who);
             return Ok(());
         }
 
-        let total_amount = bounded_schedules
-            .iter()
-            .try_fold::<_, _, Result<BalanceOf<T>, DispatchError>>(
-                Zero::zero(),
-                |acc_amount, schedule| {
-                    let amount = schedule.ensure_valid_vesting_schedule::<T>()?;
-                    Ok(acc_amount
-                        .checked_add(amount)
-                        .ok_or_else(|| Error::<T>::ArithmeticError)?)
-                },
-            )?;
-        ensure!(
-            T::Currency::free_balance(asset_id, who) >= total_amount,
-            Error::<T>::InsufficientBalanceToLock,
-        );
+        let mut total_amounts: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
 
-        T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, total_amount)?;
-        <VestingSchedules<T>>::insert(who, bounded_schedules);
+        // Calculate amount of assets per new schedule
+        for schedule in new_bounded_schedules.iter() {
+            let amount = schedule.ensure_valid_vesting_schedule::<T>()?;
+
+            total_amounts
+                .entry(schedule.asset_id())
+                .and_modify(|acc_amount| {
+                    *acc_amount = acc_amount
+                        .checked_add(amount)
+                        .ok_or_else(|| Error::<T>::ArithmeticError)
+                        .unwrap();
+                })
+                .or_insert(amount);
+        }
+
+        for asset_id in new_asset_ids {
+            let asset_amount = *total_amounts
+                .get(&asset_id)
+                .expect("Error while get total amount of asset");
+            ensure!(
+                T::Currency::free_balance(asset_id, who) >= asset_amount,
+                Error::<T>::InsufficientBalanceToLock,
+            );
+            T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, asset_amount)?;
+        }
+
+        <VestingSchedules<T>>::insert(who, new_bounded_schedules);
 
         Ok(())
     }
@@ -777,18 +804,17 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[transactional]
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::update_vesting_schedules(vesting_schedules.len() as u32))]
         pub fn update_vesting_schedules(
             origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
             who: <T::Lookup as StaticLookup>::Source,
             vesting_schedules: Vec<VestingScheduleOf<T>>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-
             let account = T::Lookup::lookup(who)?;
-            Self::do_update_vesting_schedules(asset_id, &account, vesting_schedules)?;
+            Self::do_update_vesting_schedules(&account, vesting_schedules)?;
 
             Self::deposit_event(Event::VestingSchedulesUpdated { who: account });
             Ok(().into())
