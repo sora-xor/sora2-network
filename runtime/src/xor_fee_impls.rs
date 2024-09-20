@@ -33,7 +33,7 @@ use crate::*;
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
-use common::LiquidityProxyTrait;
+use common::{LiquidityProxyTrait, PriceToolsProvider};
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;

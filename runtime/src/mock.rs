@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::mock::alice;
-use common::PriceVariant;
 use price_tools::AVG_BLOCK_SPAN;
 
 use crate::{AssetId, PoolXYK, PriceTools, RuntimeOrigin};
@@ -40,7 +39,6 @@ pub fn ensure_pool_initialized(asset_a: AssetId, asset_b: AssetId) {
 
 pub fn fill_spot_price() {
     for _ in 0..AVG_BLOCK_SPAN {
-        PriceTools::average_prices_calculation_routine(PriceVariant::Buy);
-        PriceTools::average_prices_calculation_routine(PriceVariant::Sell);
+        PriceTools::average_prices_calculation_routine();
     }
 }

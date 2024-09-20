@@ -33,7 +33,7 @@ use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, QuoteAmount};
 use common::{
     assert_approx_eq, balance, AccountIdOf, AssetInfoProvider, Balance, DEXId, LiquiditySource,
-    PriceVariant, CERES_ASSET_ID, ETH, TBCD, VAL, XOR,
+    PriceToolsProvider, PriceVariant, CERES_ASSET_ID, ETH, TBCD, VAL, XOR,
 };
 use frame_support::dispatch::{DispatchError, RawOrigin};
 use frame_support::{assert_err, assert_ok};

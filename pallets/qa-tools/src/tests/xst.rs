@@ -32,7 +32,7 @@ use super::{alice, QaToolsPallet};
 use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount, SwapVariant};
 use common::{
     assert_approx_eq, balance, fixed, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXId,
-    LiquiditySource, PredefinedAssetId, PriceVariant, SymbolName, XOR,
+    LiquiditySource, PredefinedAssetId, PriceToolsProvider, PriceVariant, SymbolName, XOR,
 };
 use core::str::FromStr;
 use frame_support::assert_ok;

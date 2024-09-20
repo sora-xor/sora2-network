@@ -28,19 +28,23 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "stage")] // ALT
-mod aggregation;
-mod aggregation_result;
-#[cfg(feature = "stage")] // ALT
-mod liquidity_aggregator;
-#[cfg(feature = "stage")] // ALT
-mod selector;
-#[cfg(feature = "stage")] // ALT
-#[cfg(test)]
-mod tests;
+use frame_support::dispatch::GetStorageVersion;
+use frame_support::traits::StorageVersion;
 
-pub use aggregation_result::AggregatedSwapOutcome;
-#[cfg(feature = "stage")] // ALT
-pub use aggregation_result::AggregationResult;
-#[cfg(feature = "stage")] // ALT
-pub use liquidity_aggregator::LiquidityAggregator;
+use crate::PriceInfos;
+use crate::{AggregatedPriceInfo, Pallet};
+use crate::{Config, PriceInfo};
+
+pub fn migrate<T: Config>() {
+    if Pallet::<T>::on_chain_storage_version() < StorageVersion::new(2) {
+        PriceInfos::<T>::translate::<PriceInfo, _>(
+            |_, old_price_info| -> Option<AggregatedPriceInfo> {
+                Some(AggregatedPriceInfo {
+                    buy: old_price_info,
+                    sell: PriceInfo::default(),
+                })
+            },
+        );
+        StorageVersion::new(2).put::<Pallet<T>>()
+    }
+}
