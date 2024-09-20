@@ -43,14 +43,12 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
-#[cfg(feature = "wip")] // ORML multi asset vesting
-use tokens::BalanceLock;
 use traits::MultiCurrency;
 
 use common::{AssetManager, AssetName, AssetSymbol, CrowdloanTag, FromGenericPair, PSWAP, XOR};
 
 #[cfg(feature = "wip")] // ORML multi asset vesting
-use crate::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
+use crate::vesting_currencies::LinearVestingSchedule;
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
 
