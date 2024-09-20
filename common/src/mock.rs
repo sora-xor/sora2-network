@@ -78,6 +78,7 @@ pub enum ComicAssetId {
     Tomato,
     Potato,
     Table,
+    Future,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -115,6 +116,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KGOLD => Tomato,
             PredefinedAssetId::KXOR => Potato,
             PredefinedAssetId::KARMA => Table,
+            PredefinedAssetId::MIRAI => Future,
         }
     }
 }

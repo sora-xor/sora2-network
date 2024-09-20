@@ -897,6 +897,8 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     // Initial balances
+
+    use common::MIRAI;
     let initial_staking = balance!(1000000000);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
@@ -1479,6 +1481,17 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"KARMA".to_vec()),
                     AssetName(b"Chameleon".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    MIRAI,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"MIRAI".to_vec()),
+                    AssetName(b"Mirai".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -2205,6 +2218,17 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"KARMA".to_vec()),
             AssetName(b"Chameleon".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            MIRAI,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"MIRAI".to_vec()),
+            AssetName(b"Mirai".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

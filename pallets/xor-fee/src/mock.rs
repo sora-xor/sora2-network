@@ -41,7 +41,7 @@ use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32,
     AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, XOR,
+    OnValBurned, ReferrerAccountProvider, MIRAI, PSWAP, TBCD, VAL, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
@@ -89,11 +89,13 @@ parameter_types! {
     pub GetReferrerAccountId: AccountId = account_from_str("referrer");
     pub const BlockHashCount: u64 = 250;
     pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 40;
+    pub const XorBurnedWeight: u32 = 1;
+    pub const XorIntoMiraiBurnedWeight: u32 = 39;
     pub const XorIntoValBurnedWeight: u32 = 50;
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
+    pub const MiraiId: AssetId = MIRAI;
     pub const DEXIdValue: DEXId = DEXId::Polkaswap;
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
@@ -232,10 +234,12 @@ impl Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type XorIntoMiraiBurnedWeight = XorIntoMiraiBurnedWeight;
     type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type XorId = XorId;
     type ValId = ValId;
     type TbcdId = GetBuyBackAssetId;
+    type MiraiId = MiraiId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator;

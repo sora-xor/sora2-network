@@ -912,6 +912,7 @@ parameter_types! {
     pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetMiraiAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::MIRAI);
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -1318,10 +1319,12 @@ impl xor_fee::Config for Runtime {
     type XorCurrency = Balances;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
+    type MiraiId = GetMiraiAssetId;
     type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type XorIntoMiraiBurnedWeight = XorIntoMiraiBurnedWeight;
     type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
@@ -2133,8 +2136,9 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
 parameter_types! {
     pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 40;
+    pub const XorBurnedWeight: u32 = 1;
     pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const XorIntoMiraiBurnedWeight: u32 = 39;
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 
