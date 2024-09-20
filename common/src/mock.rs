@@ -359,7 +359,7 @@ macro_rules! mock_technical_config {
 macro_rules! mock_tokens_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const MaxLocks: u32 = 20;
+            pub const MaxLocks: u32 = 1;
         }
         impl tokens::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
