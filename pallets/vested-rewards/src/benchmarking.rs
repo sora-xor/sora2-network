@@ -31,25 +31,37 @@
 //! Multicollateral bonding curve pool module benchmarking.
 
 #![cfg(feature = "runtime-benchmarks")]
-
 use super::*;
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use core::str::FromStr;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use frame_system::EventRecord;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use tokens::BalanceLock;
 use traits::MultiCurrency;
 
 use common::{AssetManager, AssetName, AssetSymbol, CrowdloanTag, FromGenericPair, PSWAP, XOR};
 
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use crate::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+fn bob<T: Config>() -> T::AccountId {
+    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27c");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
@@ -68,7 +80,7 @@ fn create_asset<T: Config>(prefix: &str, index: u128) -> AssetIdOf<T> {
         AssetSymbol(name.clone()),
         AssetName(name),
         18,
-        0,
+        balance!(100),
         true,
         common::AssetType::Regular,
         None,
@@ -112,7 +124,23 @@ fn prepare_rewards_update<T: Config>(
     }
     rewards
 }
-
+#[cfg(feature = "wip")] // ORML multi asset vesting
+fn block_number<T: Config>(num_str: &str) -> <T as frame_system::Config>::BlockNumber {
+    if let Ok(number) = <T as frame_system::Config>::BlockNumber::from_str(num_str) {
+        number
+    } else {
+        <T as frame_system::Config>::BlockNumber::default()
+    }
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
 benchmarks! {
     claim_rewards {
         let caller = alice::<T>();
@@ -177,5 +205,157 @@ benchmarks! {
             balance!(0.025) // 10 / 100 / 4
         );
     }
+
+    claim_unlocked {
+        let caller: T::AccountId = alice::<T>();
+        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 1);
+        let max_schedules = T::MaxVestingSchedules::get();
+        let mut schedules = Vec::with_capacity(max_schedules as usize);
+
+        for i in 0..max_schedules {
+            let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id,
+                start: block_number::<T>("0"),
+                period: block_number::<T>("1"),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+            schedules.push(vesting_schedule);
+        }
+        <VestingSchedules<T>>::insert(caller.clone(), BoundedVec::try_from(schedules).expect("Cant create bounded vec"));
+        frame_system::Pallet::<T>::set_block_number(block_number::<T>("2"));
+    }: _(RawOrigin::Signed(caller.clone()), asset_id)
+    verify {
+        assert!(!VestingSchedules::<T>::contains_key(&caller));
+    }
+
+    vested_transfer {
+        let caller: T::AccountId = alice::<T>();
+        let receiver = T::Lookup::unlookup(bob::<T>());
+
+        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 1);
+        let schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id,
+                start: block_number::<T>("1"),
+                period: block_number::<T>("1"),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+
+    }: _(RawOrigin::Signed(caller.clone()), asset_id, receiver, schedule)
+    verify {
+        assert!(VestingSchedules::<T>::contains_key(bob::<T>()));
+    }
+
+    update_vesting_schedules {
+        let caller: T::AccountId = alice::<T>();
+        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 1);
+        let max_schedules = T::MaxVestingSchedules::get();
+        let mut schedules_update = Vec::with_capacity(max_schedules as usize);
+        let mut schedules = Vec::with_capacity(max_schedules as usize);
+
+        for i in 0..max_schedules {
+            let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id,
+                start: block_number::<T>("1"),
+                period: block_number::<T>("1"),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+            schedules.push(vesting_schedule);
+            let vesting_schedule_update = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id,
+                start: block_number::<T>("0"),
+                period: block_number::<T>("2"),
+                period_count: 2,
+                per_period: balance!(2),
+            });
+            schedules_update.push(vesting_schedule_update);
+        }
+        <VestingSchedules<T>>::insert(caller.clone(), BoundedVec::try_from(schedules).expect("Cant create bounded vec"));
+
+    }: _(RawOrigin::Root, T::Lookup::unlookup(caller.clone()), schedules_update)
+    verify {
+        assert_last_event::<T>(Event::VestingSchedulesUpdated{who: caller}.into());
+    }
+
+    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime)
+}
+
+#[cfg(not(feature = "wip"))] // ORML multi asset vesting
+benchmarks! {
+    claim_rewards {
+        let caller = alice::<T>();
+
+        <T as common::Config>::MultiCurrency::deposit(PSWAP.into(), &T::GetBondingCurveRewardsAccountId::get(), balance!(100)).unwrap();
+        <T as common::Config>::MultiCurrency::deposit(PSWAP.into(), &T::GetMarketMakerRewardsAccountId::get(), balance!(200)).unwrap();
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1)).unwrap(); // to prevent inc ref error
+
+        VestedRewards::<T>::add_tbc_reward(&caller, balance!(100)).expect("Failed to add reward.");
+        VestedRewards::<T>::distribute_limits(balance!(100));
+    }: _(
+        RawOrigin::Signed(caller.clone())
+    )
+    verify {
+        assert_eq!(
+            <T as common::Config>::MultiCurrency::free_balance(PSWAP.into(), &caller),
+            balance!(100)
+        );
+    }
+
+    update_rewards {
+        let n in 0 .. 100;
+        let rewards = prepare_rewards_update::<T>(n.into());
+    }: {
+        Pallet::<T>::update_rewards(RawOrigin::Root.into(), rewards).unwrap()
+    }
+    verify {
+        assert_eq!(
+            TotalRewards::<T>::get(),
+            balance!(n) * 2
+        );
+    }
+
+    register_crowdloan {
+        let m in 1 .. 1000;
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+        let rewards = prepare_crowdloan_rewards::<T>(10);
+        let contributions = prepare_crowdloan_contributions::<T>(m as u128);
+    }: _(RawOrigin::Root, tag.clone(), 0u32.into(), 100u32.into(), rewards, contributions)
+    verify {
+        assert!(crate::CrowdloanInfos::<T>::contains_key(&tag));
+    }
+
+    claim_crowdloan_rewards {
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+        let rewards = prepare_crowdloan_rewards::<T>(5);
+        let contributions = prepare_crowdloan_contributions::<T>(100);
+        let account = contributions.get(0).cloned().unwrap().0;
+        let first_asset_id = rewards.get(0).cloned().unwrap().0;
+        Pallet::<T>::register_crowdloan(RawOrigin::Root.into(), tag.clone(), 0u32.into(), T::BLOCKS_PER_DAY * 4u32.into(), rewards.clone(), contributions).unwrap();
+        let info = crate::CrowdloanInfos::<T>::get(&tag).unwrap();
+        for (asset_id, _) in rewards {
+            <T as common::Config>::MultiCurrency::deposit(asset_id.clone(), &info.account, balance!(1000)).unwrap();
+        }
+        frame_system::Pallet::<T>::set_block_number(T::BLOCKS_PER_DAY);
+    }: _(RawOrigin::Signed(account.clone()), tag.clone())
+    verify {
+        assert_eq!(
+            <T as common::Config>::MultiCurrency::free_balance(first_asset_id, &account),
+            balance!(0.025) // 10 / 100 / 4
+        );
+    }
+
+    claim_unlocked {}: {}
+    verify {}
+
+    vested_transfer {}: {}
+    verify {}
+
+    update_vesting_schedules {}: {}
+    verify {}
+
     impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime)
 }

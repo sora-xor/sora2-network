@@ -65,8 +65,8 @@ pub trait WeightInfo {
 	fn register_crowdloan(m: u32, ) -> Weight;
 	fn claim_crowdloan_rewards() -> Weight;
 	fn vested_transfer() -> Weight;
-	fn claim_unlocked(i: u32, ) -> Weight;
-	fn update_vesting_schedules(i: u32, ) -> Weight;
+	fn claim_unlocked() -> Weight;
+	fn update_vesting_schedules() -> Weight;
 }
 
 /// Weights for vested_rewards using the Substrate node and recommended hardware.
@@ -155,24 +155,55 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(12_u64))
 	}
 
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	fn claim_unlocked() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1707`
+		//  Estimated: `9381`
+		// Minimum execution time: 28_000 nanoseconds.
+		Weight::from_parts(29_000_000, 9381)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(3))
+	}
+
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:2 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
 	fn vested_transfer() -> Weight {
-		Weight::from_parts(69_000_000, 0)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
-			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+		// Proof Size summary in bytes:
+		//  Measured:  `780`
+		//  Estimated: `16271`
+		// Minimum execution time: 51_000 nanoseconds.
+		Weight::from_parts(52_000_000, 16271)
+			.saturating_add(T::DbWeight::get().reads(6))
+			.saturating_add(T::DbWeight::get().writes(5))
 	}
-	fn claim_unlocked(i: u32, ) -> Weight {
-		Weight::from_parts(31_747_000, 0)
-			// Standard Error: 4_000
-			.saturating_add(Weight::from_parts(63_000, 0).saturating_mul(i as u64))
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
-	}
-	fn update_vesting_schedules(i: u32, ) -> Weight {
-		Weight::from_parts(29_457_000, 0)
-			// Standard Error: 4_000
-			.saturating_add(Weight::from_parts(117_000, 0).saturating_mul(i as u64))
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	fn update_vesting_schedules() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1917`
+		//  Estimated: `12194`
+		// Minimum execution time: 42_000 nanoseconds.
+		Weight::from_parts(43_000_000, 12194)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(4))
 	}
 }
 
@@ -260,23 +291,55 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(24_u64))
 			.saturating_add(RocksDbWeight::get().writes(12_u64))
 	}
+	
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	fn claim_unlocked() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1707`
+		//  Estimated: `9381`
+		// Minimum execution time: 28_000 nanoseconds.
+		Weight::from_parts(29_000_000, 9381)
+			.saturating_add(RocksDbWeight::get().reads(3))
+			.saturating_add(RocksDbWeight::get().writes(3))
+	}
+
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:2 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
 	fn vested_transfer() -> Weight {
-		Weight::from_parts(69_000_000, 0)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
-			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+		// Proof Size summary in bytes:
+		//  Measured:  `780`
+		//  Estimated: `16271`
+		// Minimum execution time: 51_000 nanoseconds.
+		Weight::from_parts(52_000_000, 16271)
+			.saturating_add(RocksDbWeight::get().reads(6))
+			.saturating_add(RocksDbWeight::get().writes(5))
 	}
-	fn claim_unlocked(i: u32, ) -> Weight {
-		Weight::from_parts(31_747_000, 0)
-			// Standard Error: 4_000
-			.saturating_add(Weight::from_parts(63_000, 0).saturating_mul(i as u64))
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
-	}
-	fn update_vesting_schedules(i: u32, ) -> Weight {
-		Weight::from_parts(29_457_000, 0)
-			// Standard Error: 4_000
-			.saturating_add(Weight::from_parts(117_000, 0).saturating_mul(i as u64))
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	fn update_vesting_schedules() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1917`
+		//  Estimated: `12194`
+		// Minimum execution time: 42_000 nanoseconds.
+		Weight::from_parts(43_000_000, 12194)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(4))
 	}
 }

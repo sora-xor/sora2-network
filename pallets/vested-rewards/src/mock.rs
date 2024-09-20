@@ -40,7 +40,9 @@ use common::{
     KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use frame_support::traits::Hooks;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -424,6 +426,7 @@ impl ExtBuilder {
     }
 }
 
+#[cfg(feature = "wip")] // ORML multi asset vesting
 pub fn run_to_block(n: u64) {
     while System::block_number() < n {
         System::on_initialize(System::block_number());
