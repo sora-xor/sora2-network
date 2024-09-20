@@ -280,7 +280,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
-pub const ALICE_DOT_BALANCE: Balance = 200;
+pub const ALICE_BALANCE: Balance = 200;
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(
@@ -321,18 +321,18 @@ impl Default for ExtBuilder {
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    ALICE_DOT_BALANCE,
+                    ALICE_BALANCE,
                     true,
                     None,
                     None,
                 ),
                 (
                     KSM,
-                    initial_assets_owner(),
+                    alice(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
+                    ALICE_BALANCE,
                     true,
                     None,
                     None,

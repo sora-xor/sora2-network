@@ -38,7 +38,7 @@ use crate::{Error, RewardInfo};
 use common::mock::charlie;
 use common::{
     balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
-    PswapRemintInfo, RewardReason, Vesting, DOT, PSWAP, VAL, XOR, XSTUSD,
+    PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_err, assert_noop, assert_ok};
@@ -1020,6 +1020,7 @@ fn update_rewards_works() {
 }
 
 // Tests for Linear Vesting and Vesting
+
 #[test]
 fn linear_vested_transfer_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1062,7 +1063,15 @@ fn self_linear_vesting() {
             start: 0u64,
             period: 10u64,
             period_count: 1u32,
-            per_period: ALICE_DOT_BALANCE,
+            per_period: ALICE_BALANCE,
+        });
+
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: ALICE_BALANCE,
         });
 
         let bad_schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
@@ -1070,7 +1079,7 @@ fn self_linear_vesting() {
             start: 0u64,
             period: 10u64,
             period_count: 1u32,
-            per_period: 10 * ALICE_DOT_BALANCE,
+            per_period: 10 * ALICE_BALANCE,
         });
 
         assert_noop!(
@@ -1089,16 +1098,23 @@ fn self_linear_vesting() {
             alice(),
             schedule.clone()
         ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            alice(),
+            schedule_ksm.clone()
+        ));
 
         assert_eq!(
             VestedRewards::vesting_schedules(&alice()),
-            vec![schedule.clone()]
+            vec![schedule.clone(), schedule_ksm.clone()]
         );
+
         System::assert_last_event(RuntimeEvent::VestedRewards(
             crate::Event::VestingScheduleAdded {
                 from: alice(),
                 to: alice(),
-                vesting_schedule: schedule,
+                vesting_schedule: schedule_ksm,
             },
         ));
     });
@@ -1121,6 +1137,20 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             schedule
         ));
 
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            bob(),
+            schedule_ksm
+        ));
+
         run_to_block(12);
 
         let another_schedule =
@@ -1139,8 +1169,31 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             another_schedule
         ));
 
+        let another_schedule_ksm =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: KSM,
+                start: 10u64,
+                period: 13u64,
+                period_count: 1u32,
+                per_period: 7,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            bob(),
+            another_schedule_ksm
+        ));
+
         assert_eq!(
             Tokens::locks(&bob(), DOT).get(0),
+            Some(&BalanceLock {
+                id: VESTING_LOCK_ID,
+                amount: 17,
+            })
+        );
+        assert_eq!(
+            Tokens::locks(&bob(), KSM).get(0),
             Some(&BalanceLock {
                 id: VESTING_LOCK_ID,
                 amount: 17,
@@ -1387,6 +1440,20 @@ fn update_vesting_schedules_works() {
             schedule
         ));
 
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            bob(),
+            schedule_ksm
+        ));
+
         let updated_schedule =
             VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
                 asset_id: DOT,
@@ -1400,6 +1467,9 @@ fn update_vesting_schedules_works() {
             bob(),
             vec![updated_schedule]
         ));
+
+        assert_eq!(Tokens::free_balance(KSM, &bob()), 20);
+        assert!(Tokens::locks(bob(), KSM).get(0).is_none());
 
         run_to_block(11);
         assert_ok!(VestedRewards::claim_unlocked(
