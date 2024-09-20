@@ -188,7 +188,10 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = ();
 }
-
+parameter_types! {
+    pub const MaxVestingSchedules: u32 = 0;
+    pub const MinVestedTransfer: Balance = 0;
+}
 impl vested_rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
     type RuntimeEvent = RuntimeEvent;
@@ -197,6 +200,9 @@ impl vested_rewards::Config for Runtime {
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxVestingSchedules = MaxVestingSchedules;
+    type Currency = Tokens;
+    type MinVestedTransfer = MinVestedTransfer;
 }
 
 impl pswap_distribution::Config for Runtime {
