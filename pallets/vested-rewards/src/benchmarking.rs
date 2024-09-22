@@ -206,13 +206,22 @@ benchmarks! {
 
     claim_unlocked {
         let caller: T::AccountId = alice::<T>();
-        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 1);
+        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 0);
         let max_schedules = T::MaxVestingSchedules::get();
         let mut schedules = Vec::with_capacity(max_schedules as usize);
 
-        for i in 0..max_schedules {
-            let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+        let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
                 asset_id,
+                start: block_number::<T>("0"),
+                period: block_number::<T>("1"),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+        schedules.push(vesting_schedule);
+        for i in 1..max_schedules {
+            let asset_id_temp: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
+            let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: asset_id_temp,
                 start: block_number::<T>("0"),
                 period: block_number::<T>("1"),
                 period_count: 1,
@@ -230,8 +239,23 @@ benchmarks! {
     vested_transfer {
         let caller: T::AccountId = alice::<T>();
         let receiver = T::Lookup::unlookup(bob::<T>());
+        let max_schedules = T::MaxVestingSchedules::get() - 1;
+        let mut schedules = Vec::with_capacity(max_schedules as usize);
 
-        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 1);
+        for i in 1..max_schedules {
+            let asset_id_temp: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
+            let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: asset_id_temp,
+                start: block_number::<T>("0"),
+                period: block_number::<T>("1"),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+            schedules.push(vesting_schedule);
+        }
+        <VestingSchedules<T>>::insert(caller.clone(), BoundedVec::try_from(schedules).expect("Cant create bounded vec"));
+
+        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 0);
         let schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
                 asset_id,
                 start: block_number::<T>("1"),
@@ -247,12 +271,12 @@ benchmarks! {
 
     update_vesting_schedules {
         let caller: T::AccountId = alice::<T>();
-        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 1);
         let max_schedules = T::MaxVestingSchedules::get();
         let mut schedules_update = Vec::with_capacity(max_schedules as usize);
         let mut schedules = Vec::with_capacity(max_schedules as usize);
 
         for i in 0..max_schedules {
+            let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
             let vesting_schedule = VestingScheduleOf::<T>::LinearVestingSchedule(LinearVestingSchedule {
                 asset_id,
                 start: block_number::<T>("1"),
