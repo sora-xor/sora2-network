@@ -54,7 +54,7 @@ impl<T: Config> OnRuntimeUpgrade for AddFastPriceInfos<T> {
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<sp_std::vec::Vec<u8>, &'static str> {
         if FastPriceInfos::<T>::iter().count() > 0 {
             return Err("FastPriceInfos storage should not have values");
         }
@@ -62,7 +62,7 @@ impl<T: Config> OnRuntimeUpgrade for AddFastPriceInfos<T> {
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: sp_std::vec::Vec<u8>) -> Result<(), &'static str> {
         for key in PriceInfos::<T>::iter_keys() {
             if FastPriceInfos::<T>::get(key).ok_or("Expected key not found")?
                 != AggregatedPriceInfo::default()
