@@ -57,6 +57,8 @@ use serde::{Deserialize, Serialize};
 use sp_core::bounded::BoundedVec;
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use sp_runtime::traits::BlockNumberProvider;
+#[cfg(feature = "wip")] // Pending Vesting
+use sp_runtime::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::traits::{CheckedSub, StaticLookup, Zero};
 use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
@@ -93,7 +95,7 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
 )]
 pub struct RewardInfo {
-    /// Reward amount vested, denotes portion of `total_avialable` which can be claimed.
+    /// Reward amount vested, denotes portion of `total_available` which can be claimed.
     /// Reset to 0 after claim until more is vested over time.
     limit: Balance,
     /// Sum of reward amounts in `rewards`.
@@ -185,6 +187,24 @@ impl<T: Config> Pallet<T> {
         schedule: VestingScheduleOf<T>,
     ) -> DispatchResult {
         let schedule_amount = schedule.ensure_valid_vesting_schedule::<T>()?;
+        // When creating pending schedule don't know start block,
+        // so to minimize risk of overflow and misprint check it for current block
+        #[cfg(feature = "wip")] // Pending Vesting
+        if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(pending_schedule) =
+            schedule.clone()
+        {
+            let result = pending_schedule
+                .period
+                .checked_mul(&pending_schedule.period_count.into());
+            ensure!(result.is_some(), Error::<T>::ArithmeticError);
+            ensure!(
+                result
+                    .unwrap()
+                    .checked_add(&<frame_system::Pallet<T>>::block_number())
+                    .is_some(),
+                Error::<T>::ArithmeticError
+            )
+        }
         let asset_id = schedule.asset_id();
         let total_amount = Self::locked_balance(asset_id, to)
             .checked_add(schedule_amount)
@@ -220,7 +240,6 @@ impl<T: Config> Pallet<T> {
             .collect();
         assets_to_remove.sort();
         assets_to_remove.dedup();
-
         // empty vesting schedules cleanup the storage and unlock the fund
         for asset_id in assets_to_remove {
             T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
@@ -235,7 +254,6 @@ impl<T: Config> Pallet<T> {
         // Calculate amount of assets per new schedule
         for schedule in new_bounded_schedules.iter() {
             let amount = schedule.ensure_valid_vesting_schedule::<T>()?;
-
             total_amounts
                 .entry(schedule.asset_id())
                 .and_modify(|acc_amount| {
@@ -261,6 +279,42 @@ impl<T: Config> Pallet<T> {
         <VestingSchedules<T>>::insert(who, new_bounded_schedules);
 
         Ok(())
+    }
+
+    #[cfg(feature = "wip")] // Pending Vesting
+    fn do_unlock_pending_schedule_by_manager(
+        manager: T::AccountId,
+        dest: T::AccountId,
+        start: T::BlockNumber,
+        filter_schedule: &mut VestingScheduleOf<T>,
+    ) -> DispatchResult {
+        // Independent logic for some schedules, so implementation only there
+        match filter_schedule {
+            VestingScheduleOf::<T>::LinearPendingVestingSchedule(filter_schedule) => {
+                filter_schedule.manager_id = Some(manager);
+                <VestingSchedules<T>>::try_mutate(dest.clone(), |schedules| {
+                    for sched in schedules.iter_mut() {
+                        if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(sched) = sched {
+                            if sched.eq(&filter_schedule) {
+                                sched.start = Some(start);
+                                sched.ensure_valid_vesting_schedule::<T>()?;
+                                sched.manager_id = None;
+                                Self::deposit_event(Event::PendingScheduleUnlocked {
+                                    dest: dest.clone(),
+                                    pending_schedule:
+                                        VestingScheduleOf::<T>::LinearPendingVestingSchedule(
+                                            sched.clone(),
+                                        ),
+                                });
+                                return Ok(());
+                            }
+                        }
+                    }
+                    return Err(Error::<T>::PendingScheduleNotExist.into());
+                })
+            }
+            _ => Err(Error::<T>::WrongScheduleVariant.into()),
+        }
     }
 
     /// Stores a new reward for a given account_id, supported by a reward reason.
@@ -635,8 +689,11 @@ pub mod pallet {
     use sp_std::collections::btree_map::BTreeMap;
     use vesting_currencies::VestingScheduleVariant;
 
-    pub(crate) type VestingScheduleOf<T> =
-        VestingScheduleVariant<<T as frame_system::Config>::BlockNumber, AssetIdOf<T>>;
+    pub(crate) type VestingScheduleOf<T> = VestingScheduleVariant<
+        <T as frame_system::Config>::BlockNumber,
+        AssetIdOf<T>,
+        AccountIdOf<T>,
+    >;
 
     #[pallet::config]
     pub trait Config:
@@ -866,6 +923,44 @@ pub mod pallet {
             }
             Ok(().into())
         }
+
+        #[allow(unused_variables)]
+        #[allow(unused_mut)]
+        #[transactional]
+        #[pallet::call_index(8)]
+        #[pallet::weight(<T as Config>::WeightInfo::unlock_pending_schedule_by_manager())]
+        pub fn unlock_pending_schedule_by_manager(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+            start: Option<T::BlockNumber>,
+            mut filter_schedule: VestingScheduleOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            #[cfg(feature = "wip")] // Pending Vesting
+            {
+                let manager = ensure_signed(origin)?;
+                let dest = T::Lookup::lookup(dest)?;
+                match start {
+                    Some(start) => {
+                        Self::do_unlock_pending_schedule_by_manager(
+                            manager,
+                            dest,
+                            start,
+                            &mut filter_schedule,
+                        )?;
+                    }
+                    None => {
+                        Self::do_unlock_pending_schedule_by_manager(
+                            manager,
+                            dest,
+                            <frame_system::Pallet<T>>::block_number(),
+                            &mut filter_schedule,
+                        )?;
+                    }
+                }
+            }
+            Ok(().into())
+        }
     }
 
     #[pallet::error]
@@ -913,6 +1008,10 @@ pub mod pallet {
         AmountLow,
         /// Failed because the maximum vesting schedules was exceeded
         MaxVestingSchedulesExceeded,
+        /// Failed because the Schedule to unlock not exist
+        PendingScheduleNotExist,
+        /// Failed because used not correct Schedule Variant
+        WrongScheduleVariant,
     }
 
     #[pallet::event]
@@ -942,6 +1041,12 @@ pub mod pallet {
         #[cfg(feature = "wip")] // ORML multi asset vesting
         /// Updated vesting schedules.
         VestingSchedulesUpdated { who: T::AccountId },
+        #[cfg(feature = "wip")] // Pending Vesting
+        /// Pending schedule unlocked and may be used
+        PendingScheduleUnlocked {
+            dest: T::AccountId,
+            pending_schedule: VestingScheduleOf<T>,
+        },
     }
 
     #[cfg(feature = "wip")] // ORML multi asset vesting
