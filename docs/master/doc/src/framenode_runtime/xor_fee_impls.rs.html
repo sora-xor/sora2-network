@@ -587,6 +587,8 @@
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
 <a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -622,7 +624,9 @@
 </span><span class="kw">use </span>bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Dynamic fee
 </span><span class="kw">use </span>common::prelude::FixedWrapper;
-<span class="kw">use </span>common::{LiquidityProxyTrait, PriceToolsProvider};
+<span class="kw">use </span>common::LiquidityProxyTrait;
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+</span><span class="kw">use </span>common::PriceToolsProvider;
 <span class="kw">use </span>frame_support::dispatch::DispatchResult;
 <span class="kw">use </span>pallet_utility::Call <span class="kw">as </span>UtilityCall;
 <span class="kw">use </span>sp_runtime::traits::Zero;

@@ -128,6 +128,8 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -164,6 +166,8 @@
 <span class="kw">use </span>frame_support::dispatch::GetStorageVersion;
 <span class="kw">use </span>frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
 <span class="kw">use </span>sp_core::Get;
+<span class="attr">#[cfg(feature = <span class="string">&quot;try-runtime&quot;</span>)]
+</span><span class="kw">use </span>sp_std::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">pub struct </span>AddFastPriceInfos&lt;T&gt;(PhantomData&lt;T&gt;);
 
@@ -184,7 +188,7 @@
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;try-runtime&quot;</span>)]
-    </span><span class="kw">fn </span>pre_upgrade() -&gt; <span class="prelude-ty">Result</span>&lt;sp_std::vec::Vec&lt;u8&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    </span><span class="kw">fn </span>pre_upgrade() -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
         <span class="kw">if </span>FastPriceInfos::&lt;T&gt;::iter().count() &gt; <span class="number">0 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;FastPriceInfos storage should not have values&quot;</span>);
         }
@@ -192,7 +196,7 @@
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;try-runtime&quot;</span>)]
-    </span><span class="kw">fn </span>post_upgrade(_state: sp_std::vec::Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+    </span><span class="kw">fn </span>post_upgrade(_state: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
         <span class="kw">for </span>key <span class="kw">in </span>PriceInfos::&lt;T&gt;::iter_keys() {
             <span class="kw">if </span>FastPriceInfos::&lt;T&gt;::get(key).ok_or(<span class="string">&quot;Expected key not found&quot;</span>)<span class="question-mark">?
                 </span>!= AggregatedPriceInfo::default()
