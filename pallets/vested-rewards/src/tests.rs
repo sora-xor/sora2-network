@@ -32,7 +32,7 @@ use crate::vesting_currencies::LinearPendingVestingSchedule;
 use crate::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::Error::ArithmeticError;
-use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos};
+use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event};
 use crate::{Error, RewardInfo};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::{VestingSchedules, VESTING_LOCK_ID};
@@ -1331,6 +1331,12 @@ fn linear_vesting_unlock_correct() {
             bob(),
             None,
             schedule_locked,
+        ));
+        System::assert_last_event(RuntimeEvent::VestedRewards(
+            Event::PendingScheduleUnlocked {
+                dest: bob(),
+                pending_schedule: schedule_unlocked.clone(),
+            },
         ));
         assert_eq!(
             VestedRewards::vesting_schedules(&bob()),
