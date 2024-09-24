@@ -436,7 +436,10 @@ where
 {
     fn from(compat: AssetId32<AssetId>) -> Self {
         let can_fail = || {
-            ensure!(compat.code[0] == 2, "Invalid format");
+            ensure!(
+                compat.code[0] == ASSET_ID_PREFIX_PREDEFINED,
+                "Invalid format"
+            );
             let mut frag: &[u8] = &compat.code[1..=2];
             TechAssetId::<AssetId>::decode(&mut frag)
         };
