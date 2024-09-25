@@ -2642,6 +2642,29 @@
 <a href="#2627" id="2627">2627</a>
 <a href="#2628" id="2628">2628</a>
 <a href="#2629" id="2629">2629</a>
+<a href="#2630" id="2630">2630</a>
+<a href="#2631" id="2631">2631</a>
+<a href="#2632" id="2632">2632</a>
+<a href="#2633" id="2633">2633</a>
+<a href="#2634" id="2634">2634</a>
+<a href="#2635" id="2635">2635</a>
+<a href="#2636" id="2636">2636</a>
+<a href="#2637" id="2637">2637</a>
+<a href="#2638" id="2638">2638</a>
+<a href="#2639" id="2639">2639</a>
+<a href="#2640" id="2640">2640</a>
+<a href="#2641" id="2641">2641</a>
+<a href="#2642" id="2642">2642</a>
+<a href="#2643" id="2643">2643</a>
+<a href="#2644" id="2644">2644</a>
+<a href="#2645" id="2645">2645</a>
+<a href="#2646" id="2646">2646</a>
+<a href="#2647" id="2647">2647</a>
+<a href="#2648" id="2648">2648</a>
+<a href="#2649" id="2649">2649</a>
+<a href="#2650" id="2650">2650</a>
+<a href="#2651" id="2651">2651</a>
+<a href="#2652" id="2652">2652</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2685,7 +2708,7 @@
 <span class="kw">use </span>common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 <span class="kw">use </span>frame_support::sp_runtime::Percent;
 <span class="kw">use </span>framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -3541,6 +3564,7 @@
     validator_count: u32,
 ) -&gt; GenesisConfig {
     <span class="comment">// Initial balances
+
     </span><span class="kw">let </span>initial_staking = <span class="macro">balance!</span>(<span class="number">1000000000</span>);
     <span class="kw">let </span>initial_eth_bridge_xor_amount = <span class="macro">balance!</span>(<span class="number">350000</span>);
     <span class="kw">let </span>initial_eth_bridge_val_amount = <span class="macro">balance!</span>(<span class="number">33900000</span>);
@@ -4123,6 +4147,17 @@
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(<span class="string">b&quot;KARMA&quot;</span>.to_vec()),
                     AssetName(<span class="string">b&quot;Chameleon&quot;</span>.to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    <span class="bool-val">true</span>,
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                ),
+                (
+                    VXOR,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(<span class="string">b&quot;VXOR&quot;</span>.to_vec()),
+                    AssetName(<span class="string">b&quot;Vested XOR&quot;</span>.to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     <span class="bool-val">true</span>,
@@ -4849,6 +4884,17 @@
             assets_and_permissions_account_id.clone(),
             AssetSymbol(<span class="string">b&quot;KARMA&quot;</span>.to_vec()),
             AssetName(<span class="string">b&quot;Chameleon&quot;</span>.to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            <span class="bool-val">true</span>,
+            <span class="prelude-val">None</span>,
+            <span class="prelude-val">None</span>,
+        ),
+        (
+            VXOR,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(<span class="string">b&quot;VXOR&quot;</span>.to_vec()),
+            AssetName(<span class="string">b&quot;Vested XOR&quot;</span>.to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             <span class="bool-val">true</span>,

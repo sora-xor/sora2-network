@@ -3523,6 +3523,10 @@
 <a href="#3508" id="3508">3508</a>
 <a href="#3509" id="3509">3509</a>
 <a href="#3510" id="3510">3510</a>
+<a href="#3511" id="3511">3511</a>
+<a href="#3512" id="3512">3512</a>
+<a href="#3513" id="3513">3513</a>
+<a href="#3514" id="3514">3514</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4437,6 +4441,7 @@
     <span class="kw">pub const </span>GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     <span class="kw">pub const </span>GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     <span class="kw">pub const </span>GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    <span class="kw">pub const </span>GetVXorAssetId: AssetId = common::VXOR;
 
     <span class="kw">pub const </span>GetBaseAssetId: AssetId = GetXorAssetId::get();
     <span class="kw">pub const </span>GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -4843,10 +4848,12 @@
     </span><span class="kw">type </span>XorCurrency = Balances;
     <span class="kw">type </span>XorId = GetXorAssetId;
     <span class="kw">type </span>ValId = GetValAssetId;
+    <span class="kw">type </span>VXorId = GetVXorAssetId;
     <span class="kw">type </span>TbcdId = GetTbcdAssetId;
     <span class="kw">type </span>ReferrerWeight = ReferrerWeight;
     <span class="kw">type </span>XorBurnedWeight = XorBurnedWeight;
     <span class="kw">type </span>XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    <span class="kw">type </span>XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
     <span class="kw">type </span>BuyBackTBCDPercent = BuyBackTBCDPercent;
     <span class="kw">type </span>DEXIdValue = DEXIdValue;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
@@ -5658,8 +5665,9 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>ReferrerWeight: u32 = <span class="number">10</span>;
-    <span class="kw">pub const </span>XorBurnedWeight: u32 = <span class="number">40</span>;
+    <span class="kw">pub const </span>XorBurnedWeight: u32 = <span class="number">1</span>;
     <span class="kw">pub const </span>XorIntoValBurnedWeight: u32 = <span class="number">50</span>;
+    <span class="kw">pub const </span>XorIntoVXorBurnedWeight: u32 = <span class="number">39</span>;
     <span class="kw">pub const </span>BuyBackTBCDPercent: Percent = Percent::from_percent(<span class="number">10</span>);
 }
 
