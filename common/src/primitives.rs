@@ -200,7 +200,6 @@ mod _allowed_deprecated {
         KGOLD = 13,
         KXOR = 14,
         KARMA = 15,
-        MIRAI = 16,
     }
 }
 
@@ -218,7 +217,9 @@ pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
 pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
-pub const MIRAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::MIRAI);
+pub const VXOR: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "006a271832f44c93bd8692584d85415f0f3dccef9748fecd129442c8edcb4361"
+));
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));

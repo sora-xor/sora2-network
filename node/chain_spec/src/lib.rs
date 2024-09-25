@@ -41,7 +41,7 @@ use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -898,7 +898,6 @@ fn testnet_genesis(
 ) -> GenesisConfig {
     // Initial balances
 
-    use common::MIRAI;
     let initial_staking = balance!(1000000000);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
@@ -1488,10 +1487,10 @@ fn testnet_genesis(
                     None,
                 ),
                 (
-                    MIRAI,
+                    VXOR,
                     assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"MIRAI".to_vec()),
-                    AssetName(b"Mirai".to_vec()),
+                    AssetSymbol(b"VXOR".to_vec()),
+                    AssetName(b"Vested XOR".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -2225,10 +2224,10 @@ fn mainnet_genesis(
             None,
         ),
         (
-            MIRAI,
+            VXOR,
             assets_and_permissions_account_id.clone(),
-            AssetSymbol(b"MIRAI".to_vec()),
-            AssetName(b"Mirai".to_vec()),
+            AssetSymbol(b"VXOR".to_vec()),
+            AssetName(b"Vested XOR".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
