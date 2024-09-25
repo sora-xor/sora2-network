@@ -242,7 +242,7 @@ where
                     referrer_portion.into(),
                 ));
             } else {
-                total_xor_to_vxor += referrer_xor.peek();
+                total_xor_to_vxor = total_xor_to_vxor.saturating_add(referrer_xor.peek());
             }
 
             // TODO: decide what should be done with XOR if there is no referrer.
@@ -254,13 +254,13 @@ where
             let (_xor_burned, xor_to_vxor) =
                 adjusted_paid.ration(xor_burned_weight, xor_into_vxor_burned_weight);
             let xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
-            total_xor_to_vxor += xor_to_vxor.peek();
+            total_xor_to_vxor = total_xor_to_vxor.saturating_add(xor_to_vxor.peek());
             let xor_to_vxor: Balance = total_xor_to_vxor.unique_saturated_into();
             XorToVal::<T>::mutate(|balance| {
-                *balance += xor_to_val;
+                *balance = balance.saturating_add(xor_to_val);
             });
             XorToVXor::<T>::mutate(|balance| {
-                *balance += xor_to_vxor;
+                *balance = balance.saturating_add(xor_to_vxor);
             });
         }
         Ok(())
