@@ -1342,6 +1342,51 @@
 <a href="#1327" id="1327">1327</a>
 <a href="#1328" id="1328">1328</a>
 <a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1780,10 +1825,11 @@
 {
     <span class="kw">fn </span>from(compat: AssetId32&lt;AssetId&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>can_fail = || {
-            <span class="kw">let </span>code = compat.code;
-            <span class="kw">let </span>end = (code[<span class="number">0</span>] <span class="kw">as </span>usize) + <span class="number">1</span>;
-            <span class="macro">ensure!</span>(end &lt; <span class="number">32</span>, <span class="string">&quot;Invalid format&quot;</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>frag: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>code[<span class="number">1</span>..end];
+            <span class="macro">ensure!</span>(
+                compat.code[<span class="number">0</span>] == ASSET_ID_PREFIX_PREDEFINED,
+                <span class="string">&quot;Invalid format&quot;
+            </span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>frag: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>compat.code[<span class="number">1</span>..=<span class="number">2</span>];
             TechAssetId::&lt;AssetId&gt;::decode(<span class="kw-2">&amp;mut </span>frag)
         };
         <span class="kw">match </span>can_fail() {
@@ -2499,50 +2545,6 @@
     <span class="kw">pub </span>vesting: Balance,
 }
 
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>should_serialize_and_deserialize_assetid32_properly_with_string() {
-        <span class="kw">let </span>asset_id = AssetId32 {
-            code: [
-                <span class="number">2</span>, <span class="number">0</span>, <span class="number">3</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">5</span>, <span class="number">0</span>, <span class="number">6</span>, <span class="number">0</span>, <span class="number">7</span>, <span class="number">0</span>, <span class="number">8</span>, <span class="number">0</span>, <span class="number">9</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">11</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">0</span>, <span class="number">13</span>, <span class="number">0</span>, <span class="number">14</span>, <span class="number">0</span>,
-                <span class="number">15</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>,
-            ],
-            phantom: PhantomData,
-        };
-
-        <span class="kw">let </span>json_str = <span class="string">r#&quot;&quot;0x020003000400050006000700080009000a000b000c000d000e000f0001000200&quot;&quot;#</span>;
-
-        <span class="macro">assert_eq!</span>(serde_json::to_string(<span class="kw-2">&amp;</span>asset_id).unwrap(), json_str);
-        <span class="macro">assert_eq!</span>(
-            serde_json::from_str::&lt;AssetId32&lt;PredefinedAssetId&gt;&gt;(json_str).unwrap(),
-            asset_id
-        );
-
-        <span class="comment">// should not panic
-        </span>serde_json::to_value(asset_id).unwrap();
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>should_serialize_and_deserialize_balance_properly_with_string() {
-        <span class="kw">let </span>balance: Balance = <span class="number">123_456u128</span>;
-        <span class="kw">let </span>wrapper: BalanceWrapper = balance.into();
-
-        <span class="kw">let </span>json_str = <span class="string">r#&quot;&quot;123456&quot;&quot;#</span>;
-
-        <span class="macro">assert_eq!</span>(serde_json::to_string(<span class="kw-2">&amp;</span>wrapper).unwrap(), json_str);
-        <span class="kw">let </span>unwrapped: Balance = serde_json::from_str::&lt;BalanceWrapper&gt;(json_str)
-            .unwrap()
-            .into();
-        <span class="macro">assert_eq!</span>(unwrapped, balance);
-
-        <span class="comment">// should not panic
-        </span>serde_json::to_value(BalanceWrapper(balance)).unwrap();
-    }
-}
-
 <span class="attr">#[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
 )]
@@ -2670,6 +2672,94 @@
     <span class="kw">pub </span>asset_type: AssetType,
     <span class="kw">pub </span>content_source: <span class="prelude-ty">Option</span>&lt;ContentSource&gt;,
     <span class="kw">pub </span>description: <span class="prelude-ty">Option</span>&lt;Description&gt;,
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>hex_literal::hex;
+
+    <span class="kw">use crate</span>::{AssetId32, PredefinedAssetId, TechAssetId};
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>should_serialize_and_deserialize_assetid32_properly_with_string() {
+        <span class="kw">let </span>asset_id = AssetId32 {
+            code: [
+                <span class="number">2</span>, <span class="number">0</span>, <span class="number">3</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">5</span>, <span class="number">0</span>, <span class="number">6</span>, <span class="number">0</span>, <span class="number">7</span>, <span class="number">0</span>, <span class="number">8</span>, <span class="number">0</span>, <span class="number">9</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">11</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">0</span>, <span class="number">13</span>, <span class="number">0</span>, <span class="number">14</span>, <span class="number">0</span>,
+                <span class="number">15</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>,
+            ],
+            phantom: PhantomData,
+        };
+
+        <span class="kw">let </span>json_str = <span class="string">r#&quot;&quot;0x020003000400050006000700080009000a000b000c000d000e000f0001000200&quot;&quot;#</span>;
+
+        <span class="macro">assert_eq!</span>(serde_json::to_string(<span class="kw-2">&amp;</span>asset_id).unwrap(), json_str);
+        <span class="macro">assert_eq!</span>(
+            serde_json::from_str::&lt;AssetId32&lt;PredefinedAssetId&gt;&gt;(json_str).unwrap(),
+            asset_id
+        );
+
+        <span class="comment">// should not panic
+        </span>serde_json::to_value(asset_id).unwrap();
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>should_serialize_and_deserialize_balance_properly_with_string() {
+        <span class="kw">let </span>balance: Balance = <span class="number">123_456u128</span>;
+        <span class="kw">let </span>wrapper: BalanceWrapper = balance.into();
+
+        <span class="kw">let </span>json_str = <span class="string">r#&quot;&quot;123456&quot;&quot;#</span>;
+
+        <span class="macro">assert_eq!</span>(serde_json::to_string(<span class="kw-2">&amp;</span>wrapper).unwrap(), json_str);
+        <span class="kw">let </span>unwrapped: Balance = serde_json::from_str::&lt;BalanceWrapper&gt;(json_str)
+            .unwrap()
+            .into();
+        <span class="macro">assert_eq!</span>(unwrapped, balance);
+
+        <span class="comment">// should not panic
+        </span>serde_json::to_value(BalanceWrapper(balance)).unwrap();
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>check_tech_asset_from_asset() {
+        <span class="kw">let </span>asset_id = AssetId32::&lt;PredefinedAssetId&gt;::new(
+            <span class="macro">hex!</span>(<span class="string">&quot;0200000000000000000000000000000000000000000000000000000000000000&quot;</span>),
+            Default::default(),
+        );
+        <span class="kw">let </span>tech_asset_id: TechAssetId&lt;PredefinedAssetId&gt; = asset_id.into();
+        <span class="macro">assert_eq!</span>(tech_asset_id, TechAssetId::Wrapped(PredefinedAssetId::XOR));
+
+        <span class="kw">let </span>asset_id = AssetId32::&lt;PredefinedAssetId&gt;::new(
+            <span class="macro">hex!</span>(<span class="string">&quot;0200070000000000000000000000000000000000000000000000000000000000&quot;</span>),
+            Default::default(),
+        );
+        <span class="kw">let </span>tech_asset_id: TechAssetId&lt;PredefinedAssetId&gt; = asset_id.into();
+        <span class="macro">assert_eq!</span>(tech_asset_id, TechAssetId::Wrapped(PredefinedAssetId::ETH));
+
+        <span class="kw">let </span>asset_id = AssetId32::&lt;PredefinedAssetId&gt;::new(
+            <span class="macro">hex!</span>(<span class="string">&quot;05000a7e90ffac7c98b3bca9bb1441679a300000000000000000000000000000&quot;</span>),
+            Default::default(),
+        );
+        <span class="kw">let </span>tech_asset_id: TechAssetId&lt;PredefinedAssetId&gt; = asset_id.into();
+        <span class="macro">assert_eq!</span>(
+            tech_asset_id,
+            TechAssetId::Escaped(<span class="macro">hex!</span>(
+                <span class="string">&quot;05000a7e90ffac7c98b3bca9bb1441679a300000000000000000000000000000&quot;
+            </span>))
+        );
+
+        <span class="kw">let </span>asset_id = AssetId32::&lt;PredefinedAssetId&gt;::new(
+            <span class="macro">hex!</span>(<span class="string">&quot;030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000&quot;</span>),
+            Default::default(),
+        );
+        <span class="kw">let </span>tech_asset_id: TechAssetId&lt;PredefinedAssetId&gt; = asset_id.into();
+        <span class="macro">assert_eq!</span>(
+            tech_asset_id,
+            TechAssetId::Escaped(<span class="macro">hex!</span>(
+                <span class="string">&quot;030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000&quot;
+            </span>))
+        );
+    }
 }
 </code></pre></div>
 </section></main></body></html>
