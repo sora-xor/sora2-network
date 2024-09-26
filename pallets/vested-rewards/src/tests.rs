@@ -1334,11 +1334,24 @@ fn claim_linear_works() {
             period_count: 2u32,
             per_period: 10,
         });
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 50u64,
+            period_count: 1u32,
+            per_period: 10,
+        });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
             DOT,
             bob(),
             schedule
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_ksm
         ));
 
         run_to_block(11);
@@ -1365,7 +1378,7 @@ fn claim_linear_works() {
             RuntimeOrigin::signed(bob()),
             DOT
         ));
-        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
         assert_ok!(Tokens::transfer(
             RuntimeOrigin::signed(bob()),
             alice(),
@@ -1377,6 +1390,12 @@ fn claim_linear_works() {
 
         // no locks anymore
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+        run_to_block(50);
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            KSM
+        ));
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
