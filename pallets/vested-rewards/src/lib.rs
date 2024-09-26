@@ -49,9 +49,7 @@ use frame_support::traits::{Get, IsType};
 use serde::{Deserialize, Serialize};
 use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::BlockNumberProvider;
-#[cfg(feature = "wip")] // Pending Vesting
-use sp_runtime::traits::{CheckedAdd, CheckedMul};
-use sp_runtime::traits::{CheckedSub, StaticLookup, Zero};
+use sp_runtime::traits::{CheckedAdd, CheckedMul, CheckedSub, StaticLookup, Zero};
 use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
@@ -177,9 +175,8 @@ impl<T: Config> Pallet<T> {
         schedule: VestingScheduleOf<T>,
     ) -> DispatchResult {
         let schedule_amount = schedule.ensure_valid_vesting_schedule::<T>()?;
-        // When creating pending schedule don't know start block,
+        // When creating pending schedule start block is unknown,
         // so to minimize risk of overflow and misprint check it for current block
-        #[cfg(feature = "wip")] // Pending Vesting
         if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(pending_schedule) =
             schedule.clone()
         {
@@ -927,9 +924,9 @@ pub mod pallet {
             start: Option<T::BlockNumber>,
             mut filter_schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
+            let manager = ensure_signed(origin)?;
             #[cfg(feature = "wip")] // Pending Vesting
             {
-                let manager = ensure_signed(origin)?;
                 let dest = T::Lookup::lookup(dest)?;
                 match start {
                     Some(start) => {
@@ -1029,7 +1026,6 @@ pub mod pallet {
         },
         /// Updated vesting schedules.
         VestingSchedulesUpdated { who: T::AccountId },
-        #[cfg(feature = "wip")] // Pending Vesting
         /// Pending schedule unlocked and may be used
         PendingScheduleUnlocked {
             dest: T::AccountId,
