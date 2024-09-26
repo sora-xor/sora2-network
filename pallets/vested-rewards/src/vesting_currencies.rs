@@ -206,25 +206,18 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
 
     /// Note this func assumes schedule is a valid one(non-zero period and
     /// non-overflow total amount), and it should be guaranteed by callers.
-    fn locked_amount(&self, time: BlockNumber) -> Balance {
+    fn locked_amount(&self, time: BlockNumber) -> Option<Balance> {
         if let Some(start) = self.start {
             // full = (time - start) / period
             // unrealized = period_count - full
             // per_period * unrealized
-            let full = time
-                .saturating_sub(start)
-                .checked_div(&self.period)
-                .expect("ensured non-zero period; qed");
+            let full = time.saturating_sub(start).checked_div(&self.period)?;
             let unrealized = self
                 .period_count
                 .saturating_sub(full.unique_saturated_into());
-            self.per_period
-                .checked_mul(unrealized.into())
-                .expect("ensured non-overflow total amount; qed")
+            self.per_period.checked_mul(unrealized.into())
         } else {
-            self.per_period
-                .checked_mul(self.period_count.into())
-                .expect("ensured non-overflow total amount; qed")
+            self.per_period.checked_mul(self.period_count.into())
         }
     }
 
@@ -238,14 +231,11 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
             ensure!(self.end().is_some(), Error::<T>::ArithmeticError);
         }
 
-        let total_total = self.total_amount().ok_or(Error::<T>::ArithmeticError)?;
+        let total = self.total_amount().ok_or(Error::<T>::ArithmeticError)?;
 
-        ensure!(
-            total_total >= T::MinVestedTransfer::get(),
-            Error::<T>::AmountLow
-        );
+        ensure!(total >= T::MinVestedTransfer::get(), Error::<T>::AmountLow);
 
-        Ok(total_total)
+        Ok(total)
     }
 
     fn asset_id(&self) -> AssetId {
