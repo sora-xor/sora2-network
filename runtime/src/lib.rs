@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 96,
+    spec_version: 97,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 96,
+    transaction_version: 97,
     state_version: 0,
 };
 
@@ -2135,10 +2135,10 @@ impl order_book::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
 parameter_types! {
-    pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 1;
-    pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const XorIntoVXorBurnedWeight: u32 = 39;
+    pub const ReferrerWeight: u32 = 25; // 10%
+    pub const XorBurnedWeight: u32 = 1; // 0.4%
+    pub const XorIntoValBurnedWeight: u32 = 125; // 50%
+    pub const XorIntoVXorBurnedWeight: u32 = 99; // 39.6%
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 
