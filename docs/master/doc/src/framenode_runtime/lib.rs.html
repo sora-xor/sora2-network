@@ -3786,10 +3786,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">96</span>,
+    spec_version: <span class="number">97</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">96</span>,
+    transaction_version: <span class="number">97</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -5664,11 +5664,11 @@
 </span><span class="kw">pub type </span>SignedPayload = generic::SignedPayload&lt;RuntimeCall, SignedExtra&gt;;
 
 <span class="macro">parameter_types! </span>{
-    <span class="kw">pub const </span>ReferrerWeight: u32 = <span class="number">10</span>;
-    <span class="kw">pub const </span>XorBurnedWeight: u32 = <span class="number">1</span>;
-    <span class="kw">pub const </span>XorIntoValBurnedWeight: u32 = <span class="number">50</span>;
-    <span class="kw">pub const </span>XorIntoVXorBurnedWeight: u32 = <span class="number">39</span>;
-    <span class="kw">pub const </span>BuyBackTBCDPercent: Percent = Percent::from_percent(<span class="number">10</span>);
+    <span class="kw">pub const </span>ReferrerWeight: u32 = <span class="number">25</span>; <span class="comment">// 10%
+    </span><span class="kw">pub const </span>XorBurnedWeight: u32 = <span class="number">1</span>; <span class="comment">// 0.4%
+    </span><span class="kw">pub const </span>XorIntoValBurnedWeight: u32 = <span class="number">125</span>; <span class="comment">// 50%
+    </span><span class="kw">pub const </span>XorIntoVXorBurnedWeight: u32 = <span class="number">99</span>; <span class="comment">// 39.6%
+    </span><span class="kw">pub const </span>BuyBackTBCDPercent: Percent = Percent::from_percent(<span class="number">10</span>);
 }
 
 <span class="comment">// Ethereum bridge pallets
