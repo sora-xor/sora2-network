@@ -928,7 +928,6 @@ pub mod pallet {
 
         #[allow(unused_variables)]
         #[allow(unused_mut)]
-        #[transactional]
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::unlock_pending_schedule_by_manager())]
         pub fn unlock_pending_schedule_by_manager(
