@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::{Config, Error};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::Balance;
@@ -13,7 +43,7 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
     /// Returns all locked amount, `None` if calculation overflows.
     fn total_amount(&self) -> Option<Balance>;
     /// Returns locked amount for a given `time`.
-    fn locked_amount(&self, time: BlockNumber) -> Balance;
+    fn locked_amount(&self, time: BlockNumber) -> Option<common::Balance>;
     fn ensure_valid_vesting_schedule<T: Config>(&self) -> Result<Balance, DispatchError>;
     /// Returns asset id, need to get from enum
     fn asset_id(&self) -> AssetId;
@@ -44,7 +74,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
         }
     }
 
-    fn locked_amount(&self, time: BlockNumber) -> Balance {
+    fn locked_amount(&self, time: BlockNumber) -> Option<Balance> {
         match self {
             VestingScheduleVariant::LinearVestingSchedule(variant) => variant.locked_amount(time),
             VestingScheduleVariant::LinearPendingVestingSchedule(variant) => {
@@ -107,20 +137,15 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
 
     /// Note this func assumes schedule is a valid one(non-zero period and
     /// non-overflow total amount), and it should be guaranteed by callers.
-    fn locked_amount(&self, time: BlockNumber) -> Balance {
+    fn locked_amount(&self, time: BlockNumber) -> Option<Balance> {
         // full = (time - start) / period
         // unrealized = period_count - full
         // per_period * unrealized
-        let full = time
-            .saturating_sub(self.start)
-            .checked_div(&self.period)
-            .expect("ensured non-zero period; qed");
+        let full = time.saturating_sub(self.start).checked_div(&self.period)?;
         let unrealized = self
             .period_count
             .saturating_sub(full.unique_saturated_into());
-        self.per_period
-            .checked_mul(unrealized.into())
-            .expect("ensured non-overflow total amount; qed")
+        self.per_period.checked_mul(unrealized.into())
     }
 
     fn ensure_valid_vesting_schedule<T: Config>(&self) -> Result<Balance, DispatchError> {
@@ -131,14 +156,11 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
         );
         ensure!(self.end().is_some(), Error::<T>::ArithmeticError);
 
-        let total_total = self.total_amount().ok_or(Error::<T>::ArithmeticError)?;
+        let total = self.total_amount().ok_or(Error::<T>::ArithmeticError)?;
 
-        ensure!(
-            total_total >= T::MinVestedTransfer::get(),
-            Error::<T>::AmountLow
-        );
+        ensure!(total >= T::MinVestedTransfer::get(), Error::<T>::AmountLow);
 
-        Ok(total_total)
+        Ok(total)
     }
 
     fn asset_id(&self) -> AssetId {
