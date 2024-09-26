@@ -31,21 +31,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
-
-#[allow(unused_imports)]
+#![allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::vesting_currencies::VestingSchedule;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-#[cfg(feature = "wip")] // ORML multi asset vesting
-use common::BalanceOf;
-use common::CrowdloanTag;
-use common::FromGenericPair;
 use common::{
-    balance, AssetIdOf, AssetInfoProvider, AssetManager, OnPswapBurned, PswapRemintInfo,
-    RewardReason, Vesting, PSWAP,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, BalanceOf, CrowdloanTag, FromGenericPair,
+    OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -53,9 +47,7 @@ use frame_support::fail;
 use frame_support::traits::LockIdentifier;
 use frame_support::traits::{Get, IsType};
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use sp_core::bounded::BoundedVec;
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use sp_runtime::traits::BlockNumberProvider;
 use sp_runtime::traits::{CheckedSub, StaticLookup, Zero};
 use sp_runtime::{Permill, Perquintill};
@@ -63,9 +55,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
 use sp_std::str;
 use sp_std::vec::Vec;
-#[cfg(feature = "wip")] // ORML multi asset vesting
-use traits::MultiCurrency;
-use traits::MultiLockableCurrency;
+use traits::{MultiCurrency, MultiLockableCurrency};
 pub mod weights;
 
 mod benchmarking;
@@ -777,9 +767,9 @@ pub mod pallet {
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
             #[cfg(feature = "wip")] // ORML multi asset vesting
             {
-                let who = ensure_signed(origin)?;
                 let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
 
                 Self::deposit_event(Event::ClaimedVesting {
@@ -800,9 +790,9 @@ pub mod pallet {
             dest: <T::Lookup as StaticLookup>::Source,
             schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
+            let from = ensure_signed(origin)?;
             #[cfg(feature = "wip")] // ORML multi asset vesting
             {
-                let from = ensure_signed(origin)?;
                 let to = T::Lookup::lookup(dest)?;
 
                 if to == from {
@@ -834,9 +824,9 @@ pub mod pallet {
             who: <T::Lookup as StaticLookup>::Source,
             vesting_schedules: Vec<VestingScheduleOf<T>>,
         ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
             #[cfg(feature = "wip")] // ORML multi asset vesting
             {
-                ensure_root(origin)?;
                 let account = T::Lookup::lookup(who)?;
                 Self::do_update_vesting_schedules(&account, vesting_schedules)?;
 
@@ -854,9 +844,9 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             dest: <T::Lookup as StaticLookup>::Source,
         ) -> DispatchResultWithPostInfo {
+            let _ = ensure_signed(origin)?;
             #[cfg(feature = "wip")] // ORML multi asset vesting
             {
-                let _ = ensure_signed(origin)?;
                 let who = T::Lookup::lookup(dest)?;
                 let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
 
@@ -927,20 +917,17 @@ pub mod pallet {
         FailedToSaveCalculatedReward(AccountIdOf<T>),
         /// Claimed crowdloan rewards
         CrowdloanClaimed(T::AccountId, AssetIdOf<T>, Balance),
-        #[cfg(feature = "wip")] // ORML multi asset vesting
         /// Added new vesting schedule.
         VestingScheduleAdded {
             from: T::AccountId,
             to: T::AccountId,
             vesting_schedule: VestingScheduleOf<T>,
         },
-        #[cfg(feature = "wip")] // ORML multi asset vesting
         /// Claimed vesting.
         ClaimedVesting {
             who: T::AccountId,
             amount: BalanceOf<T>,
         },
-        #[cfg(feature = "wip")] // ORML multi asset vesting
         /// Updated vesting schedules.
         VestingSchedulesUpdated { who: T::AccountId },
     }

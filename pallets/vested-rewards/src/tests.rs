@@ -27,9 +27,7 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::Error::ArithmeticError;
 use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos};
 use crate::{Error, RewardInfo};
@@ -38,16 +36,12 @@ use crate::{VestingSchedules, VESTING_LOCK_ID};
 use common::mock::charlie;
 use common::{
     balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
-    PswapRemintInfo, RewardReason, Vesting, PSWAP, VAL, XOR, XSTUSD,
+    PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP, VAL, XOR, XSTUSD,
 };
-#[cfg(feature = "wip")] // ORML multi asset vesting
-use common::{DOT, KSM};
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use sp_runtime::traits::Dispatchable;
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use tokens::BalanceLock;
 use traits::currency::MultiCurrency;
 
