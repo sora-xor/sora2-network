@@ -220,19 +220,21 @@ fn initialize_liquidity_sources<T: Config>() {
     initialize_xyk_pool::<T>(KUSD.into());
     price_tools::Pallet::<T>::register_asset(&KUSD.into()).unwrap();
     for _ in 1..=AVG_BLOCK_SPAN {
-        price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy)
-            .unwrap();
-        price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell)
-            .unwrap();
-        price_tools::Pallet::<T>::incoming_spot_price(&KUSD.into(), balance!(1), PriceVariant::Buy)
-            .unwrap();
-        price_tools::Pallet::<T>::incoming_spot_price(
-            &KUSD.into(),
-            balance!(1),
-            PriceVariant::Sell,
-        )
-        .unwrap();
+        incoming_spot_price::<T>(DAI.into(), balance!(1));
+        incoming_spot_price::<T>(KUSD.into(), balance!(1));
     }
+}
+
+fn incoming_spot_price<T: price_tools::Config>(asset_id: AssetIdOf<T>, price: Balance) {
+    price_tools::FastPriceInfos::<T>::mutate(asset_id, |opt_val| {
+        let val = opt_val.as_mut().unwrap();
+        val.price_mut_of(PriceVariant::Buy)
+            .incoming_spot_price(price, PriceVariant::Buy, &price_tools::FAST_PARAMETERS)
+            .unwrap();
+        val.price_mut_of(PriceVariant::Sell)
+            .incoming_spot_price(price, PriceVariant::Sell, &price_tools::FAST_PARAMETERS)
+            .unwrap();
+    })
 }
 
 benchmarks! {

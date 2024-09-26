@@ -34,6 +34,8 @@ use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
 use common::LiquidityProxyTrait;
+#[cfg(feature = "wip")] // EVM bridge
+use common::PriceToolsProvider;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;

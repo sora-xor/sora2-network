@@ -5,7 +5,7 @@ use super::*;
 use codec::Decode;
 use common::{
     balance, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId, PriceToolsProvider,
-    PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Hooks;
@@ -212,8 +212,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     // Register assets to PriceTools and fill PricesInfos
     PriceTools::<T>::register_asset(&DOT.into()).unwrap();
     for _ in 0..30 {
-        PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Buy);
-        PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Sell);
+        PriceTools::<T>::average_prices_calculation_routine();
     }
 
     Ok(())

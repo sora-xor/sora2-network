@@ -28,17 +28,23 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::mock::alice;
-use price_tools::AVG_BLOCK_SPAN;
+use frame_support::dispatch::GetStorageVersion;
+use frame_support::traits::StorageVersion;
 
-use crate::{AssetId, PoolXYK, PriceTools, RuntimeOrigin};
+use crate::PriceInfos;
+use crate::{AggregatedPriceInfo, Pallet};
+use crate::{Config, PriceInfo};
 
-pub fn ensure_pool_initialized(asset_a: AssetId, asset_b: AssetId) {
-    PoolXYK::initialize_pool(RuntimeOrigin::signed(alice()), 0, asset_a, asset_b).unwrap();
-}
-
-pub fn fill_spot_price() {
-    for _ in 0..AVG_BLOCK_SPAN {
-        PriceTools::average_prices_calculation_routine();
+pub fn migrate<T: Config>() {
+    if Pallet::<T>::on_chain_storage_version() < StorageVersion::new(2) {
+        PriceInfos::<T>::translate::<PriceInfo, _>(
+            |_, old_price_info| -> Option<AggregatedPriceInfo> {
+                Some(AggregatedPriceInfo {
+                    buy: old_price_info,
+                    sell: PriceInfo::default(),
+                })
+            },
+        );
+        StorageVersion::new(2).put::<Pallet<T>>()
     }
 }

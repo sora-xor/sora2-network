@@ -41,7 +41,7 @@ mod tests {
         self, balance, fixed,
         prelude::{Balance, OutcomeFee, QuoteAmount, SwapAmount},
         AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo, LiquiditySource,
-        PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD,
+        PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD, PriceToolsProvider
     };
     use frame_support::traits::Hooks;
     use frame_support::{assert_noop, assert_ok};

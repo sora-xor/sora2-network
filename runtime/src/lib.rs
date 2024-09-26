@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 94,
+    spec_version: 97,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 94,
+    transaction_version: 97,
     state_version: 0,
 };
 
@@ -912,6 +912,7 @@ parameter_types! {
     pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetVXorAssetId: AssetId = common::VXOR;
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -1318,10 +1319,12 @@ impl xor_fee::Config for Runtime {
     type XorCurrency = Balances;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
+    type VXorId = GetVXorAssetId;
     type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
     type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
@@ -2036,7 +2039,10 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type PriceTools = PriceTools;
+    #[cfg(feature = "wip")]
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
+    #[cfg(not(feature = "wip"))]
+    type PriceTools = price_tools::Pallet<Runtime>;
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
@@ -2129,9 +2135,10 @@ impl order_book::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
 parameter_types! {
-    pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 40;
-    pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const ReferrerWeight: u32 = 25; // 10%
+    pub const XorBurnedWeight: u32 = 1; // 0.4%
+    pub const XorIntoValBurnedWeight: u32 = 125; // 50%
+    pub const XorIntoVXorBurnedWeight: u32 = 99; // 39.6%
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 

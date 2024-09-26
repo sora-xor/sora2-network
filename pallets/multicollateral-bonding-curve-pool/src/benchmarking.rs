@@ -51,9 +51,6 @@ use crate::Pallet as MBCPool;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
 
-#[cfg(not(test))]
-use price_tools::Pallet as PriceTools;
-
 pub const DEX: DEXId = DEXId::Polkaswap;
 
 // Support Functions
@@ -158,6 +155,19 @@ where
         pending.insert(DAI.into(), balance!(1));
     }
     PendingFreeReserves::<T>::insert(BlockNumberFor::<T>::from(0u32), pending);
+}
+
+#[cfg(not(test))]
+fn incoming_spot_price<T: price_tools::Config>(asset_id: AssetIdOf<T>, price: Balance) {
+    price_tools::PriceInfos::<T>::mutate(&asset_id, |opt_val| {
+        let val = opt_val.as_mut().unwrap();
+        val.price_mut_of(PriceVariant::Buy)
+            .incoming_spot_price(price, PriceVariant::Buy, &price_tools::DEFAULT_PARAMETERS)
+            .unwrap();
+        val.price_mut_of(PriceVariant::Sell)
+            .incoming_spot_price(price, PriceVariant::Sell, &price_tools::DEFAULT_PARAMETERS)
+            .unwrap();
+    })
 }
 
 benchmarks! {
@@ -359,10 +369,8 @@ benchmarks! {
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+            incoming_spot_price::<T>(DAI.into(), balance!(1));
+            incoming_spot_price::<T>(USDT.into(), balance!(1));
         }
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1),
@@ -414,10 +422,8 @@ benchmarks! {
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+            incoming_spot_price::<T>(DAI.into(), balance!(1));
+            incoming_spot_price::<T>(USDT.into(), balance!(1));
         }
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1000),
@@ -474,10 +480,8 @@ benchmarks! {
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+            incoming_spot_price::<T>(DAI.into(), balance!(1));
+            incoming_spot_price::<T>(USDT.into(), balance!(1));
         }
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(100),
@@ -583,10 +587,8 @@ benchmarks! {
 
         #[cfg(not(test))]
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
-            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+            incoming_spot_price::<T>(DAI.into(), balance!(1));
+            incoming_spot_price::<T>(USDT.into(), balance!(1));
         }
     }: {
         let (rewards, _) = MBCPool::<T>::check_rewards(&dex_id, &USDT.into(), &XOR.into(), balance!(1000), balance!(10)).unwrap();
