@@ -140,10 +140,12 @@ impl<T: Config> Pallet<T> {
         asset_id: AssetIdOf<T>,
         who: &T::AccountId,
     ) -> Result<BalanceOf<T>, DispatchError> {
-        let locked: Balance = Self::locked_balance(asset_id, who);
-        if locked.is_zero() {
+        let (locked, other_count): (Balance, u32) = Self::locked_balance(asset_id, who);
+        if locked.is_zero() && other_count.is_zero() {
             // cleanup the storage and unlock the fund
             <VestingSchedules<T>>::remove(who);
+            T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
+        } else if locked.is_zero() {
             T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
         } else {
             T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, locked)?;
@@ -153,30 +155,28 @@ impl<T: Config> Pallet<T> {
 
     #[cfg(feature = "wip")] // ORML multi asset vesting
     /// Returns locked balance based on current block number.
-    fn locked_balance(asset_id: AssetIdOf<T>, who: &T::AccountId) -> BalanceOf<T> {
+    fn locked_balance(asset_id: AssetIdOf<T>, who: &T::AccountId) -> (BalanceOf<T>, u32) {
         let now = frame_system::Pallet::<T>::current_block_number();
         <VestingSchedules<T>>::mutate_exists(who, |maybe_schedules| {
-            let (total_other, total_asset) = if let Some(schedules) = maybe_schedules.as_mut() {
-                // Calculated to delete if there are no locks
-                let mut total_other: BalanceOf<T> = Zero::zero();
-                let mut total_asset: BalanceOf<T> = Zero::zero();
+            // Calculated to delete if there are no locks
+            let mut other_count: u32 = 0;
+            let mut total_asset: BalanceOf<T> = Zero::zero();
+            if let Some(schedules) = maybe_schedules.as_mut() {
                 schedules.retain(|s| {
                     let amount = s.locked_amount(now);
                     if s.asset_id() == asset_id {
                         total_asset = total_asset.saturating_add(amount);
+                        !amount.is_zero()
                     } else {
-                        total_other = total_other.saturating_add(amount);
+                        other_count += 1;
+                        true
                     }
-                    !amount.is_zero()
                 });
-                (total_other, total_asset)
-            } else {
-                (Zero::zero(), Zero::zero())
-            };
-            if total_other.saturating_add(total_asset).is_zero() {
+            }
+            if total_asset.is_zero() && other_count.is_zero() {
                 *maybe_schedules = None;
             }
-            total_asset
+            (total_asset, other_count)
         })
     }
 
@@ -207,6 +207,7 @@ impl<T: Config> Pallet<T> {
         }
         let asset_id = schedule.asset_id();
         let total_amount = Self::locked_balance(asset_id, to)
+            .0
             .checked_add(schedule_amount)
             .ok_or(Error::<T>::ArithmeticError)?;
 
