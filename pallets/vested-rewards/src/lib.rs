@@ -756,7 +756,6 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
-        #[transactional]
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -765,7 +764,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[transactional]
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
         pub fn claim_crowdloan_rewards(
@@ -779,7 +777,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[transactional]
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::update_rewards(rewards.len() as u32))]
         pub fn update_rewards(
@@ -813,7 +810,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[transactional]
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_crowdloan(contributions.len() as u32))]
         pub fn register_crowdloan(
@@ -836,7 +832,6 @@ pub mod pallet {
         }
 
         #[allow(unused_variables)]
-        #[transactional]
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked())]
         pub fn claim_unlocked(
@@ -857,7 +852,6 @@ pub mod pallet {
         }
 
         #[allow(unused_variables)]
-        #[transactional]
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
         pub fn vested_transfer(
@@ -892,7 +886,6 @@ pub mod pallet {
         }
 
         #[allow(unused_variables)]
-        #[transactional]
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::update_vesting_schedules())]
         pub fn update_vesting_schedules(
@@ -912,7 +905,6 @@ pub mod pallet {
         }
 
         #[allow(unused_variables)]
-        #[transactional]
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked())]
         pub fn claim_for(
