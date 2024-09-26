@@ -889,7 +889,6 @@ parameter_type_with_key! {
     };
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
 parameter_types! {
     pub const MaxLocksTokens: u32 = 1;
 }
@@ -902,10 +901,7 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     type MaxLocks = MaxLocksTokens;
-    #[cfg(not(feature = "wip"))] // ORML multi asset vesting
-    type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
@@ -1816,12 +1812,6 @@ impl pallet_offences::Config for Runtime {
     type OnOffenceHandler = Staking;
 }
 
-#[cfg(not(feature = "wip"))] // ORML multi asset vesting
-parameter_types! {
-    pub const MaxVestingSchedules: u32 = 0;
-    pub const MinVestedTransfer: Balance = 1;
-}
-#[cfg(feature = "wip")] // ORML multi asset vesting
 parameter_types! {
     pub const MaxVestingSchedules: u32 = 20;
     pub const MinVestedTransfer: Balance = 1;

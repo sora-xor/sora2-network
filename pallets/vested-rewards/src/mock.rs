@@ -40,7 +40,6 @@ use common::{
     KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use frame_support::traits::Hooks;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
