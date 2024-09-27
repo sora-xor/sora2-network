@@ -41,6 +41,7 @@ use common::{
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
+use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::Dispatchable;
 use tokens::BalanceLock;
 use traits::currency::MultiCurrency;
@@ -1482,7 +1483,7 @@ fn update_vesting_schedules_works() {
         assert_ok!(VestedRewards::update_vesting_schedules(
             RuntimeOrigin::root(),
             bob(),
-            vec![updated_schedule]
+            BoundedVec::try_from(vec![updated_schedule]).unwrap(),
         ));
 
         assert_eq!(Tokens::free_balance(KSM, &bob()), 20);
@@ -1519,7 +1520,7 @@ fn update_vesting_schedules_works() {
         assert_ok!(VestedRewards::update_vesting_schedules(
             RuntimeOrigin::root(),
             bob(),
-            vec![]
+            BoundedVec::default()
         ));
         assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
@@ -1609,20 +1610,6 @@ fn exceeding_maximum_schedules_should_fail() {
         });
         assert_noop!(
             create.dispatch(RuntimeOrigin::signed(alice())),
-            Error::<Runtime>::MaxVestingSchedulesExceeded
-        );
-
-        let schedules = vec![
-            schedule.clone(),
-            schedule.clone(),
-            schedule.clone(),
-            schedule.clone(),
-            schedule.clone(),
-            schedule,
-        ];
-
-        assert_noop!(
-            VestedRewards::update_vesting_schedules(RuntimeOrigin::root(), bob(), schedules),
             Error::<Runtime>::MaxVestingSchedulesExceeded
         );
     });

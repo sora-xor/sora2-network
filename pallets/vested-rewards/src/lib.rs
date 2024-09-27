@@ -213,14 +213,10 @@ impl<T: Config> Pallet<T> {
     #[cfg(feature = "wip")] // ORML multi asset vesting
     fn do_update_vesting_schedules(
         who: &T::AccountId,
-        schedules: Vec<VestingScheduleOf<T>>,
+        schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
     ) -> DispatchResult {
-        let new_bounded_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
-            schedules
-                .try_into()
-                .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
         let current_schedules = <VestingSchedules<T>>::get(who);
-        let mut new_asset_ids: Vec<AssetIdOf<T>> = new_bounded_schedules
+        let mut new_asset_ids: Vec<AssetIdOf<T>> = schedules
             .iter()
             .map(|schedule| schedule.asset_id())
             .collect();
@@ -246,7 +242,7 @@ impl<T: Config> Pallet<T> {
         let mut total_amounts: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
 
         // Calculate amount of assets per new schedule
-        for schedule in new_bounded_schedules.iter() {
+        for schedule in schedules.iter() {
             let amount = schedule.ensure_valid_vesting_schedule::<T>()?;
 
             total_amounts
@@ -271,7 +267,7 @@ impl<T: Config> Pallet<T> {
             T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, asset_amount)?;
         }
 
-        <VestingSchedules<T>>::insert(who, new_bounded_schedules);
+        <VestingSchedules<T>>::insert(who, schedules);
 
         Ok(())
     }
@@ -837,7 +833,7 @@ pub mod pallet {
         pub fn update_vesting_schedules(
             origin: OriginFor<T>,
             who: <T::Lookup as StaticLookup>::Source,
-            vesting_schedules: Vec<VestingScheduleOf<T>>,
+            vesting_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             #[cfg(feature = "wip")] // ORML multi asset vesting
