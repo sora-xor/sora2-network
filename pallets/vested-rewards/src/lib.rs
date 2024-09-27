@@ -42,12 +42,10 @@ use common::{
     OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::ensure;
-use frame_support::fail;
 use frame_support::traits::{Defensive, LockIdentifier};
 use frame_support::traits::{Get, IsType};
+use frame_support::{ensure, fail, BoundedVec};
 use serde::{Deserialize, Serialize};
-use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::BlockNumberProvider;
 use sp_runtime::traits::{CheckedSub, StaticLookup, Zero};
 use sp_runtime::{Permill, Perquintill};
@@ -128,12 +126,8 @@ impl<T: Config> Pallet<T> {
         asset_id: AssetIdOf<T>,
         who: &T::AccountId,
     ) -> Result<BalanceOf<T>, DispatchError> {
-        let (locked, other_count): (Balance, u32) = Self::locked_balance(asset_id, who)?;
-        if locked.is_zero() && other_count.is_zero() {
-            // cleanup the storage and unlock the fund
-            <VestingSchedules<T>>::remove(who);
-            T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
-        } else if locked.is_zero() {
+        let locked = Self::locked_balance(asset_id, who)?;
+        if locked.is_zero() {
             T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
         } else {
             T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, locked)?;
@@ -146,47 +140,38 @@ impl<T: Config> Pallet<T> {
     fn locked_balance(
         asset_id: AssetIdOf<T>,
         who: &T::AccountId,
-    ) -> Result<(BalanceOf<T>, u32), DispatchError> {
+    ) -> Result<BalanceOf<T>, DispatchError> {
         let now = frame_system::Pallet::<T>::current_block_number();
-        <VestingSchedules<T>>::mutate_exists(who, |maybe_schedules| {
-            // Calculated to delete if there are no locks
-            let mut other_count: u32 = 0;
+        <VestingSchedules<T>>::try_mutate_exists(who, |maybe_schedules| {
             let mut total_asset: BalanceOf<T> = Zero::zero();
-            if let Some(schedules) = maybe_schedules.as_mut() {
-                let mut valid_schedules = Vec::new();
 
+            if let Some(schedules) = maybe_schedules.as_mut() {
+                let mut valid_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
+                    BoundedVec::default();
                 for s in schedules.iter() {
-                    match s.locked_amount(now) {
-                        Some(amount) if s.asset_id() == asset_id => {
+                    if s.asset_id() == asset_id {
+                        let amount = s.locked_amount(now).ok_or(Error::<T>::ArithmeticError)?;
+                        if !amount.is_zero() {
                             total_asset = total_asset.saturating_add(amount);
-                            if !amount.is_zero() {
-                                valid_schedules.push(s.clone());
-                            }
+                            valid_schedules
+                                .try_push(s.clone())
+                                .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
                         }
-                        Some(_) => {
-                            // Keep schedules for other assets
-                            other_count += 1;
-                            valid_schedules.push(s.clone());
-                        }
-                        None => {
-                            return Err(Error::<T>::ArithmeticError.into());
-                        }
+                    } else {
+                        // Keep schedules for other assets
+                        valid_schedules
+                            .try_push(s.clone())
+                            .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
                     }
                 }
+                *maybe_schedules = if valid_schedules.is_empty() {
+                    None
+                } else {
+                    Some(valid_schedules)
+                }
+            }
 
-                *maybe_schedules =
-                    if valid_schedules.is_empty() {
-                        None
-                    } else {
-                        Some(BoundedVec::try_from(valid_schedules).map_err(|_| {
-                            DispatchError::Other("Error while convert to BoundedVec")
-                        })?)
-                    };
-            }
-            if total_asset.is_zero() && other_count.is_zero() {
-                *maybe_schedules = None;
-            }
-            Ok((total_asset, other_count))
+            return Ok(total_asset);
         })
     }
 
@@ -199,7 +184,6 @@ impl<T: Config> Pallet<T> {
         let schedule_amount = schedule.ensure_valid_vesting_schedule::<T>()?;
         let asset_id = schedule.asset_id();
         let total_amount = Self::locked_balance(asset_id, to)?
-            .0
             .checked_add(schedule_amount)
             .ok_or(Error::<T>::ArithmeticError)?;
 
