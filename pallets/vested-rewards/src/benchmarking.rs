@@ -113,6 +113,15 @@ fn prepare_rewards_update<T: Config>(
     rewards
 }
 
+fn prepare_redistribute_lost_pswap_rewards<T: Config>(n: u128) -> BTreeMap<T::AccountId, i128> {
+    let mut rewards = BTreeMap::new();
+    for i in 0..n {
+        let user_account = create_account::<T>(b"user".to_vec(), i);
+        rewards.insert(user_account, balance!(1) as i128);
+    }
+    rewards
+}
+
 benchmarks! {
     claim_rewards {
         let caller = alice::<T>();
@@ -175,6 +184,19 @@ benchmarks! {
         assert_eq!(
             <T as common::Config>::MultiCurrency::free_balance(first_asset_id, &account),
             balance!(0.025) // 10 / 100 / 4
+        );
+    }
+
+    redistribute_lost_pswap_rewards {
+        let n in 0 .. 100;
+        let rewards = prepare_redistribute_lost_pswap_rewards::<T>(n.into());
+    }: {
+        Pallet::<T>::redistribute_lost_pswap_rewards(RawOrigin::Root.into(), rewards).unwrap()
+    }
+    verify {
+        assert_eq!(
+            TotalRewards::<T>::get(),
+            balance!(n)
         );
     }
     impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime)

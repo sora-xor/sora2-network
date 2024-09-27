@@ -64,6 +64,7 @@ pub trait WeightInfo {
 	fn update_rewards(n: u32, ) -> Weight;
 	fn register_crowdloan(m: u32, ) -> Weight;
 	fn claim_crowdloan_rewards() -> Weight;
+	fn redistribute_lost_pswap_rewards(n: u32) -> Weight;
 }
 
 /// Weights for vested_rewards using the Substrate node and recommended hardware.
@@ -151,6 +152,26 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(24_u64))
 			.saturating_add(T::DbWeight::get().writes(12_u64))
 	}
+	
+	/// Storage: VestedRewards Rewards (r:100 w:100)
+	/// Proof Skipped: VestedRewards Rewards (max_values: None, max_size: None, mode: Measured)
+	/// Storage: VestedRewards TotalRewards (r:1 w:1)
+	/// Proof Skipped: VestedRewards TotalRewards (max_values: Some(1), max_size: None, mode: Measured)
+	/// The range of component `n` is `[0, 100]`.
+	fn redistribute_lost_pswap_rewards(n: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `42`
+		//  Estimated: `579 + n * (2475 ±0)`
+		// Minimum execution time: 4_000 nanoseconds.
+		Weight::from_parts(6_059_155, 579)
+			// Standard Error: 1_893
+			.saturating_add(Weight::from_ref_time(2_013_425).saturating_mul(n.into()))
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
+			.saturating_add(T::DbWeight::get().writes(1))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
+			.saturating_add(Weight::from_proof_size(2475).saturating_mul(n.into()))
+	}
 }
 
 // For backwards compatibility and tests
@@ -236,5 +257,25 @@ impl WeightInfo for () {
 		Weight::from_parts(308_421_000, 1681947)
 			.saturating_add(RocksDbWeight::get().reads(24_u64))
 			.saturating_add(RocksDbWeight::get().writes(12_u64))
+	}
+	
+	/// Storage: VestedRewards Rewards (r:100 w:100)
+	/// Proof Skipped: VestedRewards Rewards (max_values: None, max_size: None, mode: Measured)
+	/// Storage: VestedRewards TotalRewards (r:1 w:1)
+	/// Proof Skipped: VestedRewards TotalRewards (max_values: Some(1), max_size: None, mode: Measured)
+	/// The range of component `n` is `[0, 100]`.
+	fn redistribute_lost_pswap_rewards(n: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `42`
+		//  Estimated: `579 + n * (2475 ±0)`
+		// Minimum execution time: 4_000 nanoseconds.
+		Weight::from_parts(6_059_155, 579)
+			// Standard Error: 1_893
+			.saturating_add(Weight::from_ref_time(2_013_425).saturating_mul(n.into()))
+			.saturating_add(RocksDbWeight::get().reads(1))
+			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n.into())))
+			.saturating_add(RocksDbWeight::get().writes(1))
+			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n.into())))
+			.saturating_add(Weight::from_proof_size(2475).saturating_mul(n.into()))
 	}
 }
