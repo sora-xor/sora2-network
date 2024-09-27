@@ -34,6 +34,8 @@ use crate::{AggregatedPriceInfo, Config, FastPriceInfos, Pallet, PriceInfos};
 use frame_support::dispatch::GetStorageVersion;
 use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
 use sp_core::Get;
+#[cfg(feature = "try-runtime")]
+use sp_std::prelude::*;
 
 pub struct AddFastPriceInfos<T>(PhantomData<T>);
 
