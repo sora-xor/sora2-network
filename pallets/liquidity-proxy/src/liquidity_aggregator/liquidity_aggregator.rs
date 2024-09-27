@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "stage")] // ALT
-
 use crate::liquidity_aggregator::aggregation::Aggregation;
 use crate::liquidity_aggregator::aggregation_result::{AggregationResult, SwapInfo};
 use crate::liquidity_aggregator::selector::Selector;

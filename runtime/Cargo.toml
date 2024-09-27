@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.6.2"
+version = "3.6.3"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -319,12 +319,7 @@ wip = [
     "vested-rewards/wip"
 ]
 
-stage = [
-    "framenode-chain-spec/stage",
-    "liquidity-proxy/stage",
-    "liquidity-proxy-runtime-api/stage",
-    "liquidity-proxy-benchmarking/stage",
-]
+stage = ["framenode-chain-spec/stage"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",

@@ -225,11 +225,13 @@ where
             }
 
             // Applying VAL buy-back-and-burn logic
+            let mut total_xor_to_vxor = BalanceOf::<T>::zero();
+            let xor_into_vxor_burned_weight = T::XorIntoVXorBurnedWeight::get();
             let xor_burned_weight = T::XorBurnedWeight::get();
             let xor_into_val_burned_weight = T::XorIntoValBurnedWeight::get();
             let (referrer_xor, adjusted_paid) = adjusted_paid.ration(
                 T::ReferrerWeight::get(),
-                xor_burned_weight + xor_into_val_burned_weight,
+                xor_burned_weight + xor_into_val_burned_weight + xor_into_vxor_burned_weight,
             );
             if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 let referrer_portion = referrer_xor.peek();
@@ -239,15 +241,26 @@ where
                     referrer,
                     referrer_portion.into(),
                 ));
+            } else {
+                total_xor_to_vxor = total_xor_to_vxor.saturating_add(referrer_xor.peek());
             }
 
             // TODO: decide what should be done with XOR if there is no referrer.
             // Burn XOR for now
-            let (_xor_burned, xor_to_val) =
-                adjusted_paid.ration(xor_burned_weight, xor_into_val_burned_weight);
+            let (adjusted_paid, xor_to_val) = adjusted_paid.ration(
+                xor_burned_weight + xor_into_vxor_burned_weight,
+                xor_into_val_burned_weight,
+            );
+            let (_xor_burned, xor_to_vxor) =
+                adjusted_paid.ration(xor_burned_weight, xor_into_vxor_burned_weight);
             let xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
+            total_xor_to_vxor = total_xor_to_vxor.saturating_add(xor_to_vxor.peek());
+            let xor_to_vxor: Balance = total_xor_to_vxor.unique_saturated_into();
             XorToVal::<T>::mutate(|balance| {
-                *balance += xor_to_val;
+                *balance = balance.saturating_add(xor_to_val);
+            });
+            XorToVXor::<T>::mutate(|balance| {
+                *balance = balance.saturating_add(xor_to_vxor);
             });
         }
         Ok(())
@@ -286,8 +299,15 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
     fn end_session(end_index: SessionIndex) {
         let xor_to_val = XorToVal::<T>::take();
         if xor_to_val != 0 {
-            if let Err(e) = Self::remint(xor_to_val) {
+            if let Err(e) = Self::remint_val(xor_to_val) {
                 error!("xor fee remint failed: {:?}", e);
+            }
+        }
+
+        let xor_to_vxor = XorToVXor::<T>::take();
+        if xor_to_vxor != 0 {
+            if let Err(e) = Self::remint_vxor(xor_to_vxor) {
+                error!("XOR to VXOR remint failed: {:?}", e);
             }
         }
 
@@ -599,7 +619,7 @@ where
 }
 
 impl<T: Config> Pallet<T> {
-    pub fn remint(xor_to_val: Balance) -> Result<(), DispatchError> {
+    pub fn remint_val(xor_to_val: Balance) -> Result<(), DispatchError> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
         let val = T::ValId::get();
@@ -659,6 +679,19 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+
+    pub fn remint_vxor(xor_to_vxor: Balance) -> Result<(), DispatchError> {
+        let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
+        let xor = T::XorId::get();
+        let vxor = T::VXorId::get();
+        common::with_transaction(|| {
+            T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_vxor)?;
+            T::BuyBackHandler::buy_back_and_burn(&tech_account_id, &xor, &vxor, xor_to_vxor)?;
+            DispatchResult::Ok(())
+        })?;
+
+        Ok(())
+    }
 }
 
 pub use pallet::*;
@@ -685,9 +718,11 @@ pub mod pallet {
         type XorId: Get<AssetIdOf<Self>>;
         type ValId: Get<AssetIdOf<Self>>;
         type TbcdId: Get<AssetIdOf<Self>>;
+        type VXorId: Get<AssetIdOf<Self>>;
         type ReferrerWeight: Get<u32>;
         type XorBurnedWeight: Get<u32>;
         type XorIntoValBurnedWeight: Get<u32>;
+        type XorIntoVXorBurnedWeight: Get<u32>;
         type BuyBackTBCDPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
@@ -841,8 +876,13 @@ pub mod pallet {
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]
-    #[pallet::getter(fn asset_infos)]
+    #[pallet::getter(fn xor_to_val)]
     pub type XorToVal<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+    /// The amount of XOR to be reminted and exchanged for VXOR at the end of the session
+    #[pallet::storage]
+    #[pallet::getter(fn xor_to_vxor)]
+    pub type XorToVXor<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
     #[pallet::type_value]
     pub fn DefaultForFeeMultiplier<T: Config>() -> FixedU128 {
