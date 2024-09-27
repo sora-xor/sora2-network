@@ -46,10 +46,12 @@ use frame_support::traits::{Defensive, LockIdentifier};
 use frame_support::traits::{Get, IsType};
 use frame_support::{ensure, fail, BoundedVec};
 use serde::{Deserialize, Serialize};
+use sp_core::bounded::BoundedBTreeSet;
 use sp_runtime::traits::BlockNumberProvider;
 use sp_runtime::traits::{CheckedSub, StaticLookup, Zero};
 use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::TryInto;
 use sp_std::str;
 use sp_std::vec::Vec;
@@ -200,19 +202,15 @@ impl<T: Config> Pallet<T> {
         schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
     ) -> DispatchResult {
         let current_schedules = <VestingSchedules<T>>::get(who);
-        let mut new_asset_ids: Vec<AssetIdOf<T>> = schedules
+        let new_asset_ids: BTreeSet<AssetIdOf<T>> = schedules
             .iter()
             .map(|schedule| schedule.asset_id())
             .collect();
-        new_asset_ids.sort();
-        new_asset_ids.dedup();
-        let mut assets_to_remove: Vec<AssetIdOf<T>> = current_schedules
+        let assets_to_remove: BTreeSet<AssetIdOf<T>> = current_schedules
             .iter()
             .filter(|schedule| !new_asset_ids.contains(&schedule.asset_id()))
             .map(|schedule| schedule.asset_id())
             .collect();
-        assets_to_remove.sort();
-        assets_to_remove.dedup();
 
         // empty vesting schedules cleanup the storage and unlock the fund
         for asset_id in assets_to_remove {
