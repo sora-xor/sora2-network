@@ -305,7 +305,8 @@ benchmarks! {
         let caller: T::AccountId = alice::<T>();
         let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 0);
         let max_schedules = T::MaxVestingSchedules::get();
-        let mut schedules = Vec::with_capacity(max_schedules as usize);
+        let mut schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
+                    BoundedVec::default();
 
         for i in 1..max_schedules {
             let asset_id_temp: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
@@ -317,7 +318,7 @@ benchmarks! {
                 period_count: 1,
                 per_period: balance!(1),
             });
-            schedules.push(vesting_schedule);
+            schedules.try_push(vesting_schedule).expect("Error while push to BoundedVec");
         }
          let vesting_schedule_locked = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id,
@@ -327,8 +328,8 @@ benchmarks! {
                 period_count: 1,
                 per_period: balance!(1),
             });
-        schedules.push(vesting_schedule_locked.clone());
-        <VestingSchedules<T>>::insert(caller.clone(), BoundedVec::try_from(schedules).expect("Cant create bounded vec"));
+        schedules.try_push(vesting_schedule_locked.clone()).expect("Error while push to BoundedVec");
+        <VestingSchedules<T>>::insert(caller.clone(), schedules);
         frame_system::Pallet::<T>::set_block_number(block_number::<T>("2"));
     }: _(RawOrigin::Signed(caller.clone()), asset_id, T::Lookup::unlookup(caller.clone()), None, vesting_schedule_locked)
     verify {

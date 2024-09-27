@@ -189,17 +189,12 @@ impl<T: Config> Pallet<T> {
         if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(pending_schedule) =
             schedule.clone()
         {
-            let result = pending_schedule
+            pending_schedule
                 .period
-                .checked_mul(&pending_schedule.period_count.into());
-            ensure!(result.is_some(), Error::<T>::ArithmeticError);
-            ensure!(
-                result
-                    .unwrap()
-                    .checked_add(&<frame_system::Pallet<T>>::block_number())
-                    .is_some(),
-                Error::<T>::ArithmeticError
-            )
+                .checked_mul(&pending_schedule.period_count.into())
+                .ok_or(Error::<T>::ArithmeticError)?
+                .checked_add(&<frame_system::Pallet<T>>::block_number())
+                .ok_or(Error::<T>::ArithmeticError)?;
         }
         let asset_id = schedule.asset_id();
         let total_amount = Self::locked_balance(asset_id, to)?
