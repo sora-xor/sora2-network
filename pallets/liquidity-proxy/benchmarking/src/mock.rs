@@ -38,10 +38,11 @@ use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
     mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider,
-    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    mock_technical_config, mock_tokens_config, mock_vested_rewards_config, Amount, AssetId32,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
+    FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD,
+    USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -144,6 +145,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_vested_rewards_config!(Runtime);
 
 impl liquidity_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -269,23 +271,6 @@ impl pool_xyk::Config for Runtime {
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
     type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const MaxVestingSchedules: u32 = 0;
-    pub const MinVestedTransfer: Balance = 0;
-}
-impl vested_rewards::Config for Runtime {
-    const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
-    type RuntimeEvent = RuntimeEvent;
-    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxVestingSchedules = MaxVestingSchedules;
-    type Currency = Tokens;
-    type MinVestedTransfer = MinVestedTransfer;
 }
 
 impl pallet_timestamp::Config for Runtime {
