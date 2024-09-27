@@ -1776,7 +1776,7 @@ fn update_vesting_schedules_works() {
         assert_ok!(VestedRewards::update_vesting_schedules(
             RuntimeOrigin::root(),
             bob(),
-            BoundedVec::try_from(vec![updated_schedule]).unwrap(),
+            BoundedVec::try_from(vec![updated_schedule, updated_schedule_locked]).unwrap(),
         ));
 
         assert_eq!(Tokens::free_balance(KSM, &bob()), 20);
