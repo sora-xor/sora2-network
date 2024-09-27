@@ -306,7 +306,7 @@ benchmarks! {
                 asset_id,
                 manager_id: Some(caller.clone()),
                 start: None,
-                period: block_number::<T>("2"),
+                period: T::BlockNumber::from(2_u32),
                 period_count: 1,
                 per_period: balance!(1),
             });
@@ -316,16 +316,16 @@ benchmarks! {
                 asset_id,
                 manager_id: Some(caller.clone()),
                 start: None,
-                period: block_number::<T>("1"),
+                period: T::BlockNumber::from(1_u32),
                 period_count: 1,
                 per_period: balance!(1),
             });
         schedules.try_push(vesting_schedule_locked.clone()).expect("Error while push to BoundedVec");
         <VestingSchedules<T>>::insert(caller.clone(), schedules);
-        frame_system::Pallet::<T>::set_block_number(block_number::<T>("2"));
+        frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(2_u32));
     }: _(RawOrigin::Signed(caller.clone()), asset_id, T::Lookup::unlookup(caller.clone()), None, vesting_schedule_locked)
     verify {
-        frame_system::Pallet::<T>::set_block_number(block_number::<T>("3"));
+        frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(3_u32));
         assert_ok!(VestedRewards::<T>::claim_unlocked(RawOrigin::Signed(caller.clone()).into(), asset_id));
         assert_eq!(VestingSchedules::<T>::get(&caller).len(), (max_schedules - 1) as usize);
     }
