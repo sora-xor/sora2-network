@@ -3524,9 +3524,6 @@
 <a href="#3509" id="3509">3509</a>
 <a href="#3510" id="3510">3510</a>
 <a href="#3511" id="3511">3511</a>
-<a href="#3512" id="3512">3512</a>
-<a href="#3513" id="3513">3513</a>
-<a href="#3514" id="3514">3514</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5568,10 +5565,7 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
     <span class="kw">type </span>AssetInfoProvider = Assets;
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
-    </span><span class="kw">type </span>PriceTools = price_tools::FastPriceTools&lt;Runtime&gt;;
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))]
-    </span><span class="kw">type </span>PriceTools = price_tools::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>PriceTools = price_tools::FastPriceTools&lt;Runtime&gt;;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>Oracle = OracleProxy;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
