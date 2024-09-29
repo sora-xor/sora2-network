@@ -819,7 +819,8 @@ pub mod pallet {
 
                 Self::deposit_event(Event::ClaimedVesting {
                     who,
-                    amount: locked_amount,
+                    asset_id,
+                    locked_amount,
                 });
             }
             Ok(().into())
@@ -894,7 +895,8 @@ pub mod pallet {
 
                 Self::deposit_event(Event::ClaimedVesting {
                     who,
-                    amount: locked_amount,
+                    asset_id,
+                    locked_amount,
                 });
             }
             Ok(().into())
@@ -1009,7 +1011,8 @@ pub mod pallet {
         /// Claimed vesting.
         ClaimedVesting {
             who: T::AccountId,
-            amount: BalanceOf<T>,
+            asset_id: AssetIdOf<T>,
+            locked_amount: BalanceOf<T>,
         },
         /// Updated vesting schedules.
         VestingSchedulesUpdated { who: T::AccountId },
