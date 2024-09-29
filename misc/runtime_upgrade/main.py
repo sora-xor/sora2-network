@@ -26,7 +26,6 @@ def get_keypair_using_args(args):
         return Keypair.create_from_mnemonic(args.mnemonic, ss58_format=ss58_format)
     else:
         raise Exception("No keypair provided")
-    
 
 def send_extrinsic(substrate_provider: SubstrateInterface, keypair: Keypair, call: GenericCall):
     extrinsic = substrate_provider.create_signed_extrinsic(call=call, keypair=keypair)
@@ -48,7 +47,6 @@ def log_receipt(receipt):
             print(f'* {event.value}')
     else:
         raise Exception('⚠️ Extrinsic Failed: ', receipt.error_message)
-    
 
 def get_new_code_from_wasm_file(wasm_file_path):
     with open(wasm_file_path, 'rb') as f:
@@ -64,36 +62,51 @@ def main():
             url=args.node_url,
             ss58_format=ss58_format,
         )
-        
+
+        set_code_call = substrate.compose_call(
+            call_module='System',
+            call_function='set_code_without_checks' if args.unchecked else 'set_code',
+            call_params={
+                'code': get_new_code_from_wasm_file(args.wasm_file_path)
+            }
+        )
+
         if args.unchecked:
-            call_function = 'set_code_without_checks'
+            last_upgrade_key = substrate.generate_storage_hash(
+                storage_module='System',
+                storage_function='LastRuntimeUpgrade'
+            )
+            kill_storage_call = substrate.compose_call(
+                call_module='System',
+                call_function='kill_storage',
+                call_params={'keys': [last_upgrade_key]}
+            )
+            call = substrate.compose_call(
+                call_module='Utility',
+                call_function='batch_all',
+                call_params={'calls': [kill_storage_call, set_code_call]}
+            )
         else:
-            call_function = 'set_code'
-          
-        call = substrate.compose_call(
+            call = set_code_call
+
+        sudo_call = substrate.compose_call(
             call_module='Sudo',
             call_function='sudo_unchecked_weight',
             call_params={
-                'call': {
-                    'call_module': 'System',
-                    'call_function': call_function,
-                    'call_args': {
-                        'code': get_new_code_from_wasm_file(args.wasm_file_path)
-                    }
-                },
+                'call': call,
                 'weight': {'ref_time': 0, 'proof_size': 0}
             }
         )
-        
-        send_extrinsic(substrate, keypair, call)
+
+        send_extrinsic(substrate, keypair, sudo_call)
     except Exception as e:
         print(f'Error: {e}')
         raise e
     finally:
         if substrate:
             substrate.close()
-        
-        
+
+
 
 if __name__ == '__main__':
     main()

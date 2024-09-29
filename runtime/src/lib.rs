@@ -2051,10 +2051,7 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    #[cfg(feature = "wip")]
     type PriceTools = price_tools::FastPriceTools<Runtime>;
-    #[cfg(not(feature = "wip"))]
-    type PriceTools = price_tools::Pallet<Runtime>;
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
