@@ -713,8 +713,8 @@ pub mod pallet {
             CurrencyId = AssetIdOf<Self>,
             Balance = Balance,
         >;
-        #[pallet::constant]
         /// The minimum amount transferred to call `vested_transfer`.
+        #[pallet::constant]
         type MinVestedTransfer: Get<BalanceOf<Self>>;
     }
 
@@ -724,7 +724,6 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::call]
@@ -1041,6 +1040,7 @@ pub mod pallet {
     /// Mapping between users and their owned rewards of different kinds, which are vested.
     #[pallet::storage]
     #[pallet::getter(fn rewards)]
+    #[pallet::unbounded]
     pub type Rewards<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, RewardInfo, ValueQuery>;
 
@@ -1053,6 +1053,7 @@ pub mod pallet {
     /// Information about crowdloan
     #[pallet::storage]
     #[pallet::getter(fn crowdloan_infos)]
+    #[pallet::unbounded]
     pub type CrowdloanInfos<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
@@ -1064,6 +1065,7 @@ pub mod pallet {
     /// Information about crowdloan rewards claimed by user
     #[pallet::storage]
     #[pallet::getter(fn crowdloan_user_infos)]
+    #[pallet::unbounded]
     pub type CrowdloanUserInfos<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
