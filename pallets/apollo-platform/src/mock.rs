@@ -1,3 +1,4 @@
+use common::mock_vested_rewards_config;
 use {
     crate as apollo_platform,
     common::{
@@ -96,6 +97,7 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_vested_rewards_config!(Runtime);
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
@@ -190,16 +192,6 @@ impl dex_api::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type OrderBook = ();
     type WeightInfo = ();
-}
-
-impl vested_rewards::Config for Runtime {
-    const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
-    type RuntimeEvent = RuntimeEvent;
-    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl trading_pair::Config for Runtime {

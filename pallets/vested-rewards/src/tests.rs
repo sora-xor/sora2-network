@@ -27,17 +27,23 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+use crate::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
+use crate::Error::ArithmeticError;
 use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos};
 use crate::{Error, RewardInfo};
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use crate::{VestingSchedules, VESTING_LOCK_ID};
 use common::mock::charlie;
 use common::{
     balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
-    PswapRemintInfo, RewardReason, Vesting, PSWAP, VAL, XOR, XSTUSD,
+    PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
+use sp_core::bounded::BoundedVec;
+use sp_runtime::traits::Dispatchable;
+use tokens::BalanceLock;
 use traits::currency::MultiCurrency;
 
 fn deposit_rewards_to_reserves(amount: Balance) {
@@ -1009,5 +1015,661 @@ fn update_rewards_works() {
             .into_iter()
             .collect()
         );
+    });
+}
+
+// Tests for Linear Vesting and Vesting
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn linear_vested_transfer_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: 100,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule.clone()
+        ));
+        assert_eq!(
+            VestedRewards::vesting_schedules(&bob()),
+            vec![schedule.clone()]
+        );
+        System::assert_last_event(RuntimeEvent::VestedRewards(
+            crate::Event::VestingScheduleAdded {
+                from: alice(),
+                to: bob(),
+                vesting_schedule: schedule,
+            },
+        ));
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn self_linear_vesting() {
+    ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: ALICE_BALANCE,
+        });
+
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: ALICE_BALANCE,
+        });
+
+        let bad_schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: 10 * ALICE_BALANCE,
+        });
+
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                alice(),
+                bad_schedule
+            ),
+            crate::Error::<Runtime>::InsufficientBalanceToLock
+        );
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            alice(),
+            schedule.clone()
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            alice(),
+            schedule_ksm.clone()
+        ));
+
+        assert_eq!(
+            VestedRewards::vesting_schedules(&alice()),
+            vec![schedule.clone(), schedule_ksm.clone()]
+        );
+
+        System::assert_last_event(RuntimeEvent::VestedRewards(
+            crate::Event::VestingScheduleAdded {
+                from: alice(),
+                to: alice(),
+                vesting_schedule: schedule_ksm,
+            },
+        ));
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule
+        ));
+
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            bob(),
+            schedule_ksm
+        ));
+
+        run_to_block(12);
+
+        let another_schedule =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: DOT,
+                start: 10u64,
+                period: 13u64,
+                period_count: 1u32,
+                per_period: 7,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            another_schedule
+        ));
+
+        let another_schedule_ksm =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: KSM,
+                start: 10u64,
+                period: 13u64,
+                period_count: 1u32,
+                per_period: 7,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            bob(),
+            another_schedule_ksm
+        ));
+
+        assert_eq!(
+            Tokens::locks(&bob(), DOT).get(0),
+            Some(&BalanceLock {
+                id: VESTING_LOCK_ID,
+                amount: 17,
+            })
+        );
+        assert_eq!(
+            Tokens::locks(&bob(), KSM).get(0),
+            Some(&BalanceLock {
+                id: VESTING_LOCK_ID,
+                amount: 17,
+            })
+        );
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn cannot_use_fund_if_not_claimed_from_linear() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 10u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: 50,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule
+        ));
+        assert!(Tokens::ensure_can_withdraw(DOT, &bob(), 49).is_err())
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn linear_vested_transfer_fails_if_zero_period_or_count() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 1u64,
+            period: 0u64,
+            period_count: 1u32,
+            per_period: 100,
+        });
+        assert_noop!(
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            Error::<Runtime>::ZeroVestingPeriod
+        );
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 1u64,
+            period: 1u64,
+            period_count: 0u32,
+            per_period: 100,
+        });
+        assert_noop!(
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            Error::<Runtime>::ZeroVestingPeriodCount
+        );
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn vested_transfer_fails_if_transfer_err() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 1u64,
+            period: 1u64,
+            period_count: 1u32,
+            per_period: 100,
+        });
+        assert_noop!(
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), DOT, alice(), schedule),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn vested_linear_transfer_fails_if_overflow() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 1u64,
+            period: 1u64,
+            period_count: 2u32,
+            per_period: Balance::MAX,
+        });
+        assert_noop!(
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            ArithmeticError::<Runtime>,
+        );
+
+        let another_schedule =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: DOT,
+                start: u64::MAX,
+                period: 1u64,
+                period_count: 2u32,
+                per_period: 1,
+            });
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                another_schedule
+            ),
+            ArithmeticError::<Runtime>,
+        );
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn vested_transfer_check_for_min() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 1u64,
+            period: 10u64,
+            period_count: 1u32,
+            per_period: 3,
+        });
+        assert_noop!(
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), DOT, alice(), schedule),
+            Error::<Runtime>::AmountLow
+        );
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn claim_linear_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 50u64,
+            period_count: 1u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_ksm
+        ));
+
+        run_to_block(11);
+        // remain locked if not claimed
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 10).is_err());
+        // unlocked after claiming
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            10,
+        ));
+        // more are still locked
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
+
+        run_to_block(21);
+        // claim more
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            10,
+        ));
+        // all used up
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+
+        // no locks anymore
+        assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+        run_to_block(50);
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            KSM
+        ));
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn claim_for_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule
+        ));
+
+        assert_ok!(VestedRewards::claim_for(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob()
+        ));
+
+        assert_eq!(
+            Tokens::locks(bob(), DOT).get(0),
+            Some(&BalanceLock {
+                id: VESTING_LOCK_ID,
+                amount: 20,
+            })
+        );
+        assert!(VestingSchedules::<Runtime>::contains_key(&bob()));
+
+        run_to_block(21);
+
+        assert_ok!(VestedRewards::claim_for(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob()
+        ));
+
+        // no locks anymore
+        assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+        assert!(!VestingSchedules::<Runtime>::contains_key(&bob()));
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn update_vesting_schedules_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule
+        ));
+
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            KSM,
+            bob(),
+            schedule_ksm
+        ));
+
+        let updated_schedule =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: DOT,
+                start: 0u64,
+                period: 20u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
+        assert_ok!(VestedRewards::update_vesting_schedules(
+            RuntimeOrigin::root(),
+            bob(),
+            BoundedVec::try_from(vec![updated_schedule]).unwrap(),
+        ));
+
+        assert_eq!(Tokens::free_balance(KSM, &bob()), 20);
+        assert!(Tokens::locks(bob(), KSM).get(0).is_none());
+
+        run_to_block(11);
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
+
+        run_to_block(21);
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            10,
+        ));
+
+        // empty vesting schedules cleanup the storage and unlock the fund
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert_eq!(
+            Tokens::locks(bob(), DOT).get(0),
+            Some(&BalanceLock {
+                id: VESTING_LOCK_ID,
+                amount: 10,
+            })
+        );
+        assert_ok!(VestedRewards::update_vesting_schedules(
+            RuntimeOrigin::root(),
+            bob(),
+            BoundedVec::default()
+        ));
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+        assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn multiple_vesting_linear_schedule_claim_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule.clone()
+        ));
+        let schedule2 = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 3u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule2.clone()
+        ));
+
+        assert_eq!(
+            VestedRewards::vesting_schedules(&bob()),
+            vec![schedule, schedule2.clone()]
+        );
+
+        run_to_block(21);
+
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+
+        assert_eq!(VestedRewards::vesting_schedules(&bob()), vec![schedule2]);
+
+        run_to_block(31);
+
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+
+        assert!(!VestingSchedules::<Runtime>::contains_key(&bob()));
+
+        assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn exceeding_maximum_schedules_should_fail() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        for _ in 0u32..MaxVestingSchedules::get() {
+            assert_ok!(VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                schedule.clone()
+            ));
+        }
+
+        let create = RuntimeCall::VestedRewards(crate::Call::<Runtime>::vested_transfer {
+            asset_id: DOT,
+            dest: bob(),
+            schedule: schedule.clone(),
+        });
+        assert_noop!(
+            create.dispatch(RuntimeOrigin::signed(alice())),
+            Error::<Runtime>::MaxVestingSchedulesExceeded
+        );
+    });
+}
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn cliff_vesting_linear_works() {
+    const VESTING_AMOUNT: Balance = 12;
+    const VESTING_PERIOD: u64 = 20;
+
+    ExtBuilder::default().build().execute_with(|| {
+        let cliff_schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: VESTING_PERIOD - 1,
+            period: 1,
+            period_count: 1,
+            per_period: VESTING_AMOUNT,
+        });
+
+        let balance_lock = BalanceLock {
+            id: VESTING_LOCK_ID,
+            amount: VESTING_AMOUNT,
+        };
+
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            cliff_schedule
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &bob()), VESTING_AMOUNT);
+        assert_eq!(Tokens::locks(bob(), DOT), vec![balance_lock.clone()]);
+
+        for i in 1..VESTING_PERIOD {
+            run_to_block(i);
+            assert_ok!(VestedRewards::claim_unlocked(
+                RuntimeOrigin::signed(bob()),
+                DOT
+            ));
+            assert_eq!(Tokens::free_balance(DOT, &bob()), VESTING_AMOUNT);
+            assert_eq!(Tokens::locks(bob(), DOT), vec![balance_lock.clone()]);
+            assert_noop!(
+                Tokens::transfer(RuntimeOrigin::signed(bob()), charlie(), DOT, VESTING_AMOUNT),
+                // for new version TokenError::Frozen,
+                tokens::Error::<Runtime>::LiquidityRestrictions,
+            );
+        }
+
+        run_to_block(VESTING_PERIOD);
+        assert_ok!(VestedRewards::claim_unlocked(
+            RuntimeOrigin::signed(bob()),
+            DOT
+        ));
+        assert!(Tokens::locks(bob(), DOT).is_empty());
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            charlie(),
+            DOT,
+            VESTING_AMOUNT,
+        ));
     });
 }
