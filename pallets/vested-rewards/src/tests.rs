@@ -31,7 +31,10 @@ use crate::vesting_currencies::{
     LinearPendingVestingSchedule, LinearVestingSchedule, VestingScheduleVariant,
 };
 use crate::Error::ArithmeticError;
-use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event};
+use crate::{
+    mock::*, ClaimSchedules, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos,
+    Event,
+};
 use crate::{Error, RewardInfo};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::{VestingSchedules, VESTING_LOCK_ID};
@@ -1616,7 +1619,9 @@ fn claim_linear_works() {
             schedule_ksm
         ));
 
-        run_to_block(11);
+        // not run because hook would claim
+        System::set_block_number(11);
+
         // remain locked if not claimed
         assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 20).is_err());
         // unlocked after claiming
@@ -1634,7 +1639,7 @@ fn claim_linear_works() {
         // more are still locked
         assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
 
-        run_to_block(21);
+        System::set_block_number(21);
         // claim more
         assert_ok!(VestedRewards::claim_unlocked(
             RuntimeOrigin::signed(bob()),
@@ -1652,7 +1657,7 @@ fn claim_linear_works() {
 
         // no locks anymore
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
-        run_to_block(50);
+        System::set_block_number(50);
         assert_ok!(VestedRewards::claim_unlocked(
             RuntimeOrigin::signed(bob()),
             KSM
@@ -1964,4 +1969,91 @@ fn cliff_vesting_linear_works() {
             VESTING_AMOUNT,
         ));
     });
+}
+
+#[cfg(feature = "wip")] // Auto Vesting
+#[test]
+fn auto_claim_hook_works_fine() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 10u64,
+            period: 40u64,
+            period_count: 1u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_locked.clone()
+        ));
+
+        assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            Some(0_u64),
+            schedule_locked
+        ),);
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_ksm
+        ));
+
+        run_to_block(10);
+
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20
+        ));
+
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+
+        // more are still locked
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
+
+        run_to_block(20);
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(30));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20,
+        ));
+        // all used up
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+
+        // no locks anymore
+        assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+        run_to_block(50);
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+    })
 }

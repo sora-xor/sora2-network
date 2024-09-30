@@ -1818,6 +1818,7 @@ impl pallet_offences::Config for Runtime {
 parameter_types! {
     pub const MaxVestingSchedules: u32 = 20;
     pub const MinVestedTransfer: Balance = 1;
+    pub const MaxAutoClaimsPerBlock: u32 = 20;
 }
 
 impl vested_rewards::Config for Runtime {
@@ -1831,6 +1832,7 @@ impl vested_rewards::Config for Runtime {
     type MaxVestingSchedules = MaxVestingSchedules;
     type Currency = Tokens;
     type MinVestedTransfer = MinVestedTransfer;
+    type MaxAutoClaimsPerBlock = MaxAutoClaimsPerBlock;
 }
 
 impl price_tools::Config for Runtime {

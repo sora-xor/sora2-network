@@ -162,6 +162,7 @@ parameter_types! {
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub const MaxVestingSchedules: u32 = 5;
     pub const MinVestedTransfer: Balance = 5;
+    pub const MaxAutoClaimsPerBlock: u32 = 20;
 }
 
 impl Config for Runtime {
@@ -175,6 +176,7 @@ impl Config for Runtime {
     type MaxVestingSchedules = MaxVestingSchedules;
     type Currency = Tokens;
     type MinVestedTransfer = MinVestedTransfer;
+    type MaxAutoClaimsPerBlock = MaxAutoClaimsPerBlock;
 }
 
 parameter_types! {
