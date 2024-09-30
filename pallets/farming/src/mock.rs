@@ -34,8 +34,8 @@ use common::prelude::Balance;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetName, AssetSymbol, DEXId, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION,
-    DOT, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    mock_tokens_config, mock_vested_rewards_config, AssetName, AssetSymbol, DEXId, DEXInfo, Fixed,
+    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
@@ -162,6 +162,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_vested_rewards_config!(Runtime);
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -253,16 +254,6 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = ();
-}
-
-impl vested_rewards::Config for Runtime {
-    const BLOCKS_PER_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
-    type RuntimeEvent = RuntimeEvent;
-    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 /// Used the compare the privilege of an origin inside the scheduler.

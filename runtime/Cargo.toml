@@ -316,6 +316,7 @@ wip = [
     "pallet-beefy-mmr",
     "xor-fee/wip",
     "soratopia",
+    "vested-rewards/wip"
 ]
 
 stage = ["framenode-chain-spec/stage"]

@@ -889,6 +889,10 @@ parameter_type_with_key! {
     };
 }
 
+parameter_types! {
+    pub const MaxLocksTokens: u32 = 1;
+}
+
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -897,7 +901,7 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
-    type MaxLocks = ();
+    type MaxLocks = MaxLocksTokens;
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
@@ -1811,6 +1815,11 @@ impl pallet_offences::Config for Runtime {
     type OnOffenceHandler = Staking;
 }
 
+parameter_types! {
+    pub const MaxVestingSchedules: u32 = 20;
+    pub const MinVestedTransfer: Balance = 1;
+}
+
 impl vested_rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
     type RuntimeEvent = RuntimeEvent;
@@ -1819,6 +1828,9 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxVestingSchedules = MaxVestingSchedules;
+    type Currency = Tokens;
+    type MinVestedTransfer = MinVestedTransfer;
 }
 
 impl price_tools::Config for Runtime {
