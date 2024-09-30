@@ -71,7 +71,7 @@ var sourcesIndex = JSON.parse('{\
 "trading_pair":["",[],["lib.rs","weights.rs"]],\
 "trading_pair_rpc":["",[],["lib.rs"]],\
 "trading_pair_runtime_api":["",[],["lib.rs"]],\
-"vested_rewards":["",[],["lib.rs","migrations.rs","weights.rs"]],\
+"vested_rewards":["",[],["lib.rs","migrations.rs","vesting_currencies.rs","weights.rs"]],\
 "vested_rewards_rpc":["",[],["lib.rs"]],\
 "vested_rewards_runtime_api":["",[],["lib.rs"]],\
 "xor_fee":["",[],["extension.rs","lib.rs","migrations.rs","weights.rs"]],\
