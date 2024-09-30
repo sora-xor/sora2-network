@@ -304,7 +304,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(24_u64))
 			.saturating_add(RocksDbWeight::get().writes(12_u64))
 	}
-	
+
 	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
 	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Tokens Locks (r:1 w:1)
@@ -356,7 +356,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(42))
 			.saturating_add(RocksDbWeight::get().writes(42))
 	}
-	
+
 	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
 	/// Proof Skipped: VestedRewards VestingSchedules (max_values: None, max_size: None, mode: Measured)
 	fn unlock_pending_schedule_by_manager() -> Weight {
