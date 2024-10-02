@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["VestingScheduleVariant"],"struct":["LinearVestingSchedule"],"trait":["VestingSchedule"]};
+window.SIDEBAR_ITEMS = {"enum":["VestingScheduleVariant"],"struct":["LinearPendingVestingSchedule","LinearVestingSchedule"],"trait":["VestingSchedule"]};
