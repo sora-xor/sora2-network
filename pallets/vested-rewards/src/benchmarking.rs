@@ -37,7 +37,7 @@ use core::str::FromStr;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
-use frame_benchmarking::log::{log, Level};
+use frame_support::assert_ok;
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use frame_system::EventRecord;
 use frame_system::RawOrigin;
@@ -49,7 +49,7 @@ use traits::MultiCurrency;
 use common::{AssetManager, AssetName, AssetSymbol, CrowdloanTag, FromGenericPair, PSWAP, XOR};
 
 #[cfg(feature = "wip")] // ORML multi asset vesting
-use crate::vesting_currencies::LinearVestingSchedule;
+use crate::vesting_currencies::{LinearPendingVestingSchedule, LinearVestingSchedule};
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
 
@@ -293,7 +293,44 @@ benchmarks! {
         assert_last_event::<T>(Event::VestingSchedulesUpdated{who: caller}.into());
     }
 
-    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime)
+    unlock_pending_schedule_by_manager {
+        let caller: T::AccountId = alice::<T>();
+        let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 0);
+        let max_schedules = T::MaxVestingSchedules::get();
+        let mut schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
+                    BoundedVec::default();
+
+        for i in 1..max_schedules {
+            let asset_id_temp: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
+            let vesting_schedule = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id,
+                manager_id: Some(caller.clone()),
+                start: None,
+                period: T::BlockNumber::from(2_u32),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+            schedules.try_push(vesting_schedule).expect("Error while push to BoundedVec");
+        }
+         let vesting_schedule_locked = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id,
+                manager_id: Some(caller.clone()),
+                start: None,
+                period: T::BlockNumber::from(1_u32),
+                period_count: 1,
+                per_period: balance!(1),
+            });
+        schedules.try_push(vesting_schedule_locked.clone()).expect("Error while push to BoundedVec");
+        <VestingSchedules<T>>::insert(caller.clone(), schedules);
+        frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(2_u32));
+    }: _(RawOrigin::Signed(caller.clone()), asset_id, T::Lookup::unlookup(caller.clone()), None, vesting_schedule_locked)
+    verify {
+        frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(3_u32));
+        assert_ok!(VestedRewards::<T>::claim_unlocked(RawOrigin::Signed(caller.clone()).into(), asset_id));
+        assert_eq!(VestingSchedules::<T>::get(&caller).len(), (max_schedules - 1) as usize);
+    }
+
+    impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::default().build(), mock::Runtime)
 }
 
 #[cfg(not(feature = "wip"))] // ORML multi asset vesting
@@ -371,5 +408,8 @@ benchmarks! {
     update_vesting_schedules {}: {}
     verify {}
 
-    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime)
+    unlock_pending_schedule_by_manager {}: {}
+    verify {}
+
+    impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::default().build(), mock::Runtime)
 }

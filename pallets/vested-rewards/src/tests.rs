@@ -27,9 +27,11 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-use crate::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
+use crate::vesting_currencies::{
+    LinearPendingVestingSchedule, LinearVestingSchedule, VestingScheduleVariant,
+};
 use crate::Error::ArithmeticError;
-use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos};
+use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event};
 use crate::{Error, RewardInfo};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::{VestingSchedules, VESTING_LOCK_ID};
@@ -1020,6 +1022,7 @@ fn update_rewards_works() {
 
 // Tests for Linear Vesting and Vesting
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn linear_vested_transfer_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1032,23 +1035,45 @@ fn linear_vested_transfer_works() {
             period_count: 1u32,
             per_period: 100,
         });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 1u32,
+                per_period: 100,
+            });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
             DOT,
             bob(),
             schedule.clone()
         ));
-        assert_eq!(
-            VestedRewards::vesting_schedules(&bob()),
-            vec![schedule.clone()]
-        );
         System::assert_last_event(RuntimeEvent::VestedRewards(
             crate::Event::VestingScheduleAdded {
                 from: alice(),
                 to: bob(),
-                vesting_schedule: schedule,
+                vesting_schedule: schedule.clone(),
             },
         ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_locked.clone()
+        ));
+        System::assert_last_event(RuntimeEvent::VestedRewards(
+            crate::Event::VestingScheduleAdded {
+                from: alice(),
+                to: bob(),
+                vesting_schedule: schedule_locked.clone(),
+            },
+        ));
+        assert_eq!(
+            VestedRewards::vesting_schedules(&bob()),
+            vec![schedule, schedule_locked]
+        );
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
@@ -1119,6 +1144,7 @@ fn self_linear_vesting() {
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1168,6 +1194,23 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             another_schedule
         ));
 
+        let another_schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 13u64,
+                period_count: 1u32,
+                per_period: 7,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            another_schedule_locked
+        ));
+
         let another_schedule_ksm =
             VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
                 asset_id: KSM,
@@ -1188,7 +1231,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             Tokens::locks(&bob(), DOT).get(0),
             Some(&BalanceLock {
                 id: VESTING_LOCK_ID,
-                amount: 17,
+                amount: 24,
             })
         );
         assert_eq!(
@@ -1201,6 +1244,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn cannot_use_fund_if_not_claimed_from_linear() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1217,10 +1261,88 @@ fn cannot_use_fund_if_not_claimed_from_linear() {
             bob(),
             schedule
         ));
-        assert!(Tokens::ensure_can_withdraw(DOT, &bob(), 49).is_err())
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 1u32,
+                per_period: 50,
+            });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_locked
+        ));
+        assert!(Tokens::ensure_can_withdraw(DOT, &bob(), 51).is_err())
     });
 }
+
+#[cfg(feature = "wip")] // Pending Vesting
+#[test]
+fn linear_vesting_unlock_correct() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 1u32,
+                per_period: 100,
+            });
+
+        let schedule_unlocked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: None,
+                start: Some(12_u64),
+                period: 10u64,
+                period_count: 1u32,
+                per_period: 100,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_locked.clone()
+        ));
+        assert_err!(
+            VestedRewards::unlock_pending_schedule_by_manager(
+                RuntimeOrigin::signed(bob()),
+                DOT,
+                bob(),
+                None,
+                schedule_locked.clone(),
+            ),
+            Error::<Runtime>::PendingScheduleNotExist
+        );
+        run_to_block(12);
+        assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            None,
+            schedule_locked,
+        ));
+        System::assert_last_event(RuntimeEvent::VestedRewards(
+            Event::PendingScheduleUnlocked {
+                dest: bob(),
+                pending_schedule: schedule_unlocked.clone(),
+            },
+        ));
+        assert_eq!(
+            VestedRewards::vesting_schedules(&bob()),
+            vec![schedule_unlocked]
+        );
+    })
+}
+
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn linear_vested_transfer_fails_if_zero_period_or_count() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1231,8 +1353,26 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
             period_count: 1u32,
             per_period: 100,
         });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 0u64,
+                period_count: 1u32,
+                per_period: 100,
+            });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            Error::<Runtime>::ZeroVestingPeriod
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                schedule_locked
+            ),
             Error::<Runtime>::ZeroVestingPeriod
         );
 
@@ -1243,13 +1383,32 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
             period_count: 0u32,
             per_period: 100,
         });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 1u64,
+                period_count: 0u32,
+                per_period: 100,
+            });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            Error::<Runtime>::ZeroVestingPeriodCount
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                schedule_locked
+            ),
             Error::<Runtime>::ZeroVestingPeriodCount
         );
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn vested_transfer_fails_if_transfer_err() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1260,15 +1419,34 @@ fn vested_transfer_fails_if_transfer_err() {
             period_count: 1u32,
             per_period: 100,
         });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: None::<AccountId>,
+                start: Some(1_u64),
+                period: 1u64,
+                period_count: 1u32,
+                per_period: 100,
+            });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), DOT, alice(), schedule),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(bob()),
+                DOT,
+                alice(),
+                schedule_locked
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
-fn vested_linear_transfer_fails_if_overflow() {
+fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
     ExtBuilder::default().build().execute_with(|| {
         let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: DOT,
@@ -1277,8 +1455,52 @@ fn vested_linear_transfer_fails_if_overflow() {
             period_count: 2u32,
             per_period: Balance::MAX,
         });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: None::<AccountId>,
+                start: Some(1_u64),
+                period: 10u64,
+                period_count: 1000u32,
+                per_period: Balance::MAX,
+            });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            ArithmeticError::<Runtime>,
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                schedule_locked
+            ),
+            ArithmeticError::<Runtime>,
+        );
+
+        let schedule_locked_right =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: Some(1_u64),
+                period: 1u64,
+                period_count: 10u32,
+                per_period: 1,
+            });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_locked_right.clone()
+        ));
+        assert_noop!(
+            VestedRewards::unlock_pending_schedule_by_manager(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                Some(u64::MAX),
+                schedule_locked_right
+            ),
             ArithmeticError::<Runtime>,
         );
 
@@ -1290,6 +1512,7 @@ fn vested_linear_transfer_fails_if_overflow() {
                 period_count: 2u32,
                 per_period: 1,
             });
+
         assert_noop!(
             VestedRewards::vested_transfer(
                 RuntimeOrigin::signed(alice()),
@@ -1298,6 +1521,26 @@ fn vested_linear_transfer_fails_if_overflow() {
                 another_schedule
             ),
             ArithmeticError::<Runtime>,
+        );
+
+        run_to_block(20);
+        let schedule_locked_right =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 3689348814741910320u64,
+                period_count: 5u32,
+                per_period: 1,
+            });
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                bob(),
+                schedule_locked_right.clone()
+            ),
+            Error::<Runtime>::ArithmeticError
         );
     });
 }
@@ -1319,6 +1562,7 @@ fn vested_transfer_check_for_min() {
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn claim_linear_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1329,6 +1573,15 @@ fn claim_linear_works() {
             period_count: 2u32,
             per_period: 10,
         });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
         let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: KSM,
             start: 0u64,
@@ -1346,12 +1599,26 @@ fn claim_linear_works() {
             RuntimeOrigin::signed(alice()),
             DOT,
             bob(),
+            schedule_locked.clone()
+        ));
+
+        assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            Some(0_u64),
+            schedule_locked
+        ),);
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
             schedule_ksm
         ));
 
         run_to_block(11);
         // remain locked if not claimed
-        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 10).is_err());
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 20).is_err());
         // unlocked after claiming
         assert_ok!(VestedRewards::claim_unlocked(
             RuntimeOrigin::signed(bob()),
@@ -1362,7 +1629,7 @@ fn claim_linear_works() {
             RuntimeOrigin::signed(bob()),
             alice(),
             DOT,
-            10,
+            20,
         ));
         // more are still locked
         assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
@@ -1378,7 +1645,7 @@ fn claim_linear_works() {
             RuntimeOrigin::signed(bob()),
             alice(),
             DOT,
-            10,
+            20,
         ));
         // all used up
         assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
@@ -1441,6 +1708,7 @@ fn claim_for_works() {
     });
 }
 #[cfg(feature = "wip")] // ORML multi asset vesting
+#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn update_vesting_schedules_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1472,6 +1740,22 @@ fn update_vesting_schedules_works() {
             schedule_ksm
         ));
 
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            DOT,
+            bob(),
+            schedule_locked
+        ));
+
         let updated_schedule =
             VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
                 asset_id: DOT,
@@ -1480,21 +1764,29 @@ fn update_vesting_schedules_works() {
                 period_count: 2u32,
                 per_period: 10,
             });
+        let updated_schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: Some(0),
+                period: 20u64,
+                period_count: 2u32,
+                per_period: 5,
+            });
         assert_ok!(VestedRewards::update_vesting_schedules(
             RuntimeOrigin::root(),
             bob(),
-            BoundedVec::try_from(vec![updated_schedule]).unwrap(),
+            BoundedVec::try_from(vec![updated_schedule, updated_schedule_locked]).unwrap(),
         ));
 
         assert_eq!(Tokens::free_balance(KSM, &bob()), 20);
         assert!(Tokens::locks(bob(), KSM).get(0).is_none());
-
         run_to_block(11);
         assert_ok!(VestedRewards::claim_unlocked(
             RuntimeOrigin::signed(bob()),
             DOT
         ));
-        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 11).is_err());
 
         run_to_block(21);
         assert_ok!(VestedRewards::claim_unlocked(
@@ -1505,7 +1797,7 @@ fn update_vesting_schedules_works() {
             RuntimeOrigin::signed(bob()),
             alice(),
             DOT,
-            10,
+            15,
         ));
 
         // empty vesting schedules cleanup the storage and unlock the fund
@@ -1514,7 +1806,7 @@ fn update_vesting_schedules_works() {
             Tokens::locks(bob(), DOT).get(0),
             Some(&BalanceLock {
                 id: VESTING_LOCK_ID,
-                amount: 10,
+                amount: 15,
             })
         );
         assert_ok!(VestedRewards::update_vesting_schedules(
