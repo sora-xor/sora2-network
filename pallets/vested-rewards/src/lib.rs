@@ -46,6 +46,7 @@ use frame_support::traits::{Defensive, LockIdentifier};
 use frame_support::traits::{Get, IsType};
 use frame_support::{ensure, fail, log, BoundedVec};
 use frame_system::pallet_prelude::BlockNumberFor;
+use log::error;
 use serde::{Deserialize, Serialize};
 use sp_core::bounded::BoundedBTreeSet;
 use sp_runtime::traits::BlockNumberProvider;
@@ -57,8 +58,8 @@ use sp_std::convert::TryInto;
 use sp_std::str;
 use sp_std::vec::Vec;
 use traits::{MultiCurrency, MultiLockableCurrency};
+
 pub mod weights;
-use log::error;
 
 mod benchmarking;
 
@@ -123,10 +124,9 @@ pub struct CrowdloanUserInfo<AssetId> {
 }
 
 #[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, PartialEq, scale_info::TypeInfo)]
-#[scale_info(skip_type_params(T))]
-pub struct ClaimAssetForAccount<T: Config> {
-    account_id: AccountIdOf<T>,
-    asset_id: AssetIdOf<T>,
+pub struct ClaimAssetForAccount<AssetId, AccountId> {
+    account_id: AccountId,
+    asset_id: AssetId,
 }
 
 pub use weights::WeightInfo;
@@ -322,6 +322,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    #[allow(unused)]
     fn set_auto_claim_block(
         who: AccountIdOf<T>,
         schedule: &VestingScheduleOf<T>,
@@ -331,7 +332,7 @@ impl<T: Config> Pallet<T> {
             if let Some(block_number) =
                 schedule.next_claim_block::<T>(frame_system::Pallet::<T>::current_block_number())?
             {
-                let claim_asset_for_account = ClaimAssetForAccount::<T> {
+                let claim_asset_for_account = ClaimAssetForAccount::<AssetIdOf<T>, AccountIdOf<T>> {
                     account_id: who,
                     asset_id: schedule.asset_id(),
                 };
@@ -878,7 +879,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // TODO: Add fee for claim
         #[allow(unused_variables)]
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
@@ -1086,7 +1086,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         BlockNumberFor<T>,
-        BoundedVec<ClaimAssetForAccount<T>, T::MaxAutoClaimsPerBlock>,
+        BoundedVec<ClaimAssetForAccount<AssetIdOf<T>, AccountIdOf<T>>, T::MaxAutoClaimsPerBlock>,
         ValueQuery,
     >;
 
@@ -1141,7 +1141,6 @@ pub mod pallet {
         OptionQuery,
     >;
 
-    #[cfg(feature = "wip")] // Auto Vesting
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         #[cfg(feature = "wip")] // Auto Vesting

@@ -52,6 +52,8 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
         &self,
         time: BlockNumber,
     ) -> Result<Option<BlockNumber>, DispatchError>;
+    /// Count of claims per Vesting
+    fn claims_count(&self) -> u32;
 }
 
 #[allow(unused)]
@@ -117,6 +119,13 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
             VestingScheduleVariant::LinearPendingVestingSchedule(variant) => {
                 variant.next_claim_block::<T>(time)
             }
+        }
+    }
+
+    fn claims_count(&self) -> u32 {
+        match self {
+            VestingScheduleVariant::LinearVestingSchedule(variant) => variant.claims_count(),
+            VestingScheduleVariant::LinearPendingVestingSchedule(variant) => variant.claims_count(),
         }
     }
 }
@@ -215,6 +224,10 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
                 Ok(None)
             }
         }
+    }
+
+    fn claims_count(&self) -> u32 {
+        self.period_count
     }
 }
 
@@ -323,5 +336,9 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
                 Ok(None)
             }
         }
+    }
+
+    fn claims_count(&self) -> u32 {
+        self.period_count
     }
 }
