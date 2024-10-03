@@ -1089,8 +1089,6 @@
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
 <a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1923,7 +1921,6 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::vested_transfer())]
         </span><span class="kw">pub fn </span>vested_transfer(
             origin: OriginFor&lt;T&gt;,
-            asset_id: AssetIdOf&lt;T&gt;,
             dest: &lt;T::Lookup <span class="kw">as </span>StaticLookup&gt;::Source,
             schedule: VestingScheduleOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
@@ -1934,7 +1931,7 @@
 
                 <span class="kw">if </span>to == from {
                     <span class="macro">ensure!</span>(
-                        T::Currency::free_balance(asset_id, <span class="kw-2">&amp;</span>from)
+                        T::Currency::free_balance(schedule.asset_id(), <span class="kw-2">&amp;</span>from)
                             &gt;= VestingScheduleVariant::total_amount(<span class="kw-2">&amp;</span>schedule)
                                 .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
                         Error::&lt;T&gt;::InsufficientBalanceToLock,
@@ -2000,7 +1997,6 @@
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::unlock_pending_schedule_by_manager())]
         </span><span class="kw">pub fn </span>unlock_pending_schedule_by_manager(
             origin: OriginFor&lt;T&gt;,
-            asset_id: AssetIdOf&lt;T&gt;,
             dest: &lt;T::Lookup <span class="kw">as </span>StaticLookup&gt;::Source,
             start: <span class="prelude-ty">Option</span>&lt;T::BlockNumber&gt;,
             <span class="kw-2">mut </span>filter_schedule: VestingScheduleOf&lt;T&gt;,
