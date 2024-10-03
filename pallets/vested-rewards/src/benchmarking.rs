@@ -255,7 +255,7 @@ benchmarks! {
                 per_period: balance!(1),
             });
 
-    }: _(RawOrigin::Signed(caller.clone()), asset_id, receiver, schedule)
+    }: _(RawOrigin::Signed(caller.clone()), receiver, schedule)
     verify {
         assert!(VestingSchedules::<T>::contains_key(bob::<T>()));
     }
@@ -323,7 +323,7 @@ benchmarks! {
         schedules.try_push(vesting_schedule_locked.clone()).expect("Error while push to BoundedVec");
         <VestingSchedules<T>>::insert(caller.clone(), schedules);
         frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(2_u32));
-    }: _(RawOrigin::Signed(caller.clone()), asset_id, T::Lookup::unlookup(caller.clone()), None, vesting_schedule_locked)
+    }: _(RawOrigin::Signed(caller.clone()), T::Lookup::unlookup(caller.clone()), None, vesting_schedule_locked)
     verify {
         frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(3_u32));
         assert_ok!(VestedRewards::<T>::claim_unlocked(RawOrigin::Signed(caller.clone()).into(), asset_id));
