@@ -830,7 +830,6 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
         pub fn vested_transfer(
             origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
             dest: <T::Lookup as StaticLookup>::Source,
             schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
@@ -841,7 +840,7 @@ pub mod pallet {
 
                 if to == from {
                     ensure!(
-                        T::Currency::free_balance(asset_id, &from)
+                        T::Currency::free_balance(schedule.asset_id(), &from)
                             >= VestingScheduleVariant::total_amount(&schedule)
                                 .ok_or(Error::<T>::ArithmeticError)?,
                         Error::<T>::InsufficientBalanceToLock,
@@ -907,7 +906,6 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::unlock_pending_schedule_by_manager())]
         pub fn unlock_pending_schedule_by_manager(
             origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
             dest: <T::Lookup as StaticLookup>::Source,
             start: Option<T::BlockNumber>,
             mut filter_schedule: VestingScheduleOf<T>,
