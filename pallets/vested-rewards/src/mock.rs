@@ -32,6 +32,7 @@ use crate::{self as vested_rewards, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
+use common::weights::BlockWeights;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
@@ -162,7 +163,7 @@ parameter_types! {
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub const MaxVestingSchedules: u32 = 5;
     pub const MinVestedTransfer: Balance = 5;
-    pub const MaxAutoClaimsPerBlock: u32 = 20;
+    pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
 }
 
 impl Config for Runtime {
@@ -176,7 +177,7 @@ impl Config for Runtime {
     type MaxVestingSchedules = MaxVestingSchedules;
     type Currency = Tokens;
     type MinVestedTransfer = MinVestedTransfer;
-    type MaxAutoClaimsPerBlock = MaxAutoClaimsPerBlock;
+    type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
 
 parameter_types! {
