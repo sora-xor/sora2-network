@@ -1357,7 +1357,6 @@ fn right_custom_fee_for_vested_transfer_ok() {
         let len: usize = 10;
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
-            asset_id: DOT,
             dest: alice(),
             schedule: schedule.clone(),
         });
@@ -1418,7 +1417,6 @@ fn right_custom_fee_for_vested_transfer_err() {
         let len: usize = 10;
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
-            asset_id: DOT,
             dest: alice(),
             schedule: schedule.clone(),
         });
