@@ -382,14 +382,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Auto claim unlocked tokens from VestingSchedules
-    pub(crate) fn auto_claim(current_block: BlockNumberFor<T>) -> Weight {
-        let mut weight: Weight = T::DbWeight::get().reads_writes(3, 1);
-        let claim_weight = <T as Config>::WeightInfo::claim_unlocked();
+    fn auto_claim(current_block: BlockNumberFor<T>, claim_weight: Weight) -> Weight {
+        let mut weight: Weight = T::DbWeight::get().reads(3);
         let max_weight = T::MaxWeightForAutoClaim::get();
         let max_claims = max_weight
             .ref_time()
             .saturating_div(claim_weight.ref_time())
-            .max(
+            .min(
                 max_weight
                     .proof_size()
                     .saturating_div(claim_weight.proof_size()),
@@ -399,7 +398,10 @@ impl<T: Config> Pallet<T> {
 
         let pending_claims = PendingClaims::<T>::try_get();
         let block_claims = ClaimSchedules::<T>::try_get(current_block);
-
+        if block_claims.is_ok() {
+            ClaimSchedules::<T>::remove(current_block);
+            weight = weight.saturating_add(T::DbWeight::get().writes(1));
+        }
         let mut new_pending_claims: Vec<ClaimOf<T>> = Vec::new();
 
         match (pending_claims, block_claims) {
@@ -431,19 +433,33 @@ impl<T: Config> Pallet<T> {
                     new_pending_claims = pending_claims[max_claims..].to_vec();
                     new_pending_claims.extend(block_claims);
                 }
+                ClaimSchedules::<T>::remove(current_block);
+                weight = weight.saturating_add(T::DbWeight::get().writes(1));
             }
-            (Ok(claims), Err(_)) | (Err(_), Ok(claims)) => {
+            (Ok(pending_claims), Err(_)) => {
                 Self::claim_for_vec(
-                    claims,
+                    pending_claims,
                     max_claims,
                     &mut total_claims,
                     &mut new_pending_claims,
                 );
             }
-            _ => {}
+            (Err(_), Ok(block_claims)) => {
+                Self::claim_for_vec(
+                    block_claims,
+                    max_claims,
+                    &mut total_claims,
+                    &mut new_pending_claims,
+                );
+                ClaimSchedules::<T>::remove(current_block);
+                weight = weight.saturating_add(T::DbWeight::get().writes(1));
+            }
+            _ => return weight,
         }
 
-        weight = weight.saturating_add(claim_weight.saturating_mul(total_claims as u64));
+        weight = weight
+            .saturating_add(claim_weight.saturating_mul(total_claims as u64))
+            .saturating_add(T::DbWeight::get().writes(1));
 
         if new_pending_claims.is_empty() {
             PendingClaims::<T>::kill();
@@ -1255,7 +1271,8 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         #[cfg(feature = "wip")] // Auto Vesting
         fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
-            Self::auto_claim(current_block)
+            let claim_weight = <T as Config>::WeightInfo::claim_unlocked();
+            Self::auto_claim(current_block, claim_weight)
         }
     }
 }
