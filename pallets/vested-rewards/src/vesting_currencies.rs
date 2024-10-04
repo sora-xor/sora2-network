@@ -43,7 +43,7 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
     /// Returns all locked amount, `None` if calculation overflows.
     fn total_amount(&self) -> Option<Balance>;
     /// Returns locked amount for a given `time`.
-    fn locked_amount(&self, time: BlockNumber) -> Option<common::Balance>;
+    fn locked_amount(&self, time: BlockNumber) -> Option<Balance>;
     fn ensure_valid_vesting_schedule<T: Config>(&self) -> Result<Balance, DispatchError>;
     /// Returns asset id, need to get from enum
     fn asset_id(&self) -> AssetId;

@@ -346,6 +346,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    #[cfg(feature = "wip")] // Auto Vesting
     fn do_auto_claim(claim: &ClaimOf<T>) {
         match Self::do_claim_unlocked(claim.asset_id, &claim.account_id) {
             Ok(locked_amount) => {
@@ -361,6 +362,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    #[cfg(feature = "wip")] // Auto Vesting
     fn claim_for_vec(
         claim_for: Vec<ClaimOf<T>>,
         max_claims: usize,
@@ -381,6 +383,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    #[cfg(feature = "wip")] // Auto Vesting
     /// Auto claim unlocked tokens from VestingSchedules
     fn auto_claim(current_block: BlockNumberFor<T>, claim_weight: Weight) -> Weight {
         let mut weight: Weight = T::DbWeight::get().reads(3);
@@ -848,6 +851,7 @@ pub mod pallet {
         AccountIdOf<T>,
     >;
 
+    #[cfg(feature = "wip")] // Auto Vesting
     pub(crate) type ClaimOf<T> = Claim<AssetIdOf<T>, AccountIdOf<T>>;
 
     #[pallet::config]
@@ -1004,7 +1008,6 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
         pub fn vested_transfer(
             origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
             dest: <T::Lookup as StaticLookup>::Source,
             schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
@@ -1015,7 +1018,7 @@ pub mod pallet {
 
                 if to == from {
                     ensure!(
-                        T::Currency::free_balance(asset_id, &from)
+                        T::Currency::free_balance(schedule.asset_id(), &from)
                             >= VestingScheduleVariant::total_amount(&schedule)
                                 .ok_or(Error::<T>::ArithmeticError)?,
                         Error::<T>::InsufficientBalanceToLock,
@@ -1081,7 +1084,6 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::unlock_pending_schedule_by_manager())]
         pub fn unlock_pending_schedule_by_manager(
             origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
             dest: <T::Lookup as StaticLookup>::Source,
             start: Option<T::BlockNumber>,
             mut filter_schedule: VestingScheduleOf<T>,

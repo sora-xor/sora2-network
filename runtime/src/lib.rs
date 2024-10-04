@@ -337,7 +337,7 @@ parameter_types! {
     pub const DemocracyInstantAllowed: bool = true;
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
-    pub const DemocracyMaxVotes: u32 = 100;
+    pub const DemocracyMaxVotes: u32 = 500;
     pub const DemocracyMaxProposals: u32 = 100;
     pub const DemocracyMaxDeposits: u32 = 100;
     pub const DemocracyMaxBlacklisted: u32 = 100;

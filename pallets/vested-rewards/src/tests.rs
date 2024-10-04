@@ -32,9 +32,10 @@ use crate::vesting_currencies::{
 };
 use crate::Error::ArithmeticError;
 use crate::{
-    mock::*, Claim, ClaimSchedules, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo,
-    CrowdloanUserInfos, Event, PendingClaims,
+    mock::*, Claim, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event,
 };
+#[cfg(feature = "wip")] // Auto Vesting
+use crate::{ClaimSchedules, PendingClaims};
 use crate::{Error, RewardInfo};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::{VestingSchedules, VESTING_LOCK_ID};
@@ -1050,7 +1051,6 @@ fn linear_vested_transfer_works() {
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule.clone()
         ));
@@ -1063,7 +1063,6 @@ fn linear_vested_transfer_works() {
         ));
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked.clone()
         ));
@@ -1111,24 +1110,17 @@ fn self_linear_vesting() {
         });
 
         assert_noop!(
-            VestedRewards::vested_transfer(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                alice(),
-                bad_schedule
-            ),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), alice(), bad_schedule),
             crate::Error::<Runtime>::InsufficientBalanceToLock
         );
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             alice(),
             schedule.clone()
         ));
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            KSM,
             alice(),
             schedule_ksm.clone()
         ));
@@ -1161,7 +1153,6 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule
         ));
@@ -1175,7 +1166,6 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            KSM,
             bob(),
             schedule_ksm
         ));
@@ -1193,7 +1183,6 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             another_schedule
         ));
@@ -1210,7 +1199,6 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             another_schedule_locked
         ));
@@ -1226,7 +1214,6 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            KSM,
             bob(),
             another_schedule_ksm
         ));
@@ -1261,7 +1248,6 @@ fn cannot_use_fund_if_not_claimed_from_linear() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule
         ));
@@ -1276,7 +1262,6 @@ fn cannot_use_fund_if_not_claimed_from_linear() {
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked
         ));
@@ -1310,14 +1295,12 @@ fn linear_vesting_unlock_correct() {
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked.clone()
         ));
         assert_err!(
             VestedRewards::unlock_pending_schedule_by_manager(
                 RuntimeOrigin::signed(bob()),
-                DOT,
                 bob(),
                 None,
                 schedule_locked.clone(),
@@ -1327,7 +1310,6 @@ fn linear_vesting_unlock_correct() {
         run_to_block(12);
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             None,
             schedule_locked,
@@ -1367,16 +1349,11 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
                 per_period: 100,
             });
         assert_noop!(
-            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule),
             Error::<Runtime>::ZeroVestingPeriod
         );
         assert_noop!(
-            VestedRewards::vested_transfer(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                bob(),
-                schedule_locked
-            ),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule_locked),
             Error::<Runtime>::ZeroVestingPeriod
         );
 
@@ -1397,16 +1374,11 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
                 per_period: 100,
             });
         assert_noop!(
-            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule),
             Error::<Runtime>::ZeroVestingPeriodCount
         );
         assert_noop!(
-            VestedRewards::vested_transfer(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                bob(),
-                schedule_locked
-            ),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule_locked),
             Error::<Runtime>::ZeroVestingPeriodCount
         );
     });
@@ -1433,16 +1405,11 @@ fn vested_transfer_fails_if_transfer_err() {
                 per_period: 100,
             });
         assert_noop!(
-            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), DOT, alice(), schedule),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), alice(), schedule),
             tokens::Error::<Runtime>::BalanceTooLow
         );
         assert_noop!(
-            VestedRewards::vested_transfer(
-                RuntimeOrigin::signed(bob()),
-                DOT,
-                alice(),
-                schedule_locked
-            ),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), alice(), schedule_locked),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -1469,16 +1436,11 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
                 per_period: Balance::MAX,
             });
         assert_noop!(
-            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), DOT, bob(), schedule),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule),
             ArithmeticError::<Runtime>,
         );
         assert_noop!(
-            VestedRewards::vested_transfer(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                bob(),
-                schedule_locked
-            ),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule_locked),
             ArithmeticError::<Runtime>,
         );
 
@@ -1493,14 +1455,12 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked_right.clone()
         ));
         assert_noop!(
             VestedRewards::unlock_pending_schedule_by_manager(
                 RuntimeOrigin::signed(alice()),
-                DOT,
                 bob(),
                 Some(u64::MAX),
                 schedule_locked_right
@@ -1518,12 +1478,7 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
             });
 
         assert_noop!(
-            VestedRewards::vested_transfer(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                bob(),
-                another_schedule
-            ),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), another_schedule),
             ArithmeticError::<Runtime>,
         );
 
@@ -1540,7 +1495,6 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
         assert_noop!(
             VestedRewards::vested_transfer(
                 RuntimeOrigin::signed(alice()),
-                DOT,
                 bob(),
                 schedule_locked_right.clone()
             ),
@@ -1560,7 +1514,7 @@ fn vested_transfer_check_for_min() {
             per_period: 3,
         });
         assert_noop!(
-            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), DOT, alice(), schedule),
+            VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), alice(), schedule),
             Error::<Runtime>::AmountLow
         );
     });
@@ -1595,27 +1549,23 @@ fn claim_linear_works() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule
         ));
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked.clone()
         ));
 
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             Some(0_u64),
             schedule_locked
         ),);
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_ksm
         ));
@@ -1680,7 +1630,6 @@ fn claim_for_works() {
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule
         ));
@@ -1727,7 +1676,6 @@ fn update_vesting_schedules_works() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule
         ));
@@ -1741,7 +1689,6 @@ fn update_vesting_schedules_works() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            KSM,
             bob(),
             schedule_ksm
         ));
@@ -1757,7 +1704,6 @@ fn update_vesting_schedules_works() {
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked
         ));
@@ -1837,7 +1783,6 @@ fn multiple_vesting_linear_schedule_claim_works() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule.clone()
         ));
@@ -1850,7 +1795,6 @@ fn multiple_vesting_linear_schedule_claim_works() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule2.clone()
         ));
@@ -1895,14 +1839,12 @@ fn exceeding_maximum_schedules_should_fail() {
         for _ in 0u32..MaxVestingSchedules::get() {
             assert_ok!(VestedRewards::vested_transfer(
                 RuntimeOrigin::signed(alice()),
-                DOT,
                 bob(),
                 schedule.clone()
             ));
         }
 
         let create = RuntimeCall::VestedRewards(crate::Call::<Runtime>::vested_transfer {
-            asset_id: DOT,
             dest: bob(),
             schedule: schedule.clone(),
         });
@@ -1935,7 +1877,6 @@ fn cliff_vesting_linear_works() {
         assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             cliff_schedule
         ));
@@ -2001,27 +1942,23 @@ fn auto_claim_hook_works_fine() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule
         ));
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_locked.clone()
         ));
 
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             Some(0_u64),
             schedule_locked
         ),);
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_ksm
         ));
@@ -2080,14 +2017,12 @@ fn auto_claim_works_fine_for_pending() {
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             alice(),
             schedule
         ));
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             bob(),
             schedule_new
         ));
@@ -2149,19 +2084,16 @@ fn auto_claim_works_fine_for_pending_and_block() {
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             alice(),
             schedule_alice
         ));
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            KSM,
             bob(),
             schedule_bob
         ));
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
-            DOT,
             eve(),
             schedule_eve
         ));
