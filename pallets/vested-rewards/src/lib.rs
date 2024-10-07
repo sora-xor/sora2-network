@@ -390,12 +390,16 @@ impl<T: Config> Pallet<T> {
         let max_weight = T::MaxWeightForAutoClaim::get();
         let max_claims = max_weight
             .ref_time()
-            .saturating_div(claim_weight.ref_time())
+            .checked_div(claim_weight.ref_time())
             .min(
                 max_weight
                     .proof_size()
-                    .saturating_div(claim_weight.proof_size()),
-            ) as usize;
+                    .checked_div(claim_weight.proof_size()),
+            )
+            .unwrap_or_else(|| {
+                log::log!(log::Level::Error, "Not correct claim weight");
+                0
+            }) as usize;
 
         let mut total_claims = 0_usize;
 
