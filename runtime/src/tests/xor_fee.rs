@@ -1355,6 +1355,7 @@ fn right_custom_fee_for_vested_transfer_ok() {
             period: 10u32,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
 
         let len: usize = 10;
@@ -1415,6 +1416,7 @@ fn right_custom_fee_for_vested_transfer_err() {
             period: 0u32,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
 
         let len: usize = 10;
