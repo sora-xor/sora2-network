@@ -147,6 +147,23 @@ pub struct LinearVestingSchedule<BlockNumber, AssetId: Copy> {
     /// Amount of tokens to release per vest
     #[codec(compact)]
     pub per_period: Balance,
+    /// Amount of remainder tokens to release per last period
+    pub remainder_amount: Balance,
+}
+
+impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> LinearVestingSchedule<BlockNumber, AssetId> {
+    fn amount_with_remainder(&self, periods: u32) -> Option<Balance> {
+        if periods.is_zero() {
+            return Some(Balance::zero());
+        }
+        if self.remainder_amount.is_zero() {
+            self.per_period.checked_mul(periods.into())
+        } else {
+            self.per_period
+                .checked_mul(periods.saturating_sub(1).into())?
+                .checked_add(self.remainder_amount)
+        }
+    }
 }
 
 impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumber, Balance, AssetId>
@@ -160,7 +177,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
     }
 
     fn total_amount(&self) -> Option<Balance> {
-        self.per_period.checked_mul(self.period_count.into())
+        self.amount_with_remainder(self.period_count)
     }
 
     /// Note this func assumes schedule is a valid one(non-zero period and
@@ -173,14 +190,18 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
         let unrealized = self
             .period_count
             .saturating_sub(full.unique_saturated_into());
-        self.per_period.checked_mul(unrealized.into())
+        self.amount_with_remainder(unrealized)
     }
 
     fn ensure_valid_vesting_schedule<T: Config>(&self) -> Result<Balance, DispatchError> {
         ensure!(!self.period.is_zero(), Error::<T>::ZeroVestingPeriod);
         ensure!(
             !self.period_count.is_zero(),
-            Error::<T>::ZeroVestingPeriodCount
+            Error::<T>::WrongVestingPeriodCount
+        );
+        ensure!(
+            self.period_count > 1 || self.remainder_amount.is_zero(),
+            Error::<T>::WrongVestingPeriodCount
         );
         ensure!(self.end().is_some(), Error::<T>::ArithmeticError);
 
@@ -250,6 +271,25 @@ pub struct LinearPendingVestingSchedule<BlockNumber, AssetId: Copy, AccountId> {
     /// Amount of tokens to release per vest
     #[codec(compact)]
     pub per_period: Balance,
+    /// Amount of remainder tokens to release per last period
+    pub remainder_amount: Balance,
+}
+
+impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
+    LinearPendingVestingSchedule<BlockNumber, AssetId, AccountId>
+{
+    fn amount_with_remainder(&self, periods: u32) -> Option<Balance> {
+        if periods.is_zero() {
+            return Some(Balance::zero());
+        }
+        if self.remainder_amount.is_zero() {
+            self.per_period.checked_mul(periods.into())
+        } else {
+            self.per_period
+                .checked_mul(periods.saturating_sub(1).into())?
+                .checked_add(self.remainder_amount)
+        }
+    }
 }
 
 impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
@@ -264,7 +304,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
     }
 
     fn total_amount(&self) -> Option<Balance> {
-        self.per_period.checked_mul(self.period_count.into())
+        self.amount_with_remainder(self.period_count)
     }
 
     /// Note this func assumes schedule is a valid one(non-zero period and
@@ -278,9 +318,9 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
             let unrealized = self
                 .period_count
                 .saturating_sub(full.unique_saturated_into());
-            self.per_period.checked_mul(unrealized.into())
+            self.amount_with_remainder(unrealized)
         } else {
-            self.per_period.checked_mul(self.period_count.into())
+            self.amount_with_remainder(self.period_count)
         }
     }
 
@@ -288,7 +328,11 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
         ensure!(!self.period.is_zero(), Error::<T>::ZeroVestingPeriod);
         ensure!(
             !self.period_count.is_zero(),
-            Error::<T>::ZeroVestingPeriodCount
+            Error::<T>::WrongVestingPeriodCount
+        );
+        ensure!(
+            self.period_count > 1 || self.remainder_amount.is_zero(),
+            Error::<T>::WrongVestingPeriodCount
         );
         if self.start.is_some() {
             ensure!(self.end().is_some(), Error::<T>::ArithmeticError);
