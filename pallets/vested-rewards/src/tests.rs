@@ -1929,11 +1929,6 @@ fn multiple_vesting_linear_schedule_claim_works() {
             DOT
         ));
 
-        println!(
-            "VESTING SCHEDULE BOB: {:?}",
-            VestingSchedules::<Runtime>::get(bob())
-        );
-        println!("LOKS: {:?}", Tokens::locks(bob(), DOT));
         assert!(!VestingSchedules::<Runtime>::contains_key(&bob()));
 
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
