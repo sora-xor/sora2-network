@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused_imports)]
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::order_book::OrderBookId;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
@@ -40,8 +39,10 @@ use crate::{
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use common::DOT;
 use common::{
-    balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode, PriceVariant, DOT, VAL, VXOR, XOR,
+    balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode, PriceVariant, VAL, VXOR, XOR,
 };
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
@@ -57,9 +58,11 @@ use referrals::ReferrerBalances;
 use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
+#[cfg(feature = "wip")] // ORML multi asset vesting
 use vested_rewards::vesting_currencies::{
     LinearVestingSchedule, VestingSchedule, VestingScheduleVariant,
 };
+#[cfg(feature = "wip")] // ORML multi asset vesting
 use vested_rewards::{Config, WeightInfo};
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVXor, XorToVal};

@@ -155,33 +155,71 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(24_u64))
 			.saturating_add(T::DbWeight::get().writes(12_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	fn claim_unlocked() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 384_000 picoseconds.
-		Weight::from_parts(392_000, 0)
+		//  Measured:  `2114`
+		//  Estimated: `9623`
+		// Minimum execution time: 34_000_000 picoseconds.
+		Weight::from_parts(36_000_000, 9623)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:2 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: VestedRewards ClaimSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards ClaimSchedules (max_values: None, max_size: None, mode: Measured)
 	fn vested_transfer() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 394_000 picoseconds.
-		Weight::from_parts(411_000, 0)
+		//  Measured:  `1379`
+		//  Estimated: `21294`
+		// Minimum execution time: 61_000_000 picoseconds.
+		Weight::from_parts(63_000_000, 21294)
+			.saturating_add(T::DbWeight::get().reads(7_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:20 w:20)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:20 w:20)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: VestedRewards ClaimSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards ClaimSchedules (max_values: None, max_size: None, mode: Measured)
 	fn update_vesting_schedules() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 391_000 picoseconds.
-		Weight::from_parts(401_000, 0)
+		//  Measured:  `4358`
+		//  Estimated: `117840`
+		// Minimum execution time: 422_000_000 picoseconds.
+		Weight::from_parts(469_000_000, 117840)
+			.saturating_add(T::DbWeight::get().reads(43_u64))
+			.saturating_add(T::DbWeight::get().writes(43_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: VestedRewards ClaimSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards ClaimSchedules (max_values: None, max_size: None, mode: Measured)
 	fn unlock_pending_schedule_by_manager() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 397_000 picoseconds.
-		Weight::from_parts(411_000, 0)
+		//  Measured:  `1831`
+		//  Estimated: `8730`
+		// Minimum execution time: 23_000_000 picoseconds.
+		Weight::from_parts(25_000_000, 8730)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 }
 
@@ -269,32 +307,70 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(24_u64))
 			.saturating_add(RocksDbWeight::get().writes(12_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:1 w:1)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	fn claim_unlocked() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 384_000 picoseconds.
-		Weight::from_parts(392_000, 0)
+		//  Measured:  `2114`
+		//  Estimated: `9623`
+		// Minimum execution time: 34_000_000 picoseconds.
+		Weight::from_parts(36_000_000, 9623)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:2 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:1 w:1)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: VestedRewards ClaimSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards ClaimSchedules (max_values: None, max_size: None, mode: Measured)
 	fn vested_transfer() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 394_000 picoseconds.
-		Weight::from_parts(411_000, 0)
+		//  Measured:  `1379`
+		//  Estimated: `21294`
+		// Minimum execution time: 61_000_000 picoseconds.
+		Weight::from_parts(63_000_000, 21294)
+			.saturating_add(RocksDbWeight::get().reads(7_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: Tokens Accounts (r:20 w:20)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: Tokens Locks (r:20 w:20)
+	/// Proof: Tokens Locks (max_values: None, max_size: Some(113), added: 2588, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: VestedRewards ClaimSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards ClaimSchedules (max_values: None, max_size: None, mode: Measured)
 	fn update_vesting_schedules() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 391_000 picoseconds.
-		Weight::from_parts(401_000, 0)
+		//  Measured:  `4358`
+		//  Estimated: `117840`
+		// Minimum execution time: 422_000_000 picoseconds.
+		Weight::from_parts(469_000_000, 117840)
+			.saturating_add(RocksDbWeight::get().reads(43_u64))
+			.saturating_add(RocksDbWeight::get().writes(43_u64))
 	}
+	/// Storage: VestedRewards VestingSchedules (r:1 w:1)
+	/// Proof: VestedRewards VestingSchedules (max_values: None, max_size: Some(1949), added: 4424, mode: MaxEncodedLen)
+	/// Storage: VestedRewards ClaimSchedules (r:1 w:1)
+	/// Proof Skipped: VestedRewards ClaimSchedules (max_values: None, max_size: None, mode: Measured)
 	fn unlock_pending_schedule_by_manager() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 397_000 picoseconds.
-		Weight::from_parts(411_000, 0)
+		//  Measured:  `1831`
+		//  Estimated: `8730`
+		// Minimum execution time: 23_000_000 picoseconds.
+		Weight::from_parts(25_000_000, 8730)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 }

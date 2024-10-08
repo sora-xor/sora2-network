@@ -1914,7 +1914,6 @@ fn cliff_vesting_linear_works() {
 }
 
 #[cfg(feature = "wip")] // Auto Vesting
-#[ignore] // TODO: remove when calculate correct benchmarks
 #[test]
 fn auto_claim_hook_works_fine() {
     ExtBuilder::default().build().execute_with(|| {
