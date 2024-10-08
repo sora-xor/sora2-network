@@ -246,6 +246,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
             // in XOR for dex_id = 0
             // in XSTUSD for dex_id = 1
+            // in KUSD for dex_id = 2
+            // in VXOR for dex_id = 3
             let fee = self.fee.get_by_asset(&dex_info.base_asset_id);
 
             // Set recommended or check that fee is correct.
@@ -355,6 +357,8 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
 
             // in XOR for dex_id = 0
             // in XSTUSD for dex_id = 1
+            // in KUSD for dex_id = 2
+            // in VXOR for dex_id = 3
             let fee = self.fee.get_by_asset(&dex_info.base_asset_id);
 
             if self.get_fee_from_destination.unwrap() {
