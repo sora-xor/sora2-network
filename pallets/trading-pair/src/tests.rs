@@ -32,7 +32,7 @@ use crate::mock::*;
 use crate::{Error, Pallet};
 use common::{
     DEXId, EnsureTradingPairExists, LiquiditySourceType, TradingPair, TradingPairSourceManager,
-    DOT, KSM, XOR, XSTUSD,
+    DOT, KSM, KUSD, VXOR, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;
@@ -62,13 +62,32 @@ fn should_register_with_another_dex_id() {
             XSTUSD,
             DOT
         ));
+
+        assert_ok!(TradingPairPallet::register(
+            RuntimeOrigin::signed(ALICE),
+            DEXId::PolkaswapKUSD,
+            KUSD,
+            DOT
+        ));
+
+        assert_ok!(TradingPairPallet::register(
+            RuntimeOrigin::signed(ALICE),
+            DEXId::PolkaswapVXOR,
+            VXOR,
+            DOT
+        ));
     });
 }
 
 #[test]
-fn should_not_register_with_another_dex_id_with_wrong_base_asset_id() {
+fn should_not_register_trading_pair_with_wrong_base_asset() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        assert_noop!(
+            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEXId::Polkaswap, DOT, XOR),
+            Error::<Runtime>::ForbiddenBaseAssetId
+        );
+
         assert_noop!(
             TradingPairPallet::register(
                 RuntimeOrigin::signed(ALICE),
@@ -78,15 +97,24 @@ fn should_not_register_with_another_dex_id_with_wrong_base_asset_id() {
             ),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
-    });
-}
 
-#[test]
-fn should_not_register_trading_pair_with_wrong_base_asset() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
         assert_noop!(
-            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, DOT, XOR),
+            TradingPairPallet::register(
+                RuntimeOrigin::signed(ALICE),
+                DEXId::PolkaswapKUSD,
+                XOR,
+                DOT
+            ),
+            Error::<Runtime>::ForbiddenBaseAssetId
+        );
+
+        assert_noop!(
+            TradingPairPallet::register(
+                RuntimeOrigin::signed(ALICE),
+                DEXId::PolkaswapVXOR,
+                XOR,
+                DOT
+            ),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
     });
