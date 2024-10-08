@@ -450,6 +450,10 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -698,6 +702,8 @@
 
             <span class="comment">// in XOR for dex_id = 0
             // in XSTUSD for dex_id = 1
+            // in KUSD for dex_id = 2
+            // in VXOR for dex_id = 3
             </span><span class="kw">let </span>fee = <span class="self">self</span>.fee.get_by_asset(<span class="kw-2">&amp;</span>dex_info.base_asset_id);
 
             <span class="comment">// Set recommended or check that fee is correct.
@@ -807,6 +813,8 @@
 
             <span class="comment">// in XOR for dex_id = 0
             // in XSTUSD for dex_id = 1
+            // in KUSD for dex_id = 2
+            // in VXOR for dex_id = 3
             </span><span class="kw">let </span>fee = <span class="self">self</span>.fee.get_by_asset(<span class="kw-2">&amp;</span>dex_info.base_asset_id);
 
             <span class="kw">if </span><span class="self">self</span>.get_fee_from_destination.unwrap() {

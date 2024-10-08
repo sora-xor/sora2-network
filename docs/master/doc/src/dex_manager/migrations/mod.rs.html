@@ -121,6 +121,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::DEXInfos;
 
 <span class="kw">pub mod </span>kusd_dex;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
+<span class="kw">pub mod </span>vxor_dex;
 
 <span class="attr">#[derive(Decode)]
 </span><span class="kw">struct </span>DEXInfoV0&lt;T: Config&gt; {
@@ -148,8 +151,5 @@
     StorageVersion::new(<span class="number">2</span>).put::&lt;Pallet&lt;T&gt;&gt;();
     T::DbWeight::get().reads_writes(weight, weight)
 }
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests;
 </code></pre></div>
 </section></main></body></html>

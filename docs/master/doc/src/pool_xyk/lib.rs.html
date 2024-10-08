@@ -1446,6 +1446,14 @@
 <a href="#1431" id="1431">1431</a>
 <a href="#1432" id="1432">1432</a>
 <a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1959,6 +1967,8 @@
 
         <span class="comment">// in XOR for dex_id = 0
         // in XSTUSD for dex_id = 1
+        // in KUSD for dex_id = 2
+        // in VXOR for dex_id = 3
         </span><span class="kw">let </span>fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
 
         <span class="prelude-val">Ok</span>((SwapOutcome::new(calculated, fee), <span class="self">Self</span>::quote_weight()))
@@ -2088,6 +2098,8 @@
 
                     <span class="comment">// in XOR for dex_id = 0
                     // in XSTUSD for dex_id = 1
+                    // in KUSD for dex_id = 2
+                    // in VXOR for dex_id = 3
                     </span><span class="kw">let </span>fee_chunk =
                         OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
 
@@ -2113,6 +2125,8 @@
 
                     <span class="comment">// in XOR for dex_id = 0
                     // in XSTUSD for dex_id = 1
+                    // in KUSD for dex_id = 2
+                    // in VXOR for dex_id = 3
                     </span><span class="kw">let </span>fee_chunk =
                         OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
 
@@ -2333,6 +2347,8 @@
 
         <span class="comment">// in XOR for dex_id = 0
         // in XSTUSD for dex_id = 1
+        // in KUSD for dex_id = 2
+        // in VXOR for dex_id = 3
         </span><span class="kw">let </span>fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
         <span class="prelude-val">Ok</span>(SwapOutcome::new(calculated, fee))
     }

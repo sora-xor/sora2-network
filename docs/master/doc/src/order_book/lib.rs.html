@@ -1847,6 +1847,7 @@
 <a href="#1832" id="1832">1832</a>
 <a href="#1833" id="1833">1833</a>
 <a href="#1834" id="1834">1834</a>
+<a href="#1835" id="1835">1835</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3112,7 +3113,8 @@
 
         <span class="macro">ensure!</span>(
             order_book_id.dex_id == common::DEXId::Polkaswap.into()
-                || order_book_id.dex_id == common::DEXId::PolkaswapKUSD.into(),
+                || order_book_id.dex_id == common::DEXId::PolkaswapKUSD.into()
+                || order_book_id.dex_id == common::DEXId::PolkaswapVXOR.into(),
             Error::&lt;T&gt;::NotAllowedDEXId
         );
 
