@@ -41,6 +41,8 @@ use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_runtime::FixedU128;
+use vested_rewards::vesting_currencies::VestingSchedule;
+use vested_rewards::{Config, WeightInfo};
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
@@ -147,6 +149,48 @@ impl RuntimeCall {
 pub struct CustomFees;
 
 impl CustomFees {
+    #[cfg(feature = "wip")] // ORML multi asset vesting
+    fn base_fee(call: &RuntimeCall) -> Option<Balance> {
+        match call {
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
+                swap_batches,
+                ..
+            }) => Some(
+                swap_batches
+                    .iter()
+                    .map(|x| x.receivers.len() as Balance)
+                    .fold(Balance::zero(), |acc, x| acc.saturating_add(x))
+                    .saturating_mul(SMALL_FEE)
+                    .max(SMALL_FEE),
+            ),
+            RuntimeCall::Assets(assets::Call::register { .. })
+            | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
+            | RuntimeCall::BridgeProxy(bridge_proxy::Call::burn { .. })
+            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
+            | RuntimeCall::Rewards(rewards::Call::claim { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
+                ..
+            })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. })
+            | RuntimeCall::OrderBook(order_book::Call::update_orderbook { .. }) => Some(BIG_FEE),
+            RuntimeCall::Assets(..)
+            | RuntimeCall::EthBridge(..)
+            | RuntimeCall::LiquidityProxy(..)
+            | RuntimeCall::MulticollateralBondingCurvePool(..)
+            | RuntimeCall::PoolXYK(..)
+            | RuntimeCall::Rewards(..)
+            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+            | RuntimeCall::TradingPair(..)
+            | RuntimeCall::Band(..)
+            | RuntimeCall::Referrals(..)
+            | RuntimeCall::OrderBook(..)
+            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => {
+                Some(SMALL_FEE)
+            }
+            _ => None,
+        }
+    }
+    #[cfg(not(feature = "wip"))] // ORML multi asset vesting
     fn base_fee(call: &RuntimeCall) -> Option<Balance> {
         match call {
             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
@@ -193,6 +237,9 @@ pub enum CustomFeeDetails {
 
     /// OrderBook::place_limit_order custom fee depends on limit order lifetime
     LimitOrderLifetime(Option<Moment>),
+
+    /// VestedReward::vested_transfer custom fee depends on count of auto claims
+    VestedTransferClaims((Balance, Balance)),
 }
 
 // Flat fees implementation for the selected extrinsics.
@@ -202,11 +249,26 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = CustomFeeDetails;
 
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
-        let fee = Self::base_fee(call)?;
+        let mut fee = Self::base_fee(call)?;
 
         let details = match call {
             RuntimeCall::OrderBook(order_book::Call::place_limit_order { lifespan, .. }) => {
                 CustomFeeDetails::LimitOrderLifetime(*lifespan)
+            }
+            RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+                schedule, ..
+            }) => {
+                let claim_fee = pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
+                    <Runtime as Config>::WeightInfo::claim_unlocked(),
+                );
+                let whole_claims_fee = claim_fee.saturating_mul(schedule.claims_count() as Balance);
+                let fee_vested_transfer_weight =
+                    pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
+                        <Runtime as Config>::WeightInfo::vested_transfer(),
+                    );
+                let fee_without_claims = fee.saturating_add(fee_vested_transfer_weight);
+                fee = fee_without_claims.saturating_add(whole_claims_fee);
+                CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
             }
             _ => CustomFeeDetails::Regular(fee),
         };
@@ -348,6 +410,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         true
     }
 
+    #[allow(unused_variables)]
     fn compute_actual_fee(
         _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
         _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
@@ -363,6 +426,18 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                     _post_info.actual_weight.is_some(),
                     _result.is_err(),
                 )
+            }
+            CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims)) => {
+                #[cfg(feature = "wip")] // ORML multi asset vesting
+                {
+                    if _result.is_err() {
+                        return Some(fee_without_claims);
+                    } else {
+                        return Some(fee);
+                    }
+                }
+                #[cfg(not(feature = "wip"))] // ORML multi asset vesting
+                None
             }
         }
     }

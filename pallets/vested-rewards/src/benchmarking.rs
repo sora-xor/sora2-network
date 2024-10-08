@@ -32,8 +32,6 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
-#[cfg(feature = "wip")] // ORML multi asset vesting
-use core::str::FromStr;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
@@ -194,6 +192,7 @@ benchmarks! {
     }
 
     claim_unlocked {
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
         let caller: T::AccountId = alice::<T>();
         let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 0);
         let max_schedules = T::MaxVestingSchedules::get();
@@ -227,6 +226,8 @@ benchmarks! {
     }
 
     vested_transfer {
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &bob::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
         let caller: T::AccountId = alice::<T>();
         let receiver = T::Lookup::unlookup(bob::<T>());
         let max_schedules = T::MaxVestingSchedules::get() - 1;
@@ -261,6 +262,7 @@ benchmarks! {
     }
 
     update_vesting_schedules {
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
         let caller: T::AccountId = alice::<T>();
         let mut schedules_update: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
                     BoundedVec::default();
@@ -294,6 +296,7 @@ benchmarks! {
     }
 
     unlock_pending_schedule_by_manager {
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
         let caller: T::AccountId = alice::<T>();
         let asset_id: AssetIdOf<T> = create_asset::<T>("TEST", 0);
         let max_schedules = T::MaxVestingSchedules::get();

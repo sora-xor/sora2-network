@@ -43,10 +43,17 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
     /// Returns all locked amount, `None` if calculation overflows.
     fn total_amount(&self) -> Option<Balance>;
     /// Returns locked amount for a given `time`.
-    fn locked_amount(&self, time: BlockNumber) -> Option<common::Balance>;
+    fn locked_amount(&self, time: BlockNumber) -> Option<Balance>;
     fn ensure_valid_vesting_schedule<T: Config>(&self) -> Result<Balance, DispatchError>;
     /// Returns asset id, need to get from enum
     fn asset_id(&self) -> AssetId;
+    /// Returns next block for a given `time`, where asset may be unlocked and claimed
+    fn next_claim_block<T: Config>(
+        &self,
+        time: BlockNumber,
+    ) -> Result<Option<BlockNumber>, DispatchError>;
+    /// Count of claims per Vesting
+    fn claims_count(&self) -> u32;
 }
 
 #[allow(unused)]
@@ -98,6 +105,27 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
         match self {
             VestingScheduleVariant::LinearVestingSchedule(variant) => variant.asset_id(),
             VestingScheduleVariant::LinearPendingVestingSchedule(variant) => variant.asset_id(),
+        }
+    }
+
+    fn next_claim_block<T: Config>(
+        &self,
+        time: BlockNumber,
+    ) -> Result<Option<BlockNumber>, DispatchError> {
+        match self {
+            VestingScheduleVariant::LinearVestingSchedule(variant) => {
+                variant.next_claim_block::<T>(time)
+            }
+            VestingScheduleVariant::LinearPendingVestingSchedule(variant) => {
+                variant.next_claim_block::<T>(time)
+            }
+        }
+    }
+
+    fn claims_count(&self) -> u32 {
+        match self {
+            VestingScheduleVariant::LinearVestingSchedule(variant) => variant.claims_count(),
+            VestingScheduleVariant::LinearPendingVestingSchedule(variant) => variant.claims_count(),
         }
     }
 }
@@ -165,6 +193,41 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
 
     fn asset_id(&self) -> AssetId {
         self.asset_id
+    }
+
+    fn next_claim_block<T: Config>(
+        &self,
+        time: BlockNumber,
+    ) -> Result<Option<BlockNumber>, DispatchError> {
+        // blocks_to_next = start + ((time - start + period) / period) * period
+        if self
+            .locked_amount(time)
+            .ok_or(Error::<T>::ArithmeticError)?
+            .is_zero()
+        {
+            Ok(None)
+        } else {
+            let next_period = time
+                .saturating_sub(self.start)
+                .saturating_add(self.period)
+                .checked_div(&self.period)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            if next_period <= self.period {
+                Ok(Some(
+                    next_period
+                        .checked_mul(&self.period)
+                        .ok_or(Error::<T>::ArithmeticError)?
+                        .checked_add(&self.start)
+                        .ok_or(Error::<T>::ArithmeticError)?,
+                ))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+
+    fn claims_count(&self) -> u32 {
+        self.period_count
     }
 }
 
@@ -240,5 +303,42 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
 
     fn asset_id(&self) -> AssetId {
         self.asset_id
+    }
+
+    fn next_claim_block<T: Config>(
+        &self,
+        time: BlockNumber,
+    ) -> Result<Option<BlockNumber>, DispatchError> {
+        // blocks_to_next = start + ((time - start + period) / period) * period
+        // Check start for None
+        if self
+            .locked_amount(time)
+            .ok_or(Error::<T>::ArithmeticError)?
+            .is_zero()
+            || self.start.is_none()
+        {
+            return Ok(None);
+        } else {
+            let next_period = time
+                .saturating_sub(self.start.unwrap())
+                .saturating_add(self.period)
+                .checked_div(&self.period)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            if next_period <= self.period {
+                Ok(Some(
+                    next_period
+                        .checked_mul(&self.period)
+                        .ok_or(Error::<T>::ArithmeticError)?
+                        .checked_add(&self.start.unwrap())
+                        .ok_or(Error::<T>::ArithmeticError)?,
+                ))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+
+    fn claims_count(&self) -> u32 {
+        self.period_count
     }
 }
