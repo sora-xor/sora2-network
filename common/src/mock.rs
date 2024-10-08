@@ -413,6 +413,7 @@ macro_rules! mock_vested_rewards_config {
             type MaxVestingSchedules = MaxVestingSchedules;
             type Currency = Tokens;
             type MinVestedTransfer = MinVestedTransfer;
+            type MaxWeightForAutoClaim = ();
         }
     };
 }

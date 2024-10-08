@@ -1818,6 +1818,8 @@ impl pallet_offences::Config for Runtime {
 parameter_types! {
     pub const MaxVestingSchedules: u32 = 20;
     pub const MinVestedTransfer: Balance = 1;
+    // TODO: set after benchmarking
+    pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
 }
 
 impl vested_rewards::Config for Runtime {
@@ -1831,6 +1833,7 @@ impl vested_rewards::Config for Runtime {
     type MaxVestingSchedules = MaxVestingSchedules;
     type Currency = Tokens;
     type MinVestedTransfer = MinVestedTransfer;
+    type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
 
 impl price_tools::Config for Runtime {

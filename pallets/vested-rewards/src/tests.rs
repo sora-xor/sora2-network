@@ -31,7 +31,11 @@ use crate::vesting_currencies::{
     LinearPendingVestingSchedule, LinearVestingSchedule, VestingScheduleVariant,
 };
 use crate::Error::ArithmeticError;
-use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event};
+use crate::{
+    mock::*, Claim, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event,
+};
+#[cfg(feature = "wip")] // Auto Vesting
+use crate::{ClaimSchedules, PendingClaims};
 use crate::{Error, RewardInfo};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::{VestingSchedules, VESTING_LOCK_ID};
@@ -41,6 +45,7 @@ use common::{
     PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+use frame_support::weights::Weight;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
 use sp_core::bounded::BoundedVec;
@@ -1565,7 +1570,9 @@ fn claim_linear_works() {
             schedule_ksm
         ));
 
-        run_to_block(11);
+        // not run because hook would claim
+        System::set_block_number(11);
+
         // remain locked if not claimed
         assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 20).is_err());
         // unlocked after claiming
@@ -1583,7 +1590,7 @@ fn claim_linear_works() {
         // more are still locked
         assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
 
-        run_to_block(21);
+        System::set_block_number(21);
         // claim more
         assert_ok!(VestedRewards::claim_unlocked(
             RuntimeOrigin::signed(bob()),
@@ -1601,7 +1608,7 @@ fn claim_linear_works() {
 
         // no locks anymore
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
-        run_to_block(50);
+        System::set_block_number(50);
         assert_ok!(VestedRewards::claim_unlocked(
             RuntimeOrigin::signed(bob()),
             KSM
@@ -1904,4 +1911,281 @@ fn cliff_vesting_linear_works() {
             VESTING_AMOUNT,
         ));
     });
+}
+
+#[cfg(feature = "wip")] // Auto Vesting
+#[test]
+fn auto_claim_hook_works_fine() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
+        let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 10u64,
+            period: 40u64,
+            period_count: 1u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule_locked.clone()
+        ));
+
+        assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            Some(0_u64),
+            schedule_locked
+        ),);
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule_ksm
+        ));
+
+        run_to_block(10);
+
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20
+        ));
+
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+
+        // more are still locked
+        assert!(Tokens::transfer(RuntimeOrigin::signed(bob()), alice(), DOT, 1).is_err());
+
+        run_to_block(20);
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(30));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20,
+        ));
+        // all used up
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+
+        // no locks anymore
+        assert_eq!(Tokens::locks(bob(), DOT), vec![]);
+        run_to_block(50);
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+    })
+}
+
+#[cfg(feature = "wip")] // Auto Vesting
+#[test]
+fn auto_claim_works_fine_for_pending() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        let schedule_new = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            alice(),
+            schedule
+        ));
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule_new
+        ));
+
+        let claim_weight = Weight::from_parts(100, 0);
+
+        PendingClaims::<Runtime>::put(Vec::from([
+            Claim {
+                account_id: alice(),
+                asset_id: DOT,
+            },
+            Claim {
+                account_id: bob(),
+                asset_id: DOT,
+            },
+        ]));
+
+        System::set_block_number(11);
+
+        assert_eq!(
+            VestedRewards::auto_claim(11, claim_weight),
+            Weight::default()
+        );
+
+        let claim_weight = Weight::from_parts(100, 100);
+
+        assert_eq!(
+            VestedRewards::auto_claim(11, claim_weight),
+            claim_weight.saturating_mul(2)
+        );
+
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            10,
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 10);
+    })
+}
+
+#[cfg(feature = "wip")] // Auto Vesting
+#[test]
+fn auto_claim_works_fine_for_pending_and_block() {
+    ExtBuilder::default().build().execute_with(|| {
+        let schedule_alice = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 11u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        let schedule_bob = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: KSM,
+            start: 0u64,
+            period: 11u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+        let schedule_eve = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 23u64,
+            period_count: 1u32,
+            per_period: 10,
+        });
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            alice(),
+            schedule_alice
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule_bob
+        ));
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            eve(),
+            schedule_eve
+        ));
+        let claim_weight = Weight::from_parts(100000000000, 100);
+
+        // Check claim from pending and from block fine
+        PendingClaims::<Runtime>::put(Vec::from([Claim {
+            account_id: alice(),
+            asset_id: DOT,
+        }]));
+        System::set_block_number(11);
+        assert_eq!(
+            ClaimSchedules::<Runtime>::get(11),
+            Vec::from([
+                Claim {
+                    account_id: alice(),
+                    asset_id: DOT
+                },
+                Claim {
+                    account_id: bob(),
+                    asset_id: KSM
+                },
+            ])
+        );
+        assert_eq!(
+            VestedRewards::auto_claim(11, claim_weight),
+            claim_weight.saturating_mul(2)
+        );
+        assert_eq!(PendingClaims::<Runtime>::try_get(), Err(()));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            KSM,
+            10,
+        ));
+        assert_eq!(Tokens::free_balance(KSM, &bob()), 10);
+
+        // Check claim from pending and add block to pending fine
+        PendingClaims::<Runtime>::put(Vec::from([
+            Claim {
+                account_id: alice(),
+                asset_id: DOT,
+            },
+            Claim {
+                account_id: bob(),
+                asset_id: KSM,
+            },
+        ]));
+        System::set_block_number(23);
+        assert_eq!(
+            VestedRewards::auto_claim(23, claim_weight),
+            claim_weight.saturating_mul(2)
+        );
+        assert_eq!(
+            PendingClaims::<Runtime>::get(),
+            Vec::from([Claim {
+                account_id: eve(),
+                asset_id: DOT
+            }])
+        );
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            KSM,
+            10,
+        ));
+        assert_eq!(Tokens::free_balance(KSM, &bob()), 0);
+
+        // Claim remaining
+        assert_eq!(
+            VestedRewards::auto_claim(23, claim_weight),
+            claim_weight.saturating_mul(1)
+        );
+        assert_eq!(PendingClaims::<Runtime>::try_get(), Err(()));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(eve()),
+            alice(),
+            DOT,
+            10,
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &eve()), 0);
+
+        assert_eq!(
+            VestedRewards::auto_claim(23, claim_weight),
+            Weight::default()
+        );
+    })
 }
