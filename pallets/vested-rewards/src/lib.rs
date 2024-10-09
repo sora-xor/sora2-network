@@ -307,17 +307,22 @@ impl<T: Config> Pallet<T> {
                                             sched.clone(),
                                         ),
                                 });
-                                Self::set_auto_claim_block(
-                                    dest.clone(),
-                                    &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
-                                        sched.clone(),
-                                    ),
-                                )?;
                                 return Ok(());
                             }
                         }
                     }
                     return Err(Error::<T>::PendingScheduleNotExist.into());
+                })
+                .and_then(|_| {
+                    filter_schedule.start = Some(start);
+                    filter_schedule.manager_id = None;
+                    Self::set_auto_claim_block(
+                        dest.clone(),
+                        &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
+                            filter_schedule.clone(),
+                        ),
+                    )?;
+                    Ok(())
                 })
             }
             _ => Err(Error::<T>::WrongScheduleVariant.into()),
@@ -331,15 +336,25 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         #[cfg(feature = "wip")] // Auto Vesting
         {
+            let claim_asset_for_account = Claim::<AssetIdOf<T>, AccountIdOf<T>> {
+                account_id: who.clone(),
+                asset_id: schedule.asset_id(),
+            };
+
             if let Some(block_number) =
                 schedule.next_claim_block::<T>(frame_system::Pallet::<T>::current_block_number())?
             {
-                let claim_asset_for_account = Claim::<AssetIdOf<T>, AccountIdOf<T>> {
-                    account_id: who,
-                    asset_id: schedule.asset_id(),
-                };
                 if !<ClaimSchedules<T>>::get(block_number).contains(&claim_asset_for_account) {
                     <ClaimSchedules<T>>::append(block_number, claim_asset_for_account.clone())
+                }
+            } else {
+                if let Ok(vesting_schedules) = <VestingSchedules<T>>::try_get(who) {
+                    if schedule.end().is_some()
+                        && vesting_schedules.contains(schedule)
+                        && !<PendingClaims<T>>::get().contains(&claim_asset_for_account)
+                    {
+                        <PendingClaims<T>>::append(claim_asset_for_account)
+                    }
                 }
             }
         }
