@@ -2061,6 +2061,105 @@ fn auto_claim_hook_works_fine_if_period_lasts_before_transction() {
             account_id: bob(),
             asset_id: DOT,
         }));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(12));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(22));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20,
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+    })
+}
+
+#[cfg(feature = "wip")] // Auto Vesting
+#[test]
+fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
+    ExtBuilder::default().build().execute_with(|| {
+        run_to_block(21);
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule_locked.clone()
+        ));
+        assert!(!PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+
+        assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            Some(0_u64),
+            schedule_locked
+        ),);
+        run_to_block(22);
+
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(10));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(20));
+        assert!(!PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20,
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+
+        let schedule_locked =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+            });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule_locked.clone()
+        ));
+
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(10));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(20));
+        assert!(!PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+
+        assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            Some(2_u64),
+            schedule_locked
+        ),);
+        run_to_block(23);
+
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(12));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(22));
         assert_ok!(Tokens::transfer(
             RuntimeOrigin::signed(bob()),
             alice(),

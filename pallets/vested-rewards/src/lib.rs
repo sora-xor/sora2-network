@@ -307,17 +307,22 @@ impl<T: Config> Pallet<T> {
                                             sched.clone(),
                                         ),
                                 });
-                                Self::set_auto_claim_block(
-                                    dest.clone(),
-                                    &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
-                                        sched.clone(),
-                                    ),
-                                )?;
                                 return Ok(());
                             }
                         }
                     }
                     return Err(Error::<T>::PendingScheduleNotExist.into());
+                })
+                .and_then(|_| {
+                    filter_schedule.start = Some(start);
+                    filter_schedule.manager_id = None;
+                    Self::set_auto_claim_block(
+                        dest.clone(),
+                        &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
+                            filter_schedule.clone(),
+                        ),
+                    )?;
+                    Ok(())
                 })
             }
             _ => Err(Error::<T>::WrongScheduleVariant.into()),
@@ -344,7 +349,8 @@ impl<T: Config> Pallet<T> {
                 }
             } else {
                 if let Ok(vesting_schedules) = <VestingSchedules<T>>::try_get(who) {
-                    if vesting_schedules.contains(schedule)
+                    if schedule.end().is_some()
+                        && vesting_schedules.contains(schedule)
                         && !<PendingClaims<T>>::get().contains(&claim_asset_for_account)
                     {
                         <PendingClaims<T>>::append(claim_asset_for_account)
