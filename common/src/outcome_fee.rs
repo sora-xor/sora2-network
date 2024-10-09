@@ -168,6 +168,14 @@ where
         Self::from_asset(crate::XSTUSD.into(), amount)
     }
 
+    pub fn kusd(amount: AmountType) -> Self {
+        Self::from_asset(crate::KUSD.into(), amount)
+    }
+
+    pub fn vxor(amount: AmountType) -> Self {
+        Self::from_asset(crate::VXOR.into(), amount)
+    }
+
     pub fn get_xor(&self) -> AmountType {
         self.get_by_asset(&crate::XOR.into())
     }
@@ -178,6 +186,14 @@ where
 
     pub fn get_xstusd(&self) -> AmountType {
         self.get_by_asset(&crate::XSTUSD.into())
+    }
+
+    pub fn get_kusd(&self) -> AmountType {
+        self.get_by_asset(&crate::KUSD.into())
+    }
+
+    pub fn get_vxor(&self) -> AmountType {
+        self.get_by_asset(&crate::VXOR.into())
     }
 }
 
@@ -196,6 +212,14 @@ where
 
     pub fn add_xstusd(&mut self, amount: AmountType) {
         self.add_by_asset(crate::XSTUSD.into(), amount);
+    }
+
+    pub fn add_kusd(&mut self, amount: AmountType) {
+        self.add_by_asset(crate::KUSD.into(), amount);
+    }
+
+    pub fn add_vxor(&mut self, amount: AmountType) {
+        self.add_by_asset(crate::VXOR.into(), amount);
     }
 }
 
@@ -234,6 +258,14 @@ where
         Self::from_asset_fixed(crate::XSTUSD.into(), amount)
     }
 
+    pub fn kusd_fixed(amount: Fixed) -> Self {
+        Self::from_asset_fixed(crate::KUSD.into(), amount)
+    }
+
+    pub fn vxor_fixed(amount: Fixed) -> Self {
+        Self::from_asset_fixed(crate::VXOR.into(), amount)
+    }
+
     pub fn get_xor_fixed(&self) -> Fixed {
         self.get_by_asset_fixed(&crate::XOR.into())
     }
@@ -244,5 +276,13 @@ where
 
     pub fn get_xstusd_fixed(&self) -> Fixed {
         self.get_by_asset_fixed(&crate::XSTUSD.into())
+    }
+
+    pub fn get_kusd_fixed(&self) -> Fixed {
+        self.get_by_asset_fixed(&crate::KUSD.into())
+    }
+
+    pub fn get_vxor_fixed(&self) -> Fixed {
+        self.get_by_asset_fixed(&crate::VXOR.into())
     }
 }
