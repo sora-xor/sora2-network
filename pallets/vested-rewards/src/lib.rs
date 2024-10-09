@@ -1156,8 +1156,8 @@ pub mod pallet {
         NotCrowdloanParticipant,
         /// Vesting period is zero
         ZeroVestingPeriod,
-        /// Number of vests is zero
-        ZeroVestingPeriodCount,
+        /// Number of vests is zero or less than claims
+        WrongVestingPeriodCount,
         /// Insufficient amount of balance to lock
         InsufficientBalanceToLock,
         /// The vested transfer amount is too low
