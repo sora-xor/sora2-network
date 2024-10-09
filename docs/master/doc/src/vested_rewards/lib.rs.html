@@ -1297,6 +1297,21 @@
 <a href="#1282" id="1282">1282</a>
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1606,17 +1621,22 @@
                                             sched.clone(),
                                         ),
                                 });
-                                <span class="self">Self</span>::set_auto_claim_block(
-                                    dest.clone(),
-                                    <span class="kw-2">&amp;</span>VestingScheduleOf::&lt;T&gt;::LinearPendingVestingSchedule(
-                                        sched.clone(),
-                                    ),
-                                )<span class="question-mark">?</span>;
                                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                             }
                         }
                     }
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::PendingScheduleNotExist.into());
+                })
+                .and_then(|<span class="kw">_</span>| {
+                    filter_schedule.start = <span class="prelude-val">Some</span>(start);
+                    filter_schedule.manager_id = <span class="prelude-val">None</span>;
+                    <span class="self">Self</span>::set_auto_claim_block(
+                        dest.clone(),
+                        <span class="kw-2">&amp;</span>VestingScheduleOf::&lt;T&gt;::LinearPendingVestingSchedule(
+                            filter_schedule.clone(),
+                        ),
+                    )<span class="question-mark">?</span>;
+                    <span class="prelude-val">Ok</span>(())
                 })
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::&lt;T&gt;::WrongScheduleVariant.into()),
@@ -1630,15 +1650,25 @@
     ) -&gt; DispatchResult {
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
         </span>{
+            <span class="kw">let </span>claim_asset_for_account = Claim::&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt; {
+                account_id: who.clone(),
+                asset_id: schedule.asset_id(),
+            };
+
             <span class="kw">if let </span><span class="prelude-val">Some</span>(block_number) =
                 schedule.next_claim_block::&lt;T&gt;(frame_system::Pallet::&lt;T&gt;::current_block_number())<span class="question-mark">?
             </span>{
-                <span class="kw">let </span>claim_asset_for_account = Claim::&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt; {
-                    account_id: who,
-                    asset_id: schedule.asset_id(),
-                };
                 <span class="kw">if </span>!&lt;ClaimSchedules&lt;T&gt;&gt;::get(block_number).contains(<span class="kw-2">&amp;</span>claim_asset_for_account) {
                     &lt;ClaimSchedules&lt;T&gt;&gt;::append(block_number, claim_asset_for_account.clone())
+                }
+            } <span class="kw">else </span>{
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(vesting_schedules) = &lt;VestingSchedules&lt;T&gt;&gt;::try_get(who) {
+                    <span class="kw">if </span>schedule.end().is_some()
+                        &amp;&amp; vesting_schedules.contains(schedule)
+                        &amp;&amp; !&lt;PendingClaims&lt;T&gt;&gt;::get().contains(<span class="kw-2">&amp;</span>claim_asset_for_account)
+                    {
+                        &lt;PendingClaims&lt;T&gt;&gt;::append(claim_asset_for_account)
+                    }
                 }
             }
         }
