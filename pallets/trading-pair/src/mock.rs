@@ -34,8 +34,8 @@ use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR,
-    XST, XSTUSD,
+    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
+    VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -225,6 +225,28 @@ impl Default for ExtBuilder {
                     None,
                     None,
                 ),
+                (
+                    KUSD.into(),
+                    ALICE,
+                    AssetSymbol(b"KUSD".to_vec()),
+                    AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    VXOR,
+                    ALICE,
+                    AssetSymbol(b"VXOR".to_vec()),
+                    AssetName(b"Vested XOR".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
             endowed_accounts: vec![],
             dex_list: vec![
@@ -240,6 +262,22 @@ impl Default for ExtBuilder {
                     DEXId::PolkaswapXSTUSD,
                     DEXInfo {
                         base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEXId::PolkaswapKUSD,
+                    DEXInfo {
+                        base_asset_id: KUSD,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEXId::PolkaswapVXOR,
+                    DEXInfo {
+                        base_asset_id: VXOR,
                         synthetic_base_asset_id: XST,
                         is_public: true,
                     },

@@ -475,6 +475,7 @@ pub enum DEXId {
     Polkaswap = 0,
     PolkaswapXSTUSD = 1,
     PolkaswapKUSD = 2,
+    PolkaswapVXOR = 3,
 }
 
 impl From<DEXId> for u32 {

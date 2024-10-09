@@ -1603,6 +1603,14 @@ fn testnet_genesis(
                         is_public: true,
                     },
                 ),
+                (
+                    3,
+                    DEXInfo {
+                        base_asset_id: VXOR,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
             ],
         },
         faucet: faucet_config,
@@ -2466,6 +2474,14 @@ fn mainnet_genesis(
                     2,
                     DEXInfo {
                         base_asset_id: KUSD,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    3,
+                    DEXInfo {
+                        base_asset_id: VXOR,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
