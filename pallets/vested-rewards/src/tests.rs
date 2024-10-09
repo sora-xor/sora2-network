@@ -1998,6 +1998,81 @@ fn auto_claim_hook_works_fine() {
 
 #[cfg(feature = "wip")] // Auto Vesting
 #[test]
+fn auto_claim_hook_works_fine_if_period_lasts_before_transction() {
+    ExtBuilder::default().build().execute_with(|| {
+        run_to_block(21);
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule
+        ));
+
+        run_to_block(22);
+
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(10));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(20));
+        assert!(!PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20,
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 2u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: 10,
+        });
+
+        assert_ok!(VestedRewards::vested_transfer(
+            RuntimeOrigin::signed(alice()),
+            bob(),
+            schedule
+        ));
+
+        assert!(VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(10));
+        assert!(!ClaimSchedules::<Runtime>::contains_key(20));
+        assert!(PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+
+        run_to_block(23);
+
+        assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
+        assert!(!PendingClaims::<Runtime>::get().contains(&Claim {
+            account_id: bob(),
+            asset_id: DOT,
+        }));
+        assert_ok!(Tokens::transfer(
+            RuntimeOrigin::signed(bob()),
+            alice(),
+            DOT,
+            20,
+        ));
+        assert_eq!(Tokens::free_balance(DOT, &bob()), 0);
+    })
+}
+
+#[cfg(feature = "wip")] // Auto Vesting
+#[test]
 fn auto_claim_works_fine_for_pending() {
     ExtBuilder::default().build().execute_with(|| {
         let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
