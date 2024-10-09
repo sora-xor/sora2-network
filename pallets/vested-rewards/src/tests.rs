@@ -2121,6 +2121,7 @@ fn auto_claim_hook_works_fine_if_period_lasts_before_transction() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -2152,6 +2153,7 @@ fn auto_claim_hook_works_fine_if_period_lasts_before_transction() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -2200,6 +2202,7 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
                 period: 10u64,
                 period_count: 2u32,
                 per_period: 10,
+                remainder_amount: 10,
             });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -2243,6 +2246,7 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
                 period: 10u64,
                 period_count: 2u32,
                 per_period: 10,
+                remainder_amount: 10,
             });
 
         assert_ok!(VestedRewards::vested_transfer(
