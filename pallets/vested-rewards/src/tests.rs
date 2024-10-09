@@ -1039,6 +1039,7 @@ fn linear_vested_transfer_works() {
             period: 10u64,
             period_count: 1u32,
             per_period: 100,
+            remainder_amount: 0,
         });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
@@ -1048,6 +1049,7 @@ fn linear_vested_transfer_works() {
                 period: 10u64,
                 period_count: 1u32,
                 per_period: 100,
+                remainder_amount: 0,
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1091,6 +1093,7 @@ fn self_linear_vesting() {
             period: 10u64,
             period_count: 1u32,
             per_period: ALICE_BALANCE,
+            remainder_amount: 0,
         });
 
         let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
@@ -1099,6 +1102,7 @@ fn self_linear_vesting() {
             period: 10u64,
             period_count: 1u32,
             per_period: ALICE_BALANCE,
+            remainder_amount: 0,
         });
 
         let bad_schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
@@ -1107,6 +1111,7 @@ fn self_linear_vesting() {
             period: 10u64,
             period_count: 1u32,
             per_period: 10 * ALICE_BALANCE,
+            remainder_amount: 0,
         });
 
         assert_noop!(
@@ -1148,8 +1153,9 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             asset_id: DOT,
             start: 0u64,
             period: 10u64,
-            period_count: 2u32,
+            period_count: 3u32,
             per_period: 10,
+            remainder_amount: 1,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1163,6 +1169,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1177,8 +1184,9 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
                 asset_id: DOT,
                 start: 10u64,
                 period: 13u64,
-                period_count: 1u32,
+                period_count: 2u32,
                 per_period: 7,
+                remainder_amount: 1,
             });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -1195,6 +1203,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
                 period: 13u64,
                 period_count: 1u32,
                 per_period: 7,
+                remainder_amount: 0,
             });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -1210,6 +1219,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
                 period: 13u64,
                 period_count: 1u32,
                 per_period: 7,
+                remainder_amount: 0,
             });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -1222,7 +1232,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
             Tokens::locks(&bob(), DOT).get(0),
             Some(&BalanceLock {
                 id: VESTING_LOCK_ID,
-                amount: 24,
+                amount: 26,
             })
         );
         assert_eq!(
@@ -1234,6 +1244,7 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
         );
     });
 }
+
 #[cfg(feature = "wip")] // ORML multi asset vesting
 #[cfg(feature = "wip")] // Pending Vesting
 #[test]
@@ -1245,6 +1256,7 @@ fn cannot_use_fund_if_not_claimed_from_linear() {
             period: 10u64,
             period_count: 1u32,
             per_period: 50,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1259,6 +1271,7 @@ fn cannot_use_fund_if_not_claimed_from_linear() {
                 period: 10u64,
                 period_count: 1u32,
                 per_period: 50,
+                remainder_amount: 0,
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1279,8 +1292,9 @@ fn linear_vesting_unlock_correct() {
                 manager_id: Some(alice()),
                 start: None,
                 period: 10u64,
-                period_count: 1u32,
+                period_count: 2u32,
                 per_period: 100,
+                remainder_amount: 2,
             });
 
         let schedule_unlocked =
@@ -1289,8 +1303,9 @@ fn linear_vesting_unlock_correct() {
                 manager_id: None,
                 start: Some(12_u64),
                 period: 10u64,
-                period_count: 1u32,
+                period_count: 2u32,
                 per_period: 100,
+                remainder_amount: 2,
             });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -1338,6 +1353,7 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
             period: 0u64,
             period_count: 1u32,
             per_period: 100,
+            remainder_amount: 0,
         });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
@@ -1347,6 +1363,7 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
                 period: 0u64,
                 period_count: 1u32,
                 per_period: 100,
+                remainder_amount: 0,
             });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule),
@@ -1363,7 +1380,17 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
             period: 1u64,
             period_count: 0u32,
             per_period: 100,
+            remainder_amount: 0,
         });
+        let schedule_with_remainder =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: DOT,
+                start: 1u64,
+                period: 1u64,
+                period_count: 1u32,
+                per_period: 100,
+                remainder_amount: 1,
+            });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id: DOT,
@@ -1372,17 +1399,45 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
                 period: 1u64,
                 period_count: 0u32,
                 per_period: 100,
+                remainder_amount: 0,
+            });
+        let schedule_locked_with_remainder =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: Some(alice()),
+                start: None,
+                period: 1u64,
+                period_count: 1u32,
+                per_period: 100,
+                remainder_amount: 1,
             });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule),
-            Error::<Runtime>::ZeroVestingPeriodCount
+            Error::<Runtime>::WrongVestingPeriodCount
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                bob(),
+                schedule_with_remainder
+            ),
+            Error::<Runtime>::WrongVestingPeriodCount
         );
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule_locked),
-            Error::<Runtime>::ZeroVestingPeriodCount
+            Error::<Runtime>::WrongVestingPeriodCount
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                bob(),
+                schedule_locked_with_remainder
+            ),
+            Error::<Runtime>::WrongVestingPeriodCount
         );
     });
 }
+
 #[cfg(feature = "wip")] // ORML multi asset vesting
 #[cfg(feature = "wip")] // Pending Vesting
 #[test]
@@ -1394,6 +1449,7 @@ fn vested_transfer_fails_if_transfer_err() {
             period: 1u64,
             period_count: 1u32,
             per_period: 100,
+            remainder_amount: 0,
         });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
@@ -1403,6 +1459,7 @@ fn vested_transfer_fails_if_transfer_err() {
                 period: 1u64,
                 period_count: 1u32,
                 per_period: 100,
+                remainder_amount: 0,
             });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), alice(), schedule),
@@ -1425,7 +1482,17 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
             period: 1u64,
             period_count: 2u32,
             per_period: Balance::MAX,
+            remainder_amount: 0,
         });
+        let schedule_remainder =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: DOT,
+                start: 1u64,
+                period: 1u64,
+                period_count: 2u32,
+                per_period: 1,
+                remainder_amount: Balance::MAX,
+            });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id: DOT,
@@ -1434,6 +1501,17 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
                 period: 10u64,
                 period_count: 1000u32,
                 per_period: Balance::MAX,
+                remainder_amount: 0,
+            });
+        let schedule_locked_remainder =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: None::<AccountId>,
+                start: Some(1_u64),
+                period: 10u64,
+                period_count: 1000u32,
+                per_period: 1,
+                remainder_amount: Balance::MAX,
             });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule),
@@ -1441,6 +1519,22 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
         );
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(alice()), bob(), schedule_locked),
+            ArithmeticError::<Runtime>,
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                bob(),
+                schedule_remainder
+            ),
+            ArithmeticError::<Runtime>,
+        );
+        assert_noop!(
+            VestedRewards::vested_transfer(
+                RuntimeOrigin::signed(alice()),
+                bob(),
+                schedule_locked_remainder
+            ),
             ArithmeticError::<Runtime>,
         );
 
@@ -1452,6 +1546,7 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
                 period: 1u64,
                 period_count: 10u32,
                 per_period: 1,
+                remainder_amount: 1,
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1475,6 +1570,7 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
                 period: 1u64,
                 period_count: 2u32,
                 per_period: 1,
+                remainder_amount: 0,
             });
 
         assert_noop!(
@@ -1491,6 +1587,7 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
                 period: 3689348814741910320u64,
                 period_count: 5u32,
                 per_period: 1,
+                remainder_amount: 0,
             });
         assert_noop!(
             VestedRewards::vested_transfer(
@@ -1510,8 +1607,9 @@ fn vested_transfer_check_for_min() {
             asset_id: DOT,
             start: 1u64,
             period: 10u64,
-            period_count: 1u32,
-            per_period: 3,
+            period_count: 2u32,
+            per_period: 2,
+            remainder_amount: 1,
         });
         assert_noop!(
             VestedRewards::vested_transfer(RuntimeOrigin::signed(bob()), alice(), schedule),
@@ -1530,6 +1628,7 @@ fn claim_linear_works() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
@@ -1539,6 +1638,7 @@ fn claim_linear_works() {
                 period: 10u64,
                 period_count: 2u32,
                 per_period: 10,
+                remainder_amount: 10,
             });
         let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: KSM,
@@ -1546,6 +1646,7 @@ fn claim_linear_works() {
             period: 50u64,
             period_count: 1u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1626,6 +1727,7 @@ fn claim_for_works() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -1673,6 +1775,7 @@ fn update_vesting_schedules_works() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1686,6 +1789,7 @@ fn update_vesting_schedules_works() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1701,6 +1805,7 @@ fn update_vesting_schedules_works() {
                 period: 10u64,
                 period_count: 2u32,
                 per_period: 10,
+                remainder_amount: 0,
             });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1715,6 +1820,7 @@ fn update_vesting_schedules_works() {
                 period: 20u64,
                 period_count: 2u32,
                 per_period: 10,
+                remainder_amount: 0,
             });
         let updated_schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
@@ -1724,6 +1830,7 @@ fn update_vesting_schedules_works() {
                 period: 20u64,
                 period_count: 2u32,
                 per_period: 5,
+                remainder_amount: 5,
             });
         assert_ok!(VestedRewards::update_vesting_schedules(
             RuntimeOrigin::root(),
@@ -1780,6 +1887,7 @@ fn multiple_vesting_linear_schedule_claim_works() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1792,6 +1900,7 @@ fn multiple_vesting_linear_schedule_claim_works() {
             period: 10u64,
             period_count: 3u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -1835,6 +1944,7 @@ fn exceeding_maximum_schedules_should_fail() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         for _ in 0u32..MaxVestingSchedules::get() {
             assert_ok!(VestedRewards::vested_transfer(
@@ -1867,6 +1977,7 @@ fn cliff_vesting_linear_works() {
             period: 1,
             period_count: 1,
             per_period: VESTING_AMOUNT,
+            remainder_amount: 0,
         });
 
         let balance_lock = BalanceLock {
@@ -1923,6 +2034,7 @@ fn auto_claim_hook_works_fine() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         let schedule_locked =
             VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
@@ -1932,6 +2044,7 @@ fn auto_claim_hook_works_fine() {
                 period: 10u64,
                 period_count: 2u32,
                 per_period: 10,
+                remainder_amount: 10,
             });
         let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: KSM,
@@ -1939,6 +2052,7 @@ fn auto_claim_hook_works_fine() {
             period: 40u64,
             period_count: 1u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -2180,6 +2294,7 @@ fn auto_claim_works_fine_for_pending() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         let schedule_new = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: DOT,
@@ -2187,6 +2302,7 @@ fn auto_claim_works_fine_for_pending() {
             period: 10u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 0,
         });
 
         assert_ok!(VestedRewards::vested_transfer(
@@ -2248,6 +2364,7 @@ fn auto_claim_works_fine_for_pending_and_block() {
             period: 11u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         let schedule_bob = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: KSM,
@@ -2255,6 +2372,7 @@ fn auto_claim_works_fine_for_pending_and_block() {
             period: 11u64,
             period_count: 2u32,
             per_period: 10,
+            remainder_amount: 10,
         });
         let schedule_eve = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: DOT,
@@ -2262,6 +2380,7 @@ fn auto_claim_works_fine_for_pending_and_block() {
             period: 23u64,
             period_count: 1u32,
             per_period: 10,
+            remainder_amount: 0,
         });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
