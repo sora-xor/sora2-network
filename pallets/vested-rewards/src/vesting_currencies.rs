@@ -148,6 +148,7 @@ pub struct LinearVestingSchedule<BlockNumber, AssetId: Copy> {
     #[codec(compact)]
     pub per_period: Balance,
     /// Amount of remainder tokens to release per last period
+    #[codec(compact)]
     pub remainder_amount: Balance,
 }
 
@@ -272,6 +273,7 @@ pub struct LinearPendingVestingSchedule<BlockNumber, AssetId: Copy, AccountId> {
     #[codec(compact)]
     pub per_period: Balance,
     /// Amount of remainder tokens to release per last period
+    #[codec(compact)]
     pub remainder_amount: Balance,
 }
 
