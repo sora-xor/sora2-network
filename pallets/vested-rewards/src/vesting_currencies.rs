@@ -207,14 +207,14 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
         {
             Ok(None)
         } else {
-            let next_period = time
+            let to_next_period_count = time
                 .saturating_sub(self.start)
                 .saturating_add(self.period)
                 .checked_div(&self.period)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            if next_period <= self.period_count.into() {
+            if to_next_period_count <= self.period_count.into() {
                 Ok(Some(
-                    next_period
+                    to_next_period_count
                         .checked_mul(&self.period)
                         .ok_or(Error::<T>::ArithmeticError)?
                         .checked_add(&self.start)
@@ -319,14 +319,14 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
         {
             return Ok(None);
         } else {
-            let next_period = time
+            let to_next_period_count = time
                 .saturating_sub(self.start.unwrap())
                 .saturating_add(self.period)
                 .checked_div(&self.period)
                 .ok_or(Error::<T>::ArithmeticError)?;
-            if next_period <= self.period_count.into() {
+            if to_next_period_count <= self.period_count.into() {
                 Ok(Some(
-                    next_period
+                    to_next_period_count
                         .checked_mul(&self.period)
                         .ok_or(Error::<T>::ArithmeticError)?
                         .checked_add(&self.start.unwrap())
