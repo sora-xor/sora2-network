@@ -8508,6 +8508,7 @@ dependencies = [
  "common",
  "env_logger",
  "frame-remote-externalities",
+ "frame-support",
  "framenode-runtime",
  "hex",
  "jsonrpsee",
