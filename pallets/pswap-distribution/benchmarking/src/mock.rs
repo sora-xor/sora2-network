@@ -34,7 +34,7 @@ use common::{
     balance, fixed, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
     mock_tokens_config, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, VXOR, XOR,
+    Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, VXOR, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};

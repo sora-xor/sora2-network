@@ -41,8 +41,8 @@ use common::{
     mock_technical_config, mock_tokens_config, mock_vested_rewards_config, Amount, AssetId32,
     AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
     FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD,
-    USDT, VAL, VXOR, XOR, XST,
+    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT,
+    VAL, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
