@@ -292,14 +292,13 @@ impl<T: Config> Pallet<T> {
         // Independent logic for some schedules, so implementation only there
         match filter_schedule {
             VestingScheduleOf::<T>::LinearPendingVestingSchedule(filter_schedule) => {
-                filter_schedule.manager_id = Some(manager);
+                filter_schedule.manager_id = manager;
                 <VestingSchedules<T>>::try_mutate(dest.clone(), |schedules| {
                     for sched in schedules.iter_mut() {
                         if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(sched) = sched {
-                            if sched.eq(&filter_schedule) {
+                            if sched.eq(&filter_schedule) && sched.start.is_none() {
                                 sched.start = Some(start);
                                 sched.ensure_valid_vesting_schedule::<T>()?;
-                                sched.manager_id = None;
                                 Self::deposit_event(Event::PendingScheduleUnlocked {
                                     dest: dest.clone(),
                                     pending_schedule:
@@ -315,7 +314,6 @@ impl<T: Config> Pallet<T> {
                 })
                 .and_then(|_| {
                     filter_schedule.start = Some(start);
-                    filter_schedule.manager_id = None;
                     Self::set_auto_claim_block(
                         dest.clone(),
                         &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
