@@ -1317,7 +1317,6 @@ fn linear_vesting_unlock_correct() {
             VestedRewards::unlock_pending_schedule_by_manager(
                 RuntimeOrigin::signed(bob()),
                 bob(),
-                None,
                 schedule_locked.clone(),
             ),
             Error::<Runtime>::PendingScheduleNotExist
@@ -1326,7 +1325,6 @@ fn linear_vesting_unlock_correct() {
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
             bob(),
-            None,
             schedule_locked,
         ));
         System::assert_last_event(RuntimeEvent::VestedRewards(
@@ -1548,6 +1546,26 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
                 per_period: 1,
                 remainder_amount: 1,
             });
+        let schedule_locked_right_unlock_wrong =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: alice(),
+                start: Some(u64::MAX),
+                period: 1u64,
+                period_count: 10u32,
+                per_period: 1,
+                remainder_amount: 1,
+            });
+        let schedule_locked_right_unlock_right =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: alice(),
+                start: Some(1),
+                period: 1u64,
+                period_count: 10u32,
+                per_period: 1,
+                remainder_amount: 1,
+            });
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
             bob(),
@@ -1557,16 +1575,14 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
             VestedRewards::unlock_pending_schedule_by_manager(
                 RuntimeOrigin::signed(alice()),
                 bob(),
-                Some(u64::MAX),
-                schedule_locked_right.clone()
+                schedule_locked_right_unlock_wrong.clone()
             ),
             ArithmeticError::<Runtime>,
         );
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
             bob(),
-            Some(1),
-            schedule_locked_right
+            schedule_locked_right_unlock_right
         ));
 
         let another_schedule =
@@ -1646,6 +1662,16 @@ fn claim_linear_works() {
                 per_period: 10,
                 remainder_amount: 10,
             });
+        let schedule_locked_unlock =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: alice(),
+                start: Some(0),
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+                remainder_amount: 10,
+            });
         let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: KSM,
             start: 0u64,
@@ -1668,8 +1694,7 @@ fn claim_linear_works() {
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
             bob(),
-            Some(0_u64),
-            schedule_locked
+            schedule_locked_unlock
         ),);
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -2052,6 +2077,16 @@ fn auto_claim_hook_works_fine() {
                 per_period: 10,
                 remainder_amount: 10,
             });
+        let schedule_locked_unlock =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: alice(),
+                start: Some(0),
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+                remainder_amount: 10,
+            });
         let schedule_ksm = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
             asset_id: KSM,
             start: 10u64,
@@ -2074,8 +2109,7 @@ fn auto_claim_hook_works_fine() {
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
             bob(),
-            Some(0_u64),
-            schedule_locked
+            schedule_locked_unlock
         ),);
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -2210,6 +2244,16 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
                 per_period: 10,
                 remainder_amount: 10,
             });
+        let schedule_locked_unlock =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: alice(),
+                start: Some(0),
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+                remainder_amount: 10,
+            });
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -2224,8 +2268,7 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
             bob(),
-            Some(0_u64),
-            schedule_locked
+            schedule_locked_unlock
         ),);
         run_to_block(22);
 
@@ -2254,6 +2297,16 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
                 per_period: 10,
                 remainder_amount: 10,
             });
+        let schedule_locked_unlock =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: DOT,
+                manager_id: alice(),
+                start: Some(2),
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+                remainder_amount: 10,
+            });
 
         assert_ok!(VestedRewards::vested_transfer(
             RuntimeOrigin::signed(alice()),
@@ -2272,8 +2325,7 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
         assert_ok!(VestedRewards::unlock_pending_schedule_by_manager(
             RuntimeOrigin::signed(alice()),
             bob(),
-            Some(2_u64),
-            schedule_locked
+            schedule_locked_unlock
         ),);
         run_to_block(23);
 
