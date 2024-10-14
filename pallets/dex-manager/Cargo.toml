@@ -54,6 +54,4 @@ std = [
     'permissions/std',
 ]
 
-wip = []
-
 try-runtime = ["frame-support/try-runtime"]

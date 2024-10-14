@@ -30,10 +30,9 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-use common::KUSD;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PriceVariant, DEFAULT_BALANCE_PRECISION,
-    ETH, PSWAP, VAL, XOR, XST, XSTUSD,
+    ETH, KUSD, PSWAP, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
@@ -71,7 +70,7 @@ fn should_not_create_order_book_with_disallowed_dex_id() {
             E::NotAllowedDEXId,
         );
 
-        // any number except 0 & 2 (polkaswap & polkaswap kusd) should not be allowed
+        // any number except 0, 2 or 3 (polkaswap, polkaswap kusd or polkaswap vxor) should not be allowed
         order_book_id.dex_id = 12345678;
         assert_err!(
             OrderBookPallet::create_orderbook(RawOrigin::Root.into(), order_book_id, 0, 0, 0, 0),
@@ -150,6 +149,44 @@ fn should_create_order_book_with_correct_dex_id_polkaswap_kusd() {
 }
 
 #[test]
+fn should_create_order_book_with_correct_dex_id_polkaswap_vxor() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapVXOR.into(),
+            base: VAL,
+            quote: VXOR,
+        };
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(accounts::alice::<Runtime>()).into(),
+            order_book_id.dex_id,
+            order_book_id.quote,
+            order_book_id.base
+        ));
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id,
+            balance!(0.00001),
+            balance!(0.00001),
+            balance!(1),
+            balance!(1000)
+        ));
+
+        assert_eq!(
+            OrderBookPallet::order_books(order_book_id).unwrap(),
+            OrderBook::new(
+                order_book_id,
+                OrderPrice::divisible(balance!(0.00001)),
+                OrderVolume::divisible(balance!(0.00001)),
+                OrderVolume::divisible(balance!(1)),
+                OrderVolume::divisible(balance!(1000))
+            )
+        );
+    });
+}
+
+#[test]
 fn should_not_create_order_book_with_same_assets() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
@@ -188,6 +225,17 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: common::DEXId::PolkaswapKUSD.into(),
+            base: VAL,
+            quote: XOR,
+        };
+
+        assert_err!(
+            OrderBookPallet::create_orderbook(RawOrigin::Root.into(), order_book_id, 0, 0, 0, 0),
+            E::NotAllowedQuoteAsset
+        );
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: common::DEXId::PolkaswapVXOR.into(),
             base: VAL,
             quote: XOR,
         };

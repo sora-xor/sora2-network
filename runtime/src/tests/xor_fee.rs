@@ -34,13 +34,15 @@ use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, PoolXYK, Referrals, ReferrerWeight,
     Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens, Weight, XorBurnedWeight, XorFee,
-    XorIntoValBurnedWeight,
+    XorIntoVXorBurnedWeight, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use common::DOT;
 use common::{
-    balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode, PriceVariant, VAL, XOR,
+    balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode, PriceVariant, VAL, VXOR, XOR,
 };
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
@@ -57,8 +59,14 @@ use referrals::ReferrerBalances;
 use sp_runtime::traits::{Dispatchable, Saturating, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use vested_rewards::vesting_currencies::{
+    LinearVestingSchedule, VestingSchedule, VestingScheduleVariant,
+};
+#[cfg(feature = "wip")] // ORML multi asset vesting
+use vested_rewards::{Config, WeightInfo};
 use xor_fee::extension::ChargeTransactionPayment;
-use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVal};
+use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVXor, XorToVal};
 
 type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
@@ -161,7 +169,8 @@ fn referrer_gets_bonus_from_tx_fee() {
         assert_eq!(Balances::free_balance(alice()), balance_after_reserving_fee);
         let weights_sum: FixedWrapper = FixedWrapper::from(balance!(ReferrerWeight::get()))
             + FixedWrapper::from(balance!(XorBurnedWeight::get()))
-            + FixedWrapper::from(balance!(XorIntoValBurnedWeight::get()));
+            + FixedWrapper::from(balance!(XorIntoValBurnedWeight::get()))
+            + FixedWrapper::from(balance!(XorIntoVXorBurnedWeight::get()));
         let referrer_weight = FixedWrapper::from(balance!(ReferrerWeight::get()));
         let initial_balance = FixedWrapper::from(INITIAL_BALANCE);
         let referrer_fee = SMALL_FEE * referrer_weight / weights_sum;
@@ -204,13 +213,29 @@ fn notify_val_burned_works() {
 
         increase_balance(bob(), XOR.into(), 2 * INITIAL_RESERVES);
         increase_balance(bob(), VAL.into(), 2 * INITIAL_RESERVES);
+        increase_balance(bob(), VXOR.into(), 2 * INITIAL_RESERVES);
 
         ensure_pool_initialized(XOR.into(), VAL.into());
+        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), VXOR.into())
+            .unwrap();
+        ensure_pool_initialized(XOR.into(), VXOR.into());
         PoolXYK::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),
             VAL.into(),
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+        )
+        .unwrap();
+
+        PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(bob()),
+            0,
+            XOR.into(),
+            VXOR.into(),
             INITIAL_RESERVES,
             INITIAL_RESERVES,
             INITIAL_RESERVES,
@@ -225,7 +250,8 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
 
-        let mut total_xor_val = 0;
+        let mut total_xor_to_val = 0;
+        let mut total_xor_to_vxor = 0;
         for _ in 0..3 {
             let call: &<Runtime as frame_system::Config>::RuntimeCall =
                 &RuntimeCall::Assets(assets::Call::transfer {
@@ -248,31 +274,49 @@ fn notify_val_burned_works() {
             )
             .is_ok());
             let xor_into_val_burned_weight = XorIntoValBurnedWeight::get() as u128;
+            let xor_into_vxor_burned_weight = XorIntoVXorBurnedWeight::get() as u128;
             let weights_sum = ReferrerWeight::get() as u128
                 + XorBurnedWeight::get() as u128
-                + xor_into_val_burned_weight;
-            let x =
-                FixedWrapper::from(SMALL_FEE * xor_into_val_burned_weight as u128 / weights_sum);
-            let y = INITIAL_RESERVES;
-            let expected_val_burned = x.clone() * y / (x.clone() + y);
-            total_xor_val += expected_val_burned.into_balance();
+                + xor_into_val_burned_weight
+                + xor_into_vxor_burned_weight;
+            total_xor_to_val += SMALL_FEE * xor_into_val_burned_weight as u128 / weights_sum;
+            total_xor_to_vxor += SMALL_FEE
+                * (xor_into_vxor_burned_weight + ReferrerWeight::get() as u128)
+                / weights_sum;
         }
 
         // The correct answer is 3E-13 away
-        assert_eq!(XorToVal::<Runtime>::get(), total_xor_val + 36750000);
+        assert_eq!(XorToVal::<Runtime>::get(), total_xor_to_val);
+        assert_eq!(XorToVXor::<Runtime>::get(), total_xor_to_vxor);
         assert_eq!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
             0_u128.into()
+        );
+        assert_eq!(
+            crate::Assets::total_issuance(&VXOR.into()).unwrap(),
+            balance!(20000)
         );
 
         <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
             0,
         );
 
+        let y = FixedWrapper::from(INITIAL_RESERVES);
+        let x = FixedWrapper::from(total_xor_to_val) * fixed_wrapper!(0.997);
+        let val_burned = (x.clone() * y.clone()) / (x + y.clone());
+
         // The correct answer is 2E-13 away
         assert_eq!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
-            total_xor_val - 3150072839481
+            val_burned.try_into_balance().unwrap()
+        );
+
+        let x = FixedWrapper::from(total_xor_to_vxor) * fixed_wrapper!(0.997);
+        let vxor_burned = (x.clone() * y.clone()) / (x + y);
+
+        assert_eq!(
+            crate::Assets::total_issuance(&VXOR.into()).unwrap(),
+            balance!(20000) - vxor_burned.try_into_balance().unwrap()
         );
     });
 }
@@ -1301,6 +1345,118 @@ fn fee_payment_postpone_failed_xorless_transfer() {
         assert_err!(
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, SMALL_FEE, 0),
             TransactionValidityError::Invalid(InvalidTransaction::Payment)
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn right_custom_fee_for_vested_transfer_ok() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(10);
+        give_xor_initial_balance(alice());
+        increase_balance(alice(), DOT.into(), balance!(10));
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: alice(),
+            schedule: schedule.clone(),
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
+        let claim_fee = multiplier.saturating_mul_int(
+            pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
+                <Runtime as Config>::WeightInfo::claim_unlocked(),
+            ),
+        );
+        let transaction_fee = multiplier.saturating_mul_int(pallet_transaction_payment::Pallet::<
+            Runtime,
+        >::weight_to_fee(
+            <Runtime as Config>::WeightInfo::vested_transfer(),
+        ));
+        let fee_per_all_claims = claim_fee.saturating_mul(schedule.claims_count() as Balance);
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance
+                - multiplier.saturating_mul_int(SMALL_FEE)
+                - fee_per_all_claims
+                - transaction_fee
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // ORML multi asset vesting
+#[test]
+fn right_custom_fee_for_vested_transfer_err() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(10);
+        give_xor_initial_balance(alice());
+        increase_balance(alice(), DOT.into(), balance!(10));
+
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 0u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
+        let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: alice(),
+            schedule: schedule.clone(),
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            len,
+            &Err(vested_rewards::Error::<Runtime>::ZeroVestingPeriod.into())
+        )
+        .is_ok());
+
+        let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
+        let transaction_fee = multiplier.saturating_mul_int(pallet_transaction_payment::Pallet::<
+            Runtime,
+        >::weight_to_fee(
+            <Runtime as Config>::WeightInfo::vested_transfer(),
+        ));
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()).unwrap(),
+            initial_balance - multiplier.saturating_mul_int(SMALL_FEE) - transaction_fee
         );
     });
 }

@@ -31,32 +31,35 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
-
-#[allow(unused_imports)]
+#![allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
-
+use crate::vesting_currencies::VestingSchedule;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::CrowdloanTag;
-use common::FromGenericPair;
 use common::{
-    balance, AssetIdOf, AssetInfoProvider, AssetManager, OnPswapBurned, PswapRemintInfo,
-    RewardReason, Vesting, PSWAP,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, BalanceOf, CrowdloanTag, FromGenericPair,
+    OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
 };
 use frame_support::dispatch::DispatchResult;
-use frame_support::ensure;
-use frame_support::fail;
-use frame_support::traits::{Get, IsType};
+use frame_support::traits::{Defensive, Get, IsType, LockIdentifier};
+use frame_support::weights::Weight;
+use frame_support::{ensure, fail, log, BoundedVec};
 use frame_system::pallet_prelude::BlockNumberFor;
+use log::error;
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{CheckedSub, Zero};
-use sp_runtime::DispatchError;
-use sp_runtime::{Permill, Perquintill};
+use sp_core::bounded::BoundedBTreeSet;
+use sp_runtime::traits::{
+    BlockNumberProvider, CheckedAdd, CheckedMul, CheckedSub, StaticLookup, Zero,
+};
+use sp_runtime::{DispatchError, Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
 use sp_std::str;
 use sp_std::vec::Vec;
+use traits::{MultiCurrency, MultiLockableCurrency};
 
 pub mod weights;
 
@@ -70,9 +73,12 @@ mod tests;
 
 pub mod migrations;
 
+pub mod vesting_currencies;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
+pub const VESTING_LOCK_ID: LockIdentifier = *b"multvest";
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -82,7 +88,7 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
 )]
 pub struct RewardInfo {
-    /// Reward amount vested, denotes portion of `total_avialable` which can be claimed.
+    /// Reward amount vested, denotes portion of `total_available` which can be claimed.
     /// Reset to 0 after claim until more is vested over time.
     limit: Balance,
     /// Sum of reward amounts in `rewards`.
@@ -119,9 +125,373 @@ pub struct CrowdloanUserInfo<AssetId> {
     rewarded: Vec<(AssetId, Balance)>,
 }
 
+#[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, PartialEq, scale_info::TypeInfo)]
+pub struct Claim<AssetId, AccountId> {
+    account_id: AccountId,
+    asset_id: AssetId,
+}
+
 pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
+    #[cfg(feature = "wip")] // ORML multi asset vesting
+    fn do_claim_unlocked(
+        asset_id: AssetIdOf<T>,
+        who: &T::AccountId,
+    ) -> Result<BalanceOf<T>, DispatchError> {
+        let locked = Self::locked_balance(asset_id, who)?;
+        if locked.is_zero() {
+            T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
+        } else {
+            T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, locked)?;
+        }
+        Ok(locked)
+    }
+
+    #[cfg(feature = "wip")] // ORML multi asset vesting
+    /// Returns locked balance based on current block number.
+    fn locked_balance(
+        asset_id: AssetIdOf<T>,
+        who: &T::AccountId,
+    ) -> Result<BalanceOf<T>, DispatchError> {
+        let now = frame_system::Pallet::<T>::current_block_number();
+        <VestingSchedules<T>>::try_mutate_exists(who, |maybe_schedules| {
+            let mut total_asset: BalanceOf<T> = Zero::zero();
+
+            if let Some(schedules) = maybe_schedules.as_mut() {
+                let mut valid_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules> =
+                    BoundedVec::default();
+                for s in schedules.iter() {
+                    if s.asset_id() == asset_id {
+                        let amount = s.locked_amount(now).ok_or(Error::<T>::ArithmeticError)?;
+                        if !amount.is_zero() {
+                            total_asset = total_asset.saturating_add(amount);
+                            valid_schedules
+                                .try_push(s.clone())
+                                .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+                            Self::set_auto_claim_block(who.clone(), s)?;
+                        }
+                    } else {
+                        // Keep schedules for other assets
+                        valid_schedules
+                            .try_push(s.clone())
+                            .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+                    }
+                }
+                *maybe_schedules = if valid_schedules.is_empty() {
+                    None
+                } else {
+                    Some(valid_schedules)
+                }
+            }
+
+            return Ok(total_asset);
+        })
+    }
+
+    #[cfg(feature = "wip")] // ORML multi asset vesting
+    fn do_vested_transfer(
+        from: &T::AccountId,
+        to: &T::AccountId,
+        schedule: VestingScheduleOf<T>,
+    ) -> DispatchResult {
+        let schedule_amount = schedule.ensure_valid_vesting_schedule::<T>()?;
+        // When creating pending schedule start block is unknown,
+        // so to minimize risk of overflow and misprint check it for current block
+        if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(pending_schedule) =
+            schedule.clone()
+        {
+            pending_schedule
+                .period
+                .checked_mul(&pending_schedule.period_count.into())
+                .ok_or(Error::<T>::ArithmeticError)?
+                .checked_add(&<frame_system::Pallet<T>>::block_number())
+                .ok_or(Error::<T>::ArithmeticError)?;
+        }
+        let asset_id = schedule.asset_id();
+        let total_amount = Self::locked_balance(asset_id, to)?
+            .checked_add(schedule_amount)
+            .ok_or(Error::<T>::ArithmeticError)?;
+
+        T::Currency::transfer(asset_id, from, to, schedule_amount)?;
+        T::Currency::set_lock(VESTING_LOCK_ID, asset_id, to, total_amount)?;
+        <VestingSchedules<T>>::try_append(to, schedule.clone())
+            .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
+        Self::set_auto_claim_block(to.clone(), &schedule)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "wip")] // ORML multi asset vesting
+    fn do_update_vesting_schedules(
+        who: &T::AccountId,
+        new_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
+    ) -> DispatchResult {
+        let current_schedules = <VestingSchedules<T>>::get(who);
+        let new_asset_ids: BTreeSet<AssetIdOf<T>> = new_schedules
+            .iter()
+            .map(|schedule| schedule.asset_id())
+            .collect();
+        let assets_to_remove: BTreeSet<AssetIdOf<T>> = current_schedules
+            .iter()
+            .filter(|schedule| !new_asset_ids.contains(&schedule.asset_id()))
+            .map(|schedule| schedule.asset_id())
+            .collect();
+
+        // empty vesting schedules cleanup the storage and unlock the fund
+        for asset_id in assets_to_remove {
+            T::Currency::remove_lock(VESTING_LOCK_ID, asset_id, who)?;
+        }
+        if new_asset_ids.len().is_zero() {
+            <VestingSchedules<T>>::remove(who);
+            return Ok(());
+        }
+
+        let mut total_amounts: BTreeMap<AssetIdOf<T>, Balance> = BTreeMap::new();
+
+        // Calculate amount of assets per new schedule
+        for schedule in new_schedules.iter() {
+            let amount = schedule.ensure_valid_vesting_schedule::<T>()?;
+            total_amounts
+                .entry(schedule.asset_id())
+                .and_modify(|acc_amount| {
+                    *acc_amount = acc_amount
+                        .checked_add(amount)
+                        .ok_or_else(|| Error::<T>::ArithmeticError)
+                        .unwrap();
+                })
+                .or_insert(amount);
+        }
+
+        for asset_id in new_asset_ids {
+            let asset_amount = *total_amounts
+                .get(&asset_id)
+                .expect("Error while get total amount of asset");
+            ensure!(
+                T::Currency::free_balance(asset_id, who) >= asset_amount,
+                Error::<T>::InsufficientBalanceToLock,
+            );
+            T::Currency::set_lock(VESTING_LOCK_ID, asset_id, who, asset_amount)?;
+        }
+
+        for schedule in new_schedules.iter() {
+            Self::set_auto_claim_block(who.clone(), &schedule)?;
+        }
+
+        <VestingSchedules<T>>::insert(who, new_schedules);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "wip")] // Pending Vesting
+    fn do_unlock_pending_schedule_by_manager(
+        manager: T::AccountId,
+        dest: T::AccountId,
+        start: T::BlockNumber,
+        filter_schedule: &mut VestingScheduleOf<T>,
+    ) -> DispatchResult {
+        // Independent logic for some schedules, so implementation only there
+        match filter_schedule {
+            VestingScheduleOf::<T>::LinearPendingVestingSchedule(filter_schedule) => {
+                filter_schedule.manager_id = Some(manager);
+                <VestingSchedules<T>>::try_mutate(dest.clone(), |schedules| {
+                    for sched in schedules.iter_mut() {
+                        if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(sched) = sched {
+                            if sched.eq(&filter_schedule) {
+                                sched.start = Some(start);
+                                sched.ensure_valid_vesting_schedule::<T>()?;
+                                sched.manager_id = None;
+                                Self::deposit_event(Event::PendingScheduleUnlocked {
+                                    dest: dest.clone(),
+                                    pending_schedule:
+                                        VestingScheduleOf::<T>::LinearPendingVestingSchedule(
+                                            sched.clone(),
+                                        ),
+                                });
+                                return Ok(());
+                            }
+                        }
+                    }
+                    return Err(Error::<T>::PendingScheduleNotExist.into());
+                })
+                .and_then(|_| {
+                    filter_schedule.start = Some(start);
+                    filter_schedule.manager_id = None;
+                    Self::set_auto_claim_block(
+                        dest.clone(),
+                        &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
+                            filter_schedule.clone(),
+                        ),
+                    )?;
+                    Ok(())
+                })
+            }
+            _ => Err(Error::<T>::WrongScheduleVariant.into()),
+        }
+    }
+
+    #[allow(unused)]
+    fn set_auto_claim_block(
+        who: AccountIdOf<T>,
+        schedule: &VestingScheduleOf<T>,
+    ) -> DispatchResult {
+        #[cfg(feature = "wip")] // Auto Vesting
+        {
+            let claim_asset_for_account = Claim::<AssetIdOf<T>, AccountIdOf<T>> {
+                account_id: who.clone(),
+                asset_id: schedule.asset_id(),
+            };
+
+            if let Some(block_number) =
+                schedule.next_claim_block::<T>(frame_system::Pallet::<T>::current_block_number())?
+            {
+                if !<ClaimSchedules<T>>::get(block_number).contains(&claim_asset_for_account) {
+                    <ClaimSchedules<T>>::append(block_number, claim_asset_for_account.clone())
+                }
+            } else {
+                if let Ok(vesting_schedules) = <VestingSchedules<T>>::try_get(who) {
+                    if schedule.end().is_some()
+                        && vesting_schedules.contains(schedule)
+                        && !<PendingClaims<T>>::get().contains(&claim_asset_for_account)
+                    {
+                        <PendingClaims<T>>::append(claim_asset_for_account)
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "wip")] // Auto Vesting
+    fn do_auto_claim(claim: &ClaimOf<T>) {
+        match Self::do_claim_unlocked(claim.asset_id, &claim.account_id) {
+            Ok(locked_amount) => {
+                Self::deposit_event(Event::<T>::ClaimedVesting {
+                    who: claim.account_id.clone(),
+                    asset_id: claim.asset_id,
+                    locked_amount,
+                });
+            }
+            Err(err) => {
+                log::error!("Error while claim: {:?}", err)
+            }
+        }
+    }
+
+    #[cfg(feature = "wip")] // Auto Vesting
+    fn claim_for_vec(
+        claim_for: Vec<ClaimOf<T>>,
+        max_claims: usize,
+        total_claims: &mut usize,
+        new_pending_claims: &mut Vec<ClaimOf<T>>,
+    ) {
+        if claim_for.len() <= max_claims {
+            *total_claims = total_claims.saturating_add(claim_for.len());
+
+            claim_for.iter().for_each(|claim| {
+                Self::do_auto_claim(claim);
+            });
+        } else {
+            claim_for[0..max_claims].iter().for_each(|claim| {
+                Self::do_auto_claim(claim);
+            });
+            *new_pending_claims = claim_for[max_claims..].to_vec();
+        }
+    }
+
+    #[cfg(feature = "wip")] // Auto Vesting
+    /// Auto claim unlocked tokens from VestingSchedules
+    fn auto_claim(current_block: BlockNumberFor<T>, claim_weight: Weight) -> Weight {
+        let mut weight: Weight = T::DbWeight::get().reads(3);
+        let max_weight = T::MaxWeightForAutoClaim::get();
+        let max_claims = max_weight
+            .ref_time()
+            .checked_div(claim_weight.ref_time())
+            .min(
+                max_weight
+                    .proof_size()
+                    .checked_div(claim_weight.proof_size()),
+            )
+            .unwrap_or_else(|| {
+                log::log!(log::Level::Error, "Not correct claim weight");
+                0
+            }) as usize;
+
+        let mut total_claims = 0_usize;
+
+        let pending_claims = PendingClaims::<T>::try_get();
+        let block_claims = ClaimSchedules::<T>::try_get(current_block);
+        if block_claims.is_ok() {
+            ClaimSchedules::<T>::remove(current_block);
+            weight = weight.saturating_add(T::DbWeight::get().writes(1));
+        }
+        let mut new_pending_claims: Vec<ClaimOf<T>> = Vec::new();
+
+        match (pending_claims, block_claims) {
+            (Ok(pending_claims), Ok(mut block_claims)) => {
+                // Remove duplicated Claims
+                block_claims.retain(|claim| !pending_claims.contains(claim));
+                if pending_claims.len() <= max_claims {
+                    total_claims = total_claims.saturating_add(pending_claims.len());
+                    let remaining_claims = max_claims - total_claims;
+                    pending_claims.iter().for_each(|claim| {
+                        Self::do_auto_claim(claim);
+                    });
+                    if block_claims.len() <= remaining_claims {
+                        total_claims = total_claims.saturating_add(block_claims.len());
+                        block_claims.iter().for_each(|claim| {
+                            Self::do_auto_claim(claim);
+                        });
+                    } else {
+                        block_claims[0..remaining_claims].iter().for_each(|claim| {
+                            Self::do_auto_claim(claim);
+                        });
+                        total_claims = max_claims;
+                        new_pending_claims = block_claims[remaining_claims..].to_vec();
+                    }
+                } else {
+                    pending_claims[0..max_claims].iter().for_each(|claim| {
+                        Self::do_auto_claim(claim);
+                    });
+                    new_pending_claims = pending_claims[max_claims..].to_vec();
+                    new_pending_claims.extend(block_claims);
+                }
+                ClaimSchedules::<T>::remove(current_block);
+                weight = weight.saturating_add(T::DbWeight::get().writes(1));
+            }
+            (Ok(pending_claims), Err(_)) => {
+                Self::claim_for_vec(
+                    pending_claims,
+                    max_claims,
+                    &mut total_claims,
+                    &mut new_pending_claims,
+                );
+            }
+            (Err(_), Ok(block_claims)) => {
+                Self::claim_for_vec(
+                    block_claims,
+                    max_claims,
+                    &mut total_claims,
+                    &mut new_pending_claims,
+                );
+                ClaimSchedules::<T>::remove(current_block);
+                weight = weight.saturating_add(T::DbWeight::get().writes(1));
+            }
+            _ => return weight,
+        }
+
+        weight = weight
+            .saturating_add(claim_weight.saturating_mul(total_claims as u64))
+            .saturating_add(T::DbWeight::get().writes(1));
+
+        if new_pending_claims.is_empty() {
+            PendingClaims::<T>::kill();
+        } else {
+            PendingClaims::<T>::put(new_pending_claims);
+        }
+
+        weight
+    }
+
     /// Stores a new reward for a given account_id, supported by a reward reason.
     /// Returns error in case of failure during incrementing the reference counter on an account.
     /// Interacts with the `Rewards` StorageMap and the `TotalRewards` StorageValue;
@@ -483,13 +853,25 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AssetIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
+    use common::{
+        AssetIdOf, AssetName, AssetSymbol, BalanceOf, BalancePrecision, ContentSource, Description,
+    };
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use sp_std::collections::btree_map::BTreeMap;
+    use vesting_currencies::VestingScheduleVariant;
+
+    pub(crate) type VestingScheduleOf<T> = VestingScheduleVariant<
+        <T as frame_system::Config>::BlockNumber,
+        AssetIdOf<T>,
+        AccountIdOf<T>,
+    >;
+
+    #[cfg(feature = "wip")] // Auto Vesting
+    pub(crate) type ClaimOf<T> = Claim<AssetIdOf<T>, AccountIdOf<T>>;
 
     #[pallet::config]
     pub trait Config:
@@ -516,6 +898,21 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+        // Vesting and locking for multi assets
+        /// The maximum vesting schedules
+        type MaxVestingSchedules: Get<u32>;
+        type Currency: MultiLockableCurrency<
+            Self::AccountId,
+            Moment = Self::BlockNumber,
+            CurrencyId = AssetIdOf<Self>,
+            Balance = Balance,
+        >;
+        /// The minimum amount transferred to call `vested_transfer`.
+        #[pallet::constant]
+        type MinVestedTransfer: Get<BalanceOf<Self>>;
+        #[pallet::constant]
+        /// The maximum amount of auto claims per block.
+        type MaxWeightForAutoClaim: Get<Weight>;
     }
 
     /// The current storage version.
@@ -523,13 +920,11 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
-        #[transactional]
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -538,7 +933,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[transactional]
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
         pub fn claim_crowdloan_rewards(
@@ -552,7 +946,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[transactional]
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::update_rewards(rewards.len() as u32))]
         pub fn update_rewards(
@@ -586,7 +979,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[transactional]
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_crowdloan(contributions.len() as u32))]
         pub fn register_crowdloan(
@@ -605,6 +997,138 @@ pub mod pallet {
                 rewards,
                 contributions,
             )?;
+            Ok(().into())
+        }
+
+        #[allow(unused_variables)]
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked())]
+        pub fn claim_unlocked(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            #[cfg(feature = "wip")] // ORML multi asset vesting
+            {
+                let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
+
+                Self::deposit_event(Event::ClaimedVesting {
+                    who,
+                    asset_id,
+                    locked_amount,
+                });
+            }
+            Ok(().into())
+        }
+
+        #[allow(unused_variables)]
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
+        pub fn vested_transfer(
+            origin: OriginFor<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+            schedule: VestingScheduleOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let from = ensure_signed(origin)?;
+            #[cfg(feature = "wip")] // ORML multi asset vesting
+            {
+                let to = T::Lookup::lookup(dest)?;
+
+                if to == from {
+                    ensure!(
+                        T::Currency::free_balance(schedule.asset_id(), &from)
+                            >= VestingScheduleVariant::total_amount(&schedule)
+                                .ok_or(Error::<T>::ArithmeticError)?,
+                        Error::<T>::InsufficientBalanceToLock,
+                    );
+                }
+
+                Self::do_vested_transfer(&from, &to, schedule.clone())?;
+
+                Self::deposit_event(Event::VestingScheduleAdded {
+                    from,
+                    to,
+                    vesting_schedule: schedule,
+                });
+            }
+            Ok(().into())
+        }
+
+        #[allow(unused_variables)]
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_vesting_schedules())]
+        pub fn update_vesting_schedules(
+            origin: OriginFor<T>,
+            who: <T::Lookup as StaticLookup>::Source,
+            vesting_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            #[cfg(feature = "wip")] // ORML multi asset vesting
+            {
+                let account = T::Lookup::lookup(who)?;
+                Self::do_update_vesting_schedules(&account, vesting_schedules)?;
+
+                Self::deposit_event(Event::VestingSchedulesUpdated { who: account });
+            }
+            Ok(().into())
+        }
+
+        #[allow(unused_variables)]
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked())]
+        pub fn claim_for(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+        ) -> DispatchResultWithPostInfo {
+            let _ = ensure_signed(origin)?;
+            #[cfg(feature = "wip")] // ORML multi asset vesting
+            {
+                let who = T::Lookup::lookup(dest)?;
+                let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
+
+                Self::deposit_event(Event::ClaimedVesting {
+                    who,
+                    asset_id,
+                    locked_amount,
+                });
+            }
+            Ok(().into())
+        }
+
+        #[allow(unused_variables)]
+        #[allow(unused_mut)]
+        #[pallet::call_index(8)]
+        #[pallet::weight(<T as Config>::WeightInfo::unlock_pending_schedule_by_manager())]
+        pub fn unlock_pending_schedule_by_manager(
+            origin: OriginFor<T>,
+            dest: <T::Lookup as StaticLookup>::Source,
+            start: Option<T::BlockNumber>,
+            mut filter_schedule: VestingScheduleOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let manager = ensure_signed(origin)?;
+            #[cfg(feature = "wip")] // Pending Vesting
+            {
+                let dest = T::Lookup::lookup(dest)?;
+                match start {
+                    Some(start) => {
+                        Self::do_unlock_pending_schedule_by_manager(
+                            manager,
+                            dest,
+                            start,
+                            &mut filter_schedule,
+                        )?;
+                    }
+                    None => {
+                        Self::do_unlock_pending_schedule_by_manager(
+                            manager,
+                            dest,
+                            <frame_system::Pallet<T>>::block_number(),
+                            &mut filter_schedule,
+                        )?;
+                    }
+                }
+            }
             Ok(().into())
         }
     }
@@ -644,6 +1168,20 @@ pub mod pallet {
         CrowdloanDoesNotExists,
         /// User is not crowdloan participant
         NotCrowdloanParticipant,
+        /// Vesting period is zero
+        ZeroVestingPeriod,
+        /// Number of vests is zero or less than claims
+        WrongVestingPeriodCount,
+        /// Insufficient amount of balance to lock
+        InsufficientBalanceToLock,
+        /// The vested transfer amount is too low
+        AmountLow,
+        /// Failed because the maximum vesting schedules was exceeded
+        MaxVestingSchedulesExceeded,
+        /// Failed because the Schedule to unlock not exist
+        PendingScheduleNotExist,
+        /// Failed because used not correct Schedule Variant
+        WrongScheduleVariant,
     }
 
     #[pallet::event]
@@ -657,12 +1195,63 @@ pub mod pallet {
         FailedToSaveCalculatedReward(AccountIdOf<T>),
         /// Claimed crowdloan rewards
         CrowdloanClaimed(T::AccountId, AssetIdOf<T>, Balance),
+        /// Added new vesting schedule.
+        VestingScheduleAdded {
+            from: T::AccountId,
+            to: T::AccountId,
+            vesting_schedule: VestingScheduleOf<T>,
+        },
+        /// Claimed vesting.
+        ClaimedVesting {
+            who: T::AccountId,
+            asset_id: AssetIdOf<T>,
+            locked_amount: BalanceOf<T>,
+        },
+        /// Updated vesting schedules.
+        VestingSchedulesUpdated { who: T::AccountId },
+        /// Pending schedule unlocked and may be used
+        PendingScheduleUnlocked {
+            dest: T::AccountId,
+            pending_schedule: VestingScheduleOf<T>,
+        },
     }
+
+    #[cfg(feature = "wip")] // Auto Vesting
+    /// Claims was not processed.
+    #[pallet::storage]
+    #[pallet::getter(fn pending_claims)]
+    #[pallet::unbounded]
+    pub type PendingClaims<T: Config> = StorageValue<_, Vec<ClaimOf<T>>, ValueQuery>;
+
+    #[cfg(feature = "wip")] // Auto Vesting
+    /// Vesting claims of a block.
+    ///
+    /// VestingSchedules: map AccountId => Vec<VestingSchedule>
+    #[pallet::storage]
+    #[pallet::getter(fn claim_schedules)]
+    #[pallet::unbounded]
+    pub type ClaimSchedules<T: Config> =
+        StorageMap<_, Blake2_128Concat, BlockNumberFor<T>, Vec<ClaimOf<T>>, ValueQuery>;
+
+    #[cfg(feature = "wip")] // ORML multi asset vesting
+    /// Vesting schedules of an account.
+    ///
+    /// VestingSchedules: map AccountId => Vec<VestingSchedule>
+    #[pallet::storage]
+    #[pallet::getter(fn vesting_schedules)]
+    pub type VestingSchedules<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
+        ValueQuery,
+    >;
 
     /// Reserved for future use
     /// Mapping between users and their owned rewards of different kinds, which are vested.
     #[pallet::storage]
     #[pallet::getter(fn rewards)]
+    #[pallet::unbounded]
     pub type Rewards<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, RewardInfo, ValueQuery>;
 
@@ -675,6 +1264,7 @@ pub mod pallet {
     /// Information about crowdloan
     #[pallet::storage]
     #[pallet::getter(fn crowdloan_infos)]
+    #[pallet::unbounded]
     pub type CrowdloanInfos<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
@@ -686,6 +1276,7 @@ pub mod pallet {
     /// Information about crowdloan rewards claimed by user
     #[pallet::storage]
     #[pallet::getter(fn crowdloan_user_infos)]
+    #[pallet::unbounded]
     pub type CrowdloanUserInfos<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
@@ -695,4 +1286,13 @@ pub mod pallet {
         CrowdloanUserInfo<AssetIdOf<T>>,
         OptionQuery,
     >;
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        #[cfg(feature = "wip")] // Auto Vesting
+        fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
+            let claim_weight = <T as Config>::WeightInfo::claim_unlocked();
+            Self::auto_claim(current_block, claim_weight)
+        }
+    }
 }

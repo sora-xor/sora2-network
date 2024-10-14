@@ -28,17 +28,5 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::mock::alice;
-use price_tools::AVG_BLOCK_SPAN;
-
-use crate::{AssetId, PoolXYK, PriceTools, RuntimeOrigin};
-
-pub fn ensure_pool_initialized(asset_a: AssetId, asset_b: AssetId) {
-    PoolXYK::initialize_pool(RuntimeOrigin::signed(alice()), 0, asset_a, asset_b).unwrap();
-}
-
-pub fn fill_spot_price() {
-    for _ in 0..AVG_BLOCK_SPAN {
-        PriceTools::average_prices_calculation_routine();
-    }
-}
+pub mod v2;
+pub mod v3;

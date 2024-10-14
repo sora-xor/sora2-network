@@ -38,6 +38,9 @@ use log::info;
 use crate::DEXInfos;
 
 pub mod kusd_dex;
+#[cfg(test)]
+mod tests;
+pub mod vxor_dex;
 
 #[derive(Decode)]
 struct DEXInfoV0<T: Config> {
@@ -65,6 +68,3 @@ pub fn migrate<T: Config>() -> Weight {
     StorageVersion::new(2).put::<Pallet<T>>();
     T::DbWeight::get().reads_writes(weight, weight)
 }
-
-#[cfg(test)]
-mod tests;

@@ -512,6 +512,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         // in XOR for dex_id = 0
         // in XSTUSD for dex_id = 1
+        // in KUSD for dex_id = 2
+        // in VXOR for dex_id = 3
         let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
 
         Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
@@ -641,6 +643,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
                     // in XOR for dex_id = 0
                     // in XSTUSD for dex_id = 1
+                    // in KUSD for dex_id = 2
+                    // in VXOR for dex_id = 3
                     let fee_chunk =
                         OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
 
@@ -666,6 +670,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
                     // in XOR for dex_id = 0
                     // in XSTUSD for dex_id = 1
+                    // in KUSD for dex_id = 2
+                    // in VXOR for dex_id = 3
                     let fee_chunk =
                         OutcomeFee::from_asset(dex_info.base_asset_id, fee.saturating_sub(sub_fee));
 
@@ -886,6 +892,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
         // in XOR for dex_id = 0
         // in XSTUSD for dex_id = 1
+        // in KUSD for dex_id = 2
+        // in VXOR for dex_id = 3
         let fee = OutcomeFee::from_asset(dex_info.base_asset_id, fee_amount);
         Ok(SwapOutcome::new(calculated, fee))
     }

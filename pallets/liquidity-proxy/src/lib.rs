@@ -68,6 +68,7 @@ use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use liquidity_aggregator::AggregatedSwapOutcome;
+use liquidity_aggregator::LiquidityAggregator;
 use log;
 pub use pallet::*;
 use sp_runtime::traits::Zero;
@@ -77,16 +78,6 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 pub use weights::WeightInfo;
-
-#[cfg(not(feature = "wip"))] // ALT
-use {
-    common::prelude::fixnum::ops::{Bounded, Zero as _},
-    common::XSTUSD,
-    sp_runtime::traits::CheckedSub,
-};
-
-#[cfg(feature = "wip")] // ALT
-use liquidity_aggregator::LiquidityAggregator;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
@@ -390,36 +381,6 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
 }
 
 impl<T: Config> Pallet<T> {
-    /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
-    pub fn is_forbidden_filter(
-        input_asset_id: &AssetIdOf<T>,
-        output_asset_id: &AssetIdOf<T>,
-        selected_source_types: &Vec<LiquiditySourceType>,
-        filter_mode: &FilterMode,
-    ) -> bool {
-        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
-
-        // check if user has selected only xyk either explicitly or by excluding other types
-        // FIXME: such detection approach is unreliable, come up with better way
-        let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
-            && !selected_source_types
-                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
-            && !selected_source_types.contains(&LiquiditySourceType::XSTPool)
-            && !selected_source_types.contains(&LiquiditySourceType::OrderBook)
-            && filter_mode == &FilterMode::AllowSelected
-            || selected_source_types
-                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
-                && selected_source_types.contains(&LiquiditySourceType::XSTPool)
-                && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
-                && selected_source_types.contains(&LiquiditySourceType::OrderBook)
-                && filter_mode == &FilterMode::ForbidSelected;
-        // check if either of tbc reserve assets is present
-        let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
-            || tbc_reserve_assets.contains(output_asset_id);
-
-        is_xyk_only && reserve_asset_present
-    }
-
     pub fn check_indivisible_assets(
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
@@ -444,17 +405,6 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Weight, DispatchError> {
         Self::check_indivisible_assets(&input_asset_id, &output_asset_id)?;
         let mut total_weight = <T as Config>::WeightInfo::check_indivisible_assets();
-
-        if Self::is_forbidden_filter(
-            &input_asset_id,
-            &output_asset_id,
-            &selected_source_types,
-            &filter_mode,
-        ) {
-            fail!(Error::<T>::ForbiddenFilter);
-        }
-        total_weight =
-            total_weight.saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
         let (outcome, sources, weight) = Self::inner_exchange(
             dex_id,
@@ -1054,12 +1004,6 @@ impl<T: Config> Pallet<T> {
         let locked = T::LockedLiquiditySourcesManager::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
 
-        // the old mechanism cannot combine Order Book source with others
-        #[cfg(not(feature = "wip"))] // ALT
-        if sources.len() > 1 {
-            sources.retain(|x| x.liquidity_source_index != LiquiditySourceType::OrderBook);
-        }
-
         Ok(sources)
     }
 
@@ -1134,65 +1078,18 @@ impl<T: Config> Pallet<T> {
             ));
         }
 
-        #[cfg(not(feature = "wip"))] // ALT
-        {
-            // Check if we have exactly two sources: the primary market and the secondary market
-            // Do the "smart" swap split (with fallback)
-            // NOTE: we assume here that XST tokens are not added to TBC reserves. If they are in the future, this
-            // logic should be redone!
-            if sources.len() == 2 {
-                let mut primary_market: Option<LiquiditySourceIdOf<T>> = None;
-                let mut secondary_market: Option<LiquiditySourceIdOf<T>> = None;
+        let (outcome, rewards, weight) = Self::new_smart_split(
+            &sources,
+            base_asset_id,
+            input_asset_id,
+            output_asset_id,
+            amount.clone(),
+            skip_info,
+            deduce_fee,
+        )?;
 
-                for src in &sources {
-                    match src.liquidity_source_index {
-                        // We can't use XST as primary market for smart split, because it use XST asset as base
-                        // and does not support DEXes except Polkaswap
-                        LiquiditySourceType::MulticollateralBondingCurvePool => {
-                            primary_market = Some(src.clone())
-                        }
-                        LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool => {
-                            secondary_market = Some(src.clone())
-                        }
-                        _ => (),
-                    }
-                }
-
-                if let (Some(primary_mkt), Some(xyk)) = (primary_market, secondary_market) {
-                    let outcome = Self::smart_split(
-                        &primary_mkt,
-                        &xyk,
-                        base_asset_id,
-                        input_asset_id,
-                        output_asset_id,
-                        amount.clone(),
-                        skip_info,
-                        deduce_fee,
-                    )?;
-                    total_weight = total_weight.saturating_add(outcome.2);
-                    return Ok((outcome.0, outcome.1, sources, total_weight));
-                }
-            }
-        }
-
-        #[cfg(feature = "wip")] // ALT
-        {
-            let (outcome, rewards, weight) = Self::new_smart_split(
-                &sources,
-                base_asset_id,
-                input_asset_id,
-                output_asset_id,
-                amount.clone(),
-                skip_info,
-                deduce_fee,
-            )?;
-
-            total_weight = total_weight.saturating_add(weight);
-            Ok((outcome, rewards, sources, total_weight))
-        }
-
-        #[cfg(not(feature = "wip"))] // ALT
-        fail!(Error::<T>::UnavailableExchangePath);
+        total_weight = total_weight.saturating_add(weight);
+        Ok((outcome, rewards, sources, total_weight))
     }
 
     /// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
@@ -1305,13 +1202,11 @@ impl<T: Config> Pallet<T> {
     ///             quote_pairs_with_flexible_amount() - call M times, where M is a count of paths
     ///                 quote_single()
     ///                     list_liquidity_sources()
-    ///                     quote()
     ///                     smart_split()
     ///         exchange_sequence_with_desired_amount()
     ///             exchange_single()
     ///                 quote_single()
     ///                     list_liquidity_sources()
-    ///                     quote()
     ///                     smart_split()
     ///                 exchange() - call N times, where N is a count of assets in the path
     ///
@@ -1332,12 +1227,6 @@ impl<T: Config> Pallet<T> {
             return REJECTION_WEIGHT;
         };
 
-        #[cfg(not(feature = "wip"))] // ALT
-        let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
-            .saturating_add(T::LiquidityRegistry::quote_weight().saturating_mul(4))
-            .saturating_add(T::LiquidityRegistry::check_rewards_weight().saturating_mul(2));
-
-        #[cfg(feature = "wip")] // ALT
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
             .saturating_add(Self::smart_split_weight());
 
@@ -1392,7 +1281,6 @@ impl<T: Config> Pallet<T> {
     /// swap()
     ///     inner_swap()
     ///         check_indivisible_assets()
-    ///         is_forbidden_filter()
     ///         inner_exchange()
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
@@ -1411,7 +1299,6 @@ impl<T: Config> Pallet<T> {
         let inner_exchange_weight = Self::inner_exchange_weight(dex_id, input, output, filter);
 
         let weight = <T as Config>::WeightInfo::check_indivisible_assets()
-            .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
             .saturating_add(inner_exchange_weight);
 
         weight
@@ -1427,7 +1314,6 @@ impl<T: Config> Pallet<T> {
     ///         loop - call swap_batches.len() times
     ///             exchange_batch_tokens
     ///                 check_indivisible_assets
-    ///                 is_forbidden_filter
     ///                 inner_exchange
     ///             transfer_batch_tokens_unchecked
     ///                 loop - call swap_batch_info.receivers.len() times
@@ -1460,7 +1346,6 @@ impl<T: Config> Pallet<T> {
 
                 weight = weight
                     .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
-                    .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
                     .saturating_add(<T as assets::Config>::WeightInfo::transfer()) // ADAR fee
                     .saturating_add(inner_exchange_weight);
             }
@@ -1518,22 +1403,6 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    pub fn list_enabled_sources_for_path_with_xyk_forbidden(
-        dex_id: T::DEXId,
-        input_asset_id: AssetIdOf<T>,
-        output_asset_id: AssetIdOf<T>,
-    ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
-        let mut initial_result =
-            Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
-        if tbc_reserve_assets.contains(&input_asset_id)
-            || tbc_reserve_assets.contains(&output_asset_id)
-        {
-            initial_result.retain(|&lst| lst != LiquiditySourceType::XYKPool);
-        }
-        Ok(initial_result)
-    }
-
     // Not full sort, just ensure that if there is base asset then it's sorted, otherwise order is unchanged.
     fn weak_sort_pair(
         dex_info: &DEXInfo<AssetIdOf<T>>,
@@ -1570,7 +1439,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(feature = "wip")] // ALT
     fn new_smart_split(
         sources: &Vec<LiquiditySourceIdOf<T>>,
         base_asset_id: &AssetIdOf<T>,
@@ -1644,448 +1512,6 @@ impl<T: Config> Pallet<T> {
         Ok((aggregation_result.into(), rewards, total_weight))
     }
 
-    /// Implements the "smart" split algorithm.
-    ///
-    /// - `primary_source_id` - ID of the primary market liquidity source,
-    /// - `secondary_source_id` - ID of the secondary market liquidity source,
-    /// - `input_asset_id` - ID of the asset to sell,
-    /// - `output_asset_id` - ID of the asset to buy,
-    /// - `amount` - the amount with "direction" (sell or buy) together with the maximum price impact (slippage).
-    /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
-    ///
-    #[cfg(not(feature = "wip"))] // ALT
-    fn smart_split(
-        primary_source_id: &LiquiditySourceIdOf<T>,
-        secondary_source_id: &LiquiditySourceIdOf<T>,
-        base_asset_id: &AssetIdOf<T>,
-        input_asset_id: &AssetIdOf<T>,
-        output_asset_id: &AssetIdOf<T>,
-        amount: QuoteAmount<Balance>,
-        skip_info: bool,
-        deduce_fee: bool,
-    ) -> Result<
-        (
-            AggregatedSwapOutcome<AssetIdOf<T>, LiquiditySourceIdOf<T>, Balance>,
-            Rewards<AssetIdOf<T>>,
-            Weight,
-        ),
-        DispatchError,
-    > {
-        // The "smart" split algo is based on the following reasoning.
-        // First, we try to calculate the spot price of the `input_asset_id` in both
-        // the primary and secondary markets. If the price in the secondary market is
-        // better than that in the primary market, we allocate as much of the `amount` to
-        // be swapped in the secondary market as we can until the prices level up.
-        // The rest will be swapped in the primary market.
-        //
-        // In case the default partitioning between sources returns an error, it can
-        // only be due to the MCBC pool not being available or initialized.
-        // In this case the primary market weight is zeroed out and the entire `amount`
-        // is sent to the secondary market (regardless whether the latter has enough
-        // reserves to actually execute such swap).
-        //
-        // In case the "smart" procedure has returned some weights (a, b), such that
-        // a > 0, b > 0, a + b == 1.0, and neither of the arms fails due to insufficient
-        // reserves, we must still account for the fact that the algorithm tends to overweigh
-        // the MCBC share which can lead to substantially non-optimal results
-        // (especially when selling XOR to the MCBC).
-        // To limit the impact of this imbalance we want to always compare the result of
-        // the "smart" split with the purely secondary market one.
-        // Comparing the result with the purely MCBC swap doesn't make sense in this case
-        // because the "smart" swap is always at least as good as the 100% MCBC one.
-
-        ensure!(
-            input_asset_id == base_asset_id || output_asset_id == base_asset_id,
-            Error::<T>::UnavailableExchangePath
-        );
-        let other_asset = if base_asset_id == input_asset_id {
-            output_asset_id
-        } else {
-            input_asset_id
-        };
-
-        let (reserves_base, reserves_other) =
-            T::SecondaryMarket::reserves(base_asset_id, other_asset);
-
-        let amount_primary = if output_asset_id == base_asset_id {
-            // XOR is being bought
-            Self::decide_primary_market_amount_buying_base_asset(
-                base_asset_id,
-                other_asset,
-                amount.clone(),
-                (reserves_base, reserves_other),
-            )
-            .unwrap_or(
-                // Error can only be due to MCBC or XST pool, hence zeroing it out
-                amount.copy_direction(balance!(0)),
-            )
-        } else {
-            // XOR is being sold
-            Self::decide_primary_market_amount_selling_base_asset(
-                base_asset_id,
-                other_asset,
-                amount.clone(),
-                (reserves_base, reserves_other),
-            )
-            .unwrap_or(amount.copy_direction(balance!(0)))
-        };
-
-        let (is_better, extremum): (fn(a: Balance, b: Balance) -> bool, Balance) = match amount {
-            QuoteAmount::WithDesiredInput { .. } => (|a, b| a > b, Balance::zero()),
-            _ => (|a, b| a < b, Balance::MAX),
-        };
-
-        let mut best: Balance = extremum;
-        let mut total_fee = OutcomeFee::new();
-        let mut rewards = Vec::new();
-        let mut distr = Vec::new();
-        let mut maybe_error: Option<DispatchError> = None;
-        let mut total_weight = Weight::zero();
-
-        if amount_primary.amount() > Balance::zero() {
-            // Attempting to quote according to the default sources weights
-            let intermediary_result = T::LiquidityRegistry::quote(
-                primary_source_id,
-                input_asset_id,
-                output_asset_id,
-                amount_primary.clone(),
-                deduce_fee,
-            )
-            .and_then(|(outcome_primary, weight)| {
-                total_weight = total_weight.saturating_add(weight);
-                if amount_primary.amount() < amount.amount() {
-                    let amount_secondary = amount
-                        .checked_sub(&amount_primary)
-                        .ok_or(Error::<T>::CalculationError)?;
-                    T::LiquidityRegistry::quote(
-                        secondary_source_id,
-                        input_asset_id,
-                        output_asset_id,
-                        amount_secondary.clone(),
-                        deduce_fee,
-                    )
-                    .and_then(|(outcome_secondary, weight)| {
-                        total_weight = total_weight.saturating_add(weight);
-                        if !skip_info {
-                            for info in vec![
-                                (primary_source_id, amount_primary, outcome_primary.clone()),
-                                (
-                                    secondary_source_id,
-                                    amount_secondary,
-                                    outcome_secondary.clone(),
-                                ),
-                            ] {
-                                let (input_amount, output_amount) =
-                                    info.1.place_input_and_output(info.2);
-                                let (mut reward, reward_weight) =
-                                    T::LiquidityRegistry::check_rewards(
-                                        info.0,
-                                        input_asset_id,
-                                        output_asset_id,
-                                        input_amount,
-                                        output_amount,
-                                    )
-                                    .unwrap_or((Vec::new(), Weight::zero()));
-                                total_weight = total_weight.saturating_add(reward_weight);
-                                rewards.append(&mut reward);
-                            }
-                        };
-                        best = outcome_primary.amount + outcome_secondary.amount;
-                        total_fee = outcome_primary.fee.merge(outcome_secondary.fee);
-                        distr = vec![
-                            (
-                                primary_source_id.clone(),
-                                SwapAmount::with_variant(
-                                    amount_primary.variant(),
-                                    amount_primary.amount(),
-                                    outcome_primary.amount,
-                                ),
-                            ),
-                            (
-                                secondary_source_id.clone(),
-                                SwapAmount::with_variant(
-                                    amount_secondary.variant(),
-                                    amount_secondary.amount(),
-                                    outcome_secondary.amount,
-                                ),
-                            ),
-                        ];
-                        Ok(())
-                    })
-                } else {
-                    best = outcome_primary.amount;
-                    total_fee = outcome_primary.fee;
-                    distr = vec![(
-                        primary_source_id.clone(),
-                        SwapAmount::with_variant(
-                            amount_primary.variant(),
-                            amount_primary.amount(),
-                            outcome_primary.amount,
-                        ),
-                    )];
-                    Ok(())
-                }
-            });
-            if let Err(e) = intermediary_result {
-                maybe_error = Some(e);
-            }
-        }
-
-        // Regardless whether we have got any result so far, we still must do
-        // calculations for the secondary market alone
-        let xyk_result = T::LiquidityRegistry::quote(
-            secondary_source_id,
-            input_asset_id,
-            output_asset_id,
-            amount.clone(),
-            deduce_fee,
-        )
-        .and_then(|(outcome, weight)| {
-            total_weight = total_weight.saturating_add(weight);
-            if is_better(outcome.amount, best) {
-                best = outcome.amount;
-                total_fee = outcome.fee.clone();
-                distr = vec![(
-                    secondary_source_id.clone(),
-                    SwapAmount::with_variant(amount.variant(), amount.amount(), outcome.amount),
-                )];
-                if !skip_info {
-                    let (input_amount, output_amount) =
-                        amount.place_input_and_output(outcome.clone());
-                    let reward_weight;
-                    (rewards, reward_weight) = T::LiquidityRegistry::check_rewards(
-                        secondary_source_id,
-                        input_asset_id,
-                        output_asset_id,
-                        input_amount,
-                        output_amount,
-                    )
-                    .unwrap_or((Vec::new(), Weight::zero()));
-                    total_weight = total_weight.saturating_add(reward_weight);
-                };
-            };
-            Ok(())
-        });
-
-        // Check if we have got a result at either of the steps
-        if let Err(err) = xyk_result {
-            // If both attempts to get the price failed, return the first error
-            if let Some(e) = maybe_error {
-                // Quote at the first step was attempted and failed
-                return Err(e);
-            }
-            if best == extremum {
-                // The quote at first step was never attempted, returning the current error
-                return Err(err);
-            }
-        }
-
-        Ok((
-            AggregatedSwapOutcome::new(distr, best, total_fee),
-            rewards,
-            total_weight,
-        ))
-    }
-
-    /// Determines the share of a swap that should be exchanged in the primary market
-    /// (i.e., the multi-collateral bonding curve pool) based on the current reserves of
-    /// the base asset and the collateral asset in the secondary market (e.g., an XYK pool)
-    /// provided the base asset is being bought.
-    ///
-    /// - `base_asset_id` - ID of the base asset,
-    /// - `collateral_asset_id` - ID of the collateral asset,
-    /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
-    /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
-    ///
-    #[cfg(not(feature = "wip"))] // ALT
-    fn decide_primary_market_amount_buying_base_asset(
-        base_asset_id: &AssetIdOf<T>,
-        collateral_asset_id: &AssetIdOf<T>,
-        amount: QuoteAmount<Balance>,
-        secondary_market_reserves: (Balance, Balance),
-    ) -> Result<QuoteAmount<Balance>, DispatchError> {
-        let (reserves_base, reserves_other) = secondary_market_reserves;
-        let x: FixedWrapper = reserves_base.into();
-        let y: FixedWrapper = reserves_other.into();
-        let k: FixedWrapper = x.clone() * y.clone();
-        let secondary_price: FixedWrapper = if x > fixed_wrapper!(0) {
-            y.clone() / x.clone()
-        } else {
-            Fixed::MAX.into()
-        };
-
-        macro_rules! match_buy_price {
-            ($source_type:ident) => {
-                T::$source_type::buy_price(base_asset_id, collateral_asset_id)
-                    .map_err(|_| Error::<T>::CalculationError)?
-                    .into()
-            };
-        }
-        let primary_buy_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
-            match_buy_price!(PrimaryMarketXST)
-        } else {
-            match_buy_price!(PrimaryMarketTBC)
-        };
-
-        match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let wrapped_amount: FixedWrapper = desired_amount_in.into();
-                // checking that secondary price is better than primary initially
-                let amount_primary = if secondary_price < primary_buy_price {
-                    // find intercept between secondary and primary market curves:
-                    // 1) (x - x1) * (y + y1) = k // xyk equation
-                    // 2) (y + y1) / (x - x1) = p // desired price `p` equation
-                    // composing 1 and 2: (y + y1) * (y + y1) = k * p
-                    // √(k * p) - y = y1
-                    // √(k) * √(p) - y = y1 // to prevent overflow
-                    // where
-                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
-                    // * p is desired price i.e. target/base
-                    let k_sqrt = k.sqrt_accurate();
-                    let primary_buy_price_sqrt = primary_buy_price.sqrt_accurate();
-                    let amount_secondary = k_sqrt * primary_buy_price_sqrt - y; // always > 0
-                    if amount_secondary >= wrapped_amount {
-                        balance!(0)
-                    } else if amount_secondary <= fixed_wrapper!(0) {
-                        desired_amount_in
-                    } else {
-                        (wrapped_amount - amount_secondary)
-                            .try_into_balance()
-                            .unwrap()
-                    }
-                } else {
-                    desired_amount_in
-                };
-                Ok(QuoteAmount::with_desired_input(amount_primary))
-            }
-            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                let wrapped_amount: FixedWrapper = desired_amount_out.into();
-                // checking that secondary price is better than primary initially
-                let amount_primary = if secondary_price < primary_buy_price {
-                    // find intercept between secondary and primary market curves:
-                    // 1) (x - x1) * (y + y1) = k // xyk equation
-                    // 2) (y + y1) / (x - x1) = p // desired price `p` equation
-                    // composing 1 and 2: (x - x1) * (x - x1) * p = k
-                    // x - √(k / p) = x1
-                    // where
-                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
-                    // * p is desired price i.e. target/base
-                    let amount_secondary = x - (k / primary_buy_price).sqrt_accurate(); // always > 0
-                    if amount_secondary >= wrapped_amount {
-                        balance!(0)
-                    } else if amount_secondary <= fixed_wrapper!(0) {
-                        desired_amount_out
-                    } else {
-                        (wrapped_amount - amount_secondary)
-                            .try_into_balance()
-                            .unwrap()
-                    }
-                } else {
-                    desired_amount_out
-                };
-                Ok(QuoteAmount::with_desired_output(amount_primary))
-            }
-        }
-    }
-
-    /// Determines the share of a swap that should be exchanged in the primary market
-    /// (i.e. the multi-collateral bonding curve pool) based on the current reserves of
-    /// the base asset and the collateral asset in the secondary market (e.g. an XYK pool)
-    /// provided the base asset is being sold.
-    ///
-    /// - `base_asset_id` - ID of the base asset,
-    /// - `collateral_asset_id` - ID of the collateral asset,
-    /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
-    /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
-    ///
-    #[cfg(not(feature = "wip"))] // ALT
-    fn decide_primary_market_amount_selling_base_asset(
-        base_asset_id: &AssetIdOf<T>,
-        collateral_asset_id: &AssetIdOf<T>,
-        amount: QuoteAmount<Balance>,
-        secondary_market_reserves: (Balance, Balance),
-    ) -> Result<QuoteAmount<Balance>, DispatchError> {
-        let (reserves_base, reserves_other) = secondary_market_reserves;
-        let x: FixedWrapper = reserves_base.into();
-        let y: FixedWrapper = reserves_other.into();
-        let k: FixedWrapper = x.clone() * y.clone();
-        let secondary_price: FixedWrapper = if x > fixed_wrapper!(0) {
-            y.clone() / x.clone()
-        } else {
-            Fixed::ZERO.into()
-        };
-
-        macro_rules! match_sell_price {
-            ($source_type:ident) => {
-                T::$source_type::sell_price(base_asset_id, collateral_asset_id)
-                    .map_err(|_| Error::<T>::CalculationError)?
-                    .into()
-            };
-        }
-        let primary_sell_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
-            match_sell_price!(PrimaryMarketXST)
-        } else {
-            match_sell_price!(PrimaryMarketTBC)
-        };
-
-        match amount {
-            QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let wrapped_amount: FixedWrapper = desired_amount_in.into();
-                // checking that secondary price is better than primary initially
-                let amount_primary = if secondary_price > primary_sell_price {
-                    // find intercept between secondary and primary market curves:
-                    // 1) (x + x1) * (y - y1) = k // xyk equation
-                    // 2) (y - y1) / (x + x1) = p // desired price `p` equation
-                    // composing 1 and 2: (x + x1) * (x + x1) * p = k
-                    // √(k / p) - x = x1
-                    // where
-                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
-                    // * p is desired price i.e. target/base
-                    let amount_secondary = (k / primary_sell_price).sqrt_accurate() - x; // always > 0
-                    if amount_secondary >= wrapped_amount {
-                        balance!(0)
-                    } else if amount_secondary <= fixed_wrapper!(0) {
-                        desired_amount_in
-                    } else {
-                        (wrapped_amount - amount_secondary)
-                            .try_into_balance()
-                            .unwrap()
-                    }
-                } else {
-                    desired_amount_in
-                };
-                Ok(QuoteAmount::with_desired_input(amount_primary))
-            }
-            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                let wrapped_amount: FixedWrapper = desired_amount_out.into();
-                // checking that secondary price is better than primary initially
-                let amount_primary = if secondary_price > primary_sell_price {
-                    // find intercept between secondary and primary market curves:
-                    // 1) (x + x1) * (y - y1) = k // xyk equation
-                    // 2) (y - y1) / (x + x1) = p // desired price `p` equation
-                    // composing 1 and 2: (y - y1) * (y - y1) = k * p
-                    // y - √(k * p) = y1
-                    // where
-                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
-                    // * p is desired price i.e. target/base
-                    let amount_secondary = y - (k * primary_sell_price).sqrt_accurate();
-                    if amount_secondary >= wrapped_amount {
-                        balance!(0)
-                    } else if amount_secondary <= fixed_wrapper!(0) {
-                        desired_amount_out
-                    } else {
-                        (wrapped_amount - amount_secondary)
-                            .try_into_balance()
-                            .unwrap()
-                    }
-                } else {
-                    desired_amount_out
-                };
-                Ok(QuoteAmount::with_desired_output(amount_primary))
-            }
-        }
-    }
-
     /// Swaps tokens for the following batch distribution and calculates a remainder.
     /// Remainder is used due to inaccuracy of the quote calculation.
     fn exchange_batch_tokens(
@@ -2107,17 +1533,6 @@ impl<T: Config> Pallet<T> {
             filter_mode.clone(),
             selected_source_types.clone(),
         );
-
-        if Self::is_forbidden_filter(
-            &input_asset_id,
-            &output_asset_id,
-            &selected_source_types,
-            &filter_mode,
-        ) {
-            fail!(Error::<T>::ForbiddenFilter);
-        }
-        total_weight =
-            total_weight.saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
         let (
             SwapOutcome {

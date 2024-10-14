@@ -49,15 +49,15 @@ use sp_std::prelude::*;
 
 use crate::Pallet as PriceTools;
 
-const UPDATE_SHIFT: u32 = 1000;
+const UPDATE_SHIFT: usize = 1000;
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> AssetIdOf<T> {
-    let entropy: [u8; 32] = (prefix, index).using_encoded(blake2_256);
+fn create_asset<T: Config>(prefix: Vec<u8>, index: usize) -> AssetIdOf<T> {
+    let entropy: [u8; 32] = (prefix, index as u128).using_encoded(blake2_256);
     AssetIdOf::<T>::from(H256(entropy))
 }
 
@@ -114,7 +114,7 @@ fn create_pair_with_xor<T: Config>(
     .unwrap();
 }
 
-fn prepare_secondary_market<T: Config>(elems_active: u32, elems_updated: u32) {
+fn prepare_secondary_market<T: Config>(elems_active: usize, elems_updated: usize) {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
 
@@ -136,6 +136,18 @@ fn prepare_secondary_market<T: Config>(elems_active: u32, elems_updated: u32) {
 
         for m in 1..crate::AVG_BLOCK_SPAN {
             crate::PriceInfos::<T>::mutate(asset, |val| {
+                let val = val.as_mut().unwrap();
+                let price = balance!(m + i);
+                val.buy.spot_prices.push_back(price);
+                val.sell.spot_prices.push_back(price);
+
+                val.buy.needs_update = false;
+                val.sell.needs_update = false;
+
+                val.buy.last_spot_price = price;
+                val.sell.last_spot_price = price;
+            });
+            crate::FastPriceInfos::<T>::mutate(asset, |val| {
                 let val = val.as_mut().unwrap();
                 let price = balance!(m + i);
                 val.buy.spot_prices.push_back(price);
@@ -170,6 +182,15 @@ fn prepare_secondary_market<T: Config>(elems_active: u32, elems_updated: u32) {
                 val.buy.needs_update = true;
                 val.sell.needs_update = true;
             });
+            crate::FastPriceInfos::<T>::mutate(asset, |val| {
+                let val = val.as_mut().unwrap();
+                let price = balance!(m + i);
+                val.buy.spot_prices.push_back(price);
+                val.sell.spot_prices.push_back(price);
+
+                val.buy.needs_update = true;
+                val.sell.needs_update = true;
+            });
         }
     }
 }
@@ -178,11 +199,11 @@ benchmarks! {
     on_initialize {
         let a in 0..10;
         let b in 0..10;
-        prepare_secondary_market::<T>(a, b);
+        prepare_secondary_market::<T>(a as usize, b as usize);
         let mut infos_before = BTreeMap::new();
 
-        let mut range = (0..a).collect::<Vec<_>>();
-        let mut to_update = (UPDATE_SHIFT..UPDATE_SHIFT + b).collect::<Vec<_>>();
+        let mut range = (0..a as usize).collect::<Vec<_>>();
+        let mut to_update = (UPDATE_SHIFT..UPDATE_SHIFT + b as usize).collect::<Vec<_>>();
         range.append(&mut to_update);
 
         for i in range.clone() {
@@ -198,11 +219,18 @@ benchmarks! {
                     .unwrap()
                     .sell
                     .average_price,
+                crate::FastPriceInfos::<T>::get(&asset)
+                    .unwrap()
+                    .buy
+                    .average_price,
+                crate::FastPriceInfos::<T>::get(&asset)
+                    .unwrap()
+                    .sell
+                    .average_price,
             ));
         }
     }: {
-        PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Buy);
-        PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Sell);
+        PriceTools::<T>::average_prices_calculation_routine();
     }
     verify {
         for i in range {
@@ -217,7 +245,15 @@ benchmarks! {
                     crate::PriceInfos::<T>::get(&asset)
                         .unwrap()
                         .sell
-                        .average_price
+                        .average_price,
+                    crate::FastPriceInfos::<T>::get(&asset)
+                        .unwrap()
+                        .buy
+                        .average_price,
+                    crate::FastPriceInfos::<T>::get(&asset)
+                        .unwrap()
+                        .sell
+                        .average_price,
                 )
             );
         }

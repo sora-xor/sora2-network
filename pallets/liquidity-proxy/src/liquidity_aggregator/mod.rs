@@ -28,19 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "wip")] // ALT
 mod aggregation;
 mod aggregation_result;
-#[cfg(feature = "wip")] // ALT
 mod liquidity_aggregator;
-#[cfg(feature = "wip")] // ALT
 mod selector;
-#[cfg(feature = "wip")] // ALT
 #[cfg(test)]
 mod tests;
 
 pub use aggregation_result::AggregatedSwapOutcome;
-#[cfg(feature = "wip")] // ALT
 pub use aggregation_result::AggregationResult;
-#[cfg(feature = "wip")] // ALT
 pub use liquidity_aggregator::LiquidityAggregator;

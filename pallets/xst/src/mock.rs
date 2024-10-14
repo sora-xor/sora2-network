@@ -297,18 +297,23 @@ where
     let _ = price_tools::Pallet::<T>::register_asset(&asset_id_to_register);
 
     for _ in 0..31 {
-        price_tools::Pallet::<T>::incoming_spot_price(
-            &asset_id_to_register,
-            price_buy,
-            PriceVariant::Buy,
-        )
-        .expect("Failed to relay spot price");
-        price_tools::Pallet::<T>::incoming_spot_price(
-            &asset_id_to_register,
-            price_sell,
-            PriceVariant::Sell,
-        )
-        .expect("Failed to relay spot price");
+        price_tools::PriceInfos::<T>::mutate(&asset_id_to_register, |opt_val| {
+            let val = opt_val.as_mut().unwrap();
+            val.price_mut_of(PriceVariant::Buy)
+                .incoming_spot_price(
+                    price_buy,
+                    PriceVariant::Buy,
+                    &price_tools::DEFAULT_PARAMETERS,
+                )
+                .expect("Failed to relay spot price");
+            val.price_mut_of(PriceVariant::Sell)
+                .incoming_spot_price(
+                    price_sell,
+                    PriceVariant::Sell,
+                    &price_tools::DEFAULT_PARAMETERS,
+                )
+                .expect("Failed to relay spot price");
+        })
     }
 }
 

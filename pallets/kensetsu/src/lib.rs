@@ -216,7 +216,7 @@ pub mod pallet {
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub};
+    use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, Saturating};
     use sp_core::bounded::BoundedVec;
     use sp_runtime::traits::{CheckedConversion, One, Zero};
     use sp_std::collections::vec_deque::VecDeque;
@@ -226,7 +226,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -364,7 +364,7 @@ pub mod pallet {
         #[pallet::constant]
         type MaxCdpsPerOwner: Get<u32>;
 
-        /// Minimal uncollected fee in KUSD that triggers offchain worker to call accrue.
+        /// Minimal uncollected fee in stablecoin that triggers offchain worker to call accrue.
         #[pallet::constant]
         type MinimalStabilityFeeAccrue: Get<Balance>;
 
@@ -606,6 +606,10 @@ pub mod pallet {
         MinimalCollateralDepositUpdated {
             old_minimal_collateral_deposit: Balance,
             new_minimal_collateral_deposit: Balance,
+        },
+        MinimalStabilityFeeAccrueUpdated {
+            old_minimal_stability_fee_accrue: Balance,
+            new_minimal_stability_fee_accrue: Balance,
         },
     }
 
@@ -1051,11 +1055,9 @@ pub mod pallet {
                         new_hard_cap: hard_cap,
                     });
 
-                    DispatchResult::Ok(())
+                    Ok(())
                 },
-            )?;
-
-            Ok(())
+            )
         }
 
         /// Updates risk parameter `liquidation_ratio`.
@@ -1090,11 +1092,9 @@ pub mod pallet {
                         new_liquidation_ratio: liquidation_ratio,
                     });
 
-                    DispatchResult::Ok(())
+                    Ok(())
                 },
-            )?;
-
-            Ok(())
+            )
         }
 
         /// Updates risk parameter `max_liquidation_lot`.
@@ -1130,11 +1130,9 @@ pub mod pallet {
                         new_max_liquidation_lot: max_liquidation_lot,
                     });
 
-                    DispatchResult::Ok(())
+                    Ok(())
                 },
-            )?;
-
-            Ok(())
+            )
         }
 
         /// Updates risk parameter `stability_fee_rate`.
@@ -1176,11 +1174,9 @@ pub mod pallet {
                         new_stability_fee_rate: stability_fee_rate,
                     });
 
-                    DispatchResult::Ok(())
+                    Ok(())
                 },
-            )?;
-
-            Ok(())
+            )
         }
 
         /// Updates risk parameter `minimal_collateral_deposit`.
@@ -1217,11 +1213,38 @@ pub mod pallet {
                         new_minimal_collateral_deposit: minimal_collateral_deposit,
                     });
 
-                    DispatchResult::Ok(())
+                    Ok(())
                 },
-            )?;
+            )
+        }
 
-            Ok(())
+        #[pallet::call_index(18)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_minimal_stability_fee_accrue())]
+        pub fn update_minimal_stability_fee_accrue(
+            origin: OriginFor<T>,
+            stablecoin_asset_id: AssetIdOf<T>,
+            new_minimal_stability_fee_accrue: Balance,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            StablecoinInfos::<T>::try_mutate(stablecoin_asset_id, |stablecoin_info| {
+                let stablecoin_info = stablecoin_info
+                    .as_mut()
+                    .ok_or(Error::<T>::StablecoinInfoNotFound)?;
+                let old_minimal_stability_fee_accrue = stablecoin_info
+                    .stablecoin_parameters
+                    .minimal_stability_fee_accrue;
+                stablecoin_info
+                    .stablecoin_parameters
+                    .minimal_stability_fee_accrue = new_minimal_stability_fee_accrue;
+
+                Self::deposit_event(Event::MinimalStabilityFeeAccrueUpdated {
+                    old_minimal_stability_fee_accrue,
+                    new_minimal_stability_fee_accrue,
+                });
+
+                Ok(())
+            })
         }
     }
 
@@ -1810,8 +1833,7 @@ pub mod pallet {
             )?;
             let interest_coefficient = collateral_info.interest_coefficient;
             let interest_percent = interest_coefficient
-                .checked_sub(&cdp.interest_coefficient)
-                .ok_or(Error::<T>::ArithmeticError)?
+                .saturating_sub(cdp.interest_coefficient)
                 .checked_div(&cdp.interest_coefficient)
                 .ok_or(Error::<T>::ArithmeticError)?;
             let stability_fee = FixedU128::from_inner(cdp.debt)

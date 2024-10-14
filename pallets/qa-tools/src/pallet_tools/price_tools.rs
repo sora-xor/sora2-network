@@ -86,14 +86,37 @@ pub(crate) fn set_price_unchecked<T: Config>(
 ) -> DispatchResult {
     let _ = price_tools::Pallet::<T>::register_asset(asset_id);
 
-    // feed failures in order to ignore the limits
-    for _ in 0..price_tools::AVG_BLOCK_SPAN {
-        price_tools::Pallet::<T>::incoming_spot_price_failure(asset_id, variant);
-    }
+    price_tools::PriceInfos::<T>::mutate(asset_id, |opt_val| {
+        let val = opt_val.as_mut().unwrap();
+        // feed failures in order to ignore the limits
+        for _ in 0..price_tools::AVG_BLOCK_SPAN {
+            val.price_mut_of(variant).incoming_spot_price_failure();
+        }
 
-    for _ in 0..price_tools::AVG_BLOCK_SPAN + 1 {
-        price_tools::Pallet::<T>::incoming_spot_price(asset_id, price, variant)?;
-    }
+        for _ in 0..price_tools::AVG_BLOCK_SPAN + 1 {
+            let _ = val.price_mut_of(variant).incoming_spot_price(
+                price,
+                variant,
+                &price_tools::DEFAULT_PARAMETERS,
+            );
+        }
+    });
+
+    price_tools::FastPriceInfos::<T>::mutate(asset_id, |opt_val| {
+        let val = opt_val.as_mut().unwrap();
+        // feed failures in order to ignore the limits
+        for _ in 0..price_tools::AVG_BLOCK_SPAN {
+            val.price_mut_of(variant).incoming_spot_price_failure();
+        }
+
+        for _ in 0..price_tools::AVG_BLOCK_SPAN + 1 {
+            let _ = val.price_mut_of(variant).incoming_spot_price(
+                price,
+                variant,
+                &price_tools::FAST_PARAMETERS,
+            );
+        }
+    });
     Ok(())
 }
 

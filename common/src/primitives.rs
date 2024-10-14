@@ -228,6 +228,9 @@ pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
 pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
+pub const VXOR: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "006a271832f44c93bd8692584d85415f0f3dccef9748fecd129442c8edcb4361"
+));
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
@@ -259,6 +262,9 @@ pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 #[cfg(not(any(feature = "private-net", test)))]
 pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0083a6b3fbc6edae06f115c8953ddd7cbfba0b74579d6ea190f96853073b76f4"
+));
+pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "007f66067c940aeb968b19c8dbf9768447e80c52f73aa175aa8c3936c1bb7e5b"
 ));
 
 impl IsRepresentation for PredefinedAssetId {
@@ -442,10 +448,11 @@ where
 {
     fn from(compat: AssetId32<AssetId>) -> Self {
         let can_fail = || {
-            let code = compat.code;
-            let end = (code[0] as usize) + 1;
-            ensure!(end < 32, "Invalid format");
-            let mut frag: &[u8] = &code[1..end];
+            ensure!(
+                compat.code[0] == ASSET_ID_PREFIX_PREDEFINED,
+                "Invalid format"
+            );
+            let mut frag: &[u8] = &compat.code[1..=2];
             TechAssetId::<AssetId>::decode(&mut frag)
         };
         match can_fail() {
@@ -477,6 +484,7 @@ pub enum DEXId {
     Polkaswap = 0,
     PolkaswapXSTUSD = 1,
     PolkaswapKUSD = 2,
+    PolkaswapVXOR = 3,
 }
 
 impl From<DEXId> for u32 {
@@ -1187,50 +1195,6 @@ pub struct PswapRemintInfo {
     pub vesting: Balance,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn should_serialize_and_deserialize_assetid32_properly_with_string() {
-        let asset_id = AssetId32 {
-            code: [
-                2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0, 10, 0, 11, 0, 12, 0, 13, 0, 14, 0,
-                15, 0, 1, 0, 2, 0,
-            ],
-            phantom: PhantomData,
-        };
-
-        let json_str = r#""0x020003000400050006000700080009000a000b000c000d000e000f0001000200""#;
-
-        assert_eq!(serde_json::to_string(&asset_id).unwrap(), json_str);
-        assert_eq!(
-            serde_json::from_str::<AssetId32<PredefinedAssetId>>(json_str).unwrap(),
-            asset_id
-        );
-
-        // should not panic
-        serde_json::to_value(asset_id).unwrap();
-    }
-
-    #[test]
-    fn should_serialize_and_deserialize_balance_properly_with_string() {
-        let balance: Balance = 123_456u128;
-        let wrapper: BalanceWrapper = balance.into();
-
-        let json_str = r#""123456""#;
-
-        assert_eq!(serde_json::to_string(&wrapper).unwrap(), json_str);
-        let unwrapped: Balance = serde_json::from_str::<BalanceWrapper>(json_str)
-            .unwrap()
-            .into();
-        assert_eq!(unwrapped, balance);
-
-        // should not panic
-        serde_json::to_value(BalanceWrapper(balance)).unwrap();
-    }
-}
-
 #[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
 )]
@@ -1371,4 +1335,92 @@ pub struct AssetInfo {
     pub asset_type: AssetType,
     pub content_source: Option<ContentSource>,
     pub description: Option<Description>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hex_literal::hex;
+
+    use crate::{AssetId32, PredefinedAssetId, TechAssetId};
+
+    #[test]
+    fn should_serialize_and_deserialize_assetid32_properly_with_string() {
+        let asset_id = AssetId32 {
+            code: [
+                2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0, 10, 0, 11, 0, 12, 0, 13, 0, 14, 0,
+                15, 0, 1, 0, 2, 0,
+            ],
+            phantom: PhantomData,
+        };
+
+        let json_str = r#""0x020003000400050006000700080009000a000b000c000d000e000f0001000200""#;
+
+        assert_eq!(serde_json::to_string(&asset_id).unwrap(), json_str);
+        assert_eq!(
+            serde_json::from_str::<AssetId32<PredefinedAssetId>>(json_str).unwrap(),
+            asset_id
+        );
+
+        // should not panic
+        serde_json::to_value(asset_id).unwrap();
+    }
+
+    #[test]
+    fn should_serialize_and_deserialize_balance_properly_with_string() {
+        let balance: Balance = 123_456u128;
+        let wrapper: BalanceWrapper = balance.into();
+
+        let json_str = r#""123456""#;
+
+        assert_eq!(serde_json::to_string(&wrapper).unwrap(), json_str);
+        let unwrapped: Balance = serde_json::from_str::<BalanceWrapper>(json_str)
+            .unwrap()
+            .into();
+        assert_eq!(unwrapped, balance);
+
+        // should not panic
+        serde_json::to_value(BalanceWrapper(balance)).unwrap();
+    }
+
+    #[test]
+    fn check_tech_asset_from_asset() {
+        let asset_id = AssetId32::<PredefinedAssetId>::new(
+            hex!("0200000000000000000000000000000000000000000000000000000000000000"),
+            Default::default(),
+        );
+        let tech_asset_id: TechAssetId<PredefinedAssetId> = asset_id.into();
+        assert_eq!(tech_asset_id, TechAssetId::Wrapped(PredefinedAssetId::XOR));
+
+        let asset_id = AssetId32::<PredefinedAssetId>::new(
+            hex!("0200070000000000000000000000000000000000000000000000000000000000"),
+            Default::default(),
+        );
+        let tech_asset_id: TechAssetId<PredefinedAssetId> = asset_id.into();
+        assert_eq!(tech_asset_id, TechAssetId::Wrapped(PredefinedAssetId::ETH));
+
+        let asset_id = AssetId32::<PredefinedAssetId>::new(
+            hex!("05000a7e90ffac7c98b3bca9bb1441679a300000000000000000000000000000"),
+            Default::default(),
+        );
+        let tech_asset_id: TechAssetId<PredefinedAssetId> = asset_id.into();
+        assert_eq!(
+            tech_asset_id,
+            TechAssetId::Escaped(hex!(
+                "05000a7e90ffac7c98b3bca9bb1441679a300000000000000000000000000000"
+            ))
+        );
+
+        let asset_id = AssetId32::<PredefinedAssetId>::new(
+            hex!("030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000"),
+            Default::default(),
+        );
+        let tech_asset_id: TechAssetId<PredefinedAssetId> = asset_id.into();
+        assert_eq!(
+            tech_asset_id,
+            TechAssetId::Escaped(hex!(
+                "030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000"
+            ))
+        );
+    }
 }

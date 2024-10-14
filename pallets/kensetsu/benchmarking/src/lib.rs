@@ -220,19 +220,21 @@ fn initialize_liquidity_sources<T: Config>() {
     initialize_xyk_pool::<T>(KUSD.into());
     price_tools::Pallet::<T>::register_asset(&KUSD.into()).unwrap();
     for _ in 1..=AVG_BLOCK_SPAN {
-        price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy)
-            .unwrap();
-        price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell)
-            .unwrap();
-        price_tools::Pallet::<T>::incoming_spot_price(&KUSD.into(), balance!(1), PriceVariant::Buy)
-            .unwrap();
-        price_tools::Pallet::<T>::incoming_spot_price(
-            &KUSD.into(),
-            balance!(1),
-            PriceVariant::Sell,
-        )
-        .unwrap();
+        incoming_spot_price::<T>(DAI.into(), balance!(1));
+        incoming_spot_price::<T>(KUSD.into(), balance!(1));
     }
+}
+
+fn incoming_spot_price<T: price_tools::Config>(asset_id: AssetIdOf<T>, price: Balance) {
+    price_tools::FastPriceInfos::<T>::mutate(asset_id, |opt_val| {
+        let val = opt_val.as_mut().unwrap();
+        val.price_mut_of(PriceVariant::Buy)
+            .incoming_spot_price(price, PriceVariant::Buy, &price_tools::FAST_PARAMETERS)
+            .unwrap();
+        val.price_mut_of(PriceVariant::Sell)
+            .incoming_spot_price(price, PriceVariant::Sell, &price_tools::FAST_PARAMETERS)
+            .unwrap();
+    })
 }
 
 benchmarks! {
@@ -611,6 +613,29 @@ benchmarks! {
                 Event::<T>::MinimalCollateralDepositUpdated {
                     old_minimal_collateral_deposit: balance!(0),
                     new_minimal_collateral_deposit: balance!(42),
+                }
+            ).into()
+        );
+    }
+
+    update_minimal_stability_fee_accrue {
+        set_xor_as_collateral_type::<T>();
+    }: {
+        kensetsu::Pallet::<T>::update_minimal_stability_fee_accrue(
+            RawOrigin::Root.into(),
+            KUSD.into(),
+            balance!(42),
+        ).unwrap();
+    }
+    verify {
+        let new_info = StablecoinInfos::<T>::get::<AssetIdOf<T>>(KUSD.into()).expect("Must succeed");
+        assert_eq!(new_info.stablecoin_parameters.minimal_stability_fee_accrue, balance!(42));
+
+        frame_system::Pallet::<T>::assert_has_event(
+            <T as kensetsu::Config>::RuntimeEvent::from(
+                Event::<T>::MinimalStabilityFeeAccrueUpdated {
+                    old_minimal_stability_fee_accrue: balance!(0),
+                    new_minimal_stability_fee_accrue: balance!(42),
                 }
             ).into()
         );

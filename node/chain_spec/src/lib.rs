@@ -41,7 +41,7 @@ use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -900,6 +900,7 @@ fn testnet_genesis(
 ) -> RuntimeGenesisConfig {
     use common::XSTUSD;
     // Initial balances
+
     let initial_staking = balance!(1000000000);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
@@ -1490,6 +1491,17 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                (
+                    VXOR,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"VXOR".to_vec()),
+                    AssetName(b"Vested XOR".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
         },
         permissions: PermissionsConfig {
@@ -1596,6 +1608,14 @@ fn testnet_genesis(
                         is_public: true,
                     },
                 ),
+                (
+                    3,
+                    DEXInfo {
+                        base_asset_id: VXOR,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
             ],
         },
         faucet: faucet_config,
@@ -1682,7 +1702,8 @@ fn testnet_genesis(
         kensetsu: KensetsuConfig {
             predefined_stablecoin_sora_peg: vec![
                 (KUSD, DAI, balance!(1)),
-                (KXOR, XOR, balance!(100000))
+                (KXOR, XOR, balance!(100000)),
+                (SB, DAI, balance!(1)),
             ],
             predefined_stablecoin_oracle_peg: vec![
                 (KGOLD, SymbolName::xau(), balance!(0.001)),
@@ -2217,6 +2238,17 @@ fn mainnet_genesis(
             None,
             None,
         ),
+        (
+            VXOR,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"VXOR".to_vec()),
+            AssetName(b"Vested XOR".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
     ];
     let bridge_assets_data: Vec<BridgeAssetData<Runtime>> = Vec::new();
     bridge_assets.extend(bridge_assets_data.iter().map(|x| {
@@ -2455,6 +2487,14 @@ fn mainnet_genesis(
                         is_public: true,
                     },
                 ),
+                (
+                    3,
+                    DEXInfo {
+                        base_asset_id: VXOR,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
             ],
         },
         tokens: TokensConfig {
@@ -2546,7 +2586,8 @@ fn mainnet_genesis(
         kensetsu: KensetsuConfig {
             predefined_stablecoin_sora_peg: vec![
                 (KUSD, DAI, balance!(1)),
-                (KXOR, XOR, balance!(100000))
+                (KXOR, XOR, balance!(100000)),
+                (SB, DAI, balance!(1)),
             ],
             predefined_stablecoin_oracle_peg: vec![
                 (KGOLD, SymbolName::xau(), balance!(0.001)),

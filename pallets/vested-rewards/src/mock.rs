@@ -32,6 +32,7 @@ use crate::{self as vested_rewards, Config};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
+use common::weights::BlockWeights;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_timestamp_config, mock_permissions_config,
@@ -40,7 +41,7 @@ use common::{
     DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::Everything;
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -154,6 +155,9 @@ parameter_types! {
     pub const CrowdloanVestingPeriod: u64 = 14400;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
+    pub const MaxVestingSchedules: u32 = 5;
+    pub const MinVestedTransfer: Balance = 5;
+    pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
 }
 
 impl Config for Runtime {
@@ -164,6 +168,10 @@ impl Config for Runtime {
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxVestingSchedules = MaxVestingSchedules;
+    type Currency = Tokens;
+    type MinVestedTransfer = MinVestedTransfer;
+    type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
 
 parameter_types! {
@@ -282,6 +290,8 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
+pub const ALICE_BALANCE: Balance = 200;
+
 pub struct ExtBuilder {
     endowed_assets: Vec<(
         AssetId,
@@ -317,22 +327,22 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DOT,
-                    initial_assets_owner(),
+                    alice(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
+                    ALICE_BALANCE,
                     true,
                     None,
                     None,
                 ),
                 (
                     KSM,
-                    initial_assets_owner(),
+                    alice(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
+                    ALICE_BALANCE,
                     true,
                     None,
                     None,
@@ -421,5 +431,15 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+#[cfg(feature = "wip")] // ORML multi asset vesting
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_initialize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_finalize(System::block_number());
+        VestedRewards::on_initialize(System::block_number());
     }
 }

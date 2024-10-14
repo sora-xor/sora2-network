@@ -90,11 +90,23 @@ mod utils {
         let _ = PriceTools::<T>::register_asset(asset_id);
 
         for _ in 0..31 {
-            PriceTools::<T>::incoming_spot_price(asset_id, balance!(1), PriceVariant::Buy)
-                .expect("Failed to relay spot price");
-            PriceTools::<T>::incoming_spot_price(asset_id, balance!(1), PriceVariant::Sell)
-                .expect("Failed to relay spot price");
+            incoming_spot_price::<T>(asset_id, balance!(1));
         }
+    }
+
+    fn incoming_spot_price<T: price_tools::Config>(
+        asset_id: &AssetIdOf<T>,
+        price: common::Balance,
+    ) {
+        price_tools::PriceInfos::<T>::mutate(asset_id, |opt_val| {
+            let val = opt_val.as_mut().unwrap();
+            val.price_mut_of(PriceVariant::Buy)
+                .incoming_spot_price(price, PriceVariant::Buy, &price_tools::DEFAULT_PARAMETERS)
+                .unwrap();
+            val.price_mut_of(PriceVariant::Sell)
+                .incoming_spot_price(price, PriceVariant::Sell, &price_tools::DEFAULT_PARAMETERS)
+                .unwrap();
+        })
     }
 
     pub fn setup_exchange_benchmark<T: Config>() {

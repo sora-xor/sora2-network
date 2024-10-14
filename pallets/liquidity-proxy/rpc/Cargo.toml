@@ -18,6 +18,3 @@ sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polk
 sp-rpc = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 liquidity-proxy-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../common" }
-
-[features]
-wip = ["liquidity-proxy-runtime-api/wip"]

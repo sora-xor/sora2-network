@@ -78,6 +78,7 @@ pub enum ComicAssetId {
     Tomato,
     Potato,
     Table,
+    Future,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -361,6 +362,9 @@ macro_rules! mock_technical_config {
 #[macro_export]
 macro_rules! mock_tokens_config {
     ($runtime:ty) => {
+        parameter_types! {
+            pub const MaxLocks: u32 = 1;
+        }
         impl tokens::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
             type Balance = Balance;
@@ -369,7 +373,7 @@ macro_rules! mock_tokens_config {
             type WeightInfo = ();
             type ExistentialDeposits = ExistentialDeposits;
             type CurrencyHooks = ();
-            type MaxLocks = ();
+            type MaxLocks = MaxLocks;
             type MaxReserves = ();
             type ReserveIdentifier = ();
             type DustRemovalWhitelist = Everything;
@@ -389,6 +393,30 @@ macro_rules! mock_pallet_timestamp_config {
             type OnTimestampSet = ();
             type MinimumPeriod = MinimumPeriod;
             type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `vested-rewards::Config`
+#[macro_export]
+macro_rules! mock_vested_rewards_config {
+    ($runtime:ty) => {
+        parameter_types! {
+            pub const MaxVestingSchedules: u32 = 0;
+            pub const MinVestedTransfer: Balance = 0;
+        }
+        impl vested_rewards::Config for Runtime {
+            const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
+            type RuntimeEvent = RuntimeEvent;
+            type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+            type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+            type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+            type WeightInfo = ();
+            type AssetInfoProvider = assets::Pallet<Runtime>;
+            type MaxVestingSchedules = MaxVestingSchedules;
+            type Currency = Tokens;
+            type MinVestedTransfer = MinVestedTransfer;
+            type MaxWeightForAutoClaim = ();
         }
     };
 }

@@ -64,7 +64,7 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId};
+use common::{AssetId32, Description, PredefinedAssetId, KUSD};
 use common::{DOT, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
@@ -263,10 +263,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 93,
+    spec_version: 99,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 93,
+    transaction_version: 99,
     state_version: 0,
 };
 
@@ -343,7 +343,7 @@ parameter_types! {
     pub const DemocracyInstantAllowed: bool = true;
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
-    pub const DemocracyMaxVotes: u32 = 100;
+    pub const DemocracyMaxVotes: u32 = 500;
     pub const DemocracyMaxProposals: u32 = 100;
     pub const DemocracyMaxDeposits: u32 = 100;
     pub const DemocracyMaxBlacklisted: u32 = 100;
@@ -927,6 +927,10 @@ parameter_type_with_key! {
     };
 }
 
+parameter_types! {
+    pub const MaxLocksTokens: u32 = 1;
+}
+
 impl tokens::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
@@ -935,7 +939,7 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
-    type MaxLocks = ();
+    type MaxLocks = MaxLocksTokens;
     type MaxReserves = ();
     type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
@@ -950,6 +954,7 @@ parameter_types! {
     pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetVXorAssetId: AssetId = common::VXOR;
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
@@ -1060,29 +1065,14 @@ parameter_type_with_key! {
             base_asset_id,
             target_asset_id
         } = trading_pair;
-        (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into())
+        (base_asset_id, target_asset_id) == (&XSTUSD.into(), &XOR.into()) ||
+        (base_asset_id, target_asset_id) == (&KUSD.into(), &XOR.into())
     };
 }
 
-#[cfg(not(feature = "wip"))] // Chameleon pools
 parameter_type_with_key! {
-    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
-        if *base == common::XOR {
-            Some((common::KXOR, [common::ETH].into_iter().collect()))
-        } else {
-            None
-        }
-    };
-}
-
-#[cfg(feature = "wip")] // Chameleon pools
-parameter_type_with_key! {
-    pub GetChameleonPools: |base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
-        if *base == common::XOR {
-            Some((common::KXOR, [common::ETH, common::PSWAP, common::VAL].into_iter().collect()))
-        } else {
-            None
-        }
+    pub GetChameleonPools: |_base: AssetId| -> Option<(AssetId, sp_std::collections::btree_set::BTreeSet<AssetId>)> {
+        None
     };
 }
 
@@ -1371,10 +1361,12 @@ impl xor_fee::Config for Runtime {
     type XorCurrency = Balances;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
+    type VXorId = GetVXorAssetId;
     type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
     type BuyBackTBCDPercent = BuyBackTBCDPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
@@ -1862,6 +1854,13 @@ impl pallet_offences::Config for Runtime {
     type OnOffenceHandler = Staking;
 }
 
+parameter_types! {
+    pub const MaxVestingSchedules: u32 = 20;
+    pub const MinVestedTransfer: Balance = 1;
+    // TODO: set after benchmarking
+    pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+}
+
 impl vested_rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
     type RuntimeEvent = RuntimeEvent;
@@ -1870,6 +1869,10 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type MaxVestingSchedules = MaxVestingSchedules;
+    type Currency = Tokens;
+    type MinVestedTransfer = MinVestedTransfer;
+    type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
 
 impl price_tools::Config for Runtime {
@@ -2108,7 +2111,7 @@ impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::ParentBlockRandomness<Self>;
     type AssetInfoProvider = Assets;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxy = LiquidityProxy;
     type Oracle = OracleProxy;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
@@ -2201,9 +2204,10 @@ impl order_book::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
 parameter_types! {
-    pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 40;
-    pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const ReferrerWeight: u32 = 25; // 10%
+    pub const XorBurnedWeight: u32 = 1; // 0.4%
+    pub const XorIntoValBurnedWeight: u32 = 125; // 50%
+    pub const XorIntoVXorBurnedWeight: u32 = 99; // 39.6%
     pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
 }
 
@@ -3073,10 +3077,6 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
-            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, &selected_source_types, &filter_mode) {
-                return None;
-            }
-
             LiquidityProxy::inner_quote(
                 dex_id,
                 &input_asset_id,
@@ -3114,9 +3114,7 @@ impl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType> {
-            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
-                dex_id, input_asset_id, output_asset_id
-            ).unwrap_or(Vec::new())
+            LiquidityProxy::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id).unwrap_or(Vec::new())
         }
     }
 

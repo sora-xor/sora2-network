@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "3.6.1"
+version = "4.1.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -312,11 +312,6 @@ private-net = [
 
 wip = [
     "framenode-chain-spec/wip",
-    "dex-manager/wip",
-    "order-book/wip",
-    "liquidity-proxy/wip",
-    "liquidity-proxy-runtime-api/wip",
-    "liquidity-proxy-benchmarking/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",
@@ -327,6 +322,7 @@ wip = [
     "pallet-beefy-mmr",
     "xor-fee/wip",
     "soratopia",
+    "vested-rewards/wip"
 ]
 
 stage = ["framenode-chain-spec/stage"]

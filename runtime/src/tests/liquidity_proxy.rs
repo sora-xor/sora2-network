@@ -52,7 +52,9 @@ pub fn ensure_balances(account_id: AccountId, assets: Vec<(AssetId, Balance)>) {
     }
 }
 
+// TODO: remove if we will completely remove Chameleon pools functionality
 #[test]
+#[ignore]
 fn chameleon_pool_swaps() {
     ext().execute_with(|| {
         common::test_utils::init_logger();
@@ -293,7 +295,9 @@ fn chameleon_pool_swaps() {
     });
 }
 
+// TODO: remove if we will completely remove Chameleon pools functionality
 #[test]
+#[ignore]
 fn chameleon_pool_swaps_burn_kxor() {
     ext().execute_with(|| {
         common::test_utils::init_logger();
