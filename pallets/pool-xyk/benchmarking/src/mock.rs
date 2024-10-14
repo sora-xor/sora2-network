@@ -35,7 +35,7 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, XST,
+    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, VXOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -115,7 +115,7 @@ mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -193,7 +193,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetVXORAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

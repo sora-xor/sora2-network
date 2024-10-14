@@ -36,7 +36,7 @@ use common::{
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
     mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
-    ETH, PSWAP, TBCD, USDT, VAL, XOR, XST,
+    ETH, PSWAP, USDT, VAL, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -151,7 +151,7 @@ impl Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl permissions::Config for Runtime {
@@ -162,7 +162,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetVXORAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

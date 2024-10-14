@@ -92,7 +92,7 @@ parameter_types! {
     pub const XorBurnedWeight: u32 = 1;
     pub const XorIntoVXorBurnedWeight: u32 = 39;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackValToVXorPercent: Percent = Percent::from_percent(10);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const VXorId: AssetId = VXOR;
@@ -235,7 +235,7 @@ impl Config for Runtime {
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
     type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackTBCDPercent = BuyBackTBCDPercent;
+    type BuyBackValToVXorPercent = BuyBackValToVXorPercent;
     type XorId = XorId;
     type ValId = ValId;
     type TbcdId = GetBuyBackAssetId;

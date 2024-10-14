@@ -717,12 +717,12 @@ fn calculating_distribution_should_pass() {
         let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(0)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(0));
         assert_eq!(distribution.vesting, balance!(0));
-        assert_eq!(distribution.buy_back_tbcd, balance!(0));
+        assert_eq!(distribution.buy_back_vxor, balance!(0));
 
         // indivisible small amount
         let distribution = PswapDistrPallet::calculate_pswap_distribution(1u128).unwrap();
         assert_eq!(
-            distribution.liquidity_providers + distribution.vesting + distribution.buy_back_tbcd,
+            distribution.liquidity_providers + distribution.vesting + distribution.buy_back_vxor,
             1u128
         );
 
@@ -730,13 +730,13 @@ fn calculating_distribution_should_pass() {
         let distribution = PswapDistrPallet::calculate_pswap_distribution(100u128).unwrap();
         assert_eq!(distribution.liquidity_providers, 90u128);
         assert_eq!(distribution.vesting, 0u128);
-        assert_eq!(distribution.buy_back_tbcd, 10u128);
+        assert_eq!(distribution.buy_back_vxor, 10u128);
 
         // regular amount
         let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(100)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(90));
         assert_eq!(distribution.vesting, balance!(0));
-        assert_eq!(distribution.buy_back_tbcd, balance!(10));
+        assert_eq!(distribution.buy_back_vxor, balance!(10));
 
         for i in 0u64..6 {
             PswapDistrPallet::burn_rate_update_routine(i);
@@ -747,12 +747,12 @@ fn calculating_distribution_should_pass() {
         let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(0)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(0));
         assert_eq!(distribution.vesting, balance!(0));
-        assert_eq!(distribution.buy_back_tbcd, balance!(0));
+        assert_eq!(distribution.buy_back_vxor, balance!(0));
 
         // indivisible small amount
         let distribution = PswapDistrPallet::calculate_pswap_distribution(1u128).unwrap();
         assert_eq!(
-            distribution.liquidity_providers + distribution.vesting + distribution.buy_back_tbcd,
+            distribution.liquidity_providers + distribution.vesting + distribution.buy_back_vxor,
             1u128
         );
 
@@ -760,13 +760,13 @@ fn calculating_distribution_should_pass() {
         let distribution = PswapDistrPallet::calculate_pswap_distribution(100u128).unwrap();
         assert_eq!(distribution.liquidity_providers, 70u128);
         assert_eq!(distribution.vesting, 19u128);
-        assert_eq!(distribution.buy_back_tbcd, 10u128);
+        assert_eq!(distribution.buy_back_vxor, 10u128);
 
         // regular amount
         let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(100)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(70));
         assert_eq!(distribution.vesting, balance!(19.4));
-        assert_eq!(distribution.buy_back_tbcd, balance!(10));
+        assert_eq!(distribution.buy_back_vxor, balance!(10));
 
         // large value, balance is limited to i128 max because of Fixed type calculation
         // We use `i128::MAX - 100` otherwise assert_approx_eq! internally overflow when adding tolerance to the left and right members
@@ -781,13 +781,13 @@ fn calculating_distribution_should_pass() {
             33007389591331030955947336920881516493u128
         );
         assert_eq!(
-            distribution.buy_back_tbcd,
+            distribution.buy_back_vxor,
             17014118346046923173168730371588410562u128
         );
         assert_approx_eq_abs!(
             distribution
                 .liquidity_providers
-                .saturating_add(distribution.buy_back_tbcd)
+                .saturating_add(distribution.buy_back_vxor)
                 .saturating_add((distribution.vesting / 97).saturating_mul(100)),
             balance_max,
             50u128
