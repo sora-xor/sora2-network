@@ -313,7 +313,7 @@ benchmarks! {
             let asset_id_temp: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
             let vesting_schedule = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id,
-                manager_id: Some(caller.clone()),
+                manager_id: caller.clone(),
                 start: None,
                 period: T::BlockNumber::from(2_u32),
                 period_count: 2,
@@ -324,7 +324,7 @@ benchmarks! {
         }
          let vesting_schedule_locked = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id,
-                manager_id: Some(caller.clone()),
+                manager_id: caller.clone(),
                 start: None,
                 period: T::BlockNumber::from(1_u32),
                 period_count: 2,
