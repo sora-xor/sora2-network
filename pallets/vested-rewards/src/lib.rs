@@ -293,9 +293,8 @@ impl<T: Config> Pallet<T> {
             VestingScheduleOf::<T>::LinearPendingVestingSchedule(filter_schedule) => {
                 filter_schedule.manager_id = manager;
                 let mut start = <frame_system::Pallet<T>>::block_number();
-                if let Some(input_start) = filter_schedule.start {
+                if let Some(input_start) = filter_schedule.start.take() {
                     start = input_start;
-                    filter_schedule.start = None;
                 }
                 <VestingSchedules<T>>::try_mutate(dest.clone(), |schedules| {
                     for sched in schedules.iter_mut() {
