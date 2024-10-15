@@ -1,12 +1,11 @@
-use common::mock_pallet_timestamp_config;
-use common::mock_vested_rewards_config;
 use {
     crate as apollo_platform,
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
         mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-        mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
+        mock_pallet_balances_config, mock_pallet_timestamp_config, mock_technical_config,
+        mock_tokens_config, mock_vested_rewards_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -94,6 +93,7 @@ mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
+mock_vested_rewards_config!(Runtime);
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where

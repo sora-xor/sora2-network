@@ -502,10 +502,10 @@ pub mod v3_to_v4 {
     use common::permissions::{BURN, MINT};
     use common::{balance, AssetIdOf, DAI, SB};
     use core::marker::PhantomData;
-    use frame_support::dispatch::GetStorageVersion;
-    use frame_support::log::error;
+    use frame_support::traits::GetStorageVersion;
     use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
     use frame_support::weights::Weight;
+    use log::error;
     use permissions::Scope;
     use sp_core::Get;
 

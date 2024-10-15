@@ -44,9 +44,8 @@ use common::{
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::{Defensive, Get, IsType, LockIdentifier};
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, log, BoundedVec};
+use frame_support::{ensure, fail, BoundedVec};
 use frame_system::pallet_prelude::BlockNumberFor;
-use log::error;
 use serde::{Deserialize, Serialize};
 use sp_core::bounded::BoundedBTreeSet;
 use sp_runtime::traits::{
@@ -284,9 +283,9 @@ impl<T: Config> Pallet<T> {
 
     #[cfg(feature = "wip")] // Pending Vesting
     fn do_unlock_pending_schedule_by_manager(
-        manager: T::AccountId,
-        dest: T::AccountId,
-        start: T::BlockNumber,
+        manager: AccountIdOf<T>,
+        dest: AccountIdOf<T>,
+        start: BlockNumberFor<T>,
         filter_schedule: &mut VestingScheduleOf<T>,
     ) -> DispatchResult {
         // Independent logic for some schedules, so implementation only there
@@ -412,7 +411,7 @@ impl<T: Config> Pallet<T> {
                     .checked_div(claim_weight.proof_size()),
             )
             .unwrap_or_else(|| {
-                log::log!(log::Level::Error, "Not correct claim weight");
+                log::error!("Not correct claim weight");
                 0
             }) as usize;
 
@@ -864,11 +863,8 @@ pub mod pallet {
     use sp_std::collections::btree_map::BTreeMap;
     use vesting_currencies::VestingScheduleVariant;
 
-    pub(crate) type VestingScheduleOf<T> = VestingScheduleVariant<
-        <T as frame_system::Config>::BlockNumber,
-        AssetIdOf<T>,
-        AccountIdOf<T>,
-    >;
+    pub(crate) type VestingScheduleOf<T> =
+        VestingScheduleVariant<BlockNumberFor<T>, AssetIdOf<T>, AccountIdOf<T>>;
 
     #[cfg(feature = "wip")] // Auto Vesting
     pub(crate) type ClaimOf<T> = Claim<AssetIdOf<T>, AccountIdOf<T>>;
@@ -903,7 +899,7 @@ pub mod pallet {
         type MaxVestingSchedules: Get<u32>;
         type Currency: MultiLockableCurrency<
             Self::AccountId,
-            Moment = Self::BlockNumber,
+            Moment = BlockNumberFor<Self>,
             CurrencyId = AssetIdOf<Self>,
             Balance = Balance,
         >;
@@ -1103,7 +1099,7 @@ pub mod pallet {
         pub fn unlock_pending_schedule_by_manager(
             origin: OriginFor<T>,
             dest: <T::Lookup as StaticLookup>::Source,
-            start: Option<T::BlockNumber>,
+            start: Option<BlockNumberFor<T>>,
             mut filter_schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
             let manager = ensure_signed(origin)?;

@@ -114,12 +114,12 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 		// Minimum execution time: 68_373 nanoseconds.
 		Weight::from_parts(66_646_938, 28522)
 			// Standard Error: 1_731
-			.saturating_add(Weight::from_ref_time(2_540_977).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(2_540_977, 0).saturating_mul(a.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_proof_size(2475).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)

@@ -31,8 +31,7 @@
 use core::marker::PhantomData;
 
 use crate::{AggregatedPriceInfo, Config, FastPriceInfos, Pallet, PriceInfos};
-use frame_support::dispatch::GetStorageVersion;
-use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
+use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use sp_core::Get;
 #[cfg(feature = "try-runtime")]
 use sp_std::prelude::*;
@@ -47,7 +46,7 @@ impl<T: Config> OnRuntimeUpgrade for AddFastPriceInfos<T> {
             }
             StorageVersion::new(3).put::<Pallet<T>>()
         } else {
-            frame_support::log::error!(
+            log::error!(
                 "Current version {:?}, expected 2",
                 Pallet::<T>::on_chain_storage_version()
             );

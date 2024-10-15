@@ -298,7 +298,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_block_num: T::BlockNumber) -> Weight {
+        fn on_initialize(_block_num: BlockNumberFor<T>) -> Weight {
             let (n, m) = Pallet::<T>::average_prices_calculation_routine();
             <T as Config>::WeightInfo::on_initialize(n, m)
         }
@@ -457,7 +457,7 @@ impl<T: Config> Pallet<T> {
                             count_updated += 1;
                             let price = Self::spot_price(&asset_id)
                                 .map_err(|err| {
-                                    frame_support::log::warn!(
+                                    log::warn!(
                                         "Failed to get spot price for {asset_id:?}: {err:?}"
                                     );
                                     err
@@ -474,7 +474,7 @@ impl<T: Config> Pallet<T> {
                         if let Err(err) =
                             price_info.incoming_spot_price(val, price_variant, adjust_params)
                         {
-                            frame_support::log::warn!("Failed to add spot price for {asset_id:?} with {price_variant:?} variant and {val} price: {err:?}");
+                            log::warn!("Failed to add spot price for {asset_id:?} with {price_variant:?} variant and {val} price: {err:?}");
                         }
                     } else {
                         price_info.incoming_spot_price_failure();

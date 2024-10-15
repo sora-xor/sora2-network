@@ -405,14 +405,14 @@ macro_rules! mock_vested_rewards_config {
             pub const MaxVestingSchedules: u32 = 0;
             pub const MinVestedTransfer: Balance = 0;
         }
-        impl vested_rewards::Config for Runtime {
+        impl vested_rewards::Config for $runtime {
             const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
             type RuntimeEvent = RuntimeEvent;
             type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
             type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
             type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
             type WeightInfo = ();
-            type AssetInfoProvider = assets::Pallet<Runtime>;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
             type MaxVestingSchedules = MaxVestingSchedules;
             type Currency = Tokens;
             type MinVestedTransfer = MinVestedTransfer;
