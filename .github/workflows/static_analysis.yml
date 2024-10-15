@@ -1,4 +1,4 @@
-name: Cargo fmt & clippy
+heckname: Cargo fmt & clippy
 
 on:
   pull_request:
@@ -32,6 +32,9 @@ jobs:
       #   uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
       #   with:
       #     tool: clippy-sarif, sarif-fmt
+
+      - name: clang version
+        run: clang --version
 
       - name: cargo install
         uses: taiki-e/cache-cargo-install-action@v2
