@@ -17,10 +17,6 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           submodules: 'true'
-      
-      # Install dependencies including libclang-dev
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libclang-dev
 
       # v2.1.0
       - uses: arduino/setup-protoc@a8b67ba40b37d35169e222f3bb352603327985b6
@@ -43,7 +39,7 @@ jobs:
       - name: cargo clippy
         env:
           SKIP_WASM_BUILD: 1
-        run: cargo clippy --all-targets --features private-net,stage,wip,runtime-benchmarks
+        run: cargo clippy -j 4 --all-targets --features private-net,stage,wip,runtime-benchmarks
           --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
         shell: bash
 
