@@ -17,6 +17,10 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           submodules: 'true'
+      
+      # Install dependencies including libclang-dev
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
 
       # v2.1.0
       - uses: arduino/setup-protoc@a8b67ba40b37d35169e222f3bb352603327985b6
@@ -28,13 +32,8 @@ jobs:
           cache-provider: "buildjet"
 
       # v2.20.16
-      # - name: cargo install
-      #   uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
-      #   with:
-      #     tool: clippy-sarif, sarif-fmt
-
       - name: cargo install
-        uses: taiki-e/cache-cargo-install-action@v2
+        uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
         with:
           tool: clippy-sarif, sarif-fmt
 
