@@ -717,7 +717,6 @@ pub mod pallet {
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<AssetIdOf<Self>>;
         type ValId: Get<AssetIdOf<Self>>;
-        type TbcdId: Get<AssetIdOf<Self>>;
         type VXorId: Get<AssetIdOf<Self>>;
         type ReferrerWeight: Get<u32>;
         type XorBurnedWeight: Get<u32>;

@@ -1324,7 +1324,6 @@ impl xor_fee::Config for Runtime {
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type VXorId = GetVXorAssetId;
-    type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;

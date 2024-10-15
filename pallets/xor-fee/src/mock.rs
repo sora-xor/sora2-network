@@ -238,7 +238,6 @@ impl Config for Runtime {
     type BuyBackValToVXorPercent = BuyBackValToVXorPercent;
     type XorId = XorId;
     type ValId = ValId;
-    type TbcdId = GetBuyBackAssetId;
     type VXorId = VXorId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
