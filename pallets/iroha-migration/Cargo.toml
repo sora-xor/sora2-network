@@ -54,7 +54,6 @@ assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
 technical = { path = "../technical" }
-eth-bridge = { path = "../eth-bridge" }
 
 [features]
 default = ["std"]

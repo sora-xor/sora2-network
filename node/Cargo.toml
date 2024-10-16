@@ -111,24 +111,13 @@ sp-keystore = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "
 sp-statement-store = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 
 # TODO remove after toolchain is updated
-# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
-ahash = "=0.8.7"
-bumpalo = "=3.14.0"
-cargo-platform = "=0.1.7"
-substrate-bip39 = "=0.4.5"
-schnellru = "=0.2.1"
-bstr = "=1.9.1"
-predicates-tree = "=1.0.9"
-predicates-core = "=1.0.6"
-predicates = "=3.1.0"
+# newer versions of librirary requires newer toolchain, current is `nightly-2024-06-25`
+wasm-bindgen = "=0.2.92"
 
 [build-dependencies]
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
-# TODO remove after toolchain is updated
-# newer versions of librirary requires newer toolchain, current is `nightly-2023-03-21`
-assert_cmd = "=2.0.13"
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies

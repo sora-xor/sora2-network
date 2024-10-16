@@ -42,10 +42,7 @@ demeter-farming-platform = { path = "../../demeter-farming-platform", default-fe
 hex-literal = { version = '0.4.1' }
 pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 
 common = { path = "../../../common", features = ["test"] }
 dex-manager = { path = "../../dex-manager" }
@@ -65,6 +62,9 @@ std = [
     "sp-std/std",
     "tokens/std",
     "traits/std",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-std/std",
 ]
 
 runtime-benchmarks = [

@@ -63,6 +63,7 @@ std = [
     "currencies/std",
     "tokens/std",
     "traits/std",
+    "sp-std/std",
 ]
 
 runtime-benchmarks = [

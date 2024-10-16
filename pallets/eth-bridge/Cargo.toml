@@ -84,6 +84,7 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'jsonrpc-core/std',
+    'once_cell/std',
     'secp256k1/std',
     'rustc-hex/std',
     'serde_json/std',
