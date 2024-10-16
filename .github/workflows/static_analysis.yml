@@ -1,4 +1,4 @@
-name: Cargo Clippy Workflow
+name: Cargo fmt & clippy
 
 on:
   pull_request:
@@ -13,38 +13,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libclang-dev
-
-      - name: Install latest stable Rust
-        run: |
-          rustup update stable
-          rustup default stable
-
-      - name: Cache Cargo build
-        uses: Swatinem/rust-cache@v2
+      # v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          cache-key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          cache-provider: "actions"
+          submodules: 'true'
 
-      - name: Install clippy-sarif and sarif-fmt
-        run: cargo install clippy-sarif sarif-fmt --locked
+      # v2.1.0
+      - uses: arduino/setup-protoc@a8b67ba40b37d35169e222f3bb352603327985b6
 
-      - name: Check code formatting
-        run: cargo fmt -- --check
+      # v2.7.1
+      - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
+        with:
+          # 20GB of cache per repo per week
+          cache-provider: "buildjet"
 
-      - name: Run cargo clippy
+      # v2.20.16
+      - name: cargo install
+        uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
+        with:
+          tool: clippy-sarif, sarif-fmt
+
+      - name: cargo fmt
+        run: cargo fmt --check
+
+      - name: cargo clippy
         env:
           SKIP_WASM_BUILD: 1
-        run: |
-          cargo clippy --all-targets --all-features --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
+        run: cargo clippy --all-targets --features private-net,stage,wip,runtime-benchmarks
+          --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
         shell: bash
 
       - name: Upload SARIF file
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        # v2.24.2
+        uses: github/codeql-action/upload-sarif@49abf0ba24d0b7953cb586944e918a0b92074c80
         with:
           sarif_file: results.sarif
