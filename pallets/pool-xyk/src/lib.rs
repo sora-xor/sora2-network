@@ -1033,7 +1033,9 @@ pub mod pallet {
                     frame_support::log::warn!("Failed to get DEX info for {:?}", dex_id);
                     continue;
                 };
-                let Some((_, targets)) = <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(&dex_info.base_asset_id) else {
+                let Some((_, targets)) = <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(
+                    &dex_info.base_asset_id,
+                ) else {
                     continue;
                 };
                 for target in targets {

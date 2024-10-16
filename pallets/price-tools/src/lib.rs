@@ -445,9 +445,9 @@ impl<T: Config> Pallet<T> {
         for asset_id in S::iter_keys() {
             S::mutate(asset_id, |opt_value| {
                 let Some(value) = opt_value.as_mut() else {
-                // Should not happen, because we get asset_id from iter_keys() call
-                return;
-            };
+                    // Should not happen, because we get asset_id from iter_keys() call
+                    return;
+                };
                 for price_variant in [PriceVariant::Buy, PriceVariant::Sell] {
                     let price_info = value.price_mut_of(price_variant);
                     let price = if price_info.needs_update {

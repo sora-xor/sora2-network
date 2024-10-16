@@ -492,10 +492,13 @@ fn get_all_mcbc_init_events() -> Vec<Vec<(AssetIdOf<Runtime>, AssetPrices)>> {
     let mut result = vec![];
     for e in events {
         let RuntimeEvent::QaTools(qa_tools_event) = e else {
-            continue
+            continue;
         };
-        let qa_tools::Event::<Runtime>::McbcInitialized{ collateral_ref_prices } = qa_tools_event else {
-            continue
+        let qa_tools::Event::<Runtime>::McbcInitialized {
+            collateral_ref_prices,
+        } = qa_tools_event
+        else {
+            continue;
         };
         result.push(collateral_ref_prices)
     }
