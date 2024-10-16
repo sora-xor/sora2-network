@@ -21,7 +21,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.70.0
           override: true
 
       - name: Install cargo-clippy
