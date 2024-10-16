@@ -7,7 +7,7 @@ use common::{
     balance, fixed, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
     mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, HERMES_ASSET_ID, PSWAP, TBCD,
+    Description, Fixed, HERMES_ASSET_ID, PSWAP, VXOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -124,7 +124,7 @@ impl crate::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = HERMES_ASSET_ID;
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl permissions::Config for Runtime {
@@ -198,7 +198,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

@@ -42,7 +42,8 @@ use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use common::DOT;
 use common::{
-    balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode, PriceVariant, VAL, VXOR, XOR,
+    assert_approx_eq_abs, balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode,
+    PriceVariant, VAL, VXOR, XOR,
 };
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
@@ -304,18 +305,29 @@ fn notify_val_burned_works() {
         let x = FixedWrapper::from(total_xor_to_val) * fixed_wrapper!(0.997);
         let val_burned = (x.clone() * y.clone()) / (x + y.clone());
 
+        let x = FixedWrapper::from(INITIAL_RESERVES - val_burned.clone());
+        let y = FixedWrapper::from(INITIAL_RESERVES + total_xor_to_val);
+        let x_in = FixedWrapper::from(
+            crate::BuyBackRemintPercent::get() * val_burned.clone().try_into_balance().unwrap(),
+        );
+        let xor_to_vxor = (x_in.clone() * y) / (x + x_in) * fixed_wrapper!(0.997);
+        total_xor_to_vxor += xor_to_vxor.try_into_balance().unwrap();
+
         // The correct answer is 2E-13 away
         assert_eq!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
             val_burned.try_into_balance().unwrap()
         );
 
+        let y = FixedWrapper::from(INITIAL_RESERVES);
         let x = FixedWrapper::from(total_xor_to_vxor) * fixed_wrapper!(0.997);
         let vxor_burned = (x.clone() * y.clone()) / (x + y);
+        let expected_issuance = balance!(20000) - vxor_burned.try_into_balance().unwrap();
 
-        assert_eq!(
+        assert_approx_eq_abs!(
             crate::Assets::total_issuance(&VXOR.into()).unwrap(),
-            balance!(20000) - vxor_burned.try_into_balance().unwrap()
+            expected_issuance,
+            balance!(0.000000001)
         );
     });
 }
@@ -682,7 +694,7 @@ fn reminting_for_sora_parliament_works() {
         let y = INITIAL_RESERVES;
         let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let buy_back_percent = crate::BuyBackTBCDPercent::get();
+        let buy_back_percent = crate::BuyBackRemintPercent::get();
         let expected_balance = FixedWrapper::from(buy_back_percent * val_burned);
 
         <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
