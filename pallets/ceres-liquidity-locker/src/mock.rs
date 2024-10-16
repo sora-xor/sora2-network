@@ -115,7 +115,7 @@ impl orml_tokens::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl demeter_farming_platform::Config for Runtime {

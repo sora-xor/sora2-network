@@ -94,7 +94,7 @@ impl crate::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = CERES_ASSET_ID;
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl dex_manager::Config for Runtime {}

@@ -57,7 +57,6 @@ parameter_types! {
     pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
 }
 

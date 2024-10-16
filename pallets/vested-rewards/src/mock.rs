@@ -257,13 +257,6 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
 impl dex_manager::Config for Runtime {}
 
 impl ceres_liquidity_locker::Config for Runtime {
