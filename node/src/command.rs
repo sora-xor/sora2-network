@@ -17,12 +17,12 @@
 
 use crate::cli::{Cli, Subcommand};
 use crate::service;
-#[allow(unused_imports)]
-use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
-use sc_executor::sp_wasm_interface::ExtendedHostFunctions;
-use sc_executor::NativeExecutionDispatch;
+use sc_cli::SubstrateCli;
 use sc_service::PartialComponents;
+#[cfg(any(feature = "runtime-benchmarks", feature = "try-runtime"))]
+use {sc_executor::sp_wasm_interface::ExtendedHostFunctions, sc_executor::NativeExecutionDispatch};
 
+#[cfg(any(feature = "runtime-benchmarks", feature = "try-runtime"))]
 type HostFunctionsOf<E> = ExtendedHostFunctions<
     sp_io::SubstrateHostFunctions,
     <E as NativeExecutionDispatch>::ExtendHostFunctions,
