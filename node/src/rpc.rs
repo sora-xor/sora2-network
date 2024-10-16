@@ -57,7 +57,7 @@ pub struct BeefyDeps {
     /// Receives notifications about best block events from BEEFY.
     pub beefy_best_block_stream: BeefyBestBlockStream<Block>,
     /// Executor to drive the subscription manager in the BEEFY RPC handler.
-    pub subscription_executor: sc_rpc::SubscriptionTaskExecutor,
+    pub subscription_executor: SubscriptionTaskExecutor,
 }
 
 /// Full client dependencies

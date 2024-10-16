@@ -45,8 +45,7 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            let period =
-                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+            let period = <T as frame_system::Config>::BlockNumber::from(3600_u32);
             let small_reference_amount = balance!(0.2);
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read

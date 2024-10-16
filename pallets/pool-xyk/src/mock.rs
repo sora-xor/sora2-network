@@ -50,9 +50,6 @@ use sp_runtime::{Perbill, Percent};
 use sp_std::collections::btree_set::BTreeSet;
 
 pub use common::mock::ComicAssetId::*;
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 
 pub type DEXId = u32;

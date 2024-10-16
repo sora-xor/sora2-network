@@ -552,7 +552,7 @@ pub mod pallet {
                 <UserBorrowingInfo<T>>::get(borrowing_asset, user.clone()).unwrap_or_default();
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise create new user
-            if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
+            if let Some(user_info) = borrow_info.get_mut(&collateral_asset) {
                 let block_number = <frame_system::Pallet<T>>::block_number();
                 let calculated_interest = Self::calculate_borrowing_interest_and_reward(
                     user_info,
@@ -672,7 +672,7 @@ pub mod pallet {
                 let block_number = <frame_system::Pallet<T>>::block_number();
 
                 let mut borrowing_rewards = 0;
-                for (_, mut user_info) in user_infos.iter_mut() {
+                for (_, user_info) in user_infos.iter_mut() {
                     let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
                         user_info,
                         &pool_info,
@@ -1227,7 +1227,7 @@ pub mod pallet {
                 <UserBorrowingInfo<T>>::get(borrowing_asset, user.clone()).unwrap_or_default();
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise return error
-            if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
+            if let Some(user_info) = borrow_info.get_mut(&collateral_asset) {
                 let block_number = <frame_system::Pallet<T>>::block_number();
                 let calculated_interest = Self::calculate_borrowing_interest_and_reward(
                     user_info,
@@ -1598,7 +1598,7 @@ pub mod pallet {
 
             // Update borrowing interests
             for (account_id, mut user_infos) in UserBorrowingInfo::<T>::iter_prefix(pool_asset) {
-                for (_, mut user_info) in user_infos.iter_mut() {
+                for (_, user_info) in user_infos.iter_mut() {
                     let user_interests = Self::calculate_borrowing_interest_and_reward(
                         user_info,
                         &pool_info,

@@ -47,7 +47,7 @@ macro_rules! balance {
     ($value:literal) => {{
         use $crate::fixnum::_priv::parse_fixed;
         const VALUE_SIGNED: i128 = parse_fixed(stringify!($value), 1_000_000_000_000_000_000);
-        const VALUE: $crate::Balance = VALUE_SIGNED.abs() as u128;
+        const VALUE: $crate::Balance = VALUE_SIGNED.unsigned_abs();
         VALUE
     }};
     ($e:expr) => {{

@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Regulated Assets module benchmarking.
-#![cfg(feature = "runtime-benchmarks")]
 
 use super::test_utils::{
     register_regular_asset, register_regulated_asset as utils_register_regulated_asset,

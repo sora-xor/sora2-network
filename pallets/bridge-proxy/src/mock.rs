@@ -49,9 +49,7 @@ use frame_system as system;
 use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{
-    BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
-};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
 use system::EnsureRoot;
 
@@ -154,13 +152,6 @@ parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 2048;
     pub const MaxMessagesPerCommit: u32 = 3;
     pub const Decimals: u32 = 12;
-}
-pub struct FeeConverter;
-impl Convert<U256, Balance> for FeeConverter {
-    fn convert(amount: U256) -> Balance {
-        common::eth::unwrap_balance(amount, Decimals::get())
-            .expect("Should not panic unless runtime is misconfigured")
-    }
 }
 
 parameter_types! {

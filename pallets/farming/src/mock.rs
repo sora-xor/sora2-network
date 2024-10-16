@@ -52,10 +52,6 @@ use sp_runtime::{Perbill, Percent};
 use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
 
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
-
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
 pub type Amount = i128;

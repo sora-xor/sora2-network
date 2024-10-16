@@ -72,12 +72,11 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
+use frame_support::traits::{Everything, GenesisBuild, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
-use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
 use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
@@ -260,18 +259,6 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
-}
-
-pub struct RemoveTemporaryPeerAccountId;
-impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
-    fn get() -> Vec<(AccountId, H160)> {
-        vec![(
-            AccountId32::new(hex!(
-                "0000000000000000000000000000000000000000000000000000000000000001"
-            )),
-            H160(hex!("0000000000000000000000000000000000000001")),
-        )]
-    }
 }
 
 mock_pallet_balances_config!(Runtime);
