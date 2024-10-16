@@ -1295,23 +1295,6 @@
 <a href="#1280" id="1280">1280</a>
 <a href="#1281" id="1281">1281</a>
 <a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
-<a href="#1295" id="1295">1295</a>
-<a href="#1296" id="1296">1296</a>
-<a href="#1297" id="1297">1297</a>
-<a href="#1298" id="1298">1298</a>
-<a href="#1299" id="1299">1299</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1600,20 +1583,22 @@
     </span><span class="kw">fn </span>do_unlock_pending_schedule_by_manager(
         manager: T::AccountId,
         dest: T::AccountId,
-        start: T::BlockNumber,
         filter_schedule: <span class="kw-2">&amp;mut </span>VestingScheduleOf&lt;T&gt;,
     ) -&gt; DispatchResult {
         <span class="comment">// Independent logic for some schedules, so implementation only there
         </span><span class="kw">match </span>filter_schedule {
             VestingScheduleOf::&lt;T&gt;::LinearPendingVestingSchedule(filter_schedule) =&gt; {
-                filter_schedule.manager_id = <span class="prelude-val">Some</span>(manager);
+                filter_schedule.manager_id = manager;
+                <span class="kw">let </span><span class="kw-2">mut </span>start = &lt;frame_system::Pallet&lt;T&gt;&gt;::block_number();
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(input_start) = filter_schedule.start.take() {
+                    start = input_start;
+                }
                 &lt;VestingSchedules&lt;T&gt;&gt;::try_mutate(dest.clone(), |schedules| {
                     <span class="kw">for </span>sched <span class="kw">in </span>schedules.iter_mut() {
                         <span class="kw">if let </span>VestingScheduleOf::&lt;T&gt;::LinearPendingVestingSchedule(sched) = sched {
                             <span class="kw">if </span>sched.eq(<span class="kw-2">&amp;</span>filter_schedule) {
                                 sched.start = <span class="prelude-val">Some</span>(start);
                                 sched.ensure_valid_vesting_schedule::&lt;T&gt;()<span class="question-mark">?</span>;
-                                sched.manager_id = <span class="prelude-val">None</span>;
                                 <span class="self">Self</span>::deposit_event(Event::PendingScheduleUnlocked {
                                     dest: dest.clone(),
                                     pending_schedule:
@@ -1629,7 +1614,6 @@
                 })
                 .and_then(|<span class="kw">_</span>| {
                     filter_schedule.start = <span class="prelude-val">Some</span>(start);
-                    filter_schedule.manager_id = <span class="prelude-val">None</span>;
                     <span class="self">Self</span>::set_auto_claim_block(
                         dest.clone(),
                         <span class="kw-2">&amp;</span>VestingScheduleOf::&lt;T&gt;::LinearPendingVestingSchedule(
@@ -2418,31 +2402,13 @@
         </span><span class="kw">pub fn </span>unlock_pending_schedule_by_manager(
             origin: OriginFor&lt;T&gt;,
             dest: &lt;T::Lookup <span class="kw">as </span>StaticLookup&gt;::Source,
-            start: <span class="prelude-ty">Option</span>&lt;T::BlockNumber&gt;,
             <span class="kw-2">mut </span>filter_schedule: VestingScheduleOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>manager = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Pending Vesting
             </span>{
                 <span class="kw">let </span>dest = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
-                <span class="kw">match </span>start {
-                    <span class="prelude-val">Some</span>(start) =&gt; {
-                        <span class="self">Self</span>::do_unlock_pending_schedule_by_manager(
-                            manager,
-                            dest,
-                            start,
-                            <span class="kw-2">&amp;mut </span>filter_schedule,
-                        )<span class="question-mark">?</span>;
-                    }
-                    <span class="prelude-val">None </span>=&gt; {
-                        <span class="self">Self</span>::do_unlock_pending_schedule_by_manager(
-                            manager,
-                            dest,
-                            &lt;frame_system::Pallet&lt;T&gt;&gt;::block_number(),
-                            <span class="kw-2">&amp;mut </span>filter_schedule,
-                        )<span class="question-mark">?</span>;
-                    }
-                }
+                <span class="self">Self</span>::do_unlock_pending_schedule_by_manager(manager, dest, <span class="kw-2">&amp;mut </span>filter_schedule)<span class="question-mark">?</span>;
             }
             <span class="prelude-val">Ok</span>(().into())
         }
