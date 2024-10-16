@@ -35,10 +35,10 @@ use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome}
 use common::weights::BlockWeights;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, DEXId, Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, AssetId32, AssetName,
+    AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, Hooks};
@@ -127,6 +127,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     }
 }
 
+mock_pallet_balances_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
@@ -179,7 +180,7 @@ parameter_types! {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
@@ -187,7 +188,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = MockLiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -261,22 +262,6 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
 }
 
 impl dex_manager::Config for Runtime {}

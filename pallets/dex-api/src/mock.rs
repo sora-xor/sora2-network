@@ -37,7 +37,7 @@ use common::{
     mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
     mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
     mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed, LiquiditySource,
-    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, TBCD, XOR, XST,
+    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
@@ -268,7 +268,7 @@ impl Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -340,7 +340,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

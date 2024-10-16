@@ -4,10 +4,10 @@ use crate::{Config, *};
 #[cfg(test)]
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
-    fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, TBCD, VAL,
-    XST,
+    fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, DEXId, DEXInfo,
+    Fixed, PSWAP, VXOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -44,6 +44,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_permissions_config!(Runtime);
+mock_assets_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -81,32 +82,8 @@ construct_runtime! {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = ();
+    pub const GetBuyBackAssetId: AssetId = VXOR;
+    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 mock_pallet_balances_config!(Runtime);
@@ -175,7 +152,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

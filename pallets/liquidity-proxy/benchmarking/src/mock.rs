@@ -41,8 +41,8 @@ use common::{
     mock_technical_config, mock_tokens_config, mock_vested_rewards_config, Amount, AssetId32,
     AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
     FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, TBCD,
-    USDT, VAL, XOR, XST,
+    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT,
+    VAL, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -164,7 +164,7 @@ impl liquidity_proxy::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
@@ -440,7 +440,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

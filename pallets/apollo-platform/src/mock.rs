@@ -10,7 +10,7 @@ use {
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
         DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsProvider,
-        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, XOR, XST,
+        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, PSWAP, VXOR, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -126,7 +126,7 @@ parameter_types! {
 parameter_types! {
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = APOLLO_ASSET_ID;
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
 
         TechAccountId::from_generic_pair(
@@ -251,7 +251,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

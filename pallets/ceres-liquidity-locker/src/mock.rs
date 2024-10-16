@@ -5,7 +5,7 @@ use common::AccountIdOf;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, DEXId, DEXInfo, TBCD, XOR, XST,
+    mock_permissions_config, mock_technical_config, DEXId, DEXInfo, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, Hooks};
@@ -158,7 +158,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

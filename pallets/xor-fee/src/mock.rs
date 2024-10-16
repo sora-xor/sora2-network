@@ -39,9 +39,10 @@ use common::weights::constants::SMALL_FEE;
 use common::DAI;
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, VXOR, XOR,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
+    VAL, VXOR, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
@@ -90,8 +91,7 @@ parameter_types! {
     pub const XorBurnedWeight: u32 = 1;
     pub const XorIntoVXorBurnedWeight: u32 = 39;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
-    pub const ExistentialDeposit: u32 = 1;
+    pub const BuyBackValToVXorPercent: Percent = Percent::from_percent(10);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const VXorId: AssetId = VXOR;
@@ -114,22 +114,7 @@ construct_runtime! {
     }
 }
 
-impl pallet_balances::Config for Runtime {
-    type Balance = Balance;
-    type RuntimeEvent = RuntimeEvent;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type RuntimeHoldReason = ();
-    type FreezeIdentifier = ();
-    type MaxHolds = ();
-    type MaxFreezes = ();
-}
-
+mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
@@ -242,10 +227,9 @@ impl Config for Runtime {
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
     type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackTBCDPercent = BuyBackTBCDPercent;
+    type BuyBackRemintPercent = BuyBackValToVXorPercent;
     type XorId = XorId;
     type ValId = ValId;
-    type TbcdId = GetBuyBackAssetId;
     type VXorId = VXorId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;

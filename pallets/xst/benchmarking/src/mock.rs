@@ -35,7 +35,7 @@ use common::{
     self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
     mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair,
-    DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::Everything;
@@ -81,6 +81,7 @@ parameter_types! {
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetSyntheticBaseAssetId: AssetId = XST;
+    pub const GetPSWAPBuyBackAssetId: AssetId = VXOR;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -232,7 +233,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
-    type GetTBCDAssetId = GetSyntheticBaseAssetId;
+    type GetBuyBackAssetId = GetPSWAPBuyBackAssetId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;
