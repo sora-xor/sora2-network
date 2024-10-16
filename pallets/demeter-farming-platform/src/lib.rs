@@ -61,8 +61,8 @@ pub struct UserInfo<AssetId> {
     pub rewards: Balance,
 }
 
-use frame_support::dispatch::DispatchError;
 pub use pallet::*;
+use sp_runtime::DispatchError;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -117,7 +117,6 @@ pub mod pallet {
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -1048,7 +1047,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let mut counter = Weight::zero();
 
             if (now % T::BLOCKS_PER_HOUR_AND_A_HALF).is_zero() {

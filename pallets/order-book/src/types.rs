@@ -141,7 +141,7 @@ impl OrderAmount {
     pub fn associated_asset<'a, AssetId, DEXId>(
         &'a self,
         order_book_id: &'a OrderBookId<AssetId, DEXId>,
-    ) -> &AssetId {
+    ) -> &'a AssetId {
         match self {
             Self::Base(..) => &order_book_id.base,
             Self::Quote(..) => &order_book_id.quote,

@@ -33,13 +33,13 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, PriceToolsProvider};
 use common::{
     self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR,
-    XST, XSTUSD,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, PriceVariant, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -47,9 +47,8 @@ use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -57,7 +56,6 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 
@@ -95,7 +93,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
     pub const GetBandRateStaleBlockPeriod: u64 = 600;
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
@@ -117,12 +114,8 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
@@ -136,7 +129,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
+        DEXApi: dex_api::{Pallet, Call, Storage, Config<T>, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -145,13 +138,15 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_technical_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -221,10 +216,6 @@ impl dex_api::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
@@ -289,13 +280,6 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
@@ -351,7 +335,7 @@ impl Default for ExtBuilder {
                 (
                     alice(),
                     USDT,
-                    0,
+                    balance!(1),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -359,7 +343,7 @@ impl Default for ExtBuilder {
                 (
                     alice(),
                     XOR,
-                    balance!(350000),
+                    balance!(350001),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -460,8 +444,8 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
@@ -476,7 +460,7 @@ impl ExtBuilder {
                         None
                     }
                 })
-                .chain(vec![(bob(), 0), (assets_owner(), 0)])
+                .chain(vec![(bob(), 1), (assets_owner(), 1)])
                 .collect(),
         }
         .assimilate_storage(&mut t)
@@ -510,17 +494,9 @@ impl ExtBuilder {
                 .iter()
                 .cloned()
                 .chain(self.endowed_accounts_with_synthetics.iter().cloned())
-                .map(|(account_id, asset_id, _, symbol, name, precision)| {
+                .map(|(account_id, asset_id, balance, symbol, name, precision)| {
                     (
-                        asset_id,
-                        account_id,
-                        symbol,
-                        name,
-                        precision,
-                        Balance::zero(),
-                        true,
-                        None,
-                        None,
+                        asset_id, account_id, symbol, name, precision, balance, true, None, None,
                     )
                 })
                 .collect(),

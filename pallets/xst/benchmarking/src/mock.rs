@@ -38,7 +38,7 @@ use common::{
     DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -46,9 +46,8 @@ use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -56,7 +55,6 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type Moment = u64;
 
@@ -117,12 +115,8 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
@@ -136,7 +130,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
+        DEXApi: dex_api::{Pallet, Call, Storage, Config<T>, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -409,8 +403,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
@@ -425,7 +419,7 @@ impl ExtBuilder {
                         None
                     }
                 })
-                .chain(vec![(bob(), 0), (assets_owner(), 0)])
+                .chain(vec![(bob(), 1), (assets_owner(), 1)])
                 .collect(),
         }
         .assimilate_storage(&mut t)

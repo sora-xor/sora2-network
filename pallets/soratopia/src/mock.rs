@@ -46,8 +46,9 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::MultiSignature;
 use sp_runtime::{
-    testing::{Header, TestXt},
+    testing::TestXt,
     traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+    BuildStorage,
 };
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -58,13 +59,9 @@ type BlockNumber = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
 frame_support::construct_runtime!(
-    pub enum TestRuntime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum TestRuntime
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -114,8 +111,8 @@ impl soratopia::Config for TestRuntime {
 
 // Builds testing externalities
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
+    let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::<TestRuntime>::default()
+        .build_storage()
         .unwrap()
         .into();
     ext.execute_with(|| {

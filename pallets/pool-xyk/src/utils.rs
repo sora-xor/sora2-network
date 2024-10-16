@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::prelude::FixedWrapper;
-use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_core::Get;
@@ -42,6 +41,9 @@ use common::{
     AccountIdOf, AssetIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair,
     TradingPair,
 };
+use frame_support::dispatch::DispatchResult;
+use orml_traits::GetByKey;
+use sp_runtime::DispatchError;
 
 pub struct AdditionalSwapParams<AssetId> {
     pub is_fee_from_destination: bool,
@@ -136,7 +138,7 @@ impl<T: Config> Pallet<T> {
     pub fn ensure_trading_pair_is_not_restricted(
         tpair: &common::TradingPair<AssetIdOf<T>>,
     ) -> Result<(), DispatchError> {
-        if <T::GetTradingPairRestrictedFlag as orml_traits::GetByKey<_, _>>::get(tpair) {
+        if <T::GetTradingPairRestrictedFlag as GetByKey<_, _>>::get(tpair) {
             Err(Error::<T>::TargetAssetIsRestricted.into())
         } else {
             Ok(())
@@ -229,8 +231,7 @@ impl<T: Config> Pallet<T> {
         asset_b: &AssetIdOf<T>,
     ) -> Result<(TradingPair<AssetIdOf<T>>, Option<AssetIdOf<T>>, bool), DispatchError> {
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let chameleon_pools =
-            <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(base_asset_id);
+        let chameleon_pools = <T::GetChameleonPools as GetByKey<_, _>>::get(base_asset_id);
         let ta = if base_asset_id == asset_a {
             asset_b
         } else if base_asset_id == asset_b {

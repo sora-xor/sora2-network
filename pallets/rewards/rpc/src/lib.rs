@@ -37,7 +37,6 @@ use jsonrpsee::{
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
 
 use std::sync::Arc;
@@ -83,11 +82,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.claimables(&at, eth_address)
+        );
+        api.claimables(at, eth_address)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

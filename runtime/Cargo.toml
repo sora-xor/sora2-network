@@ -11,15 +11,15 @@ version = "4.2.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
-substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+substrate-wasm-builder = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "=3.6.5", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
     "chain-error",
 ] }
 # Does not compile with newer version
-parity-scale-codec-derive = "=3.6.5"
+parity-scale-codec-derive = "3"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex-literal = "0.4.1"
 log = { version = "0.4.14" }
@@ -27,26 +27,27 @@ serde = { features = [
     'derive',
 ], default-features = false, optional = true, version = '1.0.101' }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig", default-features = false }
-sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+# bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v1.1.0", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", package = "pallet-multisig", default-features = false }
+sp-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, package = "sp-consensus-beefy" }
+sp-mmr-primitives = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
+bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
 
-dispatch = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
 bridge-proxy = { path = "../pallets/bridge-proxy", default-features = false }
 bridge-proxy-runtime-api = { path = "../pallets/bridge-proxy/runtime-api", default-features = false }
-parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
-evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false }
+evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
@@ -107,71 +108,73 @@ xst = { path = "../pallets/xst", default-features = false }
 xst-benchmarking = { path = "../pallets/xst/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, features = [
+frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+frame-executive = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, features = [
     "tuples-96",
 ] }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-try-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-democracy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-elections-phragmen = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-pallet-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-im-online = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-membership = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-multisig = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-offences = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-sudo = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, features = [
-    "historical",
-] }
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-bags-list = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-system-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-try-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+pallet-aura = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-collective = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-democracy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-elections-phragmen = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-grandpa = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+pallet-beefy-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+pallet-babe = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-im-online = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-identity = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-membership = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-multisig = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-offences = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-preimage = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, package = "pallet-insecure-randomness-collective-flip" }
+pallet-sudo = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-scheduler = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-session = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, features = ["historical"] }
 
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-inherents = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-npos-elections = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-election-provider-multi-phase = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-staking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-utility = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-bags-list = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+
+sp-api = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-block-builder = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-consensus-aura = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-consensus-babe = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-inherents = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-offchain = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-session = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-transaction-pool = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-version = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-staking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-npos-elections = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-authorship = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+pallet-election-provider-multi-phase = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-election-provider-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 
 # Other
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.1.0", default-features = false, optional = true }
 
 [dev-dependencies]
 env_logger = "0.10.0"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 tokio = { version = "1.19.2", features = ["macros"] }
-sp-tracing = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-tracing = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+frame-remote-externalities = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 
 [features]
 default = ["std", "build-wasm-binary"]
@@ -232,6 +235,7 @@ std = [
     "liquidity-proxy-runtime-api/std",
     "liquidity-proxy/std",
     "liquidity-proxy-benchmarking/std",
+    "pool-xyk-benchmarking/std",
     "mock-liquidity-source/std",
     "multicollateral-bonding-curve-pool/std",
     "oracle-proxy/std",
@@ -256,6 +260,7 @@ std = [
     "pallet-session/std",
     "pallet-staking/std",
     "pallet-sudo/std",
+    "pallet-aura/std",
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
@@ -284,6 +289,7 @@ std = [
     "sp-transaction-pool/std",
     "sp-version/std",
     "sp-npos-elections/std",
+    "sp-consensus-aura/std",
     "substrate-bridge-app/std",
     "soratopia/std",
     "technical/std",
@@ -359,6 +365,7 @@ runtime-benchmarks = [
     "oracle-proxy/runtime-benchmarks",
     "order-book-benchmarking",
     "order-book-benchmarking/runtime-benchmarks",
+    "order-book/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
     "pool-xyk-benchmarking/runtime-benchmarks",
@@ -387,6 +394,7 @@ build-wasm-binary = []
 
 try-runtime = [
     "frame-try-runtime",
+    "frame-try-runtime/try-runtime",
     "apollo-platform/try-runtime",
     "assets/try-runtime",
     "band/try-runtime",

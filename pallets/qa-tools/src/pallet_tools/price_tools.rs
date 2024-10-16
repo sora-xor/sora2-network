@@ -32,9 +32,10 @@ use crate::{Config, Error};
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{balance, AssetIdOf, Balance, PriceToolsProvider, PriceVariant, XOR};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use sp_arithmetic::traits::{CheckedDiv, One};
+use sp_runtime::DispatchError;
 
 /// Directly set buy & sell XOR prices of `asset_id` (prices of XOR in terms of `asset_id`);
 /// verifying the values beforehand.

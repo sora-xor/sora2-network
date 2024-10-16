@@ -39,7 +39,7 @@ use common::{
     ETH, PSWAP, USDT, VAL, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -47,9 +47,8 @@ use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, Perbill, Percent};
+use sp_runtime::{BuildStorage, DispatchError, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -58,7 +57,6 @@ type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId {
@@ -103,12 +101,8 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -394,8 +388,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
@@ -410,7 +404,7 @@ impl ExtBuilder {
                         None
                     }
                 })
-                .chain(vec![(bob(), 0), (assets_owner(), 0)])
+                .chain(vec![(bob(), 1), (assets_owner(), 1)])
                 .collect(),
         }
         .assimilate_storage(&mut t)

@@ -64,14 +64,16 @@ use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use liquidity_aggregator::AggregatedSwapOutcome;
 use liquidity_aggregator::LiquidityAggregator;
+use log;
 pub use pallet::*;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
@@ -351,7 +353,7 @@ impl<T: Config> ExchangePath<T> {
                 &mut path_builder
             }
         };
-        frame_support::log::trace!("Found paths: {:?}", path_builder);
+        log::trace!("Found paths: {:?}", path_builder);
         if path_builder.paths.is_empty() {
             None
         } else {
@@ -1988,7 +1990,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);

@@ -5,11 +5,10 @@ use crate::Pallet;
 use codec::{Decode, Encode};
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::{
-    log::{error, info},
-    pallet_prelude::StorageVersion,
-    traits::GetStorageVersion as _,
-};
+use frame_support::{pallet_prelude::StorageVersion, traits::GetStorageVersion as _};
+use log::{error, info};
+#[cfg(feature = "try-runtime")]
+use sp_runtime::TryRuntimeError;
 
 #[cfg(feature = "try-runtime")]
 use sp_std::prelude::Vec;
@@ -66,19 +65,19 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 2,
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 3,
-            "should be upgraded to version 3"
+            TryRuntimeError::Other("should be upgraded to version 3")
         );
         Ok(())
     }

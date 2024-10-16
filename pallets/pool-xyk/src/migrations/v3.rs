@@ -30,14 +30,14 @@
 
 use crate::pallet::{Config, Pallet};
 use common::{AssetIdOf, Balance, EnabledSourcesManager, ToFeeAccount};
+use frame_support::pallet_prelude::Weight;
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::WeightMeter;
-use frame_support::{
-    log::{error, info},
-    weights::Weight,
-};
+use log::{error, info};
 use sp_runtime::DispatchResult;
+#[cfg(feature = "try-runtime")]
+use sp_runtime::TryRuntimeError;
 use sp_std::prelude::Vec;
 
 use crate::{PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
@@ -62,7 +62,7 @@ where
         dex_id: T::DEXId,
         lp_tokens: u128,
     ) -> DispatchResult {
-        weight_meter.check_accrue(
+        let _ = weight_meter.try_consume(
             T::DbWeight::get()
                 .reads_writes(2, 2)
                 .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity()),
@@ -112,7 +112,7 @@ where
         target_asset: AssetIdOf<T>,
         pool_account: T::AccountId,
     ) -> DispatchResult {
-        weight_meter.check_accrue(T::DbWeight::get().reads_writes(4, 8));
+        let _ = weight_meter.try_consume(T::DbWeight::get().reads_writes(4, 8));
 
         let (_, tech_acc_id) =
             Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset)?;
@@ -139,7 +139,7 @@ where
     }
 
     pub fn migrate(weight_meter: &mut WeightMeter) -> DispatchResult {
-        weight_meter.check_accrue(T::DbWeight::get().reads(1));
+        let _ = weight_meter.try_consume(T::DbWeight::get().reads(1));
         if StorageVersion::get::<Pallet<T>>() >= StorageVersion::new(3) {
             info!("Migration to version 3 has already been applied");
             return Ok(());
@@ -150,7 +150,7 @@ where
         let swap_pairs_to_be_deleted: Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)> = L::get();
 
         for (base_asset, target_asset, dex_id) in swap_pairs_to_be_deleted {
-            weight_meter.check_accrue(T::DbWeight::get().reads(1));
+            let _ = weight_meter.try_consume(T::DbWeight::get().reads(1));
 
             let pool_account =
                 if let Some(pool_property) = Properties::<T>::get(&base_asset, &target_asset) {
@@ -175,7 +175,7 @@ where
             let liquidity_holders: Vec<(T::AccountId, Balance)> =
                 PoolProviders::<T>::iter_prefix(&pool_account)
                     .inspect(|_| {
-                        weight_meter.check_accrue(T::DbWeight::get().reads(1));
+                        let _ = weight_meter.try_consume(T::DbWeight::get().reads(1));
                     })
                     .collect();
 
@@ -203,7 +203,7 @@ where
             Self::remove_pool(weight_meter, dex_id, base_asset, target_asset, pool_account)?;
         }
 
-        weight_meter.check_accrue(T::DbWeight::get().writes(1));
+        let _ = weight_meter.try_consume(T::DbWeight::get().writes(1));
         StorageVersion::new(3).put::<Pallet<T>>();
         Ok(())
     }
@@ -216,7 +216,8 @@ where
     L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)>>,
 {
     fn on_runtime_upgrade() -> Weight {
-        let mut weight_meter = WeightMeter::max_limit();
+        // new() returns max limit
+        let mut weight_meter = WeightMeter::new();
 
         if let Err(err) =
             frame_support::storage::with_storage_layer(|| Self::migrate(&mut weight_meter))
@@ -225,23 +226,23 @@ where
         } else {
             info!("Successfully migrated PoolXYK to v3");
         };
-        weight_meter.consumed
+        weight_meter.consumed()
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         frame_support::ensure!(
             StorageVersion::get::<Pallet<T>>() == StorageVersion::new(3),
-            "should be upgraded to version 3"
+            TryRuntimeError::Other("should be upgraded to version 3")
         );
         Ok(())
     }

@@ -31,9 +31,9 @@
 use crate::{Config, Error};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::Balance;
-use frame_support::dispatch::TypeInfo;
-use frame_support::{ensure, RuntimeDebug};
-use sp_core::Get;
+use frame_support::ensure;
+use scale_info::TypeInfo;
+use sp_core::{Get, RuntimeDebug};
 use sp_runtime::traits::{AtLeast32Bit, Zero};
 use sp_runtime::DispatchError;
 

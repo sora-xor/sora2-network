@@ -38,7 +38,6 @@ use jsonrpsee::{
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
 
 use std::sync::Arc;
@@ -104,11 +103,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.crowdloan_claimable(&at, tag, account_id, asset_id)
+        );
+        api.crowdloan_claimable(at, tag, account_id, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -118,12 +117,12 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<CrowdloanLease> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
+        );
         let lease = api
-            .crowdloan_lease(&at, tag)
+            .crowdloan_lease(at, tag)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
             .ok_or(RpcError::Custom("Crowdloan not found".into()))?;
         Ok(lease)

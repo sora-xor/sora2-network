@@ -33,12 +33,13 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, mock_vested_rewards_config, AssetName, AssetSymbol, DEXId, DEXInfo, Fixed,
-    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL, VXOR, XOR, XST, XSTUSD,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, mock_vested_rewards_config,
+    AssetName, AssetSymbol, DEXId, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL,
+    VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
+use frame_support::traits::{Everything, OnFinalize, OnInitialize, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -46,15 +47,10 @@ use frame_system::EnsureRoot;
 use permissions::*;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
-
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
@@ -62,8 +58,8 @@ pub type Amount = i128;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub const PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 1200;
@@ -123,18 +119,13 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -162,11 +153,9 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
 
 impl dex_manager::Config for Runtime {}
 
@@ -287,13 +276,6 @@ impl pallet_scheduler::Config for Runtime {
     type Preimages = ();
 }
 
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
@@ -383,8 +365,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {

@@ -55,7 +55,7 @@ impl<T: frame_system::Config> substrate_bridge_channel::outbound::WeightInfo for
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 9_921 nanoseconds.
-		Weight::from_ref_time(10_191_000)
+		Weight::from_parts(10_191_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 }

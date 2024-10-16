@@ -31,11 +31,13 @@
 use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
-    balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, VXOR,
+    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, DEXInfo, GetMarketInfo,
+    VXOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -44,15 +46,11 @@ use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 use sp_std::collections::btree_set::BTreeSet;
 
 pub use common::mock::ComicAssetId::*;
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 
 pub type DEXId = u32;
@@ -63,7 +61,6 @@ pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type Moment = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
@@ -79,7 +76,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
     pub GetMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
@@ -90,17 +86,13 @@ parameter_type_with_key! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Tokens: orml_tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -121,36 +113,10 @@ mock_currencies_config!(Runtime);
 mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
-
-parameter_types! {
-    pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
-    pub const GetBuyBackPercentage: u8 = 0;
-    pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
-}
-
-impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
+mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl dex_manager::Config for Runtime {}
 
@@ -160,20 +126,6 @@ impl trading_pair::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl orml_tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
@@ -199,13 +151,6 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
@@ -440,8 +385,8 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         common::test_utils::init_logger();
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
@@ -450,7 +395,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        orml_tokens::GenesisConfig::<Runtime> {
+        tokens::GenesisConfig::<Runtime> {
             balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

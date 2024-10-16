@@ -33,32 +33,26 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
+    mock_permissions_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
     BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
     VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -84,9 +78,9 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
@@ -107,8 +101,27 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-impl permissions::Config for Runtime {
+parameter_types! {
+    pub const ExistentialDeposit: u128 = 1;
+    pub const TransferFee: u128 = 0;
+    pub const CreationFee: u128 = 0;
+    pub const TransactionByteFee: u128 = 1;
+}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 impl dex_manager::Config for Runtime {}
@@ -297,12 +310,12 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(ALICE, 0)],
+            balances: vec![(ALICE, 1)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -15,20 +15,21 @@ targets = ['x86_64-unknown-linux-gnu']
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
+log = { version = "0.4.20" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 hex-literal = { version = "0.4.1", default-features = false }
 secp256k1 = { version = "0.7", features = [
     "hmac",
     "static-context",
 ], default-features = false, package = "libsecp256k1" }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+serde = { version = "1.0.101", features = ["derive"], default-features = false }
+sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 
 common = { path = "../../common", default-features = false }
@@ -36,8 +37,7 @@ technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
 
 assets = { path = "../assets" }
@@ -56,6 +56,7 @@ std = [
     'serde/std',
     'sp-core/std',
     'sp-io/std',
+    'sp-runtime/std',
     'sp-std/std',
     'secp256k1/std',
 ]
@@ -67,3 +68,5 @@ runtime-benchmarks = [
 ]
 
 try-runtime = ["frame-support/try-runtime"]
+
+include-real-files = []

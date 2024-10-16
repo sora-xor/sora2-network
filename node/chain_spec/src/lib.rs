@@ -49,24 +49,26 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
+
 #[cfg(feature = "wip")]
 use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature,
     StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
 use permissions::Scope;
-use sc_finality_grandpa::AuthorityId as GrandpaId;
-use sc_network_common::config::MultiaddrWithPeerId;
+use sc_consensus_grandpa::AuthorityId as GrandpaId;
+// use sc_network_common::config::MultiaddrWithPeerId;
+use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -86,7 +88,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<RuntimeGenesisConfig>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -869,7 +871,7 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
         },
         vec![],
         None,
-        None,
+        Some("local"),
         None,
         Some(properties),
         None,
@@ -895,7 +897,8 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
+    use common::XSTUSD;
     // Initial balances
 
     let initial_staking = balance!(1000000000);
@@ -1087,17 +1090,16 @@ fn testnet_genesis(
     }
     let mut balances = vec![
         (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
-        (assets_and_permissions_account_id.clone(), 0),
-        (xor_fee_account_id.clone(), 0),
-        (dex_root_account_id.clone(), 0),
-        (iroha_migration_account_id.clone(), 0),
-        (pswap_distribution_account_id.clone(), 0),
-        (mbc_reserves_account_id.clone(), 0),
-        (mbc_pool_rewards_account_id.clone(), 0),
-        (mbc_pool_free_reserves_account_id.clone(), 0),
-        (xst_pool_permissioned_account_id.clone(), 0),
-        (kensetsu_depository_account_id.clone(), 0),
-        (kensetsu_treasury_account_id.clone(), 0),
+        (assets_and_permissions_account_id.clone(), 1),
+        (xor_fee_account_id.clone(), 1),
+        (dex_root_account_id.clone(), 1),
+        (iroha_migration_account_id.clone(), 1),
+        (pswap_distribution_account_id.clone(), 1),
+        (mbc_reserves_account_id.clone(), 1),
+        (mbc_pool_rewards_account_id.clone(), 1),
+        (mbc_pool_free_reserves_account_id.clone(), 1),
+        (xst_pool_permissioned_account_id.clone(), 1),
+        (kensetsu_treasury_account_id.clone(), 1),
     ]
     .into_iter()
     .chain(
@@ -1224,7 +1226,7 @@ fn testnet_genesis(
         XST.into(),
         TBCD.into(),
     ];
-    GenesisConfig {
+    RuntimeGenesisConfig {
         #[cfg(feature = "wip")] // TON bridge
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
@@ -1243,6 +1245,7 @@ fn testnet_genesis(
 
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
+            ..Default::default()
         },
         sudo: SudoConfig {
             key: Some(root_key.clone()),
@@ -1253,9 +1256,11 @@ fn testnet_genesis(
         babe: BabeConfig {
             authorities: vec![],
             epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+            ..Default::default()
         },
         grandpa: GrandpaConfig {
             authorities: vec![],
+            ..Default::default()
         },
         session: SessionConfig {
             keys: initial_authorities
@@ -1632,6 +1637,7 @@ fn testnet_genesis(
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
+            ..Default::default()
         },
         eth_bridge: EthBridgeConfig {
             authority_account: Some(eth_bridge_authority_account_id.clone()),
@@ -1726,6 +1732,7 @@ fn testnet_genesis(
         },
         beefy: BeefyConfig {
             authorities: vec![],
+            genesis_block: None,
         },
     }
 }
@@ -1850,7 +1857,7 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
@@ -2264,7 +2271,7 @@ fn mainnet_genesis(
             None,
         )
     }));
-    GenesisConfig {
+    RuntimeGenesisConfig {
         #[cfg(feature = "wip")] // TON bridge
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
@@ -2282,6 +2289,7 @@ fn mainnet_genesis(
 
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
+            ..Default::default()
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
@@ -2289,9 +2297,11 @@ fn mainnet_genesis(
         babe: BabeConfig {
             authorities: vec![],
             epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+            ..Default::default()
         },
         grandpa: GrandpaConfig {
             authorities: vec![],
+            ..Default::default()
         },
         session: SessionConfig {
             keys: initial_authorities
@@ -2415,21 +2425,20 @@ fn mainnet_genesis(
         },
         balances: BalancesConfig {
             balances: vec![
-                (eth_bridge_account_id.clone(), 0),
-                (trustless_eth_bridge_account_id.clone(), 0),
-                (trustless_eth_bridge_fees_account_id.clone(), 0),
-                (assets_and_permissions_account_id.clone(), 0),
-                (xor_fee_account_id.clone(), 0),
-                (dex_root_account_id.clone(), 0),
-                (iroha_migration_account_id.clone(), 0),
-                (pswap_distribution_account_id.clone(), 0),
-                (mbc_reserves_account_id.clone(), 0),
-                (mbc_pool_rewards_account_id.clone(), 0),
-                (mbc_pool_free_reserves_account_id.clone(), 0),
-                (market_maker_rewards_account_id.clone(), 0),
-                (xst_pool_permissioned_account_id.clone(), 0),
-                (kensetsu_depository_account_id.clone(), 0),
-                (kensetsu_treasury_account_id.clone(), 0),
+                (eth_bridge_account_id.clone(), 1),
+                (trustless_eth_bridge_account_id.clone(), 1),
+                (trustless_eth_bridge_fees_account_id.clone(), 1),
+                (assets_and_permissions_account_id.clone(), 1),
+                (xor_fee_account_id.clone(), 1),
+                (dex_root_account_id.clone(), 1),
+                (iroha_migration_account_id.clone(), 1),
+                (pswap_distribution_account_id.clone(), 1),
+                (mbc_reserves_account_id.clone(), 1),
+                (mbc_pool_rewards_account_id.clone(), 1),
+                (mbc_pool_free_reserves_account_id.clone(), 1),
+                (market_maker_rewards_account_id.clone(), 1),
+                (xst_pool_permissioned_account_id.clone(), 1),
+                (kensetsu_treasury_account_id.clone(), 1),
             ]
             .into_iter()
             .chain(
@@ -2534,6 +2543,7 @@ fn mainnet_genesis(
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
+            ..Default::default()
         },
         eth_bridge: EthBridgeConfig {
             authority_account: Some(eth_bridge_authority_account_id.clone()),
@@ -2606,6 +2616,7 @@ fn mainnet_genesis(
         },
         beefy: BeefyConfig {
             authorities: vec![],
+            genesis_block: None,
         },
     }
 }

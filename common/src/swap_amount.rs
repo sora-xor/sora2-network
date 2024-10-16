@@ -35,9 +35,9 @@ use core::result::Result;
 use codec::{Decode, Encode, MaxEncodedLen};
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingMul;
-use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_core::RuntimeDebug;
 use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto};
 use sp_std::mem;
 use sp_std::ops::{Add, Sub};

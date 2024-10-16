@@ -1,15 +1,16 @@
 #![allow(clippy::redundant_closure)]
 
-#[cfg(feature = "std")]
 use super::*;
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 use {
-    serde::{Deserialize, Deserializer, Serialize, Serializer},
+    serde::{Deserializer, Serializer},
     sp_std::str::FromStr,
 };
 
+use scale_info::prelude::string::String;
+use serde::{Deserialize, Serialize};
+
 /// (De)serialization implementation for AssetSymbol
-#[cfg(feature = "std")]
 impl Serialize for AssetSymbol {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
@@ -19,7 +20,6 @@ impl Serialize for AssetSymbol {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for AssetSymbol {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
@@ -54,7 +54,6 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
 }
 
 /// (De)serialization implementation for AssetName
-#[cfg(feature = "std")]
 impl Serialize for AssetName {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
@@ -64,7 +63,6 @@ impl Serialize for AssetName {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for AssetName {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
@@ -76,7 +74,6 @@ impl<'de> Deserialize<'de> for AssetName {
 }
 
 /// (De)serialization implementation for ContentSource
-#[cfg(feature = "std")]
 impl Serialize for ContentSource {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
@@ -86,7 +83,6 @@ impl Serialize for ContentSource {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for ContentSource {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
@@ -98,7 +94,6 @@ impl<'de> Deserialize<'de> for ContentSource {
 }
 
 /// (De)serialization implementation for Description
-#[cfg(feature = "std")]
 impl Serialize for Description {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
@@ -108,7 +103,6 @@ impl Serialize for Description {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for Description {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
@@ -120,7 +114,6 @@ impl<'de> Deserialize<'de> for Description {
 }
 
 /// (De)serialization implementation for AssetId32
-#[cfg(feature = "std")]
 impl<AssetId> Serialize for AssetId32<AssetId> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -130,7 +123,6 @@ impl<AssetId> Serialize for AssetId32<AssetId> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de, AssetId> Deserialize<'de> for AssetId32<AssetId> {
     fn deserialize<D>(deserializer: D) -> Result<AssetId32<AssetId>, D::Error>
     where
@@ -142,7 +134,6 @@ impl<'de, AssetId> Deserialize<'de> for AssetId32<AssetId> {
 }
 
 /// (De)serialization implementation for AssetId32
-#[cfg(feature = "std")]
 impl Serialize for SymbolName {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
@@ -152,7 +143,6 @@ impl Serialize for SymbolName {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for SymbolName {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where

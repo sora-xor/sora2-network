@@ -38,9 +38,10 @@ use codec::Decode;
 use common::{
     AssetManager, AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
-use frame_benchmarking::{benchmarks, Zero};
+use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
 
 pub const DEX: DEXId = DEXId::Polkaswap;

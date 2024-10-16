@@ -37,6 +37,7 @@ use common::AssetIdOf;
 use common::{hash, DexInfoProvider, ManagementMode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
+use frame_support::sp_runtime;
 use frame_support::sp_runtime::DispatchError;
 use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
@@ -119,7 +120,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -148,7 +148,6 @@ pub mod pallet {
         pub dex_list: Vec<(T::DEXId, DEXInfo<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -158,7 +157,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.dex_list.iter().for_each(|(dex_id, dex_info)| {
                 DEXInfos::<T>::insert(dex_id.clone(), dex_info);

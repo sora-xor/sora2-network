@@ -1,15 +1,15 @@
 //! Ceres liquidity locker module benchmarking.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "runtime-benchmarks")]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
 use common::{
-    balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, DEXId, TradingPairSourceManager,
-    DEFAULT_BALANCE_PRECISION, XOR,
+    balance, AccountIdOf, AssetIdOf, AssetManager, AssetName, AssetSymbol, DEXId,
+    TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;

@@ -110,7 +110,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -153,7 +152,7 @@ pub mod pallet {
         >;
         type Scheduler: AlignmentScheduler
             + ExpirationScheduler<
-                Self::BlockNumber,
+                BlockNumberFor<Self>,
                 OrderBookId<AssetIdOf<Self>, Self::DEXId>,
                 Self::DEXId,
                 Self::OrderId,
@@ -289,7 +288,7 @@ pub mod pallet {
     pub type ExpirationsAgenda<T: Config> = StorageMap<
         _,
         Identity,
-        T::BlockNumber,
+        BlockNumberFor<T>,
         BoundedVec<(OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
     >;
@@ -310,7 +309,7 @@ pub mod pallet {
     /// so they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
-    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
+    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -523,18 +522,18 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform scheduled expirations
-        fn on_initialize(current_block: T::BlockNumber) -> Weight {
+        fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
             let mut expiration_weight_counter =
-                WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
+                WeightMeter::with_limit(T::MaxExpirationWeightPerBlock::get());
             Self::service_expiration(current_block, &mut expiration_weight_counter);
 
             let mut alignment_weight_counter =
-                WeightMeter::from_limit(T::MaxAlignmentWeightPerBlock::get());
+                WeightMeter::with_limit(T::MaxAlignmentWeightPerBlock::get());
             Self::service_alignment(&mut alignment_weight_counter);
 
             expiration_weight_counter
-                .consumed
-                .saturating_add(alignment_weight_counter.consumed)
+                .consumed()
+                .saturating_add(alignment_weight_counter.consumed())
         }
     }
 
@@ -1397,7 +1396,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return false;
         };
 
@@ -1415,7 +1416,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1456,7 +1459,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         recommended_samples_count: usize,
         _deduce_fee: bool,
     ) -> Result<(DiscreteQuotation<AssetIdOf<T>, Balance>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1630,7 +1635,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1720,7 +1727,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 

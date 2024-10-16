@@ -32,7 +32,10 @@ use super::pallet::{Config, Pallet};
 use common::{fixed, AssetIdOf, Fixed, XSTUSD};
 use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
 use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+use frame_support::{traits::GetStorageVersion as _, weights::Weight};
+use log::info;
+#[cfg(feature = "try-runtime")]
+use sp_runtime::TryRuntimeError;
 use sp_std::collections::btree_set::BTreeSet;
 
 #[cfg(feature = "try-runtime")]
@@ -92,19 +95,19 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 1,
-            "must upgrade linearly"
+            TryRuntimeError::Other("must upgrade linearly")
         );
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 2,
-            "should be upgraded to version 2"
+            TryRuntimeError::Other("should be upgraded to version 2")
         );
         Ok(())
     }

@@ -29,15 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::mock::*;
-use super::Error;
 use crate::requests::{OffchainRequest, OutgoingRequest, OutgoingTransfer};
 use crate::tests::{
     approve_last_request, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
 use crate::{AssetConfig, EthAddress};
 use common::{AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, PSWAP, USDT, XOR};
+use frame_support::assert_ok;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
-use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::H160;
 use sp_std::prelude::*;
@@ -50,7 +49,7 @@ fn should_approve_outgoing_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR.into(), &alice, &alice, 99999u32.into()).unwrap();
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             100000u32.into()
@@ -163,7 +162,7 @@ fn should_not_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        assert_err!(
+        frame_support::assert_err!(
             EthBridge::transfer_to_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
                 KSM.into(),
@@ -171,7 +170,7 @@ fn should_not_transfer() {
                 100_u32.into(),
                 net_id,
             ),
-            Error::UnsupportedToken
+            super::Error::UnsupportedToken
         );
         assert!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),

@@ -38,12 +38,13 @@ use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 use frame_support::{
-    dispatch::{DispatchInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
+    dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo},
     traits::Contains,
-    RuntimeDebug,
 };
+use sp_runtime::traits::Dispatchable;
+use sp_runtime::RuntimeDebug;
 
-pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
+pub use common::weights::BlockWeights;
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::Convert;
@@ -248,6 +249,24 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     fn remove_other_vote(r: u32) -> Weight {
         <() as pallet_democracy::WeightInfo>::remove_other_vote(r)
     }
+    fn set_external_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::set_external_metadata()
+    }
+    fn clear_external_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::clear_external_metadata()
+    }
+    fn set_proposal_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::set_proposal_metadata()
+    }
+    fn clear_proposal_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::clear_proposal_metadata()
+    }
+    fn set_referendum_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::set_referendum_metadata()
+    }
+    fn clear_referendum_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::clear_referendum_metadata()
+    }
 }
 
 impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImbalanceOf<T>>
@@ -271,7 +290,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
         self,
         origin: Self::RuntimeOrigin,
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
-        frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
                 let call: parachain_bridge_app::Call<crate::Runtime> = msg.into();
@@ -544,6 +563,7 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     }
 }
 
+#[allow(dead_code)]
 #[cfg(feature = "wip")] // EVM bridge
 pub struct EVMBridgeCallFilter;
 
@@ -582,13 +602,13 @@ mod test {
             assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, Weight::from_parts(248_828_000, 0), "u32::MIN");
-        t(1, Weight::from_parts(248_829_705, 0), "1");
-        t(500_000, Weight::from_parts(1_101_328_000, 0), "500_000");
-        t(1_000_000, Weight::from_parts(1_953_828_000, 0), "1_000_000");
+        t(u32::MIN, Weight::from_parts(248_381_775, 0), "u32::MIN");
+        t(1, Weight::from_parts(248_383_445, 0), "1");
+        t(500_000, Weight::from_parts(1_083_381_775, 0), "500_000");
+        t(1_000_000, Weight::from_parts(1_918_381_775, 0), "1_000_000");
         t(
             5 * MEBIBYTE,
-            Weight::from_parts(9_187_938_400, 0),
+            Weight::from_parts(9_003_991_375, 0),
             "5 * MEBIBYTE",
         );
     }
@@ -597,7 +617,7 @@ mod test {
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
             let actual = PreimageWeightInfo::note_preimage(bytes);
-            assert_eq!(actual.ref_time(), 1_459_900_160_001_u64);
+            assert_eq!(actual.ref_time(), 1_459_875_586_001u64);
             assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
         }
 

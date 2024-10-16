@@ -1,26 +1,23 @@
 use crate::{self as ceres_launchpad};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, mock_vested_rewards_config, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, DEXId, DEXInfo, Description, Fixed, CERES_ASSET_ID, PSWAP, VXOR, XOR, XST,
-    XSTUSD,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, mock_vested_rewards_config,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
+    CERES_ASSET_ID, PSWAP, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{MultiSignature, Perbill, Percent};
+use sp_runtime::{BuildStorage, MultiSignature, Perbill, Percent};
 
 pub type BlockNumber = u64;
 
@@ -30,16 +27,12 @@ pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -75,6 +68,8 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
 
 parameter_types! {
@@ -93,12 +88,11 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::new([103u8; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::new([104u8; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
-    pub const MinimumPeriod: u64 = 5;
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 impl crate::Config for Runtime {
-    const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
+    const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type WeightInfo = ();
@@ -110,10 +104,6 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -187,13 +177,6 @@ impl ceres_token_locker::Config for Runtime {
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
@@ -328,7 +311,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,

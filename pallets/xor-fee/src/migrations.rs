@@ -32,9 +32,13 @@
 pub mod v2 {
     use common::balance;
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
-    use frame_support::{log::info, traits::StorageVersion};
+    use frame_support::traits::StorageVersion;
+    use frame_support::weights::Weight;
+    use frame_system::pallet_prelude::BlockNumberFor;
+    use log::info;
+    #[cfg(feature = "try-runtime")]
+    use sp_runtime::TryRuntimeError;
 
     use crate::*;
 
@@ -45,8 +49,10 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            let period =
-                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+            let period = BlockNumberFor::<T>::from(3600_u32);
+
+            // let period =
+            //     <T as frame_system::Config>::BlockNumberFor::try_from(3600_u32).unwrap_or_default();
             let small_reference_amount = balance!(0.2);
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
@@ -64,30 +70,29 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
-                "Wrong storage version before upgrade"
+                TryRuntimeError::Other("Wrong storage version before upgrade")
             );
             Ok(Vec::new())
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-            let period =
-                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+            let period = BlockNumberFor::<T>::try_from(3600_u32).unwrap_or_default();
             let small_reference_amount = balance!(0.2);
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-                "Wrong storage version after upgrade"
+                TryRuntimeError::Other("Wrong storage version after upgrade")
             );
             frame_support::ensure!(
                 <UpdatePeriod<T>>::get() == period,
-                "Did not set right next update block"
+                TryRuntimeError::Other("Did not set right next update block")
             );
             frame_support::ensure!(
                 <SmallReferenceAmount<T>>::get() == small_reference_amount,
-                "Did not set right small reference amount"
+                TryRuntimeError::Other("Did not set right small reference amount")
             );
             Ok(())
         }

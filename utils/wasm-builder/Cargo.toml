@@ -1,0 +1,11 @@
+[package]
+name = "wasm-builder"
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+substrate-wasm-builder = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }

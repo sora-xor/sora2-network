@@ -34,19 +34,19 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, VAL, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::BuildStorage;
 use sp_runtime::{self, Perbill};
 
 type DEXId = common::DEXId;
@@ -55,7 +55,6 @@ type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
@@ -78,12 +77,8 @@ parameter_types! {
 }
 
 construct_runtime!(
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub struct Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -105,13 +100,10 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl referrals::Config for Runtime {
@@ -139,15 +131,15 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     let tech_account_id =
         TechAccountId::Generic(TECH_ACCOUNT_PREFIX.to_vec(), TECH_ACCOUNT_MAIN.to_vec());
 
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Runtime>()
+    let mut t = frame_system::GenesisConfig::<Runtime>::default()
+        .build_storage()
         .unwrap();
 
     pallet_balances::GenesisConfig::<Runtime> {
         balances: vec![
-            (ALICE, 0u128.into()),
-            (BOB, 0u128.into()),
-            (MINTING_ACCOUNT, 0u128.into()),
+            (ALICE, 1u128.into()),
+            (BOB, 1u128.into()),
+            (MINTING_ACCOUNT, 1u128.into()),
         ],
     }
     .assimilate_storage(&mut t)

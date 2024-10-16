@@ -35,12 +35,13 @@ use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
     mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed,
-    LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, VXOR, XOR, XST,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed, LiquiditySource,
+    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -48,18 +49,17 @@ use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{BuildStorage, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
+type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from(hex!(
@@ -81,6 +81,8 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -100,18 +102,13 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -270,10 +267,6 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
 }
@@ -364,13 +357,6 @@ impl pswap_distribution::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
@@ -459,8 +445,8 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
@@ -510,12 +496,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        <crate::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-            &crate::GenesisConfig {
-                source_types: self.source_types,
-            },
-            &mut t,
-        )
+        crate::GenesisConfig::<Runtime> {
+            phantom: Default::default(),
+            source_types: self.source_types,
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         t.into()

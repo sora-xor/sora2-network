@@ -43,11 +43,10 @@ use common::prelude::FixedWrapper;
 use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
-use frame_support::error::BadOrigin;
-use frame_support::traits::Currency;
+use frame_support::traits::{Currency, Imbalance};
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::traits::SignedExtension;
+use sp_runtime::traits::{BadOrigin, SignedExtension};
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{FixedPointNumber, FixedU128};
 
@@ -134,6 +133,7 @@ fn non_root_update_fails() {
 #[test]
 fn it_works_postpone() {
     ExtBuilder::build().execute_with(|| {
+        let ed = ExistentialDeposit::get();
         let who = GetPostponeAccountId::get();
         set_weight_to_fee_multiplier(1);
         assert_eq!(Balances::usable_balance_for_fees(&who), 0);
@@ -158,7 +158,7 @@ fn it_works_postpone() {
                 Some(balance!(0.0007)),
             )
         );
-        let _ = Balances::deposit_creating(&who, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000).saturating_add(ed.into()));
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
@@ -293,8 +293,9 @@ fn it_works_should_pays_no() {
 fn it_works_should_post_info_pays_no() {
     ExtBuilder::build().execute_with(|| {
         set_weight_to_fee_multiplier(1);
+        let ed = ExistentialDeposit::get();
         let who = bob();
-        let _ = Balances::deposit_creating(&who, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000).saturating_add(ed.into()));
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(
@@ -339,6 +340,7 @@ fn it_works_should_post_info_pays_no() {
 #[test]
 fn it_works_postpone_with_custom_fee_source() {
     ExtBuilder::build().execute_with(|| {
+        let ed = ExistentialDeposit::get();
         let who = GetPostponeAccountId::get();
         let fee_source = GetFeeSourceAccountId::get();
         let len = 100usize;
@@ -361,7 +363,7 @@ fn it_works_postpone_with_custom_fee_source() {
                 None,
             )
         );
-        let _ = Balances::deposit_creating(&fee_source, balance!(1000));
+        let _ = Balances::deposit_creating(&fee_source, balance!(1000).saturating_add(ed.into()));
         assert_eq!(
             Balances::usable_balance_for_fees(&fee_source),
             balance!(1000)
@@ -385,6 +387,7 @@ fn it_works_postpone_with_custom_fee_source() {
 #[test]
 fn it_works_custom_fee_source() {
     ExtBuilder::build().execute_with(|| {
+        let ed = ExistentialDeposit::get();
         let who = alice();
         let fee_source = GetFeeSourceAccountId::get();
         let len = 100usize;
@@ -393,11 +396,9 @@ fn it_works_custom_fee_source() {
         let post_info = post_info_from_weight(100.into());
         let result = Ok(());
         assert_eq!(Balances::usable_balance_for_fees(&who), 0);
-        let _ = Balances::deposit_creating(&fee_source, balance!(1000));
-        assert_eq!(
-            Balances::usable_balance_for_fees(&fee_source),
-            balance!(1000)
-        );
+        let _ = Balances::deposit_creating(&fee_source, balance!(1000).saturating_add(ed.into()));
+        let balance = Balances::usable_balance_for_fees(&fee_source);
+        assert_eq!(balance, balance!(1000));
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&who, &call, &info, len)
             .unwrap();
@@ -437,14 +438,19 @@ fn it_works_custom_fee_source() {
 #[test]
 fn it_fails_custom_fee_source() {
     ExtBuilder::build().execute_with(|| {
+        // We have to account for our existential deposit
+        let ed = self::ExistentialDeposit::get();
         let who = alice();
         let fee_source = GetFeeSourceAccountId::get();
         let len = 100usize;
         let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![1] });
         let info = info_from_weight(100.into());
         assert_eq!(Balances::usable_balance_for_fees(&fee_source), 0);
-        let _ = Balances::deposit_creating(&who, balance!(1000));
-        assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
+        let imbalance = Balances::deposit_creating(&who, balance!(1000)).peek();
+        assert_eq!(
+            Balances::usable_balance_for_fees(&who),
+            imbalance.saturating_sub(ed.into())
+        );
         assert_eq!(
             ChargeTransactionPayment::<Runtime>::new().pre_dispatch(&who, &call, &info, len),
             Err(TransactionValidityError::Invalid(
@@ -458,10 +464,13 @@ fn it_fails_custom_fee_source() {
 fn it_works_referrer_refund() {
     ExtBuilder::build().execute_with(|| {
         set_weight_to_fee_multiplier(1);
+        // We have to account for our existential deposit
+        let ed = self::ExistentialDeposit::get();
+
         let who = GetReferalAccountId::get();
         let referrer = GetReferrerAccountId::get();
-        let _ = Balances::deposit_creating(&who, balance!(1000));
-        let _ = Balances::deposit_creating(&referrer, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000).saturating_add(ed.into()));
+        let _ = Balances::deposit_creating(&referrer, balance!(1000).saturating_add(ed.into()));
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(

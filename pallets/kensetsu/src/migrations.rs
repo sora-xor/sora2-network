@@ -32,9 +32,9 @@ pub mod init {
     use crate::*;
     use common::{KEN, KUSD};
     use core::marker::PhantomData;
-    use frame_support::log::error;
     use frame_support::pallet_prelude::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
+    use log::error;
     use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
@@ -99,9 +99,9 @@ pub mod v1_to_v2 {
     };
     use common::{balance, AssetIdOf, SymbolName, DAI, KARMA, KGOLD, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
-    use frame_support::log::error;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
+    use log::error;
     use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
@@ -109,9 +109,9 @@ pub mod v1_to_v2 {
         use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
         use codec::{Decode, Encode, MaxEncodedLen};
         use common::{AccountIdOf, AssetIdOf, Balance};
-        use frame_support::dispatch::TypeInfo;
         use frame_support::pallet_prelude::ValueQuery;
         use frame_support::Identity;
+        use scale_info::TypeInfo;
         use sp_arithmetic::FixedU128;
 
         #[derive(
@@ -445,9 +445,8 @@ pub mod v1_to_v2 {
 pub mod v2_to_v3 {
     use crate::{CDPDepository, Config, Pallet};
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
-    use frame_support::log::error;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
     use sp_core::Get;
 
     pub struct UpgradeToV3<T>(PhantomData<T>);
@@ -466,9 +465,10 @@ pub mod v2_to_v3 {
                 ) {
                     Ok(()) => <T as frame_system::Config>::DbWeight::get().writes(1),
                     Err(err) => {
-                        error!(
+                        log::error!(
                             "Failed to register technical account: {:?}, error: {:?}",
-                            depository_acc, err
+                            depository_acc,
+                            err
                         );
                         <T as frame_system::Config>::DbWeight::get().reads(1)
                     }
@@ -483,7 +483,7 @@ pub mod v2_to_v3 {
                         cdp.collateral_amount,
                     )
                     .unwrap_or_else(|err| {
-                        error!("Error while transfer to depository tech acc: {:?}", err);
+                        log::error!("Error while transfer to depository tech acc: {:?}", err);
                     });
                 }
 
@@ -502,10 +502,10 @@ pub mod v3_to_v4 {
     use common::permissions::{BURN, MINT};
     use common::{balance, AssetIdOf, DAI, SB};
     use core::marker::PhantomData;
-    use frame_support::dispatch::GetStorageVersion;
-    use frame_support::log::error;
+    use frame_support::traits::GetStorageVersion;
     use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
     use frame_support::weights::Weight;
+    use log::error;
     use permissions::Scope;
     use sp_core::Get;
 

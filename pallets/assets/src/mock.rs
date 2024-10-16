@@ -33,29 +33,23 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId, LiquidityProxyTrait,
-    LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, AssetId32, DEXId,
+    LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::DispatchError;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -79,6 +73,7 @@ mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -115,8 +110,10 @@ impl Config for Runtime {
     type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+parameter_types! {
+    pub const TransferFee: u128 = 0;
+    pub const CreationFee: u128 = 0;
+    pub const TransactionByteFee: u128 = 1;
 }
 
 pub struct MockLiquidityProxy;
@@ -174,9 +171,9 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (ALICE, XOR, 0),
-                (BOB, XOR, 0),
-                (MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT, XOR, 0),
+                (ALICE, XOR, 1),
+                (BOB, XOR, 1),
+                (MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT, XOR, 1),
             ],
         }
     }
@@ -184,7 +181,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self

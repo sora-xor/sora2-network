@@ -42,7 +42,6 @@ use jsonrpsee::{
 use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 
 use std::sync::Arc;
@@ -98,9 +97,9 @@ where
     C::Api: BridgeProxyRuntimeAPI<Block, AssetId>,
 {
     fn list_apps(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<BridgeAppInfo>> {
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
         let api = self.client.runtime_api();
-        api.list_apps(&at)
+        api.list_apps(at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
@@ -109,9 +108,9 @@ where
         network_id: GenericNetworkId,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<BridgeAssetInfo>> {
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
         let api = self.client.runtime_api();
-        api.list_supported_assets(&at, network_id)
+        api.list_supported_assets(at, network_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

@@ -210,7 +210,7 @@ mod tests {
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
                 (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
@@ -342,7 +342,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -427,7 +427,7 @@ mod tests {
         let mut ext = ExtBuilder::new(vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
                 (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
@@ -516,7 +516,7 @@ mod tests {
         let mut ext = ExtBuilder::new(vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
                 (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
@@ -1378,7 +1378,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -1450,7 +1450,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -1534,7 +1534,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -1662,7 +1662,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -1832,7 +1832,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -1860,7 +1860,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![
@@ -1932,7 +1932,7 @@ mod tests {
         let mut ext = ExtBuilder::new(
             vec![
                 (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
                 (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
             ],
             vec![

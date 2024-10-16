@@ -38,12 +38,12 @@ use thiserror::Error;
 #[macro_export]
 macro_rules! assert_noop_msg {
     ( $x:expr, $msg:expr ) => {
-        let h = frame_support::storage_root(frame_support::StateVersion::V1);
+        use sp_io::storage::root as storage_root;
+
+        let h = storage_root(sp_runtime::StateVersion::V1);
         if let Err(e) = $crate::with_transaction(|| $x) {
-            if let frame_support::dispatch::DispatchError::Module(sp_runtime::ModuleError {
-                message,
-                ..
-            }) = e.error
+            if let sp_runtime::DispatchError::Module(sp_runtime::ModuleError { message, .. }) =
+                e.error
             {
                 assert_eq!(message, Some($msg));
             } else {
@@ -52,10 +52,7 @@ macro_rules! assert_noop_msg {
         } else {
             panic!("expected Err(_), got Ok(_)");
         }
-        assert_eq!(
-            h,
-            frame_support::storage_root(frame_support::StateVersion::V1)
-        );
+        assert_eq!(h, storage_root(sp_runtime::StateVersion::V1));
     };
 }
 

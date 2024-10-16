@@ -35,34 +35,28 @@ use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome}
 use common::weights::BlockWeights;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
-    KSM, PSWAP, TBCD, VXOR, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, AssetId32, AssetName,
+    AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::Hooks;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{Everything, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, Perbill, Percent};
+use sp_runtime::{BuildStorage, DispatchError, Perbill, Percent};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+pub type Moment = u64;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -140,6 +134,8 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -157,7 +153,6 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub const CrowdloanVestingPeriod: u64 = 14400;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
@@ -262,18 +257,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
 impl dex_manager::Config for Runtime {}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
 
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
@@ -384,16 +368,16 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
-                (alice(), 0),
-                (bob(), 0),
-                (eve(), 0),
-                (initial_assets_owner(), 0),
+                (alice(), 1),
+                (bob(), 1),
+                (eve(), 1),
+                (initial_assets_owner(), 1400000000000000000),
             ],
         }
         .assimilate_storage(&mut t)

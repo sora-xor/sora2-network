@@ -55,7 +55,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -80,7 +79,7 @@ pub mod pallet {
     pub enum Error<T> {}
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {

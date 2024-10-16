@@ -61,7 +61,7 @@ where
             None,
             None,
         ) {
-            frame_support::log::error!("Failed to register asset: {:?}", err);
+            log::error!("Failed to register asset: {:?}", err);
         }
         <T as crate::Config>::WeightInfo::register()
     }

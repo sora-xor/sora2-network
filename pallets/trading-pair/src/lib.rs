@@ -41,10 +41,12 @@ use common::{
     EnsureTradingPairExists, LiquiditySourceType, LockedLiquiditySourcesManager, ManagementMode,
     TradingPairSourceManager,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
+use frame_support::sp_runtime;
 use frame_support::traits::IsType;
+use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -286,7 +288,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -356,7 +357,6 @@ pub mod pallet {
         pub trading_pairs: Vec<(T::DEXId, TradingPair<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -366,7 +366,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.trading_pairs.iter().for_each(|(dex_id, pair)| {
                 EnabledSources::<T>::insert(&dex_id, &pair, BTreeSet::<LiquiditySourceType>::new());

@@ -39,9 +39,10 @@ use common::weights::constants::SMALL_FEE;
 use common::DAI;
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, VXOR, XOR,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
+    VAL, VXOR, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
@@ -50,16 +51,15 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
 use frame_support::traits::{
-    ConstU128, Currency, Everything, ExistenceRequirement, GenesisBuild, WithdrawReasons,
+    ConstU128, Currency, Everything, ExistenceRequirement, WithdrawReasons,
 };
 use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, Percent};
+use sp_runtime::{AccountId32, BuildStorage, DispatchError, Percent};
 use sp_staking::SessionIndex;
 use traits::MultiCurrency;
 
@@ -72,7 +72,6 @@ pub type BlockNumber = u64;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.7);
@@ -103,12 +102,8 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -125,6 +120,7 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
 
 parameter_types! {
     pub const OperationalFeeMultiplier: u8 = 5;
@@ -141,10 +137,6 @@ impl pallet_transaction_payment::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct CustomFees;
@@ -412,8 +404,8 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {

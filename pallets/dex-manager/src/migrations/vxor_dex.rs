@@ -34,7 +34,8 @@ use common::{DEXId, DEXInfo, DexIdOf, VXOR, XST};
 use core::marker::PhantomData;
 use frame_support::pallet_prelude::Get;
 use frame_support::traits::OnRuntimeUpgrade;
-use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+use frame_support::{traits::GetStorageVersion as _, weights::Weight};
+use log::info;
 
 pub struct AddVxorBasedDex<T>(PhantomData<T>);
 

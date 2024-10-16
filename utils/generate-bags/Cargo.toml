@@ -6,12 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "=4.3.17", features = ["derive"] }
+clap = { version = "=4.5.4", features = ["derive"] }
 
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+frame-election-provider-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+pallet-staking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
 
 chrono = { version = "0.4.19" }
 num-format = { version = "0.4.0" }

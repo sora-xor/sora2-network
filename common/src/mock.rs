@@ -30,7 +30,6 @@
 
 use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::DispatchError;
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -40,6 +39,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_runtime::AccountId32;
+use sp_runtime::DispatchError;
 use sp_std::convert::TryFrom;
 
 #[derive(
@@ -243,7 +243,7 @@ macro_rules! mock_assets_config {
 macro_rules! mock_pallet_balances_config {
     ($runtime:ty) => {
         parameter_types! {
-            pub const ExistentialDeposit: u128 = 0;
+            pub const ExistentialDeposit: u128 = 1;
         }
         impl pallet_balances::Config for $runtime {
             type Balance = Balance;
@@ -255,6 +255,10 @@ macro_rules! mock_pallet_balances_config {
             type MaxLocks = ();
             type MaxReserves = ();
             type ReserveIdentifier = ();
+            type RuntimeHoldReason = ();
+            type FreezeIdentifier = ();
+            type MaxHolds = ();
+            type MaxFreezes = ();
         }
     };
 }
@@ -295,13 +299,12 @@ macro_rules! mock_frame_system_config {
             type BlockLength = ();
             type RuntimeOrigin = RuntimeOrigin;
             type RuntimeCall = RuntimeCall;
-            type Index = u64;
-            type BlockNumber = u64;
+            type Nonce = u64;
+            type Block = Block;
             type Hash = H256;
             type Hashing = BlakeTwo256;
             type AccountId = AccountId;
             type Lookup = IdentityLookup<Self::AccountId>;
-            type Header = Header;
             type RuntimeEvent = RuntimeEvent;
             type BlockHashCount = frame_support::traits::ConstU64<250>;
             type DbWeight = ();
@@ -402,14 +405,14 @@ macro_rules! mock_vested_rewards_config {
             pub const MaxVestingSchedules: u32 = 0;
             pub const MinVestedTransfer: Balance = 0;
         }
-        impl vested_rewards::Config for Runtime {
+        impl vested_rewards::Config for $runtime {
             const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
             type RuntimeEvent = RuntimeEvent;
             type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
             type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
             type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
             type WeightInfo = ();
-            type AssetInfoProvider = assets::Pallet<Runtime>;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
             type MaxVestingSchedules = MaxVestingSchedules;
             type Currency = Tokens;
             type MinVestedTransfer = MinVestedTransfer;

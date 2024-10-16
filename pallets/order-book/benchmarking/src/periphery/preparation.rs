@@ -44,9 +44,9 @@ use framenode_runtime::order_book_benchmarking as order_book_benchmarking_import
 
 use common::prelude::{QuoteAmount, Scalar};
 use common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, ETH, VAL, XOR};
-use frame_benchmarking::log::debug;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
+use log::debug;
 use order_book_imported::test_utils::accounts;
 use order_book_imported::test_utils::fill_tools::{
     bid_prices_iterator, fill_expiration_schedule, fill_order_book_side,
@@ -496,7 +496,7 @@ pub fn quote<T: Config>(
 /// - `amount_variant` - setting for the amount of the market order.
 /// - `fill_settings` - settings for the benchmark; should be within storage constraints.
 /// - `author` - the account from which the order is going to be executed. It should not be from
-/// `test_utils::generate_account`.
+///   `test_utils::generate_account`.
 /// - `is_divisible` - controls the divisibility of order book base asset.
 ///
 /// Returns parameters necessary for the order execution. `OrderVolume` is in base asset.

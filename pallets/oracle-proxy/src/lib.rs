@@ -122,7 +122,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -198,21 +197,22 @@ pub mod pallet {
     }
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig {
+    pub struct GenesisConfig<T> {
+        pub phantom_data: PhantomData<T>,
         pub enabled_oracles: BTreeSet<Oracle>,
     }
 
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
+    impl<T> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
+                phantom_data: Default::default(),
                 enabled_oracles: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             EnabledOracles::<T>::put(&self.enabled_oracles);
         }
