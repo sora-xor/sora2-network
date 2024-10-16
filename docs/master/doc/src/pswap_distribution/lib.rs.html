@@ -1004,8 +1004,8 @@
                 </span>distribution.liquidity_providers = distribution
                     .liquidity_providers
                     .saturating_sub(undistributed_lp_amount);
-                distribution.buy_back_tbcd = distribution
-                    .buy_back_tbcd
+                distribution.buy_back_amount = distribution
+                    .buy_back_amount
                     .saturating_add(undistributed_lp_amount);
             }
 
@@ -1018,8 +1018,8 @@
 
             T::BuyBackHandler::mint_buy_back_and_burn(
                 <span class="kw-2">&amp;</span>incentive_asset_id,
-                <span class="kw-2">&amp;</span>T::GetTBCDAssetId::get(),
-                distribution.buy_back_tbcd,
+                <span class="kw-2">&amp;</span>T::GetBuyBackAssetId::get(),
+                distribution.buy_back_amount,
             )<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::IncentiveDistributed(
@@ -1067,7 +1067,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PswapRemintInfo, DispatchError&gt; {
         <span class="kw">let </span>amount_burned = FixedWrapper::from(amount_burned);
         <span class="comment">// Calculate amount for parliament and actual remainder after its fraction.
-        </span><span class="kw">let </span>amount_buy_back = (amount_burned.clone() * BuyBackTBCDFraction::&lt;T&gt;::get())
+        </span><span class="kw">let </span>amount_buy_back = (amount_burned.clone() * BuyBackFraction::&lt;T&gt;::get())
             .try_into_balance()
             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::CalculationError)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>amount_left = (amount_burned.clone() - amount_buy_back)
@@ -1088,7 +1088,7 @@
         </span><span class="prelude-val">Ok</span>(PswapRemintInfo {
             liquidity_providers: amount_lp,
             vesting: amount_vesting,
-            buy_back_tbcd: amount_buy_back,
+            buy_back_amount: amount_buy_back,
         })
     }
 
@@ -1188,7 +1188,7 @@
         <span class="kw">const </span>PSWAP_BURN_PERCENT: Percent;
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>GetIncentiveAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>GetTBCDAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>GetBuyBackAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>CompatBalance: From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>tokens::Config&gt;::Balance&gt;
             + Into&lt;Balance&gt;
@@ -1354,15 +1354,15 @@
     </span><span class="kw">pub type </span>ClaimableShares&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Fixed, ValueQuery&gt;;
 
     <span class="attr">#[pallet::type_value]
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>DefaultForBuyBackTBCDFraction() -&gt; Fixed {
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>DefaultForBuyBackFraction() -&gt; Fixed {
         <span class="macro">fixed!</span>(<span class="number">0.1</span>)
     }
 
-    <span class="doccomment">/// Fraction of PSWAP that could be buy backed to TBCD
+    <span class="doccomment">/// Fraction of PSWAP that could be buy backed
     </span><span class="attr">#[pallet::storage]
-    #[pallet::getter(<span class="kw">fn </span>buy_back_tbcd_fraction)]
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>BuyBackTBCDFraction&lt;T: Config&gt; =
-        StorageValue&lt;<span class="kw">_</span>, Fixed, ValueQuery, DefaultForBuyBackTBCDFraction&gt;;
+    #[pallet::getter(<span class="kw">fn </span>buy_back_fraction)]
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>BuyBackFraction&lt;T: Config&gt; =
+        StorageValue&lt;<span class="kw">_</span>, Fixed, ValueQuery, DefaultForBuyBackFraction&gt;;
 
     <span class="attr">#[pallet::genesis_config]
     </span><span class="kw">pub struct </span>GenesisConfig&lt;T: Config&gt; {
