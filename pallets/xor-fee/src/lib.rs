@@ -649,7 +649,7 @@ impl<T: Config> Pallet<T> {
                 let mut val_to_burn = swap_outcome.amount;
                 T::OnValBurned::on_val_burned(val_to_burn);
 
-                let val_to_buy_back = T::BuyBackValToVXorPercent::get() * val_to_burn;
+                let val_to_buy_back = T::BuyBackRemintPercent::get() * val_to_burn;
                 let result = common::with_transaction(|| {
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
@@ -722,7 +722,7 @@ pub mod pallet {
         type XorBurnedWeight: Get<u32>;
         type XorIntoValBurnedWeight: Get<u32>;
         type XorIntoVXorBurnedWeight: Get<u32>;
-        type BuyBackValToVXorPercent: Get<Percent>;
+        type BuyBackRemintPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type OnValBurned: OnValBurned;

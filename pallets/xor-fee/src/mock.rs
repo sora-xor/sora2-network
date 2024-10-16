@@ -235,7 +235,7 @@ impl Config for Runtime {
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
     type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackValToVXorPercent = BuyBackValToVXorPercent;
+    type BuyBackRemintPercent = BuyBackValToVXorPercent;
     type XorId = XorId;
     type ValId = ValId;
     type VXorId = VXorId;

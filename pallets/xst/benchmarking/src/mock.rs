@@ -239,7 +239,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
-    type GetVXORAssetId = GetPSWAPBuyBackAssetId;
+    type GetBuyBackAssetId = GetPSWAPBuyBackAssetId;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;

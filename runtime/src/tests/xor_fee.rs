@@ -308,7 +308,7 @@ fn notify_val_burned_works() {
         let x = FixedWrapper::from(INITIAL_RESERVES - val_burned.clone());
         let y = FixedWrapper::from(INITIAL_RESERVES + total_xor_to_val);
         let x_in = FixedWrapper::from(
-            crate::BuyBackValToVXorPercent::get() * val_burned.clone().try_into_balance().unwrap(),
+            crate::BuyBackRemintPercent::get() * val_burned.clone().try_into_balance().unwrap(),
         );
         let xor_to_vxor = (x_in.clone() * y) / (x + x_in) * fixed_wrapper!(0.997);
         total_xor_to_vxor += xor_to_vxor.try_into_balance().unwrap();
@@ -694,7 +694,7 @@ fn reminting_for_sora_parliament_works() {
         let y = INITIAL_RESERVES;
         let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let buy_back_percent = crate::BuyBackValToVXorPercent::get();
+        let buy_back_percent = crate::BuyBackRemintPercent::get();
         let expected_balance = FixedWrapper::from(buy_back_percent * val_burned);
 
         <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(

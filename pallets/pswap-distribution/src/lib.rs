@@ -294,8 +294,8 @@ impl<T: Config> Pallet<T> {
                 distribution.liquidity_providers = distribution
                     .liquidity_providers
                     .saturating_sub(undistributed_lp_amount);
-                distribution.buy_back_vxor = distribution
-                    .buy_back_vxor
+                distribution.buy_back_amount = distribution
+                    .buy_back_amount
                     .saturating_add(undistributed_lp_amount);
             }
 
@@ -308,8 +308,8 @@ impl<T: Config> Pallet<T> {
 
             T::BuyBackHandler::mint_buy_back_and_burn(
                 &incentive_asset_id,
-                &T::GetVXORAssetId::get(),
-                distribution.buy_back_vxor,
+                &T::GetBuyBackAssetId::get(),
+                distribution.buy_back_amount,
             )?;
 
             Self::deposit_event(Event::<T>::IncentiveDistributed(
@@ -357,7 +357,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<PswapRemintInfo, DispatchError> {
         let amount_burned = FixedWrapper::from(amount_burned);
         // Calculate amount for parliament and actual remainder after its fraction.
-        let amount_buy_back = (amount_burned.clone() * BuyBackVXORFraction::<T>::get())
+        let amount_buy_back = (amount_burned.clone() * BuyBackFraction::<T>::get())
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
         let mut amount_left = (amount_burned.clone() - amount_buy_back)
@@ -378,7 +378,7 @@ impl<T: Config> Pallet<T> {
         Ok(PswapRemintInfo {
             liquidity_providers: amount_lp,
             vesting: amount_vesting,
-            buy_back_vxor: amount_buy_back,
+            buy_back_amount: amount_buy_back,
         })
     }
 
@@ -478,7 +478,7 @@ pub mod pallet {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<AssetIdOf<Self>>;
-        type GetVXORAssetId: Get<AssetIdOf<Self>>;
+        type GetBuyBackAssetId: Get<AssetIdOf<Self>>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
@@ -644,15 +644,15 @@ pub mod pallet {
     pub type ClaimableShares<T: Config> = StorageValue<_, Fixed, ValueQuery>;
 
     #[pallet::type_value]
-    pub(super) fn DefaultForBuyBackVXORFraction() -> Fixed {
+    pub(super) fn DefaultForBuyBackFraction() -> Fixed {
         fixed!(0.1)
     }
 
-    /// Fraction of PSWAP that could be buy backed to VXOR
+    /// Fraction of PSWAP that could be buy backed
     #[pallet::storage]
-    #[pallet::getter(fn buy_back_vxor_fraction)]
-    pub(super) type BuyBackVXORFraction<T: Config> =
-        StorageValue<_, Fixed, ValueQuery, DefaultForBuyBackVXORFraction>;
+    #[pallet::getter(fn buy_back_fraction)]
+    pub(super) type BuyBackFraction<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForBuyBackFraction>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
