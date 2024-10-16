@@ -10,7 +10,7 @@ env:
 
 jobs:
   static_analysis:
-    runs-on: ubuntu-latest
+    runs-on: gcc:12.3.0-bookworm
 
     steps:
       # v4.1.1
