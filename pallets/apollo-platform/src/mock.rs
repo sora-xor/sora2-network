@@ -1,4 +1,3 @@
-use common::mock_vested_rewards_config;
 use {
     crate as apollo_platform,
     common::{
@@ -6,11 +5,12 @@ use {
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
         mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
         mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
+        mock_vested_rewards_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
         DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, PriceToolsProvider,
-        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, PSWAP, TBCD, XOR, XST,
+        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, PSWAP, VXOR, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -125,7 +125,7 @@ parameter_types! {
 parameter_types! {
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = APOLLO_ASSET_ID;
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
 
         TechAccountId::from_generic_pair(
@@ -250,7 +250,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;

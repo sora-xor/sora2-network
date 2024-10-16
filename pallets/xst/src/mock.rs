@@ -35,7 +35,7 @@ use common::{
     self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
     mock_tokens_config, Amount, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR,
+    FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR,
     XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -204,7 +204,7 @@ impl oracle_proxy::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBuyBackAssetId: AssetId = TBCD;
+    pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
 impl dex_api::Config for Runtime {
@@ -229,7 +229,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetTBCDAssetId = GetBuyBackAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
