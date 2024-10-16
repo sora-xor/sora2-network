@@ -27,19 +27,11 @@ jobs:
           # 20GB of cache per repo per week
           cache-provider: "buildjet"
 
-      - name: Install Rust toolchain
-        uses: taiki-e/install-action@v1
+      # v2.20.16
+      - name: cargo install
+        uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
         with:
-          toolchain: stable
-          components: rustfmt, clippy
-          target: x86_64-unknown-linux-gnu  # Specify the target you want to use
-          override: true
-
-      # # v2.20.16
-      # - name: cargo install
-      #   uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
-      #   with:
-      #     tool: clippy-sarif, sarif-fmt
+          tool: clippy-sarif, sarif-fmt
 
       - name: cargo fmt
         run: cargo fmt --check
