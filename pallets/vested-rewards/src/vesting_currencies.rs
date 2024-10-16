@@ -262,7 +262,7 @@ pub struct LinearPendingVestingSchedule<BlockNumber, AssetId: Copy, AccountId> {
     /// Vesting asset id
     pub asset_id: AssetId,
     /// Account Id of the manager, who may stop pending
-    pub manager_id: Option<AccountId>,
+    pub manager_id: AccountId,
     /// Vesting starting block
     pub start: Option<BlockNumber>,
     /// Number of blocks between vest

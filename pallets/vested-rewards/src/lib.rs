@@ -285,20 +285,22 @@ impl<T: Config> Pallet<T> {
     fn do_unlock_pending_schedule_by_manager(
         manager: AccountIdOf<T>,
         dest: AccountIdOf<T>,
-        start: BlockNumberFor<T>,
         filter_schedule: &mut VestingScheduleOf<T>,
     ) -> DispatchResult {
         // Independent logic for some schedules, so implementation only there
         match filter_schedule {
             VestingScheduleOf::<T>::LinearPendingVestingSchedule(filter_schedule) => {
-                filter_schedule.manager_id = Some(manager);
+                filter_schedule.manager_id = manager;
+                let mut start = <frame_system::Pallet<T>>::block_number();
+                if let Some(input_start) = filter_schedule.start.take() {
+                    start = input_start;
+                }
                 <VestingSchedules<T>>::try_mutate(dest.clone(), |schedules| {
                     for sched in schedules.iter_mut() {
                         if let VestingScheduleOf::<T>::LinearPendingVestingSchedule(sched) = sched {
                             if sched.eq(&filter_schedule) {
                                 sched.start = Some(start);
                                 sched.ensure_valid_vesting_schedule::<T>()?;
-                                sched.manager_id = None;
                                 Self::deposit_event(Event::PendingScheduleUnlocked {
                                     dest: dest.clone(),
                                     pending_schedule:
@@ -314,7 +316,6 @@ impl<T: Config> Pallet<T> {
                 })
                 .and_then(|_| {
                     filter_schedule.start = Some(start);
-                    filter_schedule.manager_id = None;
                     Self::set_auto_claim_block(
                         dest.clone(),
                         &VestingScheduleOf::<T>::LinearPendingVestingSchedule(
@@ -1099,31 +1100,13 @@ pub mod pallet {
         pub fn unlock_pending_schedule_by_manager(
             origin: OriginFor<T>,
             dest: <T::Lookup as StaticLookup>::Source,
-            start: Option<BlockNumberFor<T>>,
             mut filter_schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
             let manager = ensure_signed(origin)?;
             #[cfg(feature = "wip")] // Pending Vesting
             {
                 let dest = T::Lookup::lookup(dest)?;
-                match start {
-                    Some(start) => {
-                        Self::do_unlock_pending_schedule_by_manager(
-                            manager,
-                            dest,
-                            start,
-                            &mut filter_schedule,
-                        )?;
-                    }
-                    None => {
-                        Self::do_unlock_pending_schedule_by_manager(
-                            manager,
-                            dest,
-                            <frame_system::Pallet<T>>::block_number(),
-                            &mut filter_schedule,
-                        )?;
-                    }
-                }
+                Self::do_unlock_pending_schedule_by_manager(manager, dest, &mut filter_schedule)?;
             }
             Ok(().into())
         }

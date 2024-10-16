@@ -314,7 +314,7 @@ benchmarks! {
             let asset_id_temp: AssetIdOf<T> = create_asset::<T>("TEST", i.into());
             let vesting_schedule = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id,
-                manager_id: Some(caller.clone()),
+                manager_id: caller.clone(),
                 start: None,
                 period: BlockNumberFor::<T>::from(2_u32),
                 period_count: 2,
@@ -325,7 +325,7 @@ benchmarks! {
         }
          let vesting_schedule_locked = VestingScheduleOf::<T>::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
                 asset_id,
-                manager_id: Some(caller.clone()),
+                manager_id: caller.clone(),
                 start: None,
                 period: BlockNumberFor::<T>::from(1_u32),
                 period_count: 2,
@@ -335,7 +335,7 @@ benchmarks! {
         schedules.try_push(vesting_schedule_locked.clone()).expect("Error while push to BoundedVec");
         <VestingSchedules<T>>::insert(caller.clone(), schedules);
         frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(2_u32));
-    }: _(RawOrigin::Signed(caller.clone()), T::Lookup::unlookup(caller.clone()), None, vesting_schedule_locked)
+    }: _(RawOrigin::Signed(caller.clone()), T::Lookup::unlookup(caller.clone()), vesting_schedule_locked)
     verify {
         frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(4_u32));
         assert_ok!(VestedRewards::<T>::claim_unlocked(RawOrigin::Signed(caller.clone()).into(), asset_id));
