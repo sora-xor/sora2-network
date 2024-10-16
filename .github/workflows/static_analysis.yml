@@ -27,6 +27,11 @@ jobs:
           # 20GB of cache per repo per week
           cache-provider: "buildjet"
 
+      - name: Install specific GCC version
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-9 g++-9
+
       # v2.20.16
       - name: cargo install
         uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
