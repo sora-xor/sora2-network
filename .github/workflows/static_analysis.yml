@@ -30,7 +30,7 @@ jobs:
       - name: Install specific GCC version
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-9 g++-9
+          sudo apt-get install -y gcc-12  g++-12
 
       # v2.20.16
       - name: cargo install
