@@ -21,14 +21,13 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.70.0
+          toolchain: stable
           override: true
-      
-      - name: Install rustfmt
-        run: rustup component add rustfmt --toolchain 1.70.0
-      
-      - name: Install cargo-clippy
-        run: rustup component add clippy --toolchain 1.70.0
+
+      - name: Install rustfmt and clippy
+        run: |
+          rustup component add rustfmt --toolchain 1.70.0
+          rustup component add clippy --toolchain 1.70.0
 
       # v2.7.1
       - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
@@ -42,9 +41,19 @@ jobs:
       - name: cargo clippy
         env:
           SKIP_WASM_BUILD: 1
-        run: cargo clippy -j 2 --all-targets --features private-net,stage,wip,runtime-benchmarks
-          --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
-        shell: bash
+        run: |
+          cargo clippy --all-targets --features private-net,stage,wip,runtime-benchmarks --message-format=json > /tmp/clippy_output.json
+          
+      - name: clippy-sarif
+        run: |
+          clippy-sarif < /tmp/clippy_output.json | tee results.sarif | sarif-fmt
+
+      # - name: cargo clippy
+      #   env:
+      #     SKIP_WASM_BUILD: 1
+      #   run: cargo clippy --all-targets --features private-net,stage,wip,runtime-benchmarks
+      #     --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
+      #   shell: bash
 
       - name: Upload SARIF file
         if: always()
