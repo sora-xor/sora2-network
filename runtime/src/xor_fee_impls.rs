@@ -318,15 +318,15 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                     selected_source_types.clone(),
                 );
                 let Ok(swap_result) = LiquidityProxy::quote(
-                        *dex_id,
-                        input_asset_id,
-                        output_asset_id,
-                        (*swap_amount).into(),
-                        filter,
-                        true,
-                    ) else {
-                        return false;
-                    };
+                    *dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    (*swap_amount).into(),
+                    filter,
+                    true,
+                ) else {
+                    return false;
+                };
 
                 let (limits_ok, output_amount) = match swap_amount {
                     SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -379,15 +379,15 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                     selected_source_types.clone(),
                 );
                 let Ok(swap_result) = LiquidityProxy::quote(
-                        *dex_id,
-                        asset_id,
-                        &XOR,
-                        QuoteAmount::with_desired_output(*desired_xor_amount),
-                        filter,
-                        true,
-                    ) else {
-                        return false;
-                    };
+                    *dex_id,
+                    asset_id,
+                    &XOR,
+                    QuoteAmount::with_desired_output(*desired_xor_amount),
+                    filter,
+                    true,
+                ) else {
+                    return false;
+                };
                 if swap_result.amount <= *max_amount_in
                     && balance
                         .saturating_add(*desired_xor_amount)

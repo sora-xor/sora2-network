@@ -1,6 +1,7 @@
 //! Demeter farming platform module benchmarking.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "runtime-benchmarks")]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 

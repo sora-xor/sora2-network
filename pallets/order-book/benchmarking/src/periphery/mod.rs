@@ -192,7 +192,6 @@ pub(crate) mod cancel_limit_order {
     use common::Balance;
 
     pub struct Context<T: Config> {
-        pub settings: FillSettings<T>,
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         pub order_id: T::OrderId,
@@ -214,7 +213,6 @@ pub(crate) mod cancel_limit_order {
         )
         .unwrap();
         Context {
-            settings,
             caller,
             order_book_id,
             order_id,
@@ -225,7 +223,6 @@ pub(crate) mod cancel_limit_order {
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
-            settings: _,
             caller: _,
             order_book_id,
             order_id,
@@ -371,7 +368,6 @@ pub(crate) mod quote {
     use common::Balance;
 
     pub struct Context<T: Config> {
-        pub settings: FillSettings<T>,
         pub dex_id: T::DEXId,
         pub input_asset_id: AssetIdOf<T>,
         pub output_asset_id: AssetIdOf<T>,
@@ -385,7 +381,6 @@ pub(crate) mod quote {
         let (dex_id, input_asset_id, output_asset_id, amount, deduce_fee) =
             quote::<T>(settings.clone());
         Context {
-            settings,
             dex_id,
             input_asset_id,
             output_asset_id,
@@ -398,11 +393,9 @@ pub(crate) mod quote {
 pub(crate) mod exchange {
 
     use super::*;
-    use common::prelude::SwapAmount;
     use common::Balance;
 
     pub struct Context<T: Config> {
-        pub settings: FillSettings<T>,
         pub caller: T::AccountId,
         pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
         pub input_amount: OrderAmount,
@@ -411,7 +404,6 @@ pub(crate) mod exchange {
         pub caller_quote_balance: Balance,
         pub average_price: OrderPrice,
         pub direction: PriceVariant,
-        pub max_swap_amount: SwapAmount<Balance>,
     }
 
     pub(crate) fn init_inner<T: Config + trading_pair::Config>(
@@ -439,23 +431,9 @@ pub(crate) mod exchange {
             )
             .unwrap();
         let expected_orders = settings.max_side_orders() as usize;
-        let (expected_bids, expected_asks, max_swap_amount) = match info.direction {
-            PriceVariant::Buy => (
-                0,
-                expected_orders,
-                SwapAmount::with_desired_output(
-                    *info.base_amount().balance(),
-                    *info.quote_amount().balance(),
-                ),
-            ),
-            PriceVariant::Sell => (
-                expected_orders,
-                0,
-                SwapAmount::with_desired_input(
-                    *info.base_amount().balance(),
-                    *info.quote_amount().balance(),
-                ),
-            ),
+        let (expected_bids, expected_asks) = match info.direction {
+            PriceVariant::Buy => (0, expected_orders),
+            PriceVariant::Sell => (expected_orders, 0),
         };
         assert_orders_numbers::<T>(
             order_book_id,
@@ -465,7 +443,6 @@ pub(crate) mod exchange {
             None,
         );
         Context {
-            settings,
             caller,
             order_book_id,
             input_amount: info.input_amount,
@@ -474,7 +451,6 @@ pub(crate) mod exchange {
             caller_quote_balance,
             average_price: info.average_price,
             direction: info.direction,
-            max_swap_amount,
         }
     }
 
@@ -489,7 +465,6 @@ pub(crate) mod exchange {
 
     pub fn verify<T: Config + core::fmt::Debug>(context: Context<T>) {
         let Context {
-            settings: _,
             caller,
             order_book_id,
             input_amount,
@@ -498,7 +473,6 @@ pub(crate) mod exchange {
             caller_quote_balance,
             average_price,
             direction,
-            max_swap_amount: _,
         } = context;
         assert_last_event::<T>(
             Event::<T>::MarketOrderExecuted {
@@ -535,7 +509,6 @@ pub(crate) mod align_single_order {
     use common::balance;
 
     pub struct Context<T: Config> {
-        pub settings: FillSettings<T>,
         pub order_book: OrderBook<T>,
         pub order_to_align: LimitOrder<T>,
     }
@@ -563,7 +536,6 @@ pub(crate) mod align_single_order {
         );
 
         Context {
-            settings,
             order_book,
             order_to_align,
         }

@@ -496,7 +496,7 @@ pub fn quote<T: Config>(
 /// - `amount_variant` - setting for the amount of the market order.
 /// - `fill_settings` - settings for the benchmark; should be within storage constraints.
 /// - `author` - the account from which the order is going to be executed. It should not be from
-/// `test_utils::generate_account`.
+///   `test_utils::generate_account`.
 /// - `is_divisible` - controls the divisibility of order book base asset.
 ///
 /// Returns parameters necessary for the order execution. `OrderVolume` is in base asset.

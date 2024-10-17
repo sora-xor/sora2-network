@@ -84,9 +84,7 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
     }
     match endpoints {
         IntervalEndpoints::None => linspace_inner(a, b, n),
-        IntervalEndpoints::Left => once(a)
-            .chain(linspace_inner(a, b, n - 1).into_iter())
-            .collect(),
+        IntervalEndpoints::Left => once(a).chain(linspace_inner(a, b, n - 1)).collect(),
         IntervalEndpoints::Right => linspace_inner(a, b, n - 1)
             .into_iter()
             .chain(once(b))
@@ -96,7 +94,7 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
                 once(b).collect()
             } else {
                 once(a)
-                    .chain(linspace_inner(a, b, n - 2).into_iter())
+                    .chain(linspace_inner(a, b, n - 2))
                     .chain(once(b))
                     .collect()
             }
@@ -348,6 +346,10 @@ pub const fn pow(base: u32, mut exp: u32) -> FixedInner {
         n *= int;
     }
     n
+}
+
+pub fn parse_hex_string(s: &str) -> Option<Vec<u8>> {
+    s.strip_prefix("0x").and_then(|x| x.from_hex().ok())
 }
 
 #[cfg(test)]
@@ -604,8 +606,4 @@ mod tests {
             ]
         );
     }
-}
-
-pub fn parse_hex_string(s: &str) -> Option<Vec<u8>> {
-    s.strip_prefix("0x").and_then(|x| x.from_hex().ok())
 }

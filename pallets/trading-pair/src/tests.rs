@@ -184,7 +184,9 @@ fn should_list_registered_pairs() {
         TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, KSM)
             .expect("Failed to register pair.");
         assert_eq!(
-            TradingPairPallet::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
+            TradingPairPallet::list_trading_pairs(&DEX_ID)
+                .expect("Failed to list trading pairs.")
+                .sort(),
             vec![
                 TradingPair {
                     base_asset_id: XOR,
@@ -195,6 +197,7 @@ fn should_list_registered_pairs() {
                     target_asset_id: KSM
                 },
             ]
+            .sort()
         );
         assert!(
             TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)

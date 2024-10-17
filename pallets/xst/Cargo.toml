@@ -59,7 +59,7 @@ oracle-proxy = { path = "../oracle-proxy" }
 default = ['std']
 std = [
     'codec/std',
-    "scale-info/std",
+    'scale-info/std',
     'currencies/std',
     'frame-support/std',
     'frame-system/std',

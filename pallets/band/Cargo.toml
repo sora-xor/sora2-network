@@ -36,6 +36,7 @@ xst = { path = "../xst", default-features = false }
 default = ['std']
 std = [
     "codec/std",
+    "common/std",
     "scale-info/std",
     'fallible-iterator/std',
     "frame-support/std",
@@ -45,6 +46,7 @@ std = [
     "common/std",
 ]
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",

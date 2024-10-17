@@ -57,7 +57,7 @@ assets = { path = "../assets" }
 default = ['std']
 std = [
     'codec/std',
-    "scale-info/std",
+    'scale-info/std',
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
@@ -69,14 +69,15 @@ std = [
     'sp-std/std',
     'tokens/std',
     'pool-xyk/std',
-    "common/std",
-    "permissions/std",
-    "pswap-distribution/std",
-    "technical/std",
-    "trading-pair/std",
-    "pallet-timestamp/std",
+    'common/std',
+    'permissions/std',
+    'pswap-distribution/std',
+    'technical/std',
+    'trading-pair/std',
+    'pallet-timestamp/std',
 ]
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",

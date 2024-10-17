@@ -40,7 +40,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
-#![feature(is_some_and)]
 
 pub use pallet::*;
 pub use weights::WeightInfo;

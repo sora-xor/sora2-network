@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub use ethereum_types::{
-    BigEndianHash, Bloom as H2048, H128, H160, H256, H512, H520, H64, U128, U256, U64,
-};
+#[allow(unused_imports)]
+use ethereum_types::BigEndianHash;
+pub use ethereum_types::{Bloom as H2048, H128, H160, H256, H512, H520, H64, U128, U256, U64};
 
 #[cfg(test)]
 mod tests {

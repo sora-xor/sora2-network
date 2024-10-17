@@ -33,6 +33,7 @@
 #![recursion_limit = "256"]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![allow(non_local_definitions)]
 
 extern crate alloc;
 use alloc::string::String;

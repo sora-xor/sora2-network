@@ -54,6 +54,7 @@ default = ["std"]
 
 std = [
     "codec/std",
+    "common/std",
     "dex-manager/std",
     "frame-support/std",
     "frame-system/std",
@@ -71,6 +72,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]

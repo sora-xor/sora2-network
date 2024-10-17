@@ -42,6 +42,7 @@ technical = { path = "../technical" }
 default = ["std"]
 
 std = [
+    "common/std",
     "scale-info/std",
     "frame-support/std",
     "frame-benchmarking/std",
@@ -52,6 +53,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",

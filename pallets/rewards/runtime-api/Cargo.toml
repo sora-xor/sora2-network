@@ -23,6 +23,7 @@ common = { path = "../../../common", default-features = false }
 default = ["std"]
 std = [
     "codec/std",
+    "common/std",
     "scale-info/std",
     "serde",
     "sp-api/std",

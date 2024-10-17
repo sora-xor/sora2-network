@@ -50,8 +50,6 @@ use sp_runtime::Perbill;
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::mock::*;
-pub use common::TechAssetId::*;
 pub use common::TechPurpose::*;
 pub use common::TradingPair;
 

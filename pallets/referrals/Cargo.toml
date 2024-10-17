@@ -39,6 +39,7 @@ assets = { path = "../assets"}
 default = ["std"]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
@@ -47,8 +48,9 @@ runtime-benchmarks = [
 ]
 
 std = [
-    "codec/std",
     "assets/std",
+    "common/std",
+    "codec/std",
     "scale-info/std",
     "frame-benchmarking/std",
     "frame-support/std",

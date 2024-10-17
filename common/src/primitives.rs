@@ -232,18 +232,30 @@ pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(
 pub const APOLLO_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "00efe45135018136733be626b380a87ae663ccf6784a25fe9d9d2be64acecb9d"
 ));
-#[cfg(not(feature = "private-net"))]
+
+// `private-net` is not used in prod
+#[allow(deprecated)]
+#[cfg(any(feature = "private-net", test))]
+pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DOT);
+#[cfg(not(any(feature = "private-net", test)))]
 pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
 ));
-#[cfg(not(feature = "private-net"))]
+
+// `private-net` is not used in prod
+#[allow(deprecated)]
+#[cfg(any(feature = "private-net", test))]
+pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KSM);
+#[cfg(not(any(feature = "private-net", test)))]
 pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "00117b0fa73c4672e03a7d9d774e3b3f91beb893e93d9a8d0430295f44225db8"
 ));
+
 #[cfg(feature = "private-net")]
 pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
-    "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+    "00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
 ));
+
 // `private-net` is not used in prod
 #[allow(deprecated)]
 #[cfg(any(feature = "private-net", test))]
@@ -252,6 +264,7 @@ pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "0083a6b3fbc6edae06f115c8953ddd7cbfba0b74579d6ea190f96853073b76f4"
 ));
+
 pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "007f66067c940aeb968b19c8dbf9768447e80c52f73aa175aa8c3936c1bb7e5b"
 ));
@@ -1243,7 +1256,7 @@ impl<N: Get<u32>> TryFrom<&str> for BoundedString<N> {
 
 impl<N: Get<u32>> PartialOrd for BoundedString<N> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
+        Some(self.cmp(other))
     }
 }
 

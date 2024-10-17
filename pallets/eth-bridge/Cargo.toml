@@ -77,7 +77,8 @@ default = ['std']
 std = [
     'bridge-multisig/std',
     'codec/std',
-    "scale-info/std",
+    'common/std',
+    'scale-info/std',
     'ethereum-types/std',
     'frame-support/std',
     'frame-system/std',
@@ -93,6 +94,7 @@ std = [
     'bridge-types/std',
 ]
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
