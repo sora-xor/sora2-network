@@ -27,9 +27,9 @@ jobs:
           # 20GB of cache per repo per week
           cache-provider: "buildjet"
 
-      # v2.20.16
+      # latest v2
       - name: cargo install
-        uses: taiki-e/install-action@ac89944b5b150d78567ab6c02badfbe48b0b55aa
+        uses: taiki-e/install-action@v2
         with:
           tool: clippy-sarif, sarif-fmt
 
