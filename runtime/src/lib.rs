@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 99,
+    spec_version: 100,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 99,
+    transaction_version: 100,
     state_version: 0,
 };
 
@@ -1324,12 +1324,11 @@ impl xor_fee::Config for Runtime {
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type VXorId = GetVXorAssetId;
-    type TbcdId = GetTbcdAssetId;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
     type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackTBCDPercent = BuyBackTBCDPercent;
+    type BuyBackRemintPercent = BuyBackRemintPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
@@ -1663,7 +1662,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
-    type GetTBCDAssetId = GetTbcdAssetId;
+    type GetBuyBackAssetId = GetVXorAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -2151,7 +2150,7 @@ parameter_types! {
     pub const XorBurnedWeight: u32 = 1; // 0.4%
     pub const XorIntoValBurnedWeight: u32 = 125; // 50%
     pub const XorIntoVXorBurnedWeight: u32 = 99; // 39.6%
-    pub const BuyBackTBCDPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackRemintPercent: Percent = Percent::from_percent(10);
 }
 
 // Ethereum bridge pallets
