@@ -58,7 +58,8 @@ hex-literal = "0.4.1"
 default = ['std']
 std = [
     'codec/std',
-    "scale-info/std",
+    'common/std',
+    'scale-info/std',
     'currencies/std',
     'frame-support/std',
     'frame-system/std',

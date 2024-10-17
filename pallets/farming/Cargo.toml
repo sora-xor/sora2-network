@@ -60,10 +60,11 @@ trading-pair = { path = "../trading-pair" }
 
 [features]
 default = ["std"]
-private-net = []
+private-net = ["common/private-net"]
 
 std = [
     "codec/std",
+    "common/std",
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
@@ -74,6 +75,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",

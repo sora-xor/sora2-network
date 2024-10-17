@@ -106,6 +106,7 @@ include-real-files = []
 main-net-coded = []
 
 private-net = [
+    "common/private-net",
     "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",
 ]
@@ -120,6 +121,7 @@ wip = [
 stage = ["framenode-chain-spec/stage", "framenode-runtime/stage"]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
     "sc-client-db/runtime-benchmarks",

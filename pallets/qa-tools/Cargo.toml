@@ -60,6 +60,7 @@ std = [
     "xst/std",
 ]
 private-net = [
+    "common/private-net",
     "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",
     "order-book/private-net",

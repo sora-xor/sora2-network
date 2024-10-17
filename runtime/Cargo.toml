@@ -297,6 +297,7 @@ std = [
 ]
 
 private-net = [
+    "common/private-net",
     "faucet",
     "farming/private-net",
     "vested-rewards/private-net",

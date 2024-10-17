@@ -51,7 +51,7 @@ common = { path = "../../../common", default-features = false, features = [
 [features]
 default = ["std"]
 std = [
-    'codec/std',
+    "codec/std",
     "currencies/std",
     "frame-support/std",
     "frame-system/std",
@@ -75,6 +75,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]

@@ -20,4 +20,11 @@ common = { path = "../../../common", default-features = false }
 
 [features]
 default = ["std"]
-std = ["codec/std", "serde", "sp-api/std", "sp-runtime/std", "sp-std/std"]
+std = [
+    "codec/std",
+    "common/std",
+    "serde",
+    "sp-api/std",
+    "sp-runtime/std",
+    "sp-std/std"
+]

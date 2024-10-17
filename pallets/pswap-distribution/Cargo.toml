@@ -52,7 +52,8 @@ default = ['std']
 
 std = [
     'codec/std',
-    "scale-info/std",
+    'common/std',
+    'scale-info/std',
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
@@ -66,6 +67,7 @@ std = [
 ]
 
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "hex-literal",

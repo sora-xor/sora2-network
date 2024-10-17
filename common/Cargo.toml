@@ -54,7 +54,7 @@ env_logger = { version = "0.10.0" }
 [features]
 default = ['std']
 std = [
-    "bridge-types/std",
+    'bridge-types/std',
     'codec/std',
     "scale-info/std",
     'serde',

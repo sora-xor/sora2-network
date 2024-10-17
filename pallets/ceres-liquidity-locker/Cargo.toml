@@ -53,6 +53,7 @@ default = ['std']
 
 std = [
     "codec/std",
+    "common/std",
     "dex-manager/std",
     "frame-support/std",
     "frame-system/std",

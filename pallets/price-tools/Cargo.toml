@@ -47,7 +47,8 @@ default = ['std']
 std = [
     'assets/std',
     'codec/std',
-    "scale-info/std",
+    'common/std',
+    'scale-info/std',
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
@@ -60,6 +61,7 @@ std = [
     'technical/std',
 ]
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",

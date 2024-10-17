@@ -54,7 +54,8 @@ technical = { path = "../technical" }
 default = ['std']
 std = [
     'codec/std',
-    "scale-info/std",
+    'common/std',
+    'scale-info/std',
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
@@ -71,11 +72,12 @@ std = [
     'traits/std',
 ]
 runtime-benchmarks = [
+    "common/runtime-benchmarks",
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]
-private-net = []
+private-net = ["common/private-net"]
 
 try-runtime = ["frame-support/try-runtime"]
 

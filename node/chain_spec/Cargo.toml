@@ -39,7 +39,16 @@ include-real-files = []
 main-net-coded = []
 test = ["common/test"]
 
-runtime-benchmarks = ["framenode-runtime/runtime-benchmarks"]
-private-net = ["faucet", "framenode-runtime/private-net"]
+runtime-benchmarks = [
+    "common/runtime-benchmarks",
+    "framenode-runtime/runtime-benchmarks",
+]
+
+private-net = [
+    "common/private-net",
+    "faucet",
+    "framenode-runtime/private-net",
+]
+
 wip = ["framenode-runtime/wip"]
 stage = ["framenode-runtime/stage"]
