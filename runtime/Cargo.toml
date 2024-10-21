@@ -310,16 +310,18 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
-    "jetton-app",
-    "bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
     "xor-fee/wip",
-    "soratopia",
     "vested-rewards/wip",
 ]
 
-stage = ["framenode-chain-spec/stage"]
+stage = [
+    "framenode-chain-spec/stage",
+    "jetton-app",
+    "bridge-channel",
+    "soratopia",
+]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
