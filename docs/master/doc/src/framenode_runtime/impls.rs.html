@@ -958,13 +958,13 @@
                 post_info: Default::default(),
                 error: DispatchError::Other(<span class="string">&quot;Unavailable&quot;</span>),
             }),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
             </span>bridge_types::substrate::BridgeCall::JettonApp(msg) =&gt; {
                 <span class="kw">let </span>call: jetton_app::Call&lt;<span class="kw">crate</span>::Runtime&gt; = msg.into();
                 <span class="kw">let </span>call: <span class="kw">crate</span>::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// TON bridge
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// TON bridge
             </span>bridge_types::substrate::BridgeCall::JettonApp(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(DispatchErrorWithPostInfo {
                 post_info: Default::default(),
                 error: DispatchError::Other(<span class="string">&quot;Unavailable&quot;</span>),
@@ -1004,12 +1004,12 @@
             }
             <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
             </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; Default::default(),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
             </span>bridge_types::substrate::BridgeCall::JettonApp(msg) =&gt; {
                 <span class="kw">let </span>call: jetton_app::Call&lt;<span class="kw">crate</span>::Runtime&gt; = msg.clone().into();
                 call.get_dispatch_info()
             }
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// TON bridge
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// TON bridge
             </span>bridge_types::substrate::BridgeCall::JettonApp(<span class="kw">_</span>) =&gt; Default::default(),
         }
     }
@@ -1186,9 +1186,9 @@
             </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// EVM bridge
             </span>bridge_types::substrate::BridgeCall::FAApp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
             </span>bridge_types::substrate::BridgeCall::JettonApp(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// TON bridge
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;stage&quot;</span>))] </span><span class="comment">// TON bridge
             </span>bridge_types::substrate::BridgeCall::JettonApp(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }

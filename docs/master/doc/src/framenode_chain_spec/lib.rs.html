@@ -2718,7 +2718,7 @@
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 <span class="kw">use </span>framenode_runtime::opaque::SessionKeys;
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
 </span><span class="kw">use </span>framenode_runtime::BridgeOutboundChannelConfig;
 <span class="kw">use </span>framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
@@ -3880,7 +3880,7 @@
         TBCD.into(),
     ];
     GenesisConfig {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
         </span>jetton_app: Default::default(),
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>evm_fungible_app: Default::default(),
@@ -3890,7 +3890,7 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
         </span>beefy_light_client: Default::default(),
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
         </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: <span class="number">10</span>,
             ..Default::default()
@@ -4920,7 +4920,7 @@
         )
     }));
     GenesisConfig {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// TON bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
         </span>jetton_app: Default::default(),
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>evm_fungible_app: Default::default(),
@@ -4930,7 +4930,7 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
         </span>beefy_light_client: Default::default(),
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
         </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: <span class="number">10</span>,
         },
