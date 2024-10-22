@@ -49,7 +49,7 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
-#[cfg(feature = "wip")]
+#[cfg(feature = "stage")] // EVM/TON bridge
 use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
@@ -1211,7 +1211,7 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
-        #[cfg(feature = "wip")] // TON bridge
+        #[cfg(feature = "stage")] // TON bridge
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -1221,7 +1221,7 @@ fn testnet_genesis(
         #[cfg(feature = "wip")] // Trustless substrate bridge
         beefy_light_client: Default::default(),
 
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "stage")] // EVM/TON bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: 10,
             ..Default::default()
@@ -2251,7 +2251,7 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        #[cfg(feature = "wip")] // TON bridge
+        #[cfg(feature = "stage")] // TON bridge
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -2261,7 +2261,7 @@ fn mainnet_genesis(
         #[cfg(feature = "wip")] // Trustless substrate bridge
         beefy_light_client: Default::default(),
 
-        #[cfg(feature = "wip")] // EVM bridge
+        #[cfg(feature = "stage")] // EVM/TON bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: 10,
         },
