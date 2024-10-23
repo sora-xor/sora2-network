@@ -67,11 +67,11 @@ pub use weights::WeightInfo;
 
 impl<T: Config> OnPoolCreated for Pallet<T> {
     type AccountId = AccountIdOf<T>;
-    type DEXId = DexIdOf<T>;
+    type DexId = DexIdOf<T>;
 
     fn on_pool_created(
         _fee_account: Self::AccountId,
-        _dex_id: Self::DEXId,
+        _dex_id: Self::DexId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
         Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
@@ -102,7 +102,7 @@ impl<T: Config> Pallet<T> {
             Ok(balance!(1).into())
         } else {
             let (outcome, _) = pool_xyk::Pallet::<T>::quote(
-                &common::DEXId::Polkaswap.into(),
+                &common::DexId::Polkaswap.into(),
                 &base_asset,
                 asset_id,
                 QuoteAmount::with_desired_output(balance!(1)),
@@ -361,7 +361,7 @@ pub mod pallet {
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }

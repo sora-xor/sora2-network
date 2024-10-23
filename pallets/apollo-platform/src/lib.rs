@@ -60,7 +60,7 @@ pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
-        balance, AssetIdOf, AssetManager, DEXId, LiquiditySourceFilter, PriceVariant,
+        balance, AssetIdOf, AssetManager, DexId, LiquiditySourceFilter, PriceVariant,
         CERES_ASSET_ID, DAI,
     };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
@@ -90,7 +90,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
         type LiquidityProxyPallet: LiquidityProxyTrait<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
         >;
@@ -1052,13 +1052,13 @@ pub mod pallet {
 
                 // Exchange collateral asset into borrowed asset  on Pallet
                 T::LiquidityProxyPallet::exchange(
-                    DEXId::Polkaswap.into(),
+                    DexId::Polkaswap.into(),
                     &Self::account_id(),
                     &Self::account_id(),
                     collateral_asset,
                     &asset_id,
                     SwapAmount::with_desired_input(amount_to_exchange, Balance::zero()),
-                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                    LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
                 )?;
 
                 // Updating collateral pool total_collateral amount and total_liquidity
@@ -1493,13 +1493,13 @@ pub mod pallet {
             let rewards_amount = amount.saturating_sub(reserves_amount);
 
             let outcome = T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 &caller,
                 &caller,
                 &asset_id,
                 &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
             )
             .unwrap();
 
@@ -1538,24 +1538,24 @@ pub mod pallet {
 
             // Transfer APOLLO to treasury
             T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 &caller,
                 &TreasuryAccount::<T>::get(), // APOLLO Treasury
                 &asset_id,
                 &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
             )?;
 
             // Buyback and burn CERES
             let outcome = T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 &caller,
                 &caller,
                 &asset_id,
                 &CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
             )
             .unwrap();
 

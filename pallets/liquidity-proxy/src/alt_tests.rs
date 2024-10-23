@@ -386,7 +386,7 @@ fn check_alt_without_limits_select_only_xyk_pool_source() {
             quote,
             AggregatedSwapOutcome::new(
                 vec![(
-                    LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                    LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XykPool),
                     SwapAmount::with_desired_input(balance!(100), balance!(906.610893880149131581))
                 )],
                 balance!(906.610893880149131581),
@@ -503,7 +503,7 @@ fn check_alt_without_limits_select_xyk_pool_and_order_book_sources() {
             AggregatedSwapOutcome::new(
                 vec![
                     (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XykPool),
                         SwapAmount::with_desired_input(
                             balance!(60),
                             balance!(564.435470174180521220)
@@ -562,7 +562,7 @@ fn check_alt_without_limits_select_xyk_pool_and_tbc_pool_sources() {
             AggregatedSwapOutcome::new(
                 vec![
                     (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XykPool),
                         SwapAmount::with_desired_input(
                             balance!(90),
                             balance!(823.414974351444853312)
@@ -705,7 +705,7 @@ fn check_alt_without_limits_select_all_sources() {
             AggregatedSwapOutcome::new(
                 vec![
                     (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XykPool),
                         SwapAmount::with_desired_input(
                             balance!(50),
                             balance!(474.829737581559270371)
@@ -783,7 +783,7 @@ fn check_alt_with_min_limits() {
             AggregatedSwapOutcome::new(
                 vec![
                     (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XykPool),
                         SwapAmount::with_desired_input(
                             balance!(0.9009),
                             balance!(8.474520252682988152)
@@ -856,7 +856,7 @@ fn check_alt_with_max_limits() {
             AggregatedSwapOutcome::new(
                 vec![
                     (
-                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
+                        LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XykPool),
                         SwapAmount::with_desired_input(
                             balance!(162),
                             balance!(1389.183811480589129619)

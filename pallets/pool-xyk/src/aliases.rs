@@ -38,8 +38,6 @@ pub type TechAssetIdOf<T> = <T as technical::Config>::TechAssetId;
 
 pub type TechAccountIdOf<T> = <T as technical::Config>::TechAccountId;
 
-pub type DEXIdOf<T> = <T as common::Config>::DEXId;
-
 pub type PolySwapActionStructOf<T> =
     PolySwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>;
 

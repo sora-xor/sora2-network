@@ -51,7 +51,7 @@ use liquidity_proxy_runtime_api::SwapOutcomeInfo;
 #[rpc(server, client)]
 pub trait LiquidityProxyAPI<
     BlockHash,
-    DEXId,
+    DexId,
     AssetId,
     Balance,
     SwapVariant,
@@ -63,7 +63,7 @@ pub trait LiquidityProxyAPI<
     #[method(name = "liquidityProxy_quote")]
     fn quote(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
         amount: BalanceWrapper,
@@ -76,7 +76,7 @@ pub trait LiquidityProxyAPI<
     #[method(name = "liquidityProxy_isPathAvailable")]
     fn is_path_available(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
         at: Option<BlockHash>,
@@ -85,7 +85,7 @@ pub trait LiquidityProxyAPI<
     #[method(name = "liquidityProxy_listEnabledSourcesForPath")]
     fn list_enabled_sources_for_path(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
         at: Option<BlockHash>,
@@ -107,10 +107,10 @@ impl<C, B> LiquidityProxyClient<C, B> {
     }
 }
 
-impl<C, Block, DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode>
+impl<C, Block, DexId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode>
     LiquidityProxyAPIServer<
         <Block as BlockT>::Hash,
-        DEXId,
+        DexId,
         AssetId,
         Balance,
         SwapVariant,
@@ -124,14 +124,14 @@ where
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: LiquidityProxyRuntimeAPI<
         Block,
-        DEXId,
+        DexId,
         AssetId,
         Balance,
         SwapVariant,
         LiquiditySourceType,
         FilterMode,
     >,
-    DEXId: Codec,
+    DexId: Codec,
     AssetId: Codec
         + MaybeFromStr
         + MaybeDisplay
@@ -144,7 +144,7 @@ where
 {
     fn quote(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
         amount: BalanceWrapper,
@@ -162,7 +162,7 @@ where
         let version = api
             .api_version::<dyn LiquidityProxyRuntimeAPI<
                 Block,
-                DEXId,
+                DexId,
                 AssetId,
                 Balance,
                 SwapVariant,
@@ -225,7 +225,7 @@ where
 
     fn is_path_available(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,
@@ -241,7 +241,7 @@ where
 
     fn list_enabled_sources_for_path(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,

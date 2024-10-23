@@ -103,8 +103,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(21_265_000, 5662)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:2 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:2 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn new_trivial() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
@@ -113,12 +113,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(25_620_000, 5295)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
-	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
-	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: PoolXYK Properties (r:1 w:0)
-	/// Proof Skipped: PoolXYK Properties (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexApi EnabledSourceTypes (r:1 w:0)
+	/// Proof Skipped: DexApi EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: PoolXyk Properties (r:1 w:0)
+	/// Proof Skipped: PoolXyk Properties (max_values: None, max_size: None, mode: Measured)
 	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
 	fn list_liquidity_sources() -> Weight {
@@ -175,8 +175,8 @@ impl WeightInfo for () {
 		Weight::from_parts(21_265_000, 5662)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:2 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:2 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn new_trivial() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
@@ -185,12 +185,12 @@ impl WeightInfo for () {
 		Weight::from_parts(25_620_000, 5295)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 	}
-	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
-	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: PoolXYK Properties (r:1 w:0)
-	/// Proof Skipped: PoolXYK Properties (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexApi EnabledSourceTypes (r:1 w:0)
+	/// Proof Skipped: DexApi EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: PoolXyk Properties (r:1 w:0)
+	/// Proof Skipped: PoolXyk Properties (max_values: None, max_size: None, mode: Measured)
 	/// Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
 	/// Proof Skipped: MulticollateralBondingCurvePool EnabledTargets (max_values: Some(1), max_size: None, mode: Measured)
 	fn list_liquidity_sources() -> Weight {

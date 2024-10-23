@@ -52,7 +52,7 @@ mod tests;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TechAccountIdOf<T> = <T as Config>::TechAccountId;
 type TechAssetIdOf<T> = <T as Config>::TechAssetId;
-type DEXIdOf<T> = <T as common::Config>::DEXId;
+type DexIdOf<T> = <T as common::Config>::DexId;
 
 /// Pending atomic swap operation.
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
@@ -285,12 +285,12 @@ pub mod pallet {
             + MaybeSerializeDeserialize
             + common::ToFeeAccount
             + common::ToXykTechUnitFromDEXAndTradingPair<
-                DEXIdOf<Self>,
+                DexIdOf<Self>,
                 common::TradingPair<Self::TechAssetId>,
             > + common::ToOrderTechUnitFromDEXAndTradingPair<
-                DEXIdOf<Self>,
+                DexIdOf<Self>,
                 common::TradingPair<Self::TechAssetId>,
-            > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::DEXId>>;
+            > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::DexId>>;
 
         /// Trigger for auto claim.
         type Trigger: Default + Copy + Member + Parameter;

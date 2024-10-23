@@ -8,7 +8,7 @@ use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
 use common::{
-    balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, DEXId, TradingPairSourceManager,
+    balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, DexId, TradingPairSourceManager,
     DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
@@ -18,7 +18,7 @@ use sp_std::prelude::*;
 
 use pallet_timestamp::Pallet as Timestamp;
 use permissions::Pallet as Permissions;
-use pool_xyk::Pallet as XYKPool;
+use pool_xyk::Pallet as XykPool;
 
 #[cfg(test)]
 mod mock;
@@ -26,7 +26,7 @@ mod mock;
 pub struct Pallet<T: Config>(ceres_liquidity_locker::Pallet<T>);
 pub trait Config: ceres_liquidity_locker::Config + pool_xyk::Config + permissions::Config {}
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -111,14 +111,14 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     setup_benchmark_assets_only::<T>()?;
 
-    XYKPool::<T>::initialize_pool(
+    XykPool::<T>::initialize_pool(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
         ceres_asset_id.into(),
     )?;
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),

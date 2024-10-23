@@ -33,7 +33,7 @@
 
 use codec::Decode;
 use common::{
-    balance, AssetId32, AssetIdOf, AssetManager, Balance, DEXId, PredefinedAssetId,
+    balance, AssetId32, AssetIdOf, AssetManager, Balance, DexId, PredefinedAssetId,
     PriceToolsProvider, PriceVariant, SymbolName, DAI, KEN, KUSD, XOR,
 };
 use frame_benchmarking::benchmarks;
@@ -178,14 +178,14 @@ fn initialize_xyk_pool<T: Config>(asset_id: AssetIdOf<T>) {
     .expect("Shall mint token");
     pool_xyk::Pallet::<T>::initialize_pool(
         RawOrigin::Signed(caller::<T>()).into(),
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         asset_id,
     )
     .expect("Must init init pool");
     pool_xyk::Pallet::<T>::deposit_liquidity(
         RawOrigin::Signed(caller::<T>()).into(),
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         asset_id,
         amount,
@@ -204,7 +204,7 @@ fn initialize_liquidity_sources<T: Config>() {
     initialize_xyk_pool::<T>(DAI.into());
     trading_pair::Pallet::<T>::register(
         RawOrigin::Signed(caller::<T>()).into(),
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         KEN.into(),
     )
@@ -212,7 +212,7 @@ fn initialize_liquidity_sources<T: Config>() {
     initialize_xyk_pool::<T>(KEN.into());
     trading_pair::Pallet::<T>::register(
         RawOrigin::Signed(caller::<T>()).into(),
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         KUSD.into(),
     )

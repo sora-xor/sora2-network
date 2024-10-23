@@ -138,9 +138,9 @@ impl OrderAmount {
         }
     }
 
-    pub fn associated_asset<'a, AssetId, DEXId>(
+    pub fn associated_asset<'a, AssetId, DexId>(
         &'a self,
-        order_book_id: &'a OrderBookId<AssetId, DEXId>,
+        order_book_id: &'a OrderBookId<AssetId, DexId>,
     ) -> &AssetId {
         match self {
             Self::Base(..) => &order_book_id.base,
@@ -204,17 +204,17 @@ pub enum MarketRole {
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OrderBookId<AssetId, DEXId> {
+pub struct OrderBookId<AssetId, DexId> {
     /// DEX id
-    pub dex_id: DEXId,
+    pub dex_id: DexId,
     /// Base asset.
     pub base: AssetId,
     /// Quote asset. It should be a base asset of DEX.
     pub quote: AssetId,
 }
 
-impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> {
-    fn from(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+impl<AssetId, DexId> From<OrderBookId<AssetId, DexId>> for TradingPair<AssetId> {
+    fn from(order_book_id: OrderBookId<AssetId, DexId>) -> Self {
         Self {
             base_asset_id: order_book_id.quote,
             target_asset_id: order_book_id.base,
@@ -264,19 +264,19 @@ impl<AssetId: PartialEq> DealInfo<AssetId> {
 /// It contains lists of which liquidity should be locked in the tech account
 /// and which liquidity should be unlocked from the tech account to users.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct Payment<AssetId, AccountId, DEXId> {
-    pub order_book_id: OrderBookId<AssetId, DEXId>,
+pub struct Payment<AssetId, AccountId, DexId> {
+    pub order_book_id: OrderBookId<AssetId, DexId>,
     pub to_lock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
     pub to_unlock: BTreeMap<AssetId, BTreeMap<AccountId, OrderVolume>>,
 }
 
-impl<AssetId, AccountId, DEXId> Payment<AssetId, AccountId, DEXId>
+impl<AssetId, AccountId, DexId> Payment<AssetId, AccountId, DexId>
 where
     AssetId: Copy + PartialEq + Ord,
     AccountId: Ord + Clone,
-    DEXId: Copy + PartialEq,
+    DexId: Copy + PartialEq,
 {
-    pub fn new(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+    pub fn new(order_book_id: OrderBookId<AssetId, DexId>) -> Self {
         Self {
             order_book_id,
             to_lock: BTreeMap::new(),
@@ -328,7 +328,7 @@ where
 
     pub fn lock<Locker>(&self) -> Result<(), DispatchError>
     where
-        Locker: CurrencyLocker<AccountId, AssetId, DEXId, DispatchError>,
+        Locker: CurrencyLocker<AccountId, AssetId, DexId, DispatchError>,
     {
         for (asset_id, from_whom) in self.to_lock.iter() {
             for (account, amount) in from_whom.iter() {
@@ -341,7 +341,7 @@ where
 
     pub fn unlock<Unlocker>(&self) -> Result<(), DispatchError>
     where
-        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DexId, DispatchError>,
     {
         for (asset_id, to_whom) in self.to_unlock.iter() {
             Unlocker::unlock_liquidity_batch(self.order_book_id, asset_id, to_whom)?;
@@ -352,8 +352,8 @@ where
 
     pub fn execute_all<Locker, Unlocker>(&self) -> Result<(), DispatchError>
     where
-        Locker: CurrencyLocker<AccountId, AssetId, DEXId, DispatchError>,
-        Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
+        Locker: CurrencyLocker<AccountId, AssetId, DexId, DispatchError>,
+        Unlocker: CurrencyUnlocker<AccountId, AssetId, DexId, DispatchError>,
     {
         self.lock::<Locker>()?;
         self.unlock::<Unlocker>()?;
@@ -362,7 +362,7 @@ where
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
+pub struct MarketChange<AccountId, AssetId, DexId, OrderId, LimitOrder> {
     // Info fields
     /// The amount of the input asset for the exchange deal
     pub deal_input: Option<OrderAmount>,
@@ -392,19 +392,19 @@ pub struct MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder> {
     /// Limit orders that should be forcibly updated
     pub to_force_update: BTreeMap<OrderId, LimitOrder>,
 
-    pub payment: Payment<AssetId, AccountId, DEXId>,
+    pub payment: Payment<AssetId, AccountId, DexId>,
     pub ignore_unschedule_error: bool,
 }
 
-impl<AccountId, AssetId, DEXId, OrderId, LimitOrder>
-    MarketChange<AccountId, AssetId, DEXId, OrderId, LimitOrder>
+impl<AccountId, AssetId, DexId, OrderId, LimitOrder>
+    MarketChange<AccountId, AssetId, DexId, OrderId, LimitOrder>
 where
     AssetId: Copy + PartialEq + Ord,
     AccountId: Ord + Clone,
-    DEXId: Copy + PartialEq,
+    DexId: Copy + PartialEq,
     OrderId: Copy + Ord,
 {
-    pub fn new(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+    pub fn new(order_book_id: OrderBookId<AssetId, DexId>) -> Self {
         Self {
             deal_input: None,
             deal_output: None,

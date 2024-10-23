@@ -49,11 +49,11 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{self, Perbill};
 
-type DEXId = common::DEXId;
+type DexId = common::DexId;
 type AccountId = AccountId32;
 type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

@@ -51,12 +51,12 @@ use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, Fixed, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
+    Balance, EnsureDexManager, Fixed, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
     SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetIdOf, AssetInfoProvider, AssetManager,
-    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DataFeed, Description,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, DataFeed, Description, DexId,
     GetMarketInfo, LiquiditySource, LiquiditySourceType, OnSymbolDisabled, PriceVariant, Rate,
     RewardReason, SyntheticInfoProvider, TradingPairSourceManager, XSTUSD,
 };
@@ -139,8 +139,8 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<AssetIdOf<Self>>;
-        type GetXSTPoolPermissionedTechAccountId: Get<Self::TechAccountId>;
-        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type GetXstPoolPermissionedTechAccountId: Get<Self::TechAccountId>;
+        type EnsureDexManager: EnsureDexManager<Self::DexId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsProvider<AssetIdOf<Self>>;
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
@@ -148,7 +148,7 @@ pub mod pallet {
         /// Maximum tradable amount of XST
         #[pallet::constant]
         type GetSyntheticBaseBuySellLimit: Get<Balance>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type AssetInfoProvider: AssetInfoProvider<
@@ -243,7 +243,7 @@ pub mod pallet {
         /// Disable synthetic asset.
         ///
         /// Removes synthetic from exchanging
-        /// and removes XSTPool liquidity source for corresponding trading pair.
+        /// and removes XstPool liquidity source for corresponding trading pair.
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to disable.
@@ -360,7 +360,7 @@ pub mod pallet {
         PriceCalculationFailed,
         /// Indicated limits for slippage has not been met during transaction execution.
         SlippageLimitExceeded,
-        /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
+        /// Liquidity source can't exchange assets with the given IDs on the given DexId.
         CantExchange,
         /// Synthetic asset does not exist.
         SyntheticDoesNotExist,
@@ -526,7 +526,7 @@ impl<T: Config> Pallet<T> {
         synthetic_asset_id: AssetIdOf<T>,
     ) -> sp_runtime::DispatchResult {
         if T::TradingPairSourceManager::is_trading_pair_enabled(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset_id,
         )? {
@@ -534,16 +534,16 @@ impl<T: Config> Pallet<T> {
         }
 
         T::TradingPairSourceManager::register_pair(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             T::GetSyntheticBaseAssetId::get(),
             synthetic_asset_id,
         )?;
 
         T::TradingPairSourceManager::enable_source_for_trading_pair(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset_id,
-            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::XstPool,
         )?;
 
         Ok(())
@@ -800,7 +800,7 @@ impl<T: Config> Pallet<T> {
     /// This function is used by `exchange` function to burn `input_amount` derived from `amount` of `main_asset_id`
     /// and mint calculated amount of `synthetic_asset_id` to the receiver.
     fn swap_mint_burn_assets(
-        _dex_id: &T::DEXId,
+        _dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
@@ -808,7 +808,7 @@ impl<T: Config> Pallet<T> {
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
         common::with_transaction(|| {
-            let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
+            let permissioned_tech_account_id = T::GetXstPoolPermissionedTechAccountId::get();
             let permissioned_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
 
@@ -969,7 +969,7 @@ impl<T: Config> Pallet<T> {
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
     ) -> Result<(), DispatchError> {
-        let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
+        let permissioned_tech_account_id = T::GetXstPoolPermissionedTechAccountId::get();
         let permissioned_account_id =
             Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
         T::AssetManager::register_asset_id(
@@ -987,7 +987,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn inner_quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -1033,25 +1033,25 @@ impl<T: Config> Pallet<T> {
     fn disable_synthetic_asset_unchecked(synthetic_asset: AssetIdOf<T>) -> DispatchResult {
         EnabledSynthetics::<T>::remove(synthetic_asset);
         T::TradingPairSourceManager::disable_source_for_trading_pair(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),
             &synthetic_asset,
-            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::XstPool,
         )?;
         Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
         Ok(())
     }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DexId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
-        if *dex_id != DEXId::Polkaswap.into() {
+        if *dex_id != DexId::Polkaswap.into() {
             return false;
         }
         if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
@@ -1065,7 +1065,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
     /// Get spot price of synthetic tokens based on desired amount.
     fn quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -1082,7 +1082,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn step_quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -1185,7 +1185,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
@@ -1206,7 +1206,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn check_rewards(
-        _dex_id: &T::DEXId,
+        _dex_id: &T::DexId,
         _input_asset_id: &AssetIdOf<T>,
         _output_asset_id: &AssetIdOf<T>,
         _input_amount: Balance,
@@ -1216,7 +1216,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn quote_without_impact(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,

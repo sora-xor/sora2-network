@@ -30,7 +30,7 @@
 
 use frame_support::{assert_noop, assert_ok};
 
-use common::{balance, DEXId, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
+use common::{balance, DexId, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::log::debug;
 use frame_system;
 use frame_system::RawOrigin;
@@ -46,7 +46,7 @@ use crate::{Event, Pallet, PoolFarmer, PoolFarmers};
 
 type System = frame_system::Pallet<Runtime>;
 
-fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
+fn init_pool(dex_id: DexId, base_asset: AssetId, other_asset: AssetId) {
     assert_ok!(trading_pair::Pallet::<Runtime>::register(
         RuntimeOrigin::signed(BOB()),
         dex_id,

@@ -38,7 +38,7 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DexId,
     LiquiditySource, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
@@ -48,14 +48,14 @@ use pool_xyk::Call;
 use sp_std::prelude::*;
 
 use permissions::Pallet as Permissions;
-use pool_xyk::Pallet as XYKPool;
+use pool_xyk::Pallet as XykPool;
 
 #[cfg(test)]
 mod mock;
 pub struct Pallet<T: Config>(pool_xyk::Pallet<T>);
 pub trait Config: pool_xyk::Config {}
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -123,9 +123,9 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     setup_benchmark_assets_only::<T>()?;
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XykPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
@@ -171,7 +171,7 @@ benchmarks! {
     can_exchange {
         setup_benchmark::<T>()?;
     }: {
-        assert!(XYKPool::<T>::can_exchange(
+        assert!(XykPool::<T>::can_exchange(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -188,7 +188,7 @@ benchmarks! {
             min_amount_out: balance!(0),
         };
     }: {
-        XYKPool::<T>::quote(
+        XykPool::<T>::quote(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -208,7 +208,7 @@ benchmarks! {
             min_amount_out: balance!(0),
         };
     }: {
-        XYKPool::<T>::step_quote(
+        XykPool::<T>::step_quote(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -285,7 +285,7 @@ benchmarks! {
         asset_dot.clone()
     )
     verify {
-        assert!(XYKPool::<T>::properties(asset_xor, asset_dot).is_some())
+        assert!(XykPool::<T>::properties(asset_xor, asset_dot).is_some())
     }
 
     impl_benchmark_test_suite!(

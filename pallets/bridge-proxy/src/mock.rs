@@ -41,7 +41,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
+    AssetName, AssetSymbol, Balance, DexId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -136,7 +136,7 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 impl dispatch::Config for Test {

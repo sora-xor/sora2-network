@@ -31,7 +31,7 @@
 use crate::mock::*;
 use crate::{Error, Pallet};
 use common::{
-    DEXId, EnsureTradingPairExists, LiquiditySourceType, TradingPair, TradingPairSourceManager,
+    DexId, EnsureTradingPairExists, LiquiditySourceType, TradingPair, TradingPairSourceManager,
     DOT, KSM, KUSD, VXOR, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
@@ -58,21 +58,21 @@ fn should_register_with_another_dex_id() {
     ext.execute_with(|| {
         assert_ok!(TradingPairPallet::register(
             RuntimeOrigin::signed(ALICE),
-            DEXId::PolkaswapXSTUSD,
+            DexId::PolkaswapXstUsd,
             XSTUSD,
             DOT
         ));
 
         assert_ok!(TradingPairPallet::register(
             RuntimeOrigin::signed(ALICE),
-            DEXId::PolkaswapKUSD,
+            DexId::PolkaswapKUSD,
             KUSD,
             DOT
         ));
 
         assert_ok!(TradingPairPallet::register(
             RuntimeOrigin::signed(ALICE),
-            DEXId::PolkaswapVXOR,
+            DexId::PolkaswapVXOR,
             VXOR,
             DOT
         ));
@@ -84,14 +84,14 @@ fn should_not_register_trading_pair_with_wrong_base_asset() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEXId::Polkaswap, DOT, XOR),
+            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DexId::Polkaswap, DOT, XOR),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
 
         assert_noop!(
             TradingPairPallet::register(
                 RuntimeOrigin::signed(ALICE),
-                DEXId::PolkaswapXSTUSD,
+                DexId::PolkaswapXstUsd,
                 XOR,
                 DOT
             ),
@@ -101,7 +101,7 @@ fn should_not_register_trading_pair_with_wrong_base_asset() {
         assert_noop!(
             TradingPairPallet::register(
                 RuntimeOrigin::signed(ALICE),
-                DEXId::PolkaswapKUSD,
+                DexId::PolkaswapKUSD,
                 XOR,
                 DOT
             ),
@@ -111,7 +111,7 @@ fn should_not_register_trading_pair_with_wrong_base_asset() {
         assert_noop!(
             TradingPairPallet::register(
                 RuntimeOrigin::signed(ALICE),
-                DEXId::PolkaswapVXOR,
+                DexId::PolkaswapVXOR,
                 XOR,
                 DOT
             ),
@@ -242,14 +242,14 @@ fn should_enable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
         assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
 
@@ -258,7 +258,7 @@ fn should_enable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )
         .expect("Failed to enable source for pair.");
         assert_eq!(
@@ -266,7 +266,7 @@ fn should_enable_sources_for_pair_correctly() {
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::XYKPool]
+            vec![LiquiditySourceType::XykPool]
         );
         assert_eq!(
             TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
@@ -279,14 +279,14 @@ fn should_enable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
         assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
 
@@ -295,7 +295,7 @@ fn should_enable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )
         .expect("Failed to enable source for pair.");
         assert_eq!(
@@ -303,27 +303,27 @@ fn should_enable_sources_for_pair_correctly() {
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::XYKPool]
+            vec![LiquiditySourceType::XykPool]
         );
         assert_eq!(
             TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::XYKPool]
+            vec![LiquiditySourceType::XykPool]
         );
         assert!(TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
         assert!(TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
     });
@@ -342,7 +342,7 @@ fn should_disable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )
         .expect("Failed to enable source for pair.");
 
@@ -350,7 +350,7 @@ fn should_disable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )
         .expect("Failed to enable source for pair.");
 
@@ -360,14 +360,14 @@ fn should_disable_sources_for_pair_correctly() {
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::XYKPool]
+            vec![LiquiditySourceType::XykPool]
         );
         assert_eq!(
             TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::XYKPool]
+            vec![LiquiditySourceType::XykPool]
         );
 
         // pre check for enabled sources
@@ -375,14 +375,14 @@ fn should_disable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
         assert!(TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
 
@@ -391,7 +391,7 @@ fn should_disable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )
         .expect("Failed to enable source for pair.");
         assert_eq!(
@@ -406,20 +406,20 @@ fn should_disable_sources_for_pair_correctly() {
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::XYKPool]
+            vec![LiquiditySourceType::XykPool]
         );
         assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
         assert!(TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
 
@@ -428,7 +428,7 @@ fn should_disable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )
         .expect("Failed to enable source for pair.");
         assert_eq!(
@@ -449,14 +449,14 @@ fn should_disable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
         assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         )
         .expect("Failed to query pair state."));
     });

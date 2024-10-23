@@ -40,7 +40,7 @@ use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
-    balance, fixed, AssetManager, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle,
+    balance, fixed, AssetManager, AssetName, AssetSymbol, DexId, LiquiditySource, Oracle,
     PriceToolsProvider, PriceVariant, DAI, XST, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
@@ -52,7 +52,7 @@ use oracle_proxy::Pallet as OracleProxy;
 use price_tools::Pallet as PriceTools;
 use sp_std::prelude::*;
 use technical::Pallet as Technical;
-use xst::{Call, Event, Pallet as XSTPool};
+use xst::{Call, Event, Pallet as XstPool};
 
 #[cfg(test)]
 mod mock;
@@ -78,7 +78,7 @@ mod utils {
     }
 
     pub fn permissioned_account_id<T: Config>() -> T::AccountId {
-        let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
+        let permissioned_tech_account_id = T::GetXstPoolPermissionedTechAccountId::get();
         Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)
             .expect("Expected to generate account id from technical")
     }
@@ -161,7 +161,7 @@ mod utils {
 
     pub fn enable_synthetic_asset<T: Config>() -> Result<AssetIdOf<T>, DispatchErrorWithPostInfo> {
         relay_symbol::<T>()?;
-        XSTPool::<T>::register_synthetic_asset(
+        XstPool::<T>::register_synthetic_asset(
             RawOrigin::Root.into(),
             AssetSymbol(b"XSTEURO".to_vec()),
             AssetName(b"Sora Synthetic EURO".to_vec()),
@@ -170,7 +170,7 @@ mod utils {
         )?;
 
         Ok(
-            XSTPool::<T>::enabled_symbols(symbol::<<T as xst::Config>::Symbol>())
+            XstPool::<T>::enabled_symbols(symbol::<<T as xst::Config>::Symbol>())
                 .expect("Expected enabled synthetic"),
         )
     }
@@ -201,7 +201,7 @@ benchmarks! {
     )
     verify {
         assert!(
-            XSTPool::<T>::enabled_symbols(
+            XstPool::<T>::enabled_symbols(
                 utils::symbol::<<T as xst::Config>::Symbol>()
             )
             .is_some()
@@ -248,7 +248,7 @@ benchmarks! {
             ).into()
         );
         assert!(
-            XSTPool::<T>::enabled_symbols(
+            XstPool::<T>::enabled_symbols(
                 utils::symbol::<<T as xst::Config>::Symbol>()
             )
             .is_some()
@@ -277,8 +277,8 @@ benchmarks! {
         utils::setup_exchange_benchmark::<T>();
         let asset_id = utils::enable_synthetic_asset::<T>()?;
     }: {
-        let _ = XSTPool::<T>::quote(
-            &DEXId::Polkaswap.into(),
+        let _ = XstPool::<T>::quote(
+            &DexId::Polkaswap.into(),
             &XST.into(),
             &asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
@@ -290,8 +290,8 @@ benchmarks! {
         utils::setup_exchange_benchmark::<T>();
         let asset_id = utils::enable_synthetic_asset::<T>()?;
     }: {
-        let _ = XSTPool::<T>::step_quote(
-            &DEXId::Polkaswap.into(),
+        let _ = XstPool::<T>::step_quote(
+            &DexId::Polkaswap.into(),
             &XST.into(),
             &asset_id,
             QuoteAmount::with_desired_input(balance!(1000)),
@@ -304,10 +304,10 @@ benchmarks! {
         utils::setup_exchange_benchmark::<T>();
         let asset_id = utils::enable_synthetic_asset::<T>()?;
     }: {
-        let _ = XSTPool::<T>::exchange(
+        let _ = XstPool::<T>::exchange(
             &utils::alice::<T>(),
             &utils::alice::<T>(),
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &XST.into(),
             &asset_id,
             SwapAmount::with_desired_input(balance!(1), 1),

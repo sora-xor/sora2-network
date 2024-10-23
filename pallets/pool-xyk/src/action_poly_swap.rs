@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::aliases::{AccountIdOf, DEXIdOf, PolySwapActionStructOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, PolySwapActionStructOf, TechAccountIdOf};
 use crate::Config;
-use common::{AssetIdOf, SwapRulesValidation};
+use common::{AssetIdOf, DexIdOf, SwapRulesValidation};
 use frame_support::dispatch;
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
@@ -40,7 +40,7 @@ use crate::operations::*;
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
-    PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
+    PairSwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
@@ -79,7 +79,7 @@ where
 impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
-    PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
+    PairSwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
         common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,

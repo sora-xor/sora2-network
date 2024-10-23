@@ -40,7 +40,7 @@ mod tests {
     use common::{
         self, balance, fixed,
         prelude::{Balance, OutcomeFee, QuoteAmount, SwapAmount},
-        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, GetMarketInfo, LiquiditySource,
+        AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DexId, GetMarketInfo, LiquiditySource,
         PredefinedAssetId, PriceVariant, DAI, USDT, VAL, XOR, XST, XSTUSD, PriceToolsProvider
     };
     use frame_support::traits::Hooks;
@@ -50,7 +50,7 @@ mod tests {
     use sp_arithmetic::FixedU128;
     use sp_std::collections::vec_deque::VecDeque;
 
-    type XSTPool = Pallet<Runtime>;
+    type XstPool = Pallet<Runtime>;
     type PriceTools = price_tools::Pallet<Runtime>;
 
     #[test]
@@ -67,9 +67,9 @@ mod tests {
             // amount out = 100_000 XST (A_out)
             // amount in = (A_out * X) / S = (100_000 * 220) / 1 = 22_000_000 XSTUSD (A_in)
             assert_eq!(
-                XSTPool::buy_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
+                XstPool::buy_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(22000000.0) 
+                fixed!(22000000.0)
             );
 
             // base case for sell
@@ -80,9 +80,9 @@ mod tests {
             // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
             // 1 XSTUSD = 1 DAI (S)
             // amount out = 100_000 XSTUSD (A_out)
-            // amount in = (A_out * S) / X = (100_000 * 1) / 150 = 666.(6) XST (A_in) 
+            // amount in = (A_out * S) / X = (100_000 * 1) / 150 = 666.(6) XST (A_in)
             assert_eq!(
-                XSTPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
+                XstPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
                 fixed!(666.666666666666666933),
             );
@@ -95,10 +95,10 @@ mod tests {
         ext.execute_with(|| {
             let alice = alice();
             // add some reserves
-            XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XST, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XST.");
+            XstPool::exchange(&alice, &alice, &DexId::Polkaswap, &XSTUSD, &XST, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XST.");
 
             assert_noop!(
-                XSTPool::sell_price(
+                XstPool::sell_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(Balance::max_value()),
@@ -106,7 +106,7 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed,
             );
             assert_noop!(
-                XSTPool::sell_price(
+                XstPool::sell_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(Balance::max_value()),
@@ -114,7 +114,7 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed,
             );
             assert_eq!(
-                XSTPool::sell_price(
+                XstPool::sell_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(Balance::zero()),
@@ -122,7 +122,7 @@ mod tests {
                 Ok(fixed!(0)),
             );
             assert_eq!(
-                XSTPool::sell_price(
+                XstPool::sell_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(Balance::zero()),
@@ -131,7 +131,7 @@ mod tests {
             );
 
             assert_noop!(
-                XSTPool::buy_price(
+                XstPool::buy_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(Balance::max_value()),
@@ -139,7 +139,7 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed,
             );
             assert_noop!(
-                XSTPool::buy_price(
+                XstPool::buy_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(Balance::max_value()),
@@ -147,7 +147,7 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed,
             );
             assert_eq!(
-                XSTPool::buy_price(
+                XstPool::buy_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(Balance::zero()),
@@ -155,7 +155,7 @@ mod tests {
                 Ok(fixed!(0)),
             );
             assert_eq!(
-                XSTPool::buy_price(
+                XstPool::buy_price(
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(Balance::zero()),
@@ -180,8 +180,8 @@ mod tests {
             ]
         ).build();
         ext.execute_with(|| {
-            let price_a = XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+            let price_a = XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(1)),
@@ -189,10 +189,10 @@ mod tests {
             )
                 .unwrap();
 
-            XSTPool::set_reference_asset(RuntimeOrigin::root(), DAI).expect("Failed to set new reference asset.");
+            XstPool::set_reference_asset(RuntimeOrigin::root(), DAI).expect("Failed to set new reference asset.");
 
-            let price_b = XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+            let price_b = XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(balance!(1)),
@@ -221,11 +221,11 @@ mod tests {
         .build();
         ext.execute_with(|| {
             // Fee ratio should be greater than 0 during this test
-            assert!(XSTPool::enabled_synthetics(&XSTUSD).unwrap().fee_ratio != fixed!(0));
+            assert!(XstPool::enabled_synthetics(&XSTUSD).unwrap().fee_ratio != fixed!(0));
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let (quote_outcome_a, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_a, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(amount_a.clone()),
@@ -233,10 +233,10 @@ mod tests {
             )
             .unwrap();
 
-            let (exchange_outcome_a, _) = XSTPool::exchange(
+            let (exchange_outcome_a, _) = XstPool::exchange(
                 &alice(),
                 &alice(),
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
@@ -253,8 +253,8 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let (quote_outcome_b, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_b, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(amount_b.clone()),
@@ -262,10 +262,10 @@ mod tests {
             )
             .unwrap();
 
-            let (exchange_outcome_b, _) = XSTPool::exchange(
+            let (exchange_outcome_b, _) = XstPool::exchange(
                 &alice(),
                 &alice(),
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
@@ -282,8 +282,8 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
-            let (quote_outcome_c, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_c, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(amount_c.clone()),
@@ -291,10 +291,10 @@ mod tests {
             )
             .unwrap();
 
-            let (exchange_outcome_c, _) = XSTPool::exchange(
+            let (exchange_outcome_c, _) = XstPool::exchange(
                 &alice(),
                 &alice(),
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
@@ -311,18 +311,18 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let (quote_outcome_d, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_d, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(amount_d.clone()),
                 true,
             )
             .unwrap();
-            let (exchange_outcome_d, _) = XSTPool::exchange(
+            let (exchange_outcome_d, _) = XstPool::exchange(
                 &alice(),
                 &alice(),
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
@@ -351,8 +351,8 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            let (price_a, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_a, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(balance!(100)),
@@ -374,8 +374,8 @@ mod tests {
             // amount out with deduced fee = A_out - F_xst = 0.(45) - 0.0030(27) = 0.4515(18) XST
             assert_eq!(price_a.amount, balance!(0.451518181818181818));
 
-            let (price_b, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_b, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(balance!(100)),
@@ -383,11 +383,11 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_b.fee, OutcomeFee::new());
-            
+
             assert_eq!(price_b.amount, price_a.fee.get_xst() + price_a.amount);
 
-            let (price_a, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_a, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(balance!(100)),
@@ -408,8 +408,8 @@ mod tests {
             assert_eq!(price_a.fee, OutcomeFee::xst(balance!(0.670465298890611472)));
             assert_eq!(price_a.amount, balance!(22147.502365755934523840));
 
-            let (price_b, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_b, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(balance!(100)),
@@ -437,10 +437,10 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            XSTPool::exchange(
+            XstPool::exchange(
                 &alice(),
                 &alice(),
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
@@ -448,16 +448,16 @@ mod tests {
             .unwrap();
 
             // Buy
-            let (price_a, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_a, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(balance!(100)),
                 true,
             )
             .unwrap();
-            let (price_b, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_b, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(price_a.amount.clone()),
@@ -465,7 +465,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            
+
             // 1 XOR = 0.5 XST in sell case (X_s)
             // 1 XOR = 0.6 XST in buy case (X_b)
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
@@ -479,16 +479,16 @@ mod tests {
             assert_eq!(price_a.fee, OutcomeFee::xst(balance!(0.003027272727272727)));
 
             // Sell
-            let (price_c, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_c, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(balance!(100)),
                 true,
             )
             .unwrap();
-            let (price_d, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (price_d, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(price_c.amount.clone()),
@@ -528,16 +528,16 @@ mod tests {
         ext.execute_with(|| {
             // Buy with desired input
             let amount_a: Balance = balance!(200);
-            let (quote_outcome_a, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_a, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(amount_a.clone()),
                 true,
             )
             .unwrap();
-            let quote_without_impact_a = XSTPool::quote_without_impact(
-                &DEXId::Polkaswap.into(),
+            let quote_without_impact_a = XstPool::quote_without_impact(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(amount_a.clone()),
@@ -548,16 +548,16 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let (quote_outcome_b, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_b, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(amount_b.clone()),
                 true,
             )
             .unwrap();
-            let quote_without_impact_b = XSTPool::quote_without_impact(
-                &DEXId::Polkaswap.into(),
+            let quote_without_impact_b = XstPool::quote_without_impact(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(amount_b.clone()),
@@ -568,16 +568,16 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let (quote_outcome_c, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_c, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(amount_c.clone()),
                 true,
             )
             .unwrap();
-            let quote_without_impact_c = XSTPool::quote_without_impact(
-                &DEXId::Polkaswap.into(),
+            let quote_without_impact_c = XstPool::quote_without_impact(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(amount_c.clone()),
@@ -588,16 +588,16 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let (quote_outcome_d, _) = XSTPool::quote(
-                &DEXId::Polkaswap.into(),
+            let (quote_outcome_d, _) = XstPool::quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(amount_d.clone()),
                 true,
             )
             .unwrap();
-            let quote_without_impact_d = XSTPool::quote_without_impact(
-                &DEXId::Polkaswap.into(),
+            let quote_without_impact_d = XstPool::quote_without_impact(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(amount_d.clone()),
@@ -614,7 +614,7 @@ mod tests {
         ext.execute_with(|| {
             let alice = alice();
             // add some reserves
-            assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
+            assert_noop!(XstPool::exchange(&alice, &alice, &DexId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
         });
     }
 
@@ -622,14 +622,14 @@ mod tests {
     fn set_synthetic_base_asset_floor_price_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
+            let price_before = <XstPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
             // 1 XOR = 0.5 XST in sell case
             // 1 XOR = 110 DAI in buy case
             // 1 XST = 110/0.5 = 220 DAI
-            assert_eq!(price_before, fixed!(220.)); 
+            assert_eq!(price_before, fixed!(220.));
 
-            XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(300)).expect("Failed to set floor price.");
-            let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
+            XstPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(300)).expect("Failed to set floor price.");
+            let price_after = <XstPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
             assert_eq!(price_after, fixed!(300));
         });
     }
@@ -638,7 +638,7 @@ mod tests {
     fn default_synthetic_base_asset_floor_price_should_be_greater_tha_zero() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert!(XSTPool::synthetic_base_asset_floor_price() > 0);
+            assert!(XstPool::synthetic_base_asset_floor_price() > 0);
         });
     }
 
@@ -650,7 +650,7 @@ mod tests {
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
-            XSTPool::register_synthetic_asset(
+            XstPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
@@ -658,34 +658,34 @@ mod tests {
                 fixed!(0),
             ).expect("Failed to register synthetic asset");
 
-            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            let opt_xsteuro = XstPool::enabled_symbols(&euro);
             assert!(opt_xsteuro.is_some());
 
             let xsteuro = opt_xsteuro.unwrap();
             assert_eq!(
-                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                XstPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
                 euro
             );
 
-            XSTPool::disable_synthetic_asset(RuntimeOrigin::root(), xsteuro.clone())
+            XstPool::disable_synthetic_asset(RuntimeOrigin::root(), xsteuro.clone())
                 .expect("Failed to disable synthetic asset");
 
-            assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
-            assert!(XSTPool::enabled_symbols(&euro).is_some());
+            assert!(XstPool::enabled_synthetics(&xsteuro).is_none());
+            assert!(XstPool::enabled_symbols(&euro).is_some());
 
-            XSTPool::enable_synthetic_asset(
+            XstPool::enable_synthetic_asset(
                 RuntimeOrigin::root(),
                 asset_id,
                 euro.clone(),
                 fixed!(0),
             ).expect("Failed to enable synthetic asset");
 
-            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            let opt_xsteuro = XstPool::enabled_symbols(&euro);
             assert!(opt_xsteuro.is_some());
 
             let xsteuro = opt_xsteuro.unwrap();
             assert_eq!(
-                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                XstPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
                 euro
             );
         });
@@ -697,7 +697,7 @@ mod tests {
         ext.execute_with(|| {
             let euro = relay_new_symbol("EURO", 2_000_000_000);
 
-            XSTPool::register_synthetic_asset(
+            XstPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
@@ -705,18 +705,18 @@ mod tests {
                 fixed!(0),
             ).expect("Failed to register synthetic asset");
 
-            let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
+            let xsteuro = XstPool::enabled_symbols(&euro).expect("Expected synthetic asset");
             let quote_amount = QuoteAmount::with_desired_input(balance!(100));
 
-            let (swap_outcome_before, _) = XSTPool::quote(
-                &DEXId::Polkaswap,
+            let (swap_outcome_before, _) = XstPool::quote(
+                &DexId::Polkaswap,
                 &XST.into(),
                 &xsteuro,
                 quote_amount.clone(),
                 true
             )
             .expect("Failed to quote XST -> XSTEURO ");
-            
+
             // 1 XOR = 0.5 XST in sell case (X_s)
             // 1 XOR = 0.6 XST in buy case (X_b)
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
@@ -739,15 +739,15 @@ mod tests {
             assert_eq!(swap_outcome_before.fee, OutcomeFee::new());
 
 
-            assert_ok!(XSTPool::set_synthetic_asset_fee(
+            assert_ok!(XstPool::set_synthetic_asset_fee(
                 RuntimeOrigin::root(),
                 xsteuro.clone(),
                 fixed!(0.5))
             );
 
 
-            let (swap_outcome_after, _) = XSTPool::quote(
-                &DEXId::Polkaswap,
+            let (swap_outcome_after, _) = XstPool::quote(
+                &DexId::Polkaswap,
                 &XST.into(),
                 &xsteuro,
                 quote_amount,
@@ -768,7 +768,7 @@ mod tests {
         ext.execute_with(|| {
             let euro = relay_new_symbol("EURO", 2_000_000_000);
             assert_eq!(
-                XSTPool::register_synthetic_asset(
+                XstPool::register_synthetic_asset(
                     RuntimeOrigin::root(),
                     AssetSymbol("XSTEUR".into()),
                     AssetName("XST Euro".into()),
@@ -779,7 +779,7 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::register_synthetic_asset(
+                XstPool::register_synthetic_asset(
                     RuntimeOrigin::root(),
                     AssetSymbol("XSTEUR".into()),
                     AssetName("XST Euro".into()),
@@ -790,7 +790,7 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::set_synthetic_asset_fee(
+                XstPool::set_synthetic_asset_fee(
                     RuntimeOrigin::root(),
                     XSTUSD.into(),
                     fixed!(-0.1),
@@ -799,7 +799,7 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::set_synthetic_asset_fee(
+                XstPool::set_synthetic_asset_fee(
                     RuntimeOrigin::root(),
                     XSTUSD.into(),
                     fixed!(1),
@@ -824,7 +824,7 @@ mod tests {
             let euro = relay_new_symbol("EURO", 2_000_000_000);
             relay_symbol(euro.clone(), 3_000_000_000);
 
-            XSTPool::register_synthetic_asset(
+            XstPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
@@ -832,12 +832,12 @@ mod tests {
                 fixed!(0.7),
             ).expect("Failed to register synthetic asset");
 
-            let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
+            let xsteuro = XstPool::enabled_symbols(&euro).expect("Expected synthetic asset");
             let quote_amount = QuoteAmount::with_desired_input(balance!(100));
 
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap,
+                XstPool::quote(
+                    &DexId::Polkaswap,
                     &XST.into(),
                     &xsteuro,
                     quote_amount.clone(),
@@ -863,7 +863,7 @@ mod tests {
             let euro = relay_new_symbol("EURO", 2_000_000_000);
             relay_symbol(euro.clone(), 3_000_000_000);
 
-            XSTPool::register_synthetic_asset(
+            XstPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
@@ -871,11 +871,11 @@ mod tests {
                 fixed!(0),
             ).expect("Failed to register synthetic asset");
 
-            let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
+            let xsteuro = XstPool::enabled_symbols(&euro).expect("Expected synthetic asset");
             let quote_amount = QuoteAmount::with_desired_input(balance!(100));
 
-            let (swap_outcome_before, _) = XSTPool::quote(
-                &DEXId::Polkaswap,
+            let (swap_outcome_before, _) = XstPool::quote(
+                &DexId::Polkaswap,
                 &XST.into(),
                 &xsteuro,
                 quote_amount.clone(),
@@ -904,14 +904,14 @@ mod tests {
             assert_eq!(swap_outcome_before.amount, expected_amount_out.into_inner());
             assert_eq!(swap_outcome_before.fee, OutcomeFee::xst(balance!(30)));
 
-            assert_ok!(XSTPool::set_synthetic_asset_fee(
+            assert_ok!(XstPool::set_synthetic_asset_fee(
                 RuntimeOrigin::root(),
                 xsteuro.clone(),
                 fixed!(0.3))
             );
 
-            let (swap_outcome_after, _) = XSTPool::quote(
-                &DEXId::Polkaswap,
+            let (swap_outcome_after, _) = XstPool::quote(
+                &DexId::Polkaswap,
                 &XST.into(),
                 &xsteuro,
                 quote_amount,
@@ -938,7 +938,7 @@ mod tests {
     fn should_disallow_xst_amount_exceeding_limit() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            
+
             // 1 XOR = 0.5 XST in sell case (X_s)
             // 1 XOR = 0.6 XST in buy case (X_b)
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
@@ -952,8 +952,8 @@ mod tests {
             let amount_a: Balance = balance!(2214750236.575593452663369226) + 1;
             // Buy with desired input
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_input(amount_a.clone()),
@@ -963,10 +963,10 @@ mod tests {
             );
 
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
@@ -977,8 +977,8 @@ mod tests {
             // Buy with desired output
             let amount_b: Balance = balance!(10000000) + 1;
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(amount_b.clone()),
@@ -987,10 +987,10 @@ mod tests {
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
@@ -1001,8 +1001,8 @@ mod tests {
             // Sell with desired input
             let amount_c: Balance = balance!(10000000) + 1;
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(amount_c.clone()),
@@ -1011,10 +1011,10 @@ mod tests {
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
@@ -1035,8 +1035,8 @@ mod tests {
             // Sell with desired output
             let amount_d: Balance = balance!(1490009999.999999999818062202) + 1;
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(amount_d.clone()),
@@ -1045,10 +1045,10 @@ mod tests {
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
@@ -1069,7 +1069,7 @@ mod tests {
             assets::Pallet::<Runtime>::update_balance(
                 RuntimeOrigin::root(), alice(), XST.into(), balance!(13000000000) as i128)
                 .expect("Expected to update Alice XST balance");
-            
+
             // 1 XOR = 0.5 XST in sell case (X_s)
             // 1 XOR = 0.6 XST in buy case (X_b)
             // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
@@ -1085,8 +1085,8 @@ mod tests {
             let amount_a: Balance = balance!(2214750236.575593452663369226) - 1_000_000_000;
             // Buy with desired input
             assert_ok!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_input(amount_a.clone()),
@@ -1094,10 +1094,10 @@ mod tests {
                 )
             );
             assert_ok!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
@@ -1107,8 +1107,8 @@ mod tests {
             // Buy with desired output
             let amount_b: Balance = balance!(10000000);
             assert_ok!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(amount_b.clone()),
@@ -1116,10 +1116,10 @@ mod tests {
                 )
             );
             assert_ok!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
@@ -1129,8 +1129,8 @@ mod tests {
             // Sell with desired input
             let amount_c: Balance = balance!(10000000);
             assert_ok!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(amount_c.clone()),
@@ -1138,10 +1138,10 @@ mod tests {
                 )
             );
             assert_ok!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
@@ -1158,13 +1158,13 @@ mod tests {
             // fee ratio for XSTUSD = 0.00666 (F_r)
             // amount_in = 10_000_000 XST
             // amount out = amount_in * (1 - F_r) * XST_s / S = 10_000_000 * (1 - 0.00666) * 150 / 1 = 1490009999.999999999818062202 (XSTUSD)
-            
+
             // precision is 10^-9
             let amount_d: Balance = balance!(1490009999.999999999818062202) - 1_000_000_000;
             // Sell with desired output
             assert_ok!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(amount_d.clone()),
@@ -1172,10 +1172,10 @@ mod tests {
                 )
             );
             assert_ok!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
@@ -1190,8 +1190,8 @@ mod tests {
         ext.execute_with(|| {
             // Buy with desired input
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_input(0),
@@ -1200,10 +1200,10 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_input(0, Balance::zero()),
@@ -1213,8 +1213,8 @@ mod tests {
 
             // Buy with desired output
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(0),
@@ -1223,10 +1223,10 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_output(0, Balance::max_value()),
@@ -1236,8 +1236,8 @@ mod tests {
 
             // Sell with desired input
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(0),
@@ -1246,10 +1246,10 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     SwapAmount::with_desired_input(0, Balance::zero()),
@@ -1259,8 +1259,8 @@ mod tests {
 
             // Sell with desired output
             assert_noop!(
-                XSTPool::quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(0),
@@ -1269,10 +1269,10 @@ mod tests {
                 Error::<Runtime>::PriceCalculationFailed
             );
             assert_noop!(
-                XSTPool::exchange(
+                XstPool::exchange(
                     &alice(),
                     &alice(),
-                    &DEXId::Polkaswap.into(),
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     SwapAmount::with_desired_output(0, Balance::max_value()),
@@ -1290,7 +1290,7 @@ mod tests {
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
-            XSTPool::register_synthetic_asset(
+            XstPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
@@ -1298,34 +1298,34 @@ mod tests {
                 fixed!(0),
             ).expect("Failed to register synthetic asset");
 
-            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            let opt_xsteuro = XstPool::enabled_symbols(&euro);
             assert!(opt_xsteuro.is_some());
 
             let xsteuro = opt_xsteuro.unwrap();
             assert_eq!(
-                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                XstPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
                 euro
             );
 
-            XSTPool::remove_synthetic_asset(RuntimeOrigin::root(), xsteuro.clone())
+            XstPool::remove_synthetic_asset(RuntimeOrigin::root(), xsteuro.clone())
                 .expect("Failed to disable synthetic asset");
 
-            assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
-            assert!(XSTPool::enabled_symbols(&euro).is_none());
+            assert!(XstPool::enabled_synthetics(&xsteuro).is_none());
+            assert!(XstPool::enabled_symbols(&euro).is_none());
 
-            XSTPool::enable_synthetic_asset(
+            XstPool::enable_synthetic_asset(
                 RuntimeOrigin::root(),
                 asset_id,
                 euro.clone(),
                 fixed!(0),
             ).expect("Failed to enable synthetic asset");
 
-            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            let opt_xsteuro = XstPool::enabled_symbols(&euro);
             assert!(opt_xsteuro.is_some());
 
             let xsteuro = opt_xsteuro.unwrap();
             assert_eq!(
-                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                XstPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
                 euro
             );
         });
@@ -1339,35 +1339,35 @@ mod tests {
 
             let euro = relay_new_symbol("EURO", 2_000_000_000);
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
-            XSTPool::register_synthetic_asset(
+            XstPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
                 euro.clone(),
                 fixed!(0),
             ).expect("Failed to register synthetic asset");
-            assert!(XSTPool::enabled_synthetics(&asset_id).is_some());
-            assert!(XSTPool::enabled_symbols(&euro).is_some());
+            assert!(XstPool::enabled_synthetics(&asset_id).is_some());
+            assert!(XstPool::enabled_symbols(&euro).is_some());
 
             let new_block = 1u64 + GetBandRateStaleBlockPeriod::get();
             System::set_block_number(new_block);
             <Band as Hooks<BlockNumberFor<Runtime>>>::on_initialize(new_block);
 
-            assert!(XSTPool::enabled_synthetics(&asset_id).is_none());
-            assert!(XSTPool::enabled_symbols(&euro).is_some());
+            assert!(XstPool::enabled_synthetics(&asset_id).is_none());
+            assert!(XstPool::enabled_symbols(&euro).is_some());
 
-            XSTPool::enable_synthetic_asset(
+            XstPool::enable_synthetic_asset(
                 RuntimeOrigin::root(),
                 asset_id,
                 euro.clone(),
                 fixed!(0),
             ).expect("Failed to enable synthetic asset");
 
-            let xsteuro = XSTPool::enabled_symbols(&euro)
+            let xsteuro = XstPool::enabled_symbols(&euro)
                 .expect("Expected to get a synthetic asset linked to EURO");
 
             assert_eq!(
-                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                XstPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
                 euro
             );
         });
@@ -1388,8 +1388,8 @@ mod tests {
         .build();
     ext.execute_with(|| {
         assert_eq!(
-            XSTPool::step_quote(
-                &DEXId::Polkaswap.into(),
+            XstPool::step_quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(balance!(0)),
@@ -1402,8 +1402,8 @@ mod tests {
         );
 
         assert_eq!(
-            XSTPool::step_quote(
-                &DEXId::Polkaswap.into(),
+            XstPool::step_quote(
+                &DexId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(balance!(0)),
@@ -1416,8 +1416,8 @@ mod tests {
         );
 
         assert_eq!(
-            XSTPool::step_quote(
-                &DEXId::Polkaswap.into(),
+            XstPool::step_quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_input(balance!(0)),
@@ -1430,8 +1430,8 @@ mod tests {
         );
 
         assert_eq!(
-            XSTPool::step_quote(
-                &DEXId::Polkaswap.into(),
+            XstPool::step_quote(
+                &DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
                 QuoteAmount::with_desired_output(balance!(0)),
@@ -1460,8 +1460,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_input(balance!(100)),
@@ -1475,10 +1475,10 @@ mod tests {
                     limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
-            
+
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(balance!(100)),
@@ -1492,10 +1492,10 @@ mod tests {
                     limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
-            
+
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(balance!(100)),
@@ -1511,8 +1511,8 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(100)),
@@ -1544,8 +1544,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_input(balance!(100)),
@@ -1570,10 +1570,10 @@ mod tests {
                     limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
-            
+
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(balance!(100)),
@@ -1598,10 +1598,10 @@ mod tests {
                     limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
-            
+
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(balance!(100)),
@@ -1628,8 +1628,8 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(100)),
@@ -1672,8 +1672,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_input(balance!(100)),
@@ -1698,10 +1698,10 @@ mod tests {
                     limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
-            
+
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(balance!(100)),
@@ -1726,10 +1726,10 @@ mod tests {
                     limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10000000))), None)
                 }
             );
-            
+
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_input(balance!(100)),
@@ -1756,8 +1756,8 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(100)),
@@ -1786,13 +1786,13 @@ mod tests {
     }
 
     fn compare_quotes(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) {
-        let (step_quote_input, step_quote_output, step_quote_fee) = XSTPool::step_quote(
+        let (step_quote_input, step_quote_output, step_quote_fee) = XstPool::step_quote(
             dex_id,
             input_asset_id,
             output_asset_id,
@@ -1809,7 +1809,7 @@ mod tests {
         });
 
         let quote_result =
-            XSTPool::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+            XstPool::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
                 .unwrap()
                 .0;
 
@@ -1841,17 +1841,17 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_input(balance!(100)), false);
-            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_output(balance!(100)), false);
-            
-            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100)), false);
-            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100)), false);
+            compare_quotes(&DexId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_input(balance!(100)), false);
+            compare_quotes(&DexId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_output(balance!(100)), false);
 
-            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_input(balance!(100)), true);
-            compare_quotes(&DEXId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_output(balance!(100)), true);
+            compare_quotes(&DexId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100)), false);
+            compare_quotes(&DexId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100)), false);
 
-            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100)), true);
-            compare_quotes(&DEXId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100)), true);
+            compare_quotes(&DexId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_input(balance!(100)), true);
+            compare_quotes(&DexId::Polkaswap, &XSTUSD, &XST, QuoteAmount::with_desired_output(balance!(100)), true);
+
+            compare_quotes(&DexId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100)), true);
+            compare_quotes(&DexId::Polkaswap, &XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100)), true);
         });
     }
 
@@ -1870,8 +1870,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(balance!(123456789123456789)),
@@ -1898,8 +1898,8 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(123456789123456789)),
@@ -1942,8 +1942,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
                     QuoteAmount::with_desired_output(balance!(123456789123456789)),
@@ -1970,8 +1970,8 @@ mod tests {
             );
 
             assert_eq!(
-                XSTPool::step_quote(
-                    &DEXId::Polkaswap.into(),
+                XstPool::step_quote(
+                    &DexId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(123456789123456789)),

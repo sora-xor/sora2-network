@@ -33,8 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     self, fixed_from_basis_points, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId,
-    DEXInfo, Fixed, DOT, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, AssetId32, DexId,
+    DexInfo, Fixed, DOT, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -59,8 +59,8 @@ pub const ALICE: AccountId32 = AccountId32::new([1; 32]);
 
 pub const BOB: AccountId32 = AccountId32::new([2; 32]);
 
-pub const DEX_A_ID: DEXId = DEXId::PolkaswapXSTUSD;
-pub const DEX_B_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_A_ID: DexId = DexId::PolkaswapXstUsd;
+pub const DEX_B_ID: DexId = DexId::Polkaswap;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -108,7 +108,7 @@ parameter_types! {
 }
 
 pub struct ExtBuilder {
-    pub initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    pub initial_dex_list: Vec<(DexId, DexInfo<AssetId>)>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,

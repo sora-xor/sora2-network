@@ -6,7 +6,7 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, VXOR, XST,
+    mock_tokens_config, Amount, DexId, DexInfo, Fixed, PSWAP, VXOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -26,7 +26,7 @@ pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -36,7 +36,7 @@ pub fn alice() -> AccountId {
     ))
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>);
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
@@ -76,7 +76,7 @@ construct_runtime! {
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
@@ -92,7 +92,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -109,8 +109,8 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
     type MulticollateralBondingCurvePool = ();
-    type XYKPool = pool_xyk::Pallet<Runtime>;
-    type XSTPool = ();
+    type XykPool = pool_xyk::Pallet<Runtime>;
+    type XstPool = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type OrderBook = ();
     type WeightInfo = ();
@@ -127,13 +127,13 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DexId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
@@ -142,7 +142,7 @@ impl pool_xyk::Config for Runtime {
     type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type XSTMarketInfo = ();
+    type XstMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -162,11 +162,11 @@ impl pswap_distribution::Config for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
+    type EnsureDexManager = ();
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;
@@ -183,7 +183,7 @@ impl pallet_timestamp::Config for Runtime {
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
+    type XykPool = PoolXyk;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
@@ -193,7 +193,7 @@ impl Config for Runtime {}
 
 pub struct ExtBuilder {
     // endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    dex_list: Vec<(DexId, DexInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
@@ -203,8 +203,8 @@ impl Default for ExtBuilder {
         Self {
             // endowed_accounts: vec![(alice(), DOT.into(), 20_000_u128.into())],
             dex_list: vec![(
-                DEXId::Polkaswap,
-                DEXInfo {
+                DexId::Polkaswap,
+                DexInfo {
                     base_asset_id: GetBaseAssetId::get(),
                     synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,

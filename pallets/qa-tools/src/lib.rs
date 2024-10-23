@@ -58,7 +58,7 @@ pub mod pallet {
 
     use common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
+        ContentSource, Description, DexIdOf, DexInfo, DexInfoProvider, SyntheticInfoProvider,
         TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
@@ -95,9 +95,9 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type DexInfoProvider: DexInfoProvider<Self::DexId, DexInfo<AssetIdOf<Self>>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<AssetIdOf<Self>>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
@@ -225,7 +225,7 @@ pub mod pallet {
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec<(
-                OrderBookId<AssetIdOf<T>, T::DEXId>,
+                OrderBookId<AssetIdOf<T>, T::DexId>,
                 pallet_tools::order_book::OrderBookAttributes,
                 pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
             )>,
@@ -274,7 +274,7 @@ pub mod pallet {
             bids_owner: T::AccountId,
             asks_owner: T::AccountId,
             settings: Vec<(
-                OrderBookId<AssetIdOf<T>, T::DEXId>,
+                OrderBookId<AssetIdOf<T>, T::DexId>,
                 pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
             )>,
         ) -> DispatchResultWithPostInfo {

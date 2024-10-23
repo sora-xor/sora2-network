@@ -4,7 +4,7 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    balance, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId, PriceToolsProvider,
+    balance, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DexId, PriceToolsProvider,
     APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
@@ -16,11 +16,11 @@ use sp_std::prelude::*;
 
 use crate::Pallet as ApolloPlatform;
 use frame_support::PalletId;
-use pool_xyk::Pallet as XYKPool;
+use pool_xyk::Pallet as XykPool;
 use price_tools::Pallet as PriceTools;
 use trading_pair::Pallet as TradingPair;
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 // Support functions
 fn alice<T: Config>() -> T::AccountId {
@@ -150,22 +150,22 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     // Initialize pools and deposit liquidity
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
-    XYKPool::<T>::initialize_pool(
+    XykPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XykPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
+    XykPool::<T>::initialize_pool(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
         APOLLO_ASSET_ID.into(),
     )?;
-    XYKPool::<T>::initialize_pool(
+    XykPool::<T>::initialize_pool(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
         CERES_ASSET_ID.into(),
     )?;
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
@@ -176,7 +176,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(100),
     )?;
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
@@ -187,7 +187,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(100),
     )?;
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
@@ -198,7 +198,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(100),
     )?;
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin,
         DEX.into(),
         XOR.into(),

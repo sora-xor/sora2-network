@@ -2,7 +2,7 @@ use crate::mock::*;
 use common::prelude::FixedWrapper;
 use common::{
     balance, generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol,
-    Balance, DEXId, LiquiditySourceType, ToFeeAccount, TradingPairSourceManager,
+    Balance, DexId, LiquiditySourceType, ToFeeAccount, TradingPairSourceManager,
     DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_support::{assert_err, assert_ok, Identity};
@@ -14,7 +14,7 @@ use frame_support::traits::Hooks;
 
 fn preset_initial<Fun>(tests: Fun)
 where
-    Fun: Fn(DEXId),
+    Fun: Fn(DexId),
 {
     let mut ext = ExtBuilder::default().build();
     let dex_id = DEX_A_ID;
@@ -67,7 +67,7 @@ where
                 &dex_id,
                 &XOR.into(),
                 &CERES_ASSET_ID.into(),
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
             )
             .expect("Failed to query trading pair status.")
         );
@@ -165,7 +165,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
         // Get pool account
         let pool_account: AccountId =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                 base_asset,
                 target_asset,
             )
@@ -174,7 +174,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
         // Calculate number of pool tokens of user's account
         let pool_tokens: Balance =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -202,7 +202,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
         // Calculate number of user's pool tokens after locking
         let pool_tokens_after_locking =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -214,7 +214,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
         // Calculate number of fee account pool tokens after locking
         let fee_account: AccountId = ceres_liquidity_locker::FeesOptionOneAccount::<Runtime>::get();
         let fee_account_pool_tokens_after_locking =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 &fee_account,
             )
@@ -223,7 +223,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
         // Check if added to account_pools
         let target_asset_expected =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::account_pools(
                 &fee_account,
                 &base_asset,
             );
@@ -254,7 +254,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Get pool account
         let pool_account: AccountId =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                 base_asset,
                 target_asset,
             )
@@ -263,7 +263,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Calculate number of pool tokens of user's account
         let pool_tokens: Balance =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -299,7 +299,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Calculate number of user's pool tokens after locking
         let pool_tokens_after_locking =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -310,7 +310,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Calculate number of fee account pool tokens after locking
         let fee_account_pool_tokens_after_locking =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 fee_account.clone(),
             )
@@ -319,7 +319,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Check if added to account_pools
         let target_asset_expected =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(
+            <Runtime as ceres_liquidity_locker::Config>::XykPool::account_pools(
                 fee_account,
                 &base_asset,
             );

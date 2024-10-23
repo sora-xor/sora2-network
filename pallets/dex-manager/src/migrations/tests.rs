@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::XST;
-use crate::{mock::*, pallet::Pallet, DEXInfos};
+use crate::{mock::*, pallet::Pallet, DexInfos};
 use frame_support::traits::{GetStorageVersion as _, StorageVersion};
 
 #[test]
@@ -39,7 +39,7 @@ fn test() {
 
         super::migrate::<Runtime>();
 
-        for dex_info in DEXInfos::<Runtime>::iter_values() {
+        for dex_info in DexInfos::<Runtime>::iter_values() {
             assert_eq!(dex_info.synthetic_base_asset_id, XST.into());
         }
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);

@@ -116,15 +116,15 @@ pub struct SwapOutcomeInfoV1<Balance> {
 
 sp_api::decl_runtime_apis! {
     #[api_version(2)]
-    pub trait DEXAPI<AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant> where
+    pub trait DexApi<AssetId, DexId, Balance, LiquiditySourceType, SwapVariant> where
         AssetId: Codec + MaybeDisplay + MaybeFromStr + Ord,
-        DEXId: Codec,
+        DexId: Codec,
         LiquiditySourceType: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
         SwapVariant: Codec,
     {
         fn quote(
-            dex_id: DEXId,
+            dex_id: DexId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
@@ -134,7 +134,7 @@ sp_api::decl_runtime_apis! {
 
         #[changed_in(2)]
         fn quote(
-            dex_id: DEXId,
+            dex_id: DexId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
@@ -143,7 +143,7 @@ sp_api::decl_runtime_apis! {
         ) -> Option<SwapOutcomeInfoV1<Balance>>;
 
         fn can_exchange(
-            dex_id: DEXId,
+            dex_id: DexId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,

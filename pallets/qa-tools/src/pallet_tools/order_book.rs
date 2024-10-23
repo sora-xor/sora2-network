@@ -124,7 +124,7 @@ pub struct FillInput<Moment, BlockNumber> {
 /// `who` is just some account. Used to mint non-divisible assets for creating corresponding
 /// order book(-s).
 pub fn create_empty_batch_unchecked<T: Config>(
-    order_book_settings: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, OrderBookAttributes)>,
+    order_book_settings: Vec<(OrderBookId<AssetIdOf<T>, T::DexId>, OrderBookAttributes)>,
 ) -> Result<(), DispatchError> {
     let to_create_ids: Vec<_> = order_book_settings
         .into_iter()
@@ -168,7 +168,7 @@ pub fn fill_batch_unchecked<T: Config>(
     bids_owner: T::AccountId,
     asks_owner: T::AccountId,
     settings: Vec<(
-        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        OrderBookId<AssetIdOf<T>, T::DexId>,
         FillInput<MomentOf<T>, BlockNumberFor<T>>,
     )>,
 ) -> Result<(), DispatchError> {
@@ -252,7 +252,7 @@ fn max_amount_range<T: Config>(order_book: &OrderBook<T>) -> RandomAmount {
 /// Fill a single order book.
 fn fill_order_book<T: Config>(
     data: &mut impl DataLayer<T>,
-    book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     asks_owner: T::AccountId,
     bids_owner: T::AccountId,
     settings: FillInput<MomentOf<T>, BlockNumberFor<T>>,

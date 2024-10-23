@@ -35,7 +35,7 @@ use common::Amount;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
-    mock_tokens_config, AssetId32, DEXId, PredefinedAssetId, XOR, XST,
+    mock_tokens_config, AssetId32, DexId, PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
@@ -56,7 +56,7 @@ type Balance = u128;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type BlockNumber = u64;
 type Signature = MultiSignature;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 

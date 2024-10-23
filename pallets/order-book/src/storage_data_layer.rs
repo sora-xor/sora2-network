@@ -62,7 +62,7 @@ impl<T: Config> StorageDataLayer<T> {
 
 impl<T: Config> StorageDataLayer<T> {
     fn remove_from_bids(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order: &LimitOrder<T>,
     ) -> Result<(), ()> {
         <Bids<T>>::mutate(order_book_id, order.price, |bids_opt| {
@@ -77,7 +77,7 @@ impl<T: Config> StorageDataLayer<T> {
     }
 
     fn remove_from_asks(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order: &LimitOrder<T>,
     ) -> Result<(), ()> {
         <Asks<T>>::mutate(order_book_id, order.price, |asks_opt| {
@@ -92,7 +92,7 @@ impl<T: Config> StorageDataLayer<T> {
     }
 
     fn add_to_aggregated_bids(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
@@ -109,7 +109,7 @@ impl<T: Config> StorageDataLayer<T> {
     }
 
     fn sub_from_aggregated_bids(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
@@ -130,7 +130,7 @@ impl<T: Config> StorageDataLayer<T> {
     }
 
     fn add_to_aggregated_asks(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
@@ -147,7 +147,7 @@ impl<T: Config> StorageDataLayer<T> {
     }
 
     fn sub_from_aggregated_asks(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
         value: &OrderVolume,
     ) -> Result<(), ()> {
@@ -171,7 +171,7 @@ impl<T: Config> StorageDataLayer<T> {
 impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn get_limit_order(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError> {
         <LimitOrders<T>>::get(order_book_id, order_id).ok_or(Error::<T>::UnknownLimitOrder.into())
@@ -179,7 +179,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn get_all_limit_orders(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Vec<LimitOrder<T>> {
         let mut orders = Vec::new();
         for order in <LimitOrders<T>>::iter_prefix_values(order_book_id) {
@@ -190,7 +190,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn insert_limit_order(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order: LimitOrder<T>,
     ) -> Result<(), DispatchError> {
         if <LimitOrders<T>>::contains_key(order_book_id, order.id) {
@@ -224,7 +224,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn update_limit_order_amount(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order_id: T::OrderId,
         new_amount: OrderVolume,
     ) -> Result<(), DispatchError> {
@@ -262,7 +262,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn delete_limit_order(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         let order =
@@ -297,7 +297,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn get_bids(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
         <Bids<T>>::get(order_book_id, price)
@@ -305,7 +305,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn is_bid_price_full(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
     ) -> Option<bool> {
         <Bids<T>>::decode_is_full(order_book_id, price)
@@ -313,7 +313,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn get_asks(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
     ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
         <Asks<T>>::get(order_book_id, price)
@@ -321,7 +321,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn is_ask_price_full(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         price: &OrderPrice,
     ) -> Option<bool> {
         <Asks<T>>::decode_is_full(order_book_id, price)
@@ -329,21 +329,21 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn get_aggregated_bids(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> MarketSide<T::MaxSidePriceCount> {
         <AggregatedBids<T>>::get(order_book_id)
     }
 
     fn get_aggregated_bids_len(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Option<usize> {
         <AggregatedBids<T>>::decode_len(order_book_id)
     }
 
     fn best_bid(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Option<(OrderPrice, OrderVolume)> {
         <AggregatedBids<T>>::get(order_book_id)
             .iter()
@@ -353,21 +353,21 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
 
     fn get_aggregated_asks(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> MarketSide<T::MaxSidePriceCount> {
         <AggregatedAsks<T>>::get(order_book_id)
     }
 
     fn get_aggregated_asks_len(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Option<usize> {
         <AggregatedAsks<T>>::decode_len(order_book_id)
     }
 
     fn best_ask(
         &mut self,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Option<(OrderPrice, OrderVolume)> {
         <AggregatedAsks<T>>::get(order_book_id)
             .iter()
@@ -378,7 +378,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         <UserLimitOrders<T>>::get(account, order_book_id)
     }
@@ -386,7 +386,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn is_user_limit_orders_full(
         &mut self,
         account: &T::AccountId,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
     ) -> Option<bool> {
         <UserLimitOrders<T>>::decode_is_full(account, order_book_id)
     }
@@ -395,7 +395,7 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         &mut self,
         account: &T::AccountId,
     ) -> BTreeMap<
-        OrderBookId<AssetIdOf<T>, T::DEXId>,
+        OrderBookId<AssetIdOf<T>, T::DexId>,
         UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
     > {
         <UserLimitOrders<T>>::iter_prefix(account).collect()

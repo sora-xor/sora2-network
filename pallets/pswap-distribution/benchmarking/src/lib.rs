@@ -83,21 +83,21 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
         let authority = alice::<T>();
         pool_xyk::Pallet::<T>::initialize_pool(
             RawOrigin::Signed(authority.clone()).into(),
-            common::DEXId::Polkaswap.into(),
+            common::DexId::Polkaswap.into(),
             XOR.into(),
             PSWAP.into(),
         )
         .unwrap();
         pool_xyk::Pallet::<T>::initialize_pool(
             RawOrigin::Signed(authority.clone()).into(),
-            common::DEXId::Polkaswap.into(),
+            common::DexId::Polkaswap.into(),
             XOR.into(),
             XST.into(),
         )
         .unwrap();
         pool_xyk::Pallet::<T>::initialize_pool(
             RawOrigin::Signed(authority.clone()).into(),
-            common::DEXId::Polkaswap.into(),
+            common::DexId::Polkaswap.into(),
             XOR.into(),
             TBCD.into(),
         )
@@ -108,7 +108,7 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
         T::AssetManager::mint_to(&TBCD.into(), &authority, &authority, balance!(1000000)).unwrap();
         pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
             authority.clone(),
-            common::DEXId::Polkaswap.into(),
+            common::DexId::Polkaswap.into(),
             XOR.into(),
             XST.into(),
             balance!(10000),
@@ -119,7 +119,7 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
         .unwrap();
         pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
             authority.clone(),
-            common::DEXId::Polkaswap.into(),
+            common::DexId::Polkaswap.into(),
             XOR.into(),
             PSWAP.into(),
             balance!(10000),
@@ -130,7 +130,7 @@ fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
         .unwrap();
         pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
             authority.clone(),
-            common::DEXId::Polkaswap.into(),
+            common::DexId::Polkaswap.into(),
             XOR.into(),
             TBCD.into(),
             balance!(10000),
@@ -151,7 +151,7 @@ fn add_subscribtion<T: Config + pool_xyk::Config>(pool_index: u128, shareholders
     T::AssetManager::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
     PSwap::<T>::subscribe(
         pool_fee_account,
-        common::DEXId::Polkaswap.into(),
+        common::DexId::Polkaswap.into(),
         pool_account.clone(),
         None,
     )

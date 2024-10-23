@@ -34,18 +34,18 @@ use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
 use crate::to_fixed_wrapper;
-use common::prelude::{AssetIdOf, Balance, FixedWrapper};
+use common::prelude::{AssetIdOf, Balance, DexIdOf, FixedWrapper};
 use common::{balance, AssetInfoProvider, AssetManager, DexInfoProvider};
 use sp_runtime::traits::Zero;
 
 use crate::bounds::*;
 
-use crate::aliases::{AccountIdOf, DEXIdOf, TechAccountIdOf};
+use crate::aliases::{AccountIdOf, TechAccountIdOf};
 use crate::operations::*;
 use crate::{Config, Error, Pallet};
 
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
-    for PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
+    for PairSwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.amount == Bounds::Dummy || self.destination.amount == Bounds::Dummy
@@ -331,7 +331,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 }
 
 impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
-    for PairSwapAction<DEXIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
+    for PairSwapAction<DexIdOf<T>, AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.

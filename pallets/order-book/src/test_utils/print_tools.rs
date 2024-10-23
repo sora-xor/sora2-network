@@ -42,7 +42,7 @@ use sp_runtime::BoundedVec;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 fn print_side<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     side: PriceVariant,
     column_width: usize,
 ) {
@@ -114,7 +114,7 @@ fn print_side<T: Config>(
 ///          Bids
 /// ```
 pub fn pretty_print_order_book<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     column_width: Option<usize>,
 ) {
     let column_width = column_width.unwrap_or(8);
@@ -138,7 +138,7 @@ where
 {
     let block = T::BlockNumber::from(block);
     let expirations: BoundedVec<
-        (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId),
+        (OrderBookId<AssetIdOf<T>, T::DexId>, T::OrderId),
         T::MaxExpiringOrdersPerBlock,
     > = ExpirationsAgenda::<T>::get(block);
     for (order_book_id, order_id) in expirations {

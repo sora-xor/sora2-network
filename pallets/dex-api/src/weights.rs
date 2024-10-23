@@ -67,8 +67,8 @@ pub trait WeightInfo {
 /// Weights for dex_api using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:1)
-	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DexApi EnabledSourceTypes (r:1 w:1)
+	/// Proof Skipped: DexApi EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
 	fn enable_liquidity_source() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `175`
@@ -78,8 +78,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:1)
-	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DexApi EnabledSourceTypes (r:1 w:1)
+	/// Proof Skipped: DexApi EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
 	fn disable_liquidity_source() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `175`
@@ -93,8 +93,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:1)
-	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DexApi EnabledSourceTypes (r:1 w:1)
+	/// Proof Skipped: DexApi EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
 	fn enable_liquidity_source() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `175`
@@ -104,8 +104,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: DEXAPI EnabledSourceTypes (r:1 w:1)
-	/// Proof Skipped: DEXAPI EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DexApi EnabledSourceTypes (r:1 w:1)
+	/// Proof Skipped: DexApi EnabledSourceTypes (max_values: Some(1), max_size: None, mode: Measured)
 	fn disable_liquidity_source() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `175`

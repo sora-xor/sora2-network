@@ -51,7 +51,7 @@ pub struct OrderBook<T>
 where
     T: crate::Config,
 {
-    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    pub order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     pub status: OrderBookStatus,
     pub last_order_id: T::OrderId,
     pub tick_size: OrderPrice,      // price precision
@@ -63,7 +63,7 @@ where
 
 impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn new(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         tick_size: OrderPrice,
         step_lot_size: OrderVolume,
         min_lot_size: OrderVolume,
@@ -291,7 +291,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         market_order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let receiver = market_order.to.unwrap_or(market_order.owner.clone());
@@ -320,7 +320,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         limit_order: LimitOrder<T>,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let mut payment = Payment::new(self.order_book_id);
@@ -358,7 +358,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         reason: CancelReason,
         ignore_unschedule_error: bool,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let mut limit_orders_to_cancel = BTreeMap::new();
@@ -397,7 +397,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         reason: CancelReason,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let mut limit_orders_to_cancel = BTreeMap::new();
@@ -445,7 +445,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let mut remaining_amount = taker_base_amount;
@@ -581,7 +581,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         limit_orders: Vec<LimitOrder<T>>,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let mut limit_orders_to_cancel = BTreeMap::new();
@@ -804,7 +804,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         market_change: MarketChange<
             T::AccountId,
             AssetIdOf<T>,
-            T::DEXId,
+            T::DexId,
             T::OrderId,
             LimitOrder<T>,
         >,
@@ -1101,7 +1101,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         limit_order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
     ) -> Result<
-        MarketChange<T::AccountId, AssetIdOf<T>, T::DEXId, T::OrderId, LimitOrder<T>>,
+        MarketChange<T::AccountId, AssetIdOf<T>, T::DexId, T::OrderId, LimitOrder<T>>,
         DispatchError,
     > {
         let (mut market_amount, mut limit_amount) = match limit_order.side {

@@ -42,7 +42,7 @@ fn test_v1() {
         assert!(!EnabledTargets::<Runtime>::get().contains(&XST));
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 0);
 
-        super::v1::InitializeXSTPool::<Runtime>::on_runtime_upgrade();
+        super::v1::InitializeXstPool::<Runtime>::on_runtime_upgrade();
 
         assert!(EnabledTargets::<Runtime>::get().contains(&XST));
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
@@ -52,7 +52,7 @@ fn test_v1() {
 #[test]
 fn test_v2() {
     ExtBuilder::default().build().execute_with(|| {
-        super::v1::InitializeXSTPool::<Runtime>::on_runtime_upgrade();
+        super::v1::InitializeXstPool::<Runtime>::on_runtime_upgrade();
         assert!(!EnabledTargets::<Runtime>::get().contains(&TBCD));
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
 

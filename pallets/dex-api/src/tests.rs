@@ -150,14 +150,14 @@ fn test_different_reserves_should_pass() {
 fn test_exchange_weight_correct() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let expected_weight = <<Runtime as crate::Config>::XSTPool as LiquiditySource<
+        let expected_weight = <<Runtime as crate::Config>::XstPool as LiquiditySource<
             DexIdOf<Runtime>,
             AccountIdOf<Runtime>,
             AssetIdOf<Runtime>,
             Balance,
             DispatchError,
         >>::exchange_weight()
-        .max(<<Runtime as crate::Config>::XYKPool as LiquiditySource<
+        .max(<<Runtime as crate::Config>::XykPool as LiquiditySource<
             DexIdOf<Runtime>,
             AccountIdOf<Runtime>,
             AssetIdOf<Runtime>,
@@ -189,7 +189,7 @@ fn test_exchange_weight_correct() {
 fn test_exchange_weight_filtered_calculates() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let xyk_weight = <<Runtime as crate::Config>::XYKPool as LiquiditySource<
+        let xyk_weight = <<Runtime as crate::Config>::XykPool as LiquiditySource<
             DexIdOf<Runtime>,
             AccountIdOf<Runtime>,
             AssetIdOf<Runtime>,
@@ -204,7 +204,7 @@ fn test_exchange_weight_filtered_calculates() {
                 Balance,
                 DispatchError,
             >>::exchange_weight();
-        let xst_weight = <<Runtime as crate::Config>::XSTPool as LiquiditySource<
+        let xst_weight = <<Runtime as crate::Config>::XstPool as LiquiditySource<
             DexIdOf<Runtime>,
             AccountIdOf<Runtime>,
             AssetIdOf<Runtime>,
@@ -224,7 +224,7 @@ fn test_exchange_weight_filtered_calculates() {
             Weight::zero()
         );
         assert_eq!(
-            DexApi::exchange_weight_filtered([LiquiditySourceType::XYKPool].into_iter()),
+            DexApi::exchange_weight_filtered([LiquiditySourceType::XykPool].into_iter()),
             xyk_weight
         );
         assert_eq!(
@@ -234,7 +234,7 @@ fn test_exchange_weight_filtered_calculates() {
             multicollateral_weight
         );
         assert_eq!(
-            DexApi::exchange_weight_filtered([LiquiditySourceType::XSTPool].into_iter()),
+            DexApi::exchange_weight_filtered([LiquiditySourceType::XstPool].into_iter()),
             xst_weight
         );
         assert_eq!(
@@ -243,15 +243,15 @@ fn test_exchange_weight_filtered_calculates() {
         );
         assert_eq!(
             DexApi::exchange_weight_filtered(
-                [LiquiditySourceType::XYKPool, LiquiditySourceType::XSTPool].into_iter()
+                [LiquiditySourceType::XykPool, LiquiditySourceType::XstPool].into_iter()
             ),
             xyk_weight.max(xst_weight)
         );
         assert_eq!(
             DexApi::exchange_weight_filtered(
                 [
-                    LiquiditySourceType::XYKPool,
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XykPool,
+                    LiquiditySourceType::XstPool,
                     LiquiditySourceType::MulticollateralBondingCurvePool
                 ]
                 .into_iter()
@@ -261,8 +261,8 @@ fn test_exchange_weight_filtered_calculates() {
         assert_eq!(
             DexApi::exchange_weight_filtered(
                 [
-                    LiquiditySourceType::XYKPool,
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XykPool,
+                    LiquiditySourceType::XstPool,
                     LiquiditySourceType::MulticollateralBondingCurvePool,
                     LiquiditySourceType::OrderBook
                 ]
@@ -295,7 +295,7 @@ fn test_enable_disable_liquidity_source_unauthorized() {
         assert_err!(
             DexApi::enable_liquidity_source(
                 RuntimeOrigin::signed(alice()),
-                LiquiditySourceType::XYKPool
+                LiquiditySourceType::XykPool
             ),
             BadOrigin
         );
@@ -303,7 +303,7 @@ fn test_enable_disable_liquidity_source_unauthorized() {
         assert_err!(
             DexApi::disable_liquidity_source(
                 RuntimeOrigin::signed(bob()),
-                LiquiditySourceType::XYKPool
+                LiquiditySourceType::XykPool
             ),
             BadOrigin
         );
@@ -328,7 +328,7 @@ fn test_liquidity_source_should_enable() {
         // enable source
         assert_ok!(DexApi::enable_liquidity_source(
             RuntimeOrigin::root(),
-            LiquiditySourceType::XYKPool
+            LiquiditySourceType::XykPool
         ));
 
         // check after
@@ -339,7 +339,7 @@ fn test_liquidity_source_should_enable() {
                 LiquiditySourceType::MockPool2,
                 LiquiditySourceType::MockPool3,
                 LiquiditySourceType::MockPool4,
-                LiquiditySourceType::XYKPool
+                LiquiditySourceType::XykPool
             ]
         );
     })
@@ -429,7 +429,7 @@ fn test_liquidity_source_should_not_disable_twice() {
 
         // try to disable already disabled source
         assert_err!(
-            DexApi::disable_liquidity_source(RuntimeOrigin::root(), LiquiditySourceType::XYKPool),
+            DexApi::disable_liquidity_source(RuntimeOrigin::root(), LiquiditySourceType::XykPool),
             Error::<Runtime>::LiquiditySourceAlreadyDisabled
         );
 

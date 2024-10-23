@@ -72,10 +72,10 @@ pub(crate) mod delete_orderbook {
     use super::*;
     use common::balance;
 
-    pub fn init<T: Config>(_settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DEXId> {
+    pub fn init<T: Config>(_settings: FillSettings<T>) -> OrderBookId<AssetIdOf<T>, T::DexId> {
         // https://github.com/paritytech/polkadot-sdk/issues/383
         frame_system::Pallet::<T>::set_block_number(1u32.into());
-        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
@@ -100,7 +100,7 @@ pub(crate) mod delete_orderbook {
     }
 
     pub fn verify<T: Config + core::fmt::Debug>(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     ) {
         assert_last_event::<T>(Event::<T>::OrderBookDeleted { order_book_id }.into());
         assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
@@ -115,7 +115,7 @@ pub(crate) mod place_limit_order {
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
-        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         pub price: OrderPrice,
         pub amount: OrderVolume,
         pub side: PriceVariant,
@@ -194,7 +194,7 @@ pub(crate) mod cancel_limit_order {
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
-        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         pub order_id: T::OrderId,
         pub order: LimitOrder<T>,
         pub balance_before: Balance,
@@ -261,7 +261,7 @@ pub(crate) mod execute_market_order {
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
-        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         pub amount: BalanceUnit,
         pub direction: PriceVariant,
         pub caller_base_balance: Balance,
@@ -372,7 +372,7 @@ pub(crate) mod quote {
 
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
-        pub dex_id: T::DEXId,
+        pub dex_id: T::DexId,
         pub input_asset_id: AssetIdOf<T>,
         pub output_asset_id: AssetIdOf<T>,
         pub amount: QuoteAmount<Balance>,
@@ -404,7 +404,7 @@ pub(crate) mod exchange {
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
-        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        pub order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         pub input_amount: OrderAmount,
         pub output_amount: OrderAmount,
         pub caller_base_balance: Balance,

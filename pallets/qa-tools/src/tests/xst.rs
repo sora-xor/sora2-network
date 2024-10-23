@@ -31,7 +31,7 @@
 use super::{alice, QaToolsPallet};
 use common::prelude::{err_pays_no, BalanceUnit, QuoteAmount, SwapVariant};
 use common::{
-    assert_approx_eq, balance, fixed, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXId,
+    assert_approx_eq, balance, fixed, AssetId32, AssetIdOf, AssetName, AssetSymbol, DexId,
     LiquiditySource, PredefinedAssetId, PriceToolsProvider, PriceVariant, SymbolName, XOR,
 };
 use core::str::FromStr;
@@ -284,7 +284,7 @@ fn test_synthetic_price_set<T: qa_tools::Config>(
         }
     };
     let (quote_result, _) = xst::Pallet::<T>::quote(
-        &DEXId::Polkaswap.into(),
+        &DexId::Polkaswap.into(),
         &input_asset_id,
         &output_asset_id,
         synthetic_input.expected_quote.amount,
@@ -337,7 +337,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
         test_synthetic_price_set::<Runtime>(euro_init.clone(), Some(prices), alice());
         // additionally check other directions/variants
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &synthetic_base_asset_id,
             &euro_init.asset_id,
             QuoteAmount::WithDesiredInput {
@@ -349,7 +349,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
         assert_eq!(quote_result.amount, balance!(1));
         assert_eq!(quote_result.fee, Default::default());
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &euro_init.asset_id,
             &synthetic_base_asset_id,
             QuoteAmount::WithDesiredInput {
@@ -361,7 +361,7 @@ fn test_init_xst_synthetic_price_unit_prices(forward: bool, variant: SwapVariant
         assert_eq!(quote_result.amount, balance!(1));
         assert_eq!(quote_result.fee, Default::default());
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &euro_init.asset_id,
             &synthetic_base_asset_id,
             QuoteAmount::WithDesiredOutput {
@@ -563,7 +563,7 @@ fn should_update_xst_synthetic_price() {
             alice(),
         ));
         let (quote_result, _) = xst::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &synthetic_base_asset_id,
             &euro_asset_id,
             euro_init.expected_quote.amount,

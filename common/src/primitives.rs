@@ -91,7 +91,7 @@ impl From<BalanceWrapper> for Balance {
 /// Information about state of particular DEX.
 #[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DEXInfo<AssetId> {
+pub struct DexInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
     /// AssetId of synthetic base Asset in DEX.
@@ -470,16 +470,16 @@ where
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
-pub enum DEXId {
+pub enum DexId {
     #[default]
     Polkaswap = 0,
-    PolkaswapXSTUSD = 1,
+    PolkaswapXstUsd = 1,
     PolkaswapKUSD = 2,
     PolkaswapVXOR = 3,
 }
 
-impl From<DEXId> for u32 {
-    fn from(dex_id: DEXId) -> Self {
+impl From<DexId> for u32 {
+    fn from(dex_id: DexId) -> Self {
         dex_id as u32
     }
 }
@@ -805,8 +805,8 @@ pub enum TechAssetId<AssetId> {
     Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum AssetIdExtraAssetRecordArg<DEXId, LstId, AccountId> {
-    DEXId(DEXId),
+pub enum AssetIdExtraAssetRecordArg<DexId, LstId, AccountId> {
+    DexId(DexId),
     LstId(LstId),
     AccountId(AccountId),
 }
@@ -841,14 +841,14 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum LiquiditySourceType {
-    XYKPool,
+    XykPool,
     BondingCurvePool,
     MulticollateralBondingCurvePool,
     MockPool,
     MockPool2,
     MockPool3,
     MockPool4,
-    XSTPool,
+    XstPool,
     OrderBook,
 }
 
@@ -890,15 +890,15 @@ impl Default for ManagementMode {
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
-pub struct LiquiditySourceId<DEXId: Copy, LiquiditySourceIndex: Copy> {
+pub struct LiquiditySourceId<DexId: Copy, LiquiditySourceIndex: Copy> {
     /// Identification of target DEX.
-    pub dex_id: DEXId,
+    pub dex_id: DexId,
     /// Index value to distinguish particular liquidity source, e.g. index in array or enum-type.
     pub liquidity_source_index: LiquiditySourceIndex,
 }
 
-impl<DEXId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DEXId, LiquiditySourceIndex> {
-    pub fn new(dex_id: DEXId, liquidity_source_index: LiquiditySourceIndex) -> Self {
+impl<DexId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DexId, LiquiditySourceIndex> {
+    pub fn new(dex_id: DexId, liquidity_source_index: LiquiditySourceIndex) -> Self {
         Self {
             dex_id,
             liquidity_source_index,
@@ -941,8 +941,8 @@ pub enum TechPurpose<AssetId> {
     Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum TechAccountId<AccountId, AssetId, DEXId> {
-    Pure(DEXId, TechPurpose<AssetId>),
+pub enum TechAccountId<AccountId, AssetId, DexId> {
+    Pure(DexId, TechPurpose<AssetId>),
     /// First field is used as name or tag of binary format, second field is used as binary data.
     Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
@@ -952,7 +952,7 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
-impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, AssetId, DEXId> {
+impl<AccountId, AssetId, DexId> IsRepresentation for TechAccountId<AccountId, AssetId, DexId> {
     fn is_representation(&self) -> bool {
         matches!(self, TechAccountId::WrappedRepr(_))
     }
@@ -960,24 +960,24 @@ impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, As
 
 /// Implementation of `FromGenericPair` for cases when trait method is better than data type
 /// constructor.
-impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
-    for TechAccountId<AccountId, AssetId, DEXId>
+impl<AccountId, AssetId, DexId> crate::traits::FromGenericPair
+    for TechAccountId<AccountId, AssetId, DexId>
 {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self {
         TechAccountId::Generic(tag, data)
     }
 }
 
-impl<AccountId, AssetId, DEXId> crate::traits::WrappedRepr<AccountId>
-    for TechAccountId<AccountId, AssetId, DEXId>
+impl<AccountId, AssetId, DexId> crate::traits::WrappedRepr<AccountId>
+    for TechAccountId<AccountId, AssetId, DexId>
 {
     fn wrapped_repr(repr: AccountId) -> Self {
         TechAccountId::WrappedRepr(repr)
     }
 }
 
-impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
-    for TechAccountId<AccountId, AssetId, DEXId>
+impl<AccountId, AssetId: Clone, DexId: Clone> crate::traits::ToFeeAccount
+    for TechAccountId<AccountId, AssetId, DexId>
 {
     fn to_fee_account(&self) -> Option<Self> {
         match self {
@@ -989,31 +989,31 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
     }
 }
 
-impl<AccountId, AssetId, DEXId: Clone>
-    crate::traits::ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
-    for TechAccountId<AccountId, AssetId, DEXId>
+impl<AccountId, AssetId, DexId: Clone>
+    crate::traits::ToXykTechUnitFromDEXAndTradingPair<DexId, TradingPair<AssetId>>
+    for TechAccountId<AccountId, AssetId, DexId>
 {
     fn to_xyk_tech_unit_from_dex_and_trading_pair(
-        dex_id: DEXId,
+        dex_id: DexId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
         TechAccountId::Pure(dex_id, TechPurpose::XykLiquidityKeeper(trading_pair))
     }
 }
 
-impl<AccountId, AssetId, DEXId: Clone>
-    crate::traits::ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
-    for TechAccountId<AccountId, AssetId, DEXId>
+impl<AccountId, AssetId, DexId: Clone>
+    crate::traits::ToOrderTechUnitFromDEXAndTradingPair<DexId, TradingPair<AssetId>>
+    for TechAccountId<AccountId, AssetId, DexId>
 {
     fn to_order_tech_unit_from_dex_and_trading_pair(
-        dex_id: DEXId,
+        dex_id: DexId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
         TechAccountId::Pure(dex_id, TechPurpose::OrderBookLiquidityKeeper(trading_pair))
     }
 }
 
-impl<AccountId, AssetId, DEXId> From<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
+impl<AccountId, AssetId, DexId> From<AccountId> for TechAccountId<AccountId, AssetId, DexId>
 where
     AccountId: IsRepresentation,
 {
@@ -1026,10 +1026,10 @@ where
     }
 }
 
-impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
+impl<AccountId, AssetId, DexId> From<TechAccountId<AccountId, AssetId, DexId>>
     for Option<AccountId>
 {
-    fn from(a: TechAccountId<AccountId, AssetId, DEXId>) -> Option<AccountId> {
+    fn from(a: TechAccountId<AccountId, AssetId, DexId>) -> Option<AccountId> {
         match a {
             TechAccountId::Wrapped(a) => Some(a),
             TechAccountId::WrappedRepr(a) => Some(a),
@@ -1041,8 +1041,8 @@ impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
 impl<
         AccountId: Clone + Encode + From<[u8; 32]> + Into<[u8; 32]>,
         AssetId: Encode,
-        DEXId: Encode,
-    > PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
+        DexId: Encode,
+    > PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DexId>
 where
     AccountId: IsRepresentation,
 {

@@ -32,7 +32,7 @@ use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::order_book::OrderBookId;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
+    AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXyk,
     Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens,
     Weight, XorBurnedWeight, XorFee, XorIntoVXorBurnedWeight, XorIntoValBurnedWeight,
 };
@@ -42,7 +42,7 @@ use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 #[cfg(feature = "wip")] // ORML multi asset vesting
 use common::DOT;
 use common::{
-    assert_approx_eq_abs, balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode,
+    assert_approx_eq_abs, balance, fixed_wrapper, AssetInfoProvider, DexId, FilterMode,
     PriceVariant, VAL, VXOR, XOR,
 };
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
@@ -216,10 +216,10 @@ fn notify_val_burned_works() {
         increase_balance(bob(), VXOR.into(), 2 * INITIAL_RESERVES);
 
         ensure_pool_initialized(XOR.into(), VAL.into());
-        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), VXOR.into())
+        crate::TradingPair::register_pair(DexId::Polkaswap.into(), XOR.into(), VXOR.into())
             .unwrap();
         ensure_pool_initialized(XOR.into(), VXOR.into());
-        PoolXYK::deposit_liquidity(
+        PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),
@@ -231,7 +231,7 @@ fn notify_val_burned_works() {
         )
         .unwrap();
 
-        PoolXYK::deposit_liquidity(
+        PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),
@@ -749,7 +749,7 @@ fn fee_payment_postponed_swap() {
         increase_balance(bob(), VAL.into(), balance!(1000));
 
         ensure_pool_initialized(XOR.into(), VAL.into());
-        PoolXYK::deposit_liquidity(
+        PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),
@@ -796,7 +796,7 @@ fn fee_payment_postponed_swap_transfer() {
         increase_balance(bob(), VAL.into(), balance!(1000));
 
         ensure_pool_initialized(XOR.into(), VAL.into());
-        PoolXYK::deposit_liquidity(
+        PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),
@@ -979,7 +979,7 @@ fn fee_not_postponed_place_limit_order() {
         give_xor_initial_balance(alice());
 
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1012,7 +1012,7 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
         give_xor_initial_balance(alice());
 
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1057,7 +1057,7 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
         give_xor_initial_balance(alice());
 
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1102,7 +1102,7 @@ fn withdraw_fee_place_limit_order_with_error() {
         give_xor_initial_balance(alice());
 
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1147,7 +1147,7 @@ fn withdraw_fee_place_limit_order_with_crossing_spread() {
         give_xor_initial_balance(alice());
 
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL.into(),
             quote: XOR.into(),
         };
@@ -1196,7 +1196,7 @@ fn fee_payment_postponed_xorless_transfer() {
         increase_balance(bob(), VAL.into(), balance!(1000));
 
         ensure_pool_initialized(XOR.into(), VAL.into());
-        PoolXYK::deposit_liquidity(
+        PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),
@@ -1299,7 +1299,7 @@ fn fee_payment_postpone_failed_xorless_transfer() {
         increase_balance(bob(), VAL.into(), balance!(1000));
 
         ensure_pool_initialized(XOR.into(), VAL.into());
-        PoolXYK::deposit_liquidity(
+        PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(bob()),
             0,
             XOR.into(),

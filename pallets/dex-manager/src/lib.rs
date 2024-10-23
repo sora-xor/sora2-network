@@ -32,7 +32,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::prelude::EnsureDEXManager;
+use common::prelude::EnsureDexManager;
 use common::AssetIdOf;
 use common::{hash, DexInfoProvider, ManagementMode};
 use frame_support::dispatch::DispatchResult;
@@ -50,11 +50,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type DEXInfo<T> = common::prelude::DEXInfo<AssetIdOf<T>>;
+type DexInfo<T> = common::prelude::DexInfo<AssetIdOf<T>>;
 
-impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pallet<T> {
+impl<T: Config> EnsureDexManager<T::DexId, T::AccountId, DispatchError> for Pallet<T> {
     fn ensure_can_manage<OuterOrigin>(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         origin: OuterOrigin,
         mode: ManagementMode,
     ) -> Result<Option<T::AccountId>, DispatchError>
@@ -75,26 +75,26 @@ impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pall
     }
 }
 
-impl<T: Config> DexInfoProvider<T::DEXId, DEXInfo<T>> for Pallet<T> {
-    fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
-        Ok(DEXInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
+impl<T: Config> DexInfoProvider<T::DexId, DexInfo<T>> for Pallet<T> {
+    fn get_dex_info(dex_id: &T::DexId) -> Result<DexInfo<T>, DispatchError> {
+        Ok(DexInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
     }
 
-    fn ensure_dex_exists(dex_id: &T::DEXId) -> DispatchResult {
+    fn ensure_dex_exists(dex_id: &T::DexId) -> DispatchResult {
         ensure!(
-            DEXInfos::<T>::contains_key(&dex_id),
+            DexInfos::<T>::contains_key(&dex_id),
             Error::<T>::DEXDoesNotExist
         );
         Ok(())
     }
 
-    fn list_dex_ids() -> Vec<T::DEXId> {
-        DEXInfos::<T>::iter().map(|(k, _)| k).collect()
+    fn list_dex_ids() -> Vec<T::DexId> {
+        DexInfos::<T>::iter().map(|(k, _)| k).collect()
     }
 }
 
 impl<T: Config> Pallet<T> {
-    fn ensure_direct_manager(dex_id: &T::DEXId, who: &T::AccountId) -> DispatchResult {
+    fn ensure_direct_manager(dex_id: &T::DexId, who: &T::AccountId) -> DispatchResult {
         permissions::Pallet::<T>::check_permission_with_scope(
             who.clone(),
             MANAGE_DEX,
@@ -130,7 +130,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         /// DEX with given id is already registered.
-        DEXIdAlreadyExists,
+        DexIdAlreadyExists,
         /// DEX with given Id is not registered.
         DEXDoesNotExist,
         /// Numeric value provided as fee is not valid, e.g. out of basis-point range.
@@ -141,11 +141,11 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn dex_id)]
-    pub type DEXInfos<T: Config> = StorageMap<_, Twox64Concat, T::DEXId, DEXInfo<T>>;
+    pub type DexInfos<T: Config> = StorageMap<_, Twox64Concat, T::DexId, DexInfo<T>>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub dex_list: Vec<(T::DEXId, DEXInfo<T>)>,
+        pub dex_list: Vec<(T::DexId, DexInfo<T>)>,
     }
 
     #[cfg(feature = "std")]
@@ -161,7 +161,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.dex_list.iter().for_each(|(dex_id, dex_info)| {
-                DEXInfos::<T>::insert(dex_id.clone(), dex_info);
+                DexInfos::<T>::insert(dex_id.clone(), dex_info);
             })
         }
     }

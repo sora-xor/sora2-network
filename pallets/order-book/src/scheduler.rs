@@ -52,7 +52,7 @@ use sp_std::vec::Vec;
 impl<T: Config> Pallet<T> {
     pub fn service_single_expiration(
         data_layer: &mut impl DataLayer<T>,
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         order_id: T::OrderId,
     ) {
         let order = match data_layer.get_limit_order(order_book_id, order_id) {
@@ -150,7 +150,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn get_limit_orders(
-        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DexId>,
         maybe_cursor: Option<T::OrderId>,
         count: usize,
     ) -> Vec<LimitOrder<T>> {
@@ -173,8 +173,8 @@ impl<T: Config> Pallet<T> {
 impl<T: Config>
     ExpirationScheduler<
         T::BlockNumber,
-        OrderBookId<AssetIdOf<T>, T::DEXId>,
-        T::DEXId,
+        OrderBookId<AssetIdOf<T>, T::DexId>,
+        T::DexId,
         T::OrderId,
         DispatchError,
     > for Pallet<T>
@@ -204,7 +204,7 @@ impl<T: Config>
 
     fn schedule_expiration(
         when: T::BlockNumber,
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
@@ -216,7 +216,7 @@ impl<T: Config>
 
     fn unschedule_expiration(
         when: T::BlockNumber,
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {

@@ -49,7 +49,7 @@ pub struct ResourcePair<AssetId, Balance>(
 );
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
-pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
+pub struct PairSwapAction<DexId, AssetId: Ord, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
     pub pool_account: TechAccountId,
@@ -60,7 +60,7 @@ pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     pub get_fee_from_destination: Option<bool>,
     pub base_chameleon_asset: Option<AssetId>,
     pub is_chameleon_pool: Option<bool>,
-    pub dex_id: DEXId,
+    pub dex_id: DexId,
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
@@ -84,8 +84,8 @@ pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
-pub enum PolySwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
-    PairSwap(PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>),
+pub enum PolySwapAction<DexId, AssetId: Ord, AccountId, TechAccountId> {
+    PairSwap(PairSwapAction<DexId, AssetId, AccountId, TechAccountId>),
     DepositLiquidity(DepositLiquidityAction<AssetId, AccountId, TechAccountId>),
     WithdrawLiquidity(WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>),
 }

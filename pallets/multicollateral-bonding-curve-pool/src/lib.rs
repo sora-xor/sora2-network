@@ -48,12 +48,12 @@ use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, GetBaseAssetIdOf,
+    Balance, EnsureDexManager, EnsureTradingPairExists, Fixed, FixedWrapper, GetBaseAssetIdOf,
     OutcomeFee, PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetManager, BuyBackHandler,
-    DEXId, DexIdOf, GetMarketInfo, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
+    DexId, DexIdOf, GetMarketInfo, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceType, ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager,
     Vesting, PSWAP, TBCD, VAL, XOR, XST,
 };
@@ -193,18 +193,18 @@ pub mod pallet {
     {
         const RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
-        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DexId, Self::AccountId, AssetIdOf<Self>>;
+        type EnsureDexManager: EnsureDexManager<Self::DexId, Self::AccountId, DispatchError>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
-            Self::DEXId,
+            Self::DexId,
             AssetIdOf<Self>,
             DispatchError,
         >;
         type PriceToolsPallet: PriceToolsProvider<AssetIdOf<Self>>;
         type VestedRewardsPallet: Vesting<Self::AccountId, AssetIdOf<Self>>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
-        type BuyBackTBCDPercent: Get<Fixed>;
+        type BuyBackTbcdPercent: Get<Fixed>;
         /// Percent of reserve which is not involved in swap
         #[pallet::constant]
         type IrreducibleReserve: Get<Percent>;
@@ -249,8 +249,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             collateral_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            let _who = <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
+            let _who = <T as Config>::EnsureDexManager::ensure_can_manage(
+                &DexId::Polkaswap.into(),
                 origin,
                 ManagementMode::Private,
             )?;
@@ -265,8 +265,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             reference_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            let _who = <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
+            let _who = <T as Config>::EnsureDexManager::ensure_can_manage(
+                &DexId::Polkaswap.into(),
                 origin,
                 ManagementMode::Private,
             )?;
@@ -284,8 +284,8 @@ pub mod pallet {
             collateral_asset_id: AssetIdOf<T>,
             multiplier: Option<Fixed>,
         ) -> DispatchResultWithPostInfo {
-            let _who = <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
+            let _who = <T as Config>::EnsureDexManager::ensure_can_manage(
+                &DexId::Polkaswap.into(),
                 origin,
                 ManagementMode::Private,
             )?;
@@ -392,7 +392,7 @@ pub mod pallet {
         UnsupportedCollateralAssetId,
         /// Could not calculate fee including sell penalty.
         FeeCalculationFailed,
-        /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
+        /// Liquidity source can't exchange assets with the given IDs on the given DexId.
         CantExchange,
         /// Increment account reference error.
         IncRefError,
@@ -808,7 +808,7 @@ impl<T: Config> Pallet<T> {
         common::with_transaction(|| {
             let base_asset_id = GetBaseAssetIdOf::<T>::get();
             let swapped_xor_amount = T::LiquidityProxy::exchange(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 holder,
                 holder,
                 &collateral_asset_id,
@@ -848,7 +848,7 @@ impl<T: Config> Pallet<T> {
                 undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
 
-            let amount = fw_swapped_xor_amount * T::BuyBackTBCDPercent::get();
+            let amount = fw_swapped_xor_amount * T::BuyBackTbcdPercent::get();
             let amount = amount
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -881,9 +881,9 @@ impl<T: Config> Pallet<T> {
     }
 
     #[inline]
-    fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
+    fn self_excluding_filter() -> LiquiditySourceFilter<T::DexId, LiquiditySourceType> {
         LiquiditySourceFilter::with_forbidden(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
         )
     }
@@ -899,13 +899,13 @@ impl<T: Config> Pallet<T> {
             );
             T::PriceToolsPallet::register_asset(&collateral_asset_id)?;
             <T as Config>::EnsureTradingPairExists::ensure_trading_pair_exists(
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &GetBaseAssetIdOf::<T>::get(),
                 &collateral_asset_id,
             )?;
 
             <T as Config>::TradingPairSourceManager::enable_source_for_trading_pair(
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &GetBaseAssetIdOf::<T>::get(),
                 &collateral_asset_id,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
@@ -915,7 +915,7 @@ impl<T: Config> Pallet<T> {
             }
             EnabledTargets::<T>::mutate(|set| set.insert(collateral_asset_id));
             Self::deposit_event(Event::PoolInitialized(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 collateral_asset_id,
             ));
             Ok(())
@@ -1453,7 +1453,7 @@ impl<T: Config> Pallet<T> {
     /// If there's not enough reserves in the pool, `NotEnoughReserves` error will be returned.
     ///
     fn sell_main_asset(
-        _dex_id: &T::DEXId,
+        _dex_id: &T::DexId,
         main_asset_id: &AssetIdOf<T>,
         collateral_asset_id: &AssetIdOf<T>,
         amount: SwapAmount<Balance>,
@@ -1668,15 +1668,15 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DexId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
-        if *dex_id != DEXId::Polkaswap.into() {
+        if *dex_id != DexId::Polkaswap.into() {
             return false;
         }
         if input_asset_id == &GetBaseAssetIdOf::<T>::get() {
@@ -1689,7 +1689,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -1719,7 +1719,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn step_quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -1834,7 +1834,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
@@ -1875,7 +1875,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn check_rewards(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         input_amount: Balance,
@@ -1918,7 +1918,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn quote_without_impact(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,

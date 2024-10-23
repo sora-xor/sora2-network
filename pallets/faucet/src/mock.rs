@@ -48,10 +48,10 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
 
-type DEXId = common::DEXId;
+type DexId = common::DexId;
 type AccountId = AccountId32;
 type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -67,7 +67,7 @@ pub fn bob() -> AccountId32 {
 
 pub fn tech_account_id() -> TechAccountId {
     TechAccountId::Pure(
-        DEXId::Polkaswap,
+        DexId::Polkaswap,
         TechPurpose::Identifier(b"faucet_tech_account_id".to_vec()),
     )
 }

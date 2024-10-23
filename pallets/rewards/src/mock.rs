@@ -53,9 +53,9 @@ use crate::{self as rewards, Config};
 
 pub type AccountId = AccountId32;
 
-type DEXId = common::DEXId;
+type DexId = common::DexId;
 type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -67,7 +67,7 @@ pub fn alice() -> AccountId32 {
 
 pub fn tech_account_id() -> TechAccountId {
     TechAccountId::Pure(
-        DEXId::Polkaswap,
+        DexId::Polkaswap,
         TechPurpose::Identifier(b"rewards_tech_account_id".to_vec()),
     )
 }

@@ -631,7 +631,7 @@ impl<T: Config> Pallet<T> {
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         match T::LiquidityProxy::exchange(
-            T::DEXIdValue::get(),
+            T::DexIdValue::get(),
             &tech_account_id,
             &tech_account_id,
             &xor,
@@ -641,7 +641,7 @@ impl<T: Config> Pallet<T> {
                 min_amount_out: 0,
             },
             LiquiditySourceFilter::with_forbidden(
-                T::DEXIdValue::get(),
+                T::DexIdValue::get(),
                 [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
             ),
         ) {
@@ -723,8 +723,8 @@ pub mod pallet {
         type XorIntoValBurnedWeight: Get<u32>;
         type XorIntoVXorBurnedWeight: Get<u32>;
         type BuyBackRemintPercent: Get<Percent>;
-        type DEXIdValue: Get<Self::DEXId>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
+        type DexIdValue: Get<Self::DexId>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DexId, Self::AccountId, AssetIdOf<Self>>;
         type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>, Self::AccountId>;
         type GetTechnicalAccountId: Get<Self::AccountId>;

@@ -57,7 +57,7 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use common::{AssetIdOf, DEXId};
+use common::{AssetIdOf, DexId};
 use frame_system::EventRecord;
 use order_book_imported::Pallet as OrderBookPallet;
 use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
@@ -66,7 +66,7 @@ mod periphery;
 #[cfg(test)]
 mod tests;
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 pub struct Pallet<T: Config>(order_book_imported::Pallet<T>);
 pub trait Config: order_book_imported::Config {}
@@ -83,7 +83,7 @@ fn assert_last_event<T: order_book_benchmarking_imported::Config>(
 
 /// if `None` then don't compare the value
 pub fn assert_orders_numbers<T: order_book_benchmarking_imported::Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     bids: Option<usize>,
     asks: Option<usize>,
     user_orders: Option<(T::AccountId, usize)>,
@@ -178,7 +178,7 @@ mod benchmarks_inner {
             )
             .unwrap();
 
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
                 dex_id: DEX.into(),
                 base: nft.into(),
                 quote: XOR.into(),
@@ -235,7 +235,7 @@ mod benchmarks_inner {
         }
 
         update_orderbook {
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
                 dex_id: DEX.into(),
                 base: VAL.into(),
                 quote: XOR.into(),
@@ -275,7 +275,7 @@ mod benchmarks_inner {
         }
 
         change_orderbook_status {
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
                 dex_id: DEX.into(),
                 base: VAL.into(),
                 quote: XOR.into(),
@@ -455,7 +455,7 @@ mod benchmarks_inner {
 
         service_single_expiration {
             // very similar to cancel_limit_order
-            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+            let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
                 dex_id: DEX.into(),
                 base: VAL.into(),
                 quote: XOR.into(),

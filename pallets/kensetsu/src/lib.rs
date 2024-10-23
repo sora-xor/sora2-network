@@ -207,7 +207,7 @@ pub mod pallet {
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
         AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter,
+        ContentSource, Description, DexId, LiquidityProxyTrait, LiquiditySourceFilter,
         LiquiditySourceType, PriceToolsProvider, PriceVariant, TradingPairSourceManager, DAI,
         DEFAULT_BALANCE_PRECISION, KXOR, XOR,
     };
@@ -344,9 +344,9 @@ pub mod pallet {
             Description,
         >;
         type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DexId, Self::AccountId, AssetIdOf<Self>>;
         type Oracle: DataFeed<SymbolName, Rate, u64>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
         type DepositoryTechAccount: Get<Self::TechAccountId>;
         type TreasuryTechAccount: Get<Self::TechAccountId>;
         type KenAssetId: Get<AssetIdOf<Self>>;
@@ -1398,7 +1398,7 @@ pub mod pallet {
         /// Registers trading pair
         fn register_trading_pair(asset_id: &AssetIdOf<T>) -> sp_runtime::DispatchResult {
             if T::TradingPairSourceManager::is_trading_pair_enabled(
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XOR.into(),
                 asset_id,
             )? {
@@ -1406,16 +1406,16 @@ pub mod pallet {
             }
 
             T::TradingPairSourceManager::register_pair(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 XOR.into(),
                 *asset_id,
             )?;
 
             T::TradingPairSourceManager::enable_source_for_trading_pair(
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &XOR.into(),
                 asset_id,
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
             )?;
 
             Ok(())
@@ -1983,13 +1983,13 @@ pub mod pallet {
             // With quote before exchange we are sure that it will not result in infinite amount in for exchange and
             // there is enough liquidity for swap.
             let SwapOutcome { amount, .. } = T::LiquidityProxy::quote(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 &cdp.collateral_asset_id,
                 &cdp.stablecoin_asset_id,
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: collateral_to_liquidate,
                 },
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
                 true,
             )?;
             let desired_amount = cdp
@@ -2020,13 +2020,13 @@ pub mod pallet {
             )?;
 
             T::LiquidityProxy::exchange(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 &depository_account_id,
                 &treasury_account_id,
                 &cdp.collateral_asset_id,
                 &cdp.stablecoin_asset_id,
                 swap_amount,
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
             )?;
 
             let stablecoin_balance_after = <T as Config>::AssetInfoProvider::free_balance(
@@ -2113,13 +2113,13 @@ pub mod pallet {
                     &T::TreasuryTechAccount::get(),
                 )?;
                 let swap_outcome = T::LiquidityProxy::exchange(
-                    DEXId::Polkaswap.into(),
+                    DexId::Polkaswap.into(),
                     &technical_account_id,
                     &technical_account_id,
                     stablecoin_asset_id,
                     incentive_asset_id,
                     SwapAmount::with_desired_input(borrow_tax, balance!(0)),
-                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                    LiquiditySourceFilter::empty(DexId::Polkaswap.into()),
                 )?;
                 T::AssetManager::burn_from(
                     incentive_asset_id,

@@ -46,7 +46,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_system::RawOrigin;
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-pub const DEX: common::DEXId = common::DEXId::Polkaswap;
+pub const DEX: common::DexId = common::DexId::Polkaswap;
 pub const INIT_BALANCE: Balance = balance!(1000000);
 
 pub mod accounts;
@@ -387,7 +387,7 @@ mod test_only {
 
     pub type E = order_book::Error<Runtime>;
     pub type OrderBookPallet = Pallet<Runtime>;
-    pub type DEXId = DexIdOf<Runtime>;
+    pub type DexId = DexIdOf<Runtime>;
 
     /// Returns weight spent on initializations
     pub fn run_to_block(n: u32) -> Weight {

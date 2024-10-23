@@ -44,7 +44,7 @@ use qa_tools::pallet_tools::price_tools::AssetPrices;
 use sp_std::vec;
 
 pub type OrderBookId = order_book::OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>>;
-pub const DEX: common::DEXId = common::DEXId::Polkaswap;
+pub const DEX: common::DexId = common::DexId::Polkaswap;
 
 pub fn alice() -> AccountIdOf<Runtime> {
     AccountIdOf::<Runtime>::decode(&mut &[1u8; 32][..]).unwrap()

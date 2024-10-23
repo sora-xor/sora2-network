@@ -76,7 +76,7 @@ where
                 return <T as frame_system::Config>::DbWeight::get().reads(1);
             }
             if let Err(err) = <T as pallet::Config>::TradingPairSourceManager::register_pair(
-                common::DEXId::Polkaswap.into(),
+                common::DexId::Polkaswap.into(),
                 common::XOR.into(),
                 common::TBCD.into(),
             ) {

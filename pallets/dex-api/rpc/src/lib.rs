@@ -45,16 +45,16 @@ use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr, Zero};
 use std::sync::Arc;
 
 // Runtime API imports.
+pub use dex_runtime_api::DexApi as DEXRuntimeAPI;
 use dex_runtime_api::SwapOutcomeInfo;
-pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 
 #[rpc(server, client)]
-pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant, SwapResponse>
+pub trait DexApi<BlockHash, AssetId, DexId, Balance, LiquiditySourceType, SwapVariant, SwapResponse>
 {
     #[method(name = "dexApi_quote")]
     fn quote(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
@@ -66,7 +66,7 @@ pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVa
     #[method(name = "dexApi_canExchange")]
     fn can_exchange(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
@@ -77,12 +77,12 @@ pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVa
     fn list_supported_sources(&self, at: Option<BlockHash>) -> Result<Vec<LiquiditySourceType>>;
 }
 
-pub struct DEX<C, B> {
+pub struct Dex<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,
 }
 
-impl<C, B> DEX<C, B> {
+impl<C, B> Dex<C, B> {
     /// Construct default DEX as intermediary impl for rpc.
     pub fn new(client: Arc<C>) -> Self {
         Self {
@@ -92,34 +92,34 @@ impl<C, B> DEX<C, B> {
     }
 }
 
-impl<C, Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>
-    DEXAPIServer<
+impl<C, Block, AssetId, DexId, Balance, LiquiditySourceType, SwapVariant>
+    DexApiServer<
         <Block as BlockT>::Hash,
         AssetId,
-        DEXId,
+        DexId,
         Balance,
         LiquiditySourceType,
         SwapVariant,
         Option<SwapOutcomeInfo<Balance, AssetId>>,
-    > for DEX<C, Block>
+    > for Dex<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: DEXRuntimeAPI<Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>,
+    C::Api: DEXRuntimeAPI<Block, AssetId, DexId, Balance, LiquiditySourceType, SwapVariant>,
     AssetId: Codec
         + MaybeFromStr
         + MaybeDisplay
         + Ord
         + From<common::AssetId32<common::PredefinedAssetId>>,
-    DEXId: Codec,
+    DexId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay + Copy + Zero,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
 {
     fn quote(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
@@ -134,7 +134,7 @@ where
         ));
 
         let version = api
-            .api_version::<dyn DEXRuntimeAPI<Block, AssetId, DEXId, Balance,LiquiditySourceType, SwapVariant>>(&at)
+            .api_version::<dyn DEXRuntimeAPI<Block, AssetId, DexId, Balance,LiquiditySourceType, SwapVariant>>(&at)
             .map_err(|e| RpcError::Custom(format!("Runtime API error: {}", e)))?;
 
         let outcome = if version == Some(1) {
@@ -173,7 +173,7 @@ where
 
     fn can_exchange(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,

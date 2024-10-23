@@ -66,7 +66,7 @@ pub fn ask_prices_iterator(
 /// iterator of authors for each order. gives out `max_orders_per_user` times of each user while
 /// also minting assets for order placement
 pub fn users_iterator<T: Config>(
-    order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<T>, T::DexId>,
     max_order_amount: OrderVolume,
     max_price: OrderPrice,
     max_orders_per_user: u32,
@@ -414,7 +414,7 @@ fn fill_price_inner<T: Config>(
     users: &mut Peekable<impl Iterator<Item = T::AccountId>>,
     lifespans: &mut Peekable<impl Iterator<Item = u64>>,
     current_block: T::BlockNumber,
-    total_payment: &mut Payment<AssetIdOf<T>, T::AccountId, T::DEXId>,
+    total_payment: &mut Payment<AssetIdOf<T>, T::AccountId, T::DexId>,
     to_expire: &mut BTreeMap<T::BlockNumber, Vec<T::OrderId>>,
 ) {
     for _ in 0..settings.max_orders_per_price {

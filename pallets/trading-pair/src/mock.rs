@@ -30,11 +30,11 @@
 
 use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, DEXInfo};
+use common::prelude::{Balance, DexInfo};
 use common::{
     hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
+    BalancePrecision, ContentSource, Description, DexId, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
     VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -74,7 +74,7 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 
 pub const ALICE: AccountId = AccountId32::new([1; 32]);
-pub const DEX_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_ID: DexId = DexId::Polkaswap;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
@@ -93,7 +93,7 @@ mock_assets_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -126,7 +126,7 @@ pub struct ExtBuilder {
         Option<Description>,
     )>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    dex_list: Vec<(DexId, DexInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
@@ -252,31 +252,31 @@ impl Default for ExtBuilder {
             dex_list: vec![
                 (
                     DEX_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: XOR,
                         synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
                 (
-                    DEXId::PolkaswapXSTUSD,
-                    DEXInfo {
+                    DexId::PolkaswapXstUsd,
+                    DexInfo {
                         base_asset_id: XSTUSD,
                         synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
                 (
-                    DEXId::PolkaswapKUSD,
-                    DEXInfo {
+                    DexId::PolkaswapKUSD,
+                    DexInfo {
                         base_asset_id: KUSD,
                         synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
                 (
-                    DEXId::PolkaswapVXOR,
-                    DEXInfo {
+                    DexId::PolkaswapVXOR,
+                    DexInfo {
                         base_asset_id: VXOR,
                         synthetic_base_asset_id: XST,
                         is_public: true,

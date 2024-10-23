@@ -56,7 +56,7 @@ mod tests;
 #[allow(non_snake_case)]
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
     #[cfg(feature = "std")]
-    fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
+    fn initialize_reserves(reserves: &[(T::DexId, T::AssetId, (Fixed, Fixed))]) {
         reserves
             .iter()
             .for_each(|(dex_id, target_asset_id, reserve_pair)| {
@@ -272,10 +272,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 }
 
 impl<T: Config<I>, I: 'static>
-    LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError> for Pallet<T, I>
+    LiquiditySource<T::DexId, T::AccountId, T::AssetId, Balance, DispatchError> for Pallet<T, I>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
@@ -294,7 +294,7 @@ impl<T: Config<I>, I: 'static>
     }
 
     fn quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -420,7 +420,7 @@ impl<T: Config<I>, I: 'static>
     }
 
     fn step_quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -480,7 +480,7 @@ impl<T: Config<I>, I: 'static>
     fn exchange(
         _sender: &T::AccountId,
         _receiver: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
@@ -496,7 +496,7 @@ impl<T: Config<I>, I: 'static>
     }
 
     fn check_rewards(
-        _target_id: &T::DEXId,
+        _target_id: &T::DexId,
         _input_asset_id: &T::AssetId,
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
@@ -506,7 +506,7 @@ impl<T: Config<I>, I: 'static>
     }
 
     fn quote_without_impact(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -577,10 +577,10 @@ impl<T: Config<I>, I: 'static>
 
 impl<T: Config<I>, I: 'static> GetPoolReserves<T::AssetId> for Pallet<T, I> {
     fn reserves(_base_asset: &T::AssetId, other_asset: &T::AssetId) -> (Balance, Balance) {
-        // This will only work for the dex_id being common::DEXId::Polkaswap
+        // This will only work for the dex_id being common::DexId::Polkaswap
         // Letting the dex_id being passed as a parameter by the caller would require changing
         // the trait interface which is not desirable
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, other_asset);
         (
             base_reserve.into_bits().try_into().unwrap_or(balance!(0)),
@@ -594,7 +594,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{DEXInfo, EnsureDEXManager, EnsureTradingPairExists, ManagementMode};
+    use common::{DexInfo, EnsureDexManager, EnsureTradingPairExists, ManagementMode};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -608,13 +608,13 @@ pub mod pallet {
         + permissions::Config
     {
         type GetFee: Get<Fixed>;
-        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type EnsureDexManager: EnsureDexManager<Self::DexId, Self::AccountId, DispatchError>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
-            Self::DEXId,
+            Self::DexId,
             Self::AssetId,
             DispatchError,
         >;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type DexInfoProvider: DexInfoProvider<Self::DexId, DexInfo<Self::AssetId>>;
     }
 
     /// The current storage version.
@@ -636,11 +636,11 @@ pub mod pallet {
         #[pallet::weight(Weight::zero())]
         pub fn test_access(
             origin: OriginFor<T>,
-            dex_id: T::DEXId,
+            dex_id: T::DexId,
             target_id: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             let _who =
-                T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
+                T::EnsureDexManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &dex_id,
                 &T::GetBaseAssetId::get(),
@@ -653,7 +653,7 @@ pub mod pallet {
         #[pallet::weight(Weight::zero())]
         pub fn set_reserve(
             origin: OriginFor<T>,
-            dex_id: T::DEXId,
+            dex_id: T::DexId,
             target_id: T::AssetId,
             base_reserve: Fixed,
             target_reserve: Fixed,
@@ -681,7 +681,7 @@ pub mod pallet {
     pub type Reserves<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        T::DEXId,
+        T::DexId,
         Blake2_128Concat,
         T::AssetId,
         (Fixed, Fixed),
@@ -700,7 +700,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
         pub phantom: sp_std::marker::PhantomData<I>,
-        pub reserves: Vec<(T::DEXId, T::AssetId, (Fixed, Fixed))>,
+        pub reserves: Vec<(T::DexId, T::AssetId, (Fixed, Fixed))>,
     }
 
     #[cfg(feature = "std")]

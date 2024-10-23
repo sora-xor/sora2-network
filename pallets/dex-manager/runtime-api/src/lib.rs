@@ -36,9 +36,9 @@ use codec::Codec;
 use sp_std::prelude::*;
 
 sp_api::decl_runtime_apis! {
-    pub trait DEXManagerAPI<DEXId> where
-        DEXId: Codec,
+    pub trait DexManagerAPI<DexId> where
+        DexId: Codec,
     {
-        fn list_dex_ids() -> Vec<DEXId>;
+        fn list_dex_ids() -> Vec<DexId>;
     }
 }

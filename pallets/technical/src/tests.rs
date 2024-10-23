@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use common::prelude::Balance;
-use common::{AssetInfoProvider, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION};
+use common::{AssetInfoProvider, AssetName, AssetSymbol, DexId, DEFAULT_BALANCE_PRECISION};
 use frame_support::assert_ok;
 use orml_traits::MultiCurrency;
 use PolySwapActionExample::*;
@@ -56,7 +56,7 @@ fn should_register_technical_account() {
 #[test]
 fn generic_pair_swap_simple() {
     let mut ext = ExtBuilder::default().build();
-    let dex = DEXId::Polkaswap;
+    let dex = DexId::Polkaswap;
     let t01 = common::TechAccountId::Pure(
         dex,
         XykLiquidityKeeper(TradingPair {

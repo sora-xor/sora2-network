@@ -61,7 +61,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Reference to pool_xyk pallet
-        type XYKPool: XykPool<Self::AccountId, AssetIdOf<Self>>;
+        type XykPool: XykPool<Self::AccountId, AssetIdOf<Self>>;
 
         /// Reference to demeter_farming_platform pallet
         type DemeterFarmingPlatform: DemeterFarming<Self::AccountId, AssetIdOf<Self>>;
@@ -205,13 +205,13 @@ pub mod pallet {
             };
 
             // Get pool account
-            let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
+            let pool_account: AccountIdOf<T> = T::XykPool::properties_of_pool(asset_a, asset_b)
                 .ok_or(Error::<T>::PoolDoesNotExist)?
                 .0;
 
             // Calculate number of pool tokens to be locked
             let mut pool_tokens =
-                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                T::XykPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                     .unwrap_or(0);
             if pool_tokens == 0 {
                 return Err(Error::<T>::InsufficientLiquidityToLock.into());
@@ -272,7 +272,7 @@ pub mod pallet {
                 )?;
             }
 
-            pool_tokens = T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+            pool_tokens = T::XykPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                 .unwrap_or(0);
             T::DemeterFarmingPlatform::update_pool_tokens(
                 user.clone(),
@@ -370,7 +370,7 @@ pub mod pallet {
 
             // Get pool account
             let pool_account: AccountIdOf<T> =
-                if let Some(account) = T::XYKPool::properties_of_pool(asset_a, asset_b) {
+                if let Some(account) = T::XykPool::properties_of_pool(asset_a, asset_b) {
                     account.0
                 } else {
                     return false;
@@ -378,7 +378,7 @@ pub mod pallet {
 
             // Calculate number of pool tokens to be locked
             let pool_tokens =
-                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                T::XykPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                     .unwrap_or(0);
             if pool_tokens == 0 {
                 return false;
@@ -421,7 +421,7 @@ pub mod pallet {
                 FeesOptionTwoAccount::<T>::get()
             };
 
-            let result = T::XYKPool::transfer_lp_tokens(
+            let result = T::XykPool::transfer_lp_tokens(
                 pool_account,
                 asset_a,
                 asset_b,

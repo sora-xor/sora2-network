@@ -6,8 +6,8 @@ pub use common::TechPurpose::*;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, CERES_ASSET_ID, XST,
+    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    Description, DexId, CERES_ASSET_ID, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -48,7 +48,7 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 
 pub const ALICE: AccountId = AccountId::new(hex!(
     "0000000000000000000000000000000000000000000000000000000000000001"

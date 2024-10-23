@@ -36,7 +36,7 @@ use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
     fixed, fixed_wrapper, AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, BuyBackHandler,
-    DexInfoProvider, EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    DexInfoProvider, EnsureDexManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
     LiquiditySourceType, OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
@@ -59,7 +59,7 @@ mod tests;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-type DexIdOf<T> = <T as common::Config>::DEXId;
+type DexIdOf<T> = <T as common::Config>::DexId;
 type System<T> = frame_system::Pallet<T>;
 
 pub use weights::WeightInfo;
@@ -89,7 +89,7 @@ impl<T: Config> Pallet<T> {
     /// - `frequency`: Number of blocks between incentive distribution operations.
     pub fn subscribe(
         fees_account_id: T::AccountId,
-        dex_id: T::DEXId,
+        dex_id: T::DexId,
         pool_account: AccountIdOf<T>,
         frequency: Option<T::BlockNumber>,
     ) -> DispatchResult {
@@ -163,7 +163,7 @@ impl<T: Config> Pallet<T> {
     /// - `dex_id`: Id of DEX to which given account belongs.
     fn exchange_fees_to_incentive(
         fees_account_id: &T::AccountId,
-        dex_id: T::DEXId,
+        dex_id: T::DexId,
     ) -> DispatchResult {
         let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
         let chameleon_pools =
@@ -204,7 +204,7 @@ impl<T: Config> Pallet<T> {
                 SwapAmount::with_desired_input(balance.clone(), Balance::zero()),
                 LiquiditySourceFilter::with_allowed(
                     dex_id.clone(),
-                    [LiquiditySourceType::XYKPool].into(),
+                    [LiquiditySourceType::XykPool].into(),
                 ),
             );
             match outcome {
@@ -238,7 +238,7 @@ impl<T: Config> Pallet<T> {
     /// - `tech_account_id`: Id of Account which holds permissions needed for mint/burn of arbitrary tokens, stores claimable incentives.
     fn distribute_incentive(
         fees_account_id: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         pool_account: &AccountIdOf<T>,
         tech_account_id: &T::AccountId,
     ) -> Result<u32, DispatchError> {
@@ -445,11 +445,11 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> OnPoolCreated for Pallet<T> {
     type AccountId = AccountIdOf<T>;
 
-    type DEXId = DexIdOf<T>;
+    type DexId = DexIdOf<T>;
 
     fn on_pool_created(
         fee_account: Self::AccountId,
-        dex_id: Self::DEXId,
+        dex_id: Self::DexId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
         Self::subscribe(fee_account, dex_id, pool_account, None)
@@ -463,7 +463,7 @@ pub mod pallet {
     use super::*;
     use common::AssetIdOf;
     use common::{
-        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXInfo, Description,
+        AccountIdOf, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, DexInfo,
         XykPool,
     };
     use frame_support::pallet_prelude::*;
@@ -479,7 +479,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<AssetIdOf<Self>>;
         type GetBuyBackAssetId: Get<AssetIdOf<Self>>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DexId, Self::AccountId, AssetIdOf<Self>>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
             + From<Balance>
@@ -488,13 +488,13 @@ pub mod pallet {
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type GetDefaultSubscriptionFrequency: Get<Self::BlockNumber>;
         type GetBurnUpdateFrequency: Get<Self::BlockNumber>;
-        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type EnsureDexManager: EnsureDexManager<Self::DexId, Self::AccountId, DispatchError>;
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
         type PoolXykPallet: XykPool<Self::AccountId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type DexInfoProvider: DexInfoProvider<Self::DexId, DexInfo<AssetIdOf<Self>>>;
         /// base_asset_id => (chameleon_base_asset_id, target_assets)
         type GetChameleonPools: traits::GetByKey<
             AssetIdOf<Self>,
@@ -619,7 +619,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::AccountId,
-        (T::DEXId, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),
+        (T::DexId, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),
     >;
 
     /// Amount of incentive tokens to be burned on each distribution.

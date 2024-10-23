@@ -35,7 +35,7 @@
 use common::alt::DiscreteQuotation;
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    AssetIdOf, DEXInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    AssetIdOf, DexInfo, DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
@@ -55,7 +55,7 @@ pub use weights::WeightInfo;
 
 impl<T: Config>
     LiquiditySource<
-        LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        LiquiditySourceId<T::DexId, LiquiditySourceType>,
         T::AccountId,
         AssetIdOf<T>,
         Balance,
@@ -63,7 +63,7 @@ impl<T: Config>
     > for Pallet<T>
 {
     fn can_exchange(
-        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        liquidity_source_id: &LiquiditySourceId<T::DexId, LiquiditySourceType>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
@@ -78,9 +78,9 @@ impl<T: Config>
             };
         }
         let res = match liquidity_source_id.liquidity_source_index {
-            XYKPool => can_exchange!(XYKPool),
+            XykPool => can_exchange!(XykPool),
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
-            XSTPool => can_exchange!(XSTPool),
+            XstPool => can_exchange!(XstPool),
             OrderBook => can_exchange!(OrderBook),
             MockPool => can_exchange!(MockLiquiditySource),
             MockPool2 => can_exchange!(MockLiquiditySource2),
@@ -93,7 +93,7 @@ impl<T: Config>
     }
 
     fn quote(
-        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        liquidity_source_id: &LiquiditySourceId<T::DexId, LiquiditySourceType>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -112,9 +112,9 @@ impl<T: Config>
             };
         }
         let res = match liquidity_source_id.liquidity_source_index {
-            XYKPool => quote!(XYKPool),
+            XykPool => quote!(XykPool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
-            XSTPool => quote!(XSTPool),
+            XstPool => quote!(XstPool),
             OrderBook => quote!(OrderBook),
             MockPool => quote!(MockLiquiditySource),
             MockPool2 => quote!(MockLiquiditySource2),
@@ -127,7 +127,7 @@ impl<T: Config>
     }
 
     fn step_quote(
-        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        liquidity_source_id: &LiquiditySourceId<T::DexId, LiquiditySourceType>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -148,9 +148,9 @@ impl<T: Config>
             };
         }
         let res = match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => step_quote!(XYKPool),
+            LiquiditySourceType::XykPool => step_quote!(XykPool),
             MulticollateralBondingCurvePool => step_quote!(MulticollateralBondingCurvePool),
-            XSTPool => step_quote!(XSTPool),
+            XstPool => step_quote!(XstPool),
             OrderBook => step_quote!(OrderBook),
             MockPool => step_quote!(MockLiquiditySource),
             MockPool2 => step_quote!(MockLiquiditySource2),
@@ -165,7 +165,7 @@ impl<T: Config>
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        liquidity_source_id: &LiquiditySourceId<T::DexId, LiquiditySourceType>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
@@ -184,9 +184,9 @@ impl<T: Config>
             };
         }
         let res = match liquidity_source_id.liquidity_source_index {
-            XYKPool => exchange!(XYKPool),
+            XykPool => exchange!(XykPool),
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
-            XSTPool => exchange!(XSTPool),
+            XstPool => exchange!(XstPool),
             OrderBook => exchange!(OrderBook),
             MockPool => exchange!(MockLiquiditySource),
             MockPool2 => exchange!(MockLiquiditySource2),
@@ -199,7 +199,7 @@ impl<T: Config>
     }
 
     fn check_rewards(
-        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        liquidity_source_id: &LiquiditySourceId<T::DexId, LiquiditySourceType>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         input_amount: Balance,
@@ -218,9 +218,9 @@ impl<T: Config>
             };
         }
         let res = match liquidity_source_id.liquidity_source_index {
-            XYKPool => check_rewards!(XYKPool),
+            XykPool => check_rewards!(XykPool),
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
-            XSTPool => check_rewards!(XSTPool),
+            XstPool => check_rewards!(XstPool),
             OrderBook => check_rewards!(OrderBook),
             MockPool => check_rewards!(MockLiquiditySource),
             MockPool2 => check_rewards!(MockLiquiditySource2),
@@ -233,7 +233,7 @@ impl<T: Config>
     }
 
     fn quote_without_impact(
-        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        liquidity_source_id: &LiquiditySourceId<T::DexId, LiquiditySourceType>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -252,11 +252,11 @@ impl<T: Config>
             };
         }
         let res = match liquidity_source_id.liquidity_source_index {
-            XYKPool => quote_without_impact!(XYKPool),
+            XykPool => quote_without_impact!(XykPool),
             MulticollateralBondingCurvePool => {
                 quote_without_impact!(MulticollateralBondingCurvePool)
             }
-            XSTPool => quote_without_impact!(XSTPool),
+            XstPool => quote_without_impact!(XstPool),
             OrderBook => quote_without_impact!(OrderBook),
             MockPool => quote_without_impact!(MockLiquiditySource),
             MockPool2 => quote_without_impact!(MockLiquiditySource2),
@@ -269,15 +269,15 @@ impl<T: Config>
     }
 
     fn quote_weight() -> Weight {
-        T::XSTPool::quote_weight()
-            .max(T::XYKPool::quote_weight())
+        T::XstPool::quote_weight()
+            .max(T::XykPool::quote_weight())
             .max(T::MulticollateralBondingCurvePool::quote_weight())
             .max(T::OrderBook::quote_weight())
     }
 
     fn step_quote_weight(samples_count: usize) -> Weight {
-        T::XSTPool::step_quote_weight(samples_count)
-            .max(T::XYKPool::step_quote_weight(samples_count))
+        T::XstPool::step_quote_weight(samples_count)
+            .max(T::XykPool::step_quote_weight(samples_count))
             .max(T::MulticollateralBondingCurvePool::step_quote_weight(
                 samples_count,
             ))
@@ -287,9 +287,9 @@ impl<T: Config>
     fn exchange_weight() -> Weight {
         Self::exchange_weight_filtered(
             [
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-                LiquiditySourceType::XSTPool,
+                LiquiditySourceType::XstPool,
                 LiquiditySourceType::OrderBook,
             ]
             .into_iter(),
@@ -297,8 +297,8 @@ impl<T: Config>
     }
 
     fn check_rewards_weight() -> Weight {
-        T::XSTPool::check_rewards_weight()
-            .max(T::XYKPool::check_rewards_weight())
+        T::XstPool::check_rewards_weight()
+            .max(T::XykPool::check_rewards_weight())
             .max(T::MulticollateralBondingCurvePool::check_rewards_weight())
             .max(T::OrderBook::check_rewards_weight())
     }
@@ -314,7 +314,7 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config>
     LiquidityRegistry<
-        T::DEXId,
+        T::DexId,
         T::AccountId,
         AssetIdOf<T>,
         LiquiditySourceType,
@@ -325,8 +325,8 @@ impl<T: Config>
     fn list_liquidity_sources(
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
-        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
+        filter: &LiquiditySourceFilter<T::DexId, LiquiditySourceType>,
+    ) -> Result<Vec<LiquiditySourceId<T::DexId, LiquiditySourceType>>, DispatchError> {
         let supported_types = Self::get_supported_types();
         T::DexInfoProvider::ensure_dex_exists(&filter.dex_id)?;
         Ok(supported_types
@@ -355,11 +355,11 @@ impl<T: Config>
     ) -> Weight {
         enabled_sources
             .map(|source| match source {
-                LiquiditySourceType::XYKPool => T::XYKPool::exchange_weight(),
+                LiquiditySourceType::XykPool => T::XykPool::exchange_weight(),
                 LiquiditySourceType::MulticollateralBondingCurvePool => {
                     T::MulticollateralBondingCurvePool::exchange_weight()
                 }
-                LiquiditySourceType::XSTPool => T::XSTPool::exchange_weight(),
+                LiquiditySourceType::XstPool => T::XstPool::exchange_weight(),
                 LiquiditySourceType::OrderBook => T::OrderBook::exchange_weight(),
                 LiquiditySourceType::BondingCurvePool
                 | LiquiditySourceType::MockPool
@@ -385,57 +385,57 @@ pub mod pallet {
     pub trait Config: frame_system::Config + common::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type MockLiquiditySource: LiquiditySource<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
         type MockLiquiditySource2: LiquiditySource<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
         type MockLiquiditySource3: LiquiditySource<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
         type MockLiquiditySource4: LiquiditySource<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
         type MulticollateralBondingCurvePool: LiquiditySource<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
-        type XSTPool: LiquiditySource<
-            Self::DEXId,
+        type XstPool: LiquiditySource<
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
-        type XYKPool: LiquiditySource<
-            Self::DEXId,
+        type XykPool: LiquiditySource<
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,
             DispatchError,
         >;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
+        type DexInfoProvider: DexInfoProvider<Self::DexId, DexInfo<AssetIdOf<Self>>>;
         type OrderBook: LiquiditySource<
-            Self::DEXId,
+            Self::DexId,
             Self::AccountId,
             AssetIdOf<Self>,
             Balance,

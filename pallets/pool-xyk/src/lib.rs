@@ -42,11 +42,11 @@ use sp_std::vec::Vec;
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
-    Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
+    Balance, EnsureDexManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
     SwapVariant,
 };
 use common::{
-    fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
+    fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetRegulator, DexIdOf, DexInfo, DexInfoProvider,
     EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
     OnPoolReservesChanged, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
     TradingPairSourceManager, XykPool,
@@ -54,7 +54,7 @@ use common::{
 
 mod aliases;
 use aliases::{
-    AccountIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf, PolySwapActionStructOf,
+    AccountIdOf, DepositLiquidityActionOf, PairSwapActionOf, PolySwapActionStructOf,
     TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
 use sp_std::collections::btree_set::BTreeSet;
@@ -165,7 +165,7 @@ impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
 
 impl<T: Config> Pallet<T> {
     fn initialize_pool_properties(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         asset_a: &AssetIdOf<T>,
         asset_b: &AssetIdOf<T>,
         reserves_account_id: &T::AccountId,
@@ -187,7 +187,7 @@ impl<T: Config> Pallet<T> {
             dex_id,
             sorted_asset_a,
             sorted_asset_b,
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
         )?;
         Properties::<T>::insert(
             sorted_asset_a,
@@ -237,7 +237,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn initialize_pool_unchecked(
         _source: AccountIdOf<T>,
-        dex_id: DEXIdOf<T>,
+        dex_id: DexIdOf<T>,
         asset_a: AssetIdOf<T>,
         asset_b: AssetIdOf<T>,
     ) -> Result<
@@ -276,7 +276,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
-        dex_id: DEXIdOf<T>,
+        dex_id: DexIdOf<T>,
         input_asset_a: AssetIdOf<T>,
         input_asset_b: AssetIdOf<T>,
         input_a_desired: Balance,
@@ -315,7 +315,7 @@ impl<T: Config> Pallet<T> {
 
     fn withdraw_liquidity_unchecked(
         source: AccountIdOf<T>,
-        dex_id: DEXIdOf<T>,
+        dex_id: DexIdOf<T>,
         output_asset_a: AssetIdOf<T>,
         output_asset_b: AssetIdOf<T>,
         marker_asset_desired: Balance,
@@ -408,11 +408,11 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DexId, T::AccountId, AssetIdOf<T>, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
@@ -430,7 +430,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -519,7 +519,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn step_quote(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -689,7 +689,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     fn exchange(
         sender: &T::AccountId,
         receiver: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
@@ -771,7 +771,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn check_rewards(
-        _target_id: &T::DEXId,
+        _target_id: &T::DexId,
         _input_asset_id: &AssetIdOf<T>,
         _output_asset_id: &AssetIdOf<T>,
         _input_amount: Balance,
@@ -782,7 +782,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 
     fn quote_without_impact(
-        dex_id: &T::DEXId,
+        dex_id: &T::DexId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -962,20 +962,20 @@ pub mod pallet {
             + Parameter
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
-        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
-        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
-        type EnabledSourcesManager: EnabledSourcesManager<Self::DEXId, AssetIdOf<Self>>;
+        type EnsureDexManager: EnsureDexManager<Self::DexId, Self::AccountId, DispatchError>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
+        type DexInfoProvider: DexInfoProvider<Self::DexId, DexInfo<AssetIdOf<Self>>>;
+        type EnabledSourcesManager: EnabledSourcesManager<Self::DexId, AssetIdOf<Self>>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
-            Self::DEXId,
+            Self::DexId,
             AssetIdOf<Self>,
             DispatchError,
         >;
-        type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>>;
+        type XstMarketInfo: GetMarketInfo<AssetIdOf<Self>>;
         type GetFee: Get<Fixed>;
         /// Maximum allowed ratio between real and current issuance in pool
         type GetMaxIssuanceRatio: Get<Fixed>;
-        type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
+        type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DexId = DexIdOf<Self>>;
         type OnPoolReservesChanged: OnPoolReservesChanged<AssetIdOf<Self>>;
         type GetTradingPairRestrictedFlag: GetByKey<TradingPair<AssetIdOf<Self>>, bool>;
         /// base_asset_id => (chameleon_base_asset_id, target_assets)
@@ -1063,7 +1063,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
         pub fn deposit_liquidity(
             origin: OriginFor<T>,
-            dex_id: DEXIdOf<T>,
+            dex_id: DexIdOf<T>,
             input_asset_a: AssetIdOf<T>,
             input_asset_b: AssetIdOf<T>,
             input_a_desired: Balance,
@@ -1124,7 +1124,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_liquidity())]
         pub fn withdraw_liquidity(
             origin: OriginFor<T>,
-            dex_id: DEXIdOf<T>,
+            dex_id: DexIdOf<T>,
             output_asset_a: AssetIdOf<T>,
             output_asset_b: AssetIdOf<T>,
             marker_asset_desired: Balance,
@@ -1179,13 +1179,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
         pub fn initialize_pool(
             origin: OriginFor<T>,
-            dex_id: DEXIdOf<T>,
+            dex_id: DexIdOf<T>,
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             common::with_transaction(|| {
                 let source = ensure_signed(origin.clone())?;
-                <T as Config>::EnsureDEXManager::ensure_can_manage(
+                <T as Config>::EnsureDexManager::ensure_can_manage(
                     &dex_id,
                     origin.clone(),
                     ManagementMode::Public,

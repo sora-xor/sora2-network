@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, DexId, LiquiditySourceType,
     PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
@@ -54,7 +54,7 @@ type Signature = MultiSignature;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type Moment = u64;
 type BlockNumber = u64;
 
@@ -75,13 +75,13 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub const GetBuyBackDexId: DexId = DexId::Polkaswap;
 }
 impl assets::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DexId, LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;

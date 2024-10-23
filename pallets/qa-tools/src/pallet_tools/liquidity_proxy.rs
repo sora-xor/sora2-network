@@ -71,7 +71,7 @@ pub mod liquidity_sources {
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
-            OrderBookId<AssetIdOf<T>, T::DEXId>,
+            OrderBookId<AssetIdOf<T>, T::DexId>,
             pallet_tools::order_book::OrderBookAttributes,
             pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
         )>,
@@ -112,7 +112,7 @@ pub mod liquidity_sources {
         bids_owner: T::AccountId,
         asks_owner: T::AccountId,
         settings: Vec<(
-            OrderBookId<AssetIdOf<T>, T::DEXId>,
+            OrderBookId<AssetIdOf<T>, T::DexId>,
             pallet_tools::order_book::FillInput<MomentOf<T>, BlockNumberFor<T>>,
         )>,
     ) -> DispatchResult {

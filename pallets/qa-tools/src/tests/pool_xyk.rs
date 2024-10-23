@@ -31,7 +31,7 @@
 use super::{alice, QaToolsPallet};
 use common::prelude::{err_pays_no, QuoteAmount};
 use common::{
-    assert_approx_eq, balance, DEXId, LiquiditySource, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
+    assert_approx_eq, balance, DexId, LiquiditySource, DAI, ETH, PSWAP, TBCD, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::assert_ok;
 use framenode_chain_spec::ext;
@@ -46,53 +46,53 @@ use pallet_tools::pool_xyk::AssetPairInput;
 fn should_xyk_initialize_pool() {
     ext().execute_with(|| {
         let pairs = vec![
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5), None),
+            AssetPairInput::new(DexId::Polkaswap.into(), XOR, VAL, balance!(0.5), None),
             AssetPairInput::new(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 XOR,
                 ETH,
                 balance!(0.1),
                 Some(balance!(1000)),
             ),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, PSWAP, balance!(1), None),
+            AssetPairInput::new(DexId::Polkaswap.into(), XOR, PSWAP, balance!(1), None),
             AssetPairInput::new(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 XOR,
                 DAI,
                 balance!(10),
                 Some(balance!(1000)),
             ),
-            AssetPairInput::new(DEXId::Polkaswap.into(), XOR, XST, balance!(0.5), None),
+            AssetPairInput::new(DexId::Polkaswap.into(), XOR, XST, balance!(0.5), None),
             AssetPairInput::new(
-                DEXId::Polkaswap.into(),
+                DexId::Polkaswap.into(),
                 XOR,
                 TBCD,
                 balance!(0.5),
                 Some(balance!(1000)),
             ),
             AssetPairInput::new(
-                DEXId::PolkaswapXSTUSD.into(),
+                DexId::PolkaswapXstUsd.into(),
                 XSTUSD,
                 VAL,
                 balance!(0.5),
                 None,
             ),
             AssetPairInput::new(
-                DEXId::PolkaswapXSTUSD.into(),
+                DexId::PolkaswapXstUsd.into(),
                 XSTUSD,
                 PSWAP,
                 balance!(0.5),
                 Some(balance!(1000)),
             ),
             AssetPairInput::new(
-                DEXId::PolkaswapXSTUSD.into(),
+                DexId::PolkaswapXstUsd.into(),
                 XSTUSD,
                 ETH,
                 balance!(0.000000000000000001),
                 None,
             ),
             AssetPairInput::new(
-                DEXId::PolkaswapXSTUSD.into(),
+                DexId::PolkaswapXstUsd.into(),
                 XSTUSD,
                 DAI,
                 balance!(0.5),
@@ -128,9 +128,9 @@ fn should_not_initialize_existing_xyk_pool() {
             RuntimeOrigin::root(),
             alice(),
             vec![
-                AssetPairInput::new(DEXId::Polkaswap.into(), XOR, VAL, balance!(0.5), None),
+                AssetPairInput::new(DexId::Polkaswap.into(), XOR, VAL, balance!(0.5), None),
                 AssetPairInput::new(
-                    DEXId::PolkaswapXSTUSD.into(),
+                    DexId::PolkaswapXstUsd.into(),
                     XSTUSD,
                     VAL,
                     balance!(0.5),
@@ -143,7 +143,7 @@ fn should_not_initialize_existing_xyk_pool() {
                 RuntimeOrigin::root(),
                 alice(),
                 vec![AssetPairInput::new(
-                    DEXId::Polkaswap.into(),
+                    DexId::Polkaswap.into(),
                     XOR,
                     VAL,
                     balance!(0.5),

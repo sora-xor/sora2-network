@@ -82,7 +82,7 @@ pub mod pallet {
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{
-        balance, AssetIdOf, AssetInfoProvider, AssetManager, DEXId, XykPool, PSWAP, XSTUSD,
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, DexId, XykPool, PSWAP, XSTUSD,
     };
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed};
     use frame_support::pallet_prelude::*;
@@ -114,7 +114,7 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -132,7 +132,7 @@ pub mod pallet {
     }
 
     pub type Timestamp<T> = timestamp::Pallet<T>;
-    type PoolXYK<T> = pool_xyk::Pallet<T>;
+    type PoolXyk<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
     type TokenLocker<T> = ceres_token_locker::Pallet<T>;
     type PSWAPDistribution<T> = pswap_distribution::Pallet<T>;
@@ -402,9 +402,9 @@ pub mod pallet {
             );
 
             let dex_id = if base_asset == XOR.into() {
-                DEXId::Polkaswap.into()
+                DexId::Polkaswap.into()
             } else {
-                DEXId::PolkaswapXSTUSD.into()
+                DexId::PolkaswapXstUsd.into()
             };
 
             ensure!(
@@ -751,9 +751,9 @@ pub mod pallet {
             )?;
 
             let dex_id = if ilo_info.base_asset == XOR.into() {
-                DEXId::Polkaswap.into()
+                DexId::Polkaswap.into()
             } else {
-                DEXId::PolkaswapXSTUSD.into()
+                DexId::PolkaswapXstUsd.into()
             };
             // Register trading pair
             <T as Config>::TradingPairSourceManager::register_pair(
@@ -763,7 +763,7 @@ pub mod pallet {
             )?;
 
             // Initialize pool
-            PoolXYK::<T>::initialize_pool(
+            PoolXyk::<T>::initialize_pool(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 dex_id,
                 ilo_info.base_asset,
@@ -779,7 +779,7 @@ pub mod pallet {
                 tokens_for_liquidity <= ilo_info.tokens_for_liquidity,
                 Error::<T>::NotEnoughTokens
             );
-            PoolXYK::<T>::deposit_liquidity(
+            PoolXyk::<T>::deposit_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 dex_id,
                 ilo_info.base_asset,
@@ -817,11 +817,11 @@ pub mod pallet {
             )?;
 
             // Calculate LP tokens
-            let pool_account = PoolXYK::<T>::properties_of_pool(ilo_info.base_asset, asset_id)
+            let pool_account = PoolXyk::<T>::properties_of_pool(ilo_info.base_asset, asset_id)
                 .ok_or(Error::<T>::PoolDoesNotExist)?
                 .0;
             ilo_info.lp_tokens =
-                PoolXYK::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
+                PoolXyk::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
 
             ilo_info.succeeded = true;
             ilo_info.finish_timestamp = current_timestamp;
@@ -904,12 +904,12 @@ pub mod pallet {
             let pallet_account = Self::account_id();
 
             // Get pool account
-            let pool_account = PoolXYK::<T>::properties_of_pool(ilo_info.base_asset, asset_id)
+            let pool_account = PoolXyk::<T>::properties_of_pool(ilo_info.base_asset, asset_id)
                 .ok_or(Error::<T>::PoolDoesNotExist)?
                 .0;
 
             // Transfer LP tokens
-            PoolXYK::<T>::transfer_lp_tokens(
+            PoolXyk::<T>::transfer_lp_tokens(
                 pool_account,
                 ilo_info.base_asset,
                 asset_id,

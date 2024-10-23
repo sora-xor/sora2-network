@@ -12,7 +12,7 @@ use sp_std::vec::Vec;
 
 use crate::{Config, PoolProviders, Properties, TotalIssuances};
 
-generate_storage_instance!(PoolXYK, MarkerTokensIndex);
+generate_storage_instance!(PoolXyk, MarkerTokensIndex);
 type OldMarkerTokensIndex<AssetId> =
     StorageValue<MarkerTokensIndexOldInstance, BTreeSet<AssetId>, ValueQuery>;
 
@@ -83,7 +83,7 @@ mod tests {
 
     use super::OldMarkerTokensIndex;
 
-    generate_storage_instance!(PoolXYK, Properties);
+    generate_storage_instance!(PoolXyk, Properties);
 
     type OldProperties<AccountId, AssetId> = StorageDoubleMap<
         PropertiesOldInstance,

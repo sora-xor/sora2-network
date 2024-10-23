@@ -54,9 +54,9 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type DEXId = common::DEXId;
+type DexId = common::DexId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -92,7 +92,7 @@ pub fn pool_account_b() -> AccountId {
     AccountId32::from([12u8; 32])
 }
 
-pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
+pub const DEX_A_ID: DexId = common::DexId::Polkaswap;
 
 parameter_types! {
     pub GetBaseAssetId: AssetId = common::XOR.into();
@@ -147,7 +147,7 @@ construct_runtime! {
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
-        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
@@ -155,7 +155,7 @@ construct_runtime! {
 
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
@@ -171,12 +171,12 @@ impl Config for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = DexManager;
+    type EnsureDexManager = DexManager;
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type BuyBackHandler = ();
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -203,13 +203,13 @@ impl demeter_farming_platform::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DexId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = ();
@@ -218,7 +218,7 @@ impl pool_xyk::Config for Runtime {
     type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type XSTMarketInfo = ();
+    type XstMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -238,7 +238,7 @@ impl pallet_timestamp::Config for Runtime {
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
+    type XykPool = PoolXyk;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
@@ -259,7 +259,7 @@ pub struct ExtBuilder {
     )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    subscribed_accounts: Vec<(AccountId, (DEXId, AccountId, BlockNumber, BlockNumber))>,
+    subscribed_accounts: Vec<(AccountId, (DexId, AccountId, BlockNumber, BlockNumber))>,
     burn_info: (Fixed, Fixed, Fixed),
 }
 

@@ -118,7 +118,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn tech_account_from_dex_and_asset_pair(
-        dex_id: T::DEXId,
+        dex_id: T::DexId,
         asset_a: AssetIdOf<T>,
         asset_b: AssetIdOf<T>,
     ) -> Result<(common::TradingPair<TechAssetIdOf<T>>, TechAccountIdOf<T>), DispatchError> {
@@ -279,7 +279,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn adjust_liquidity_in_pool(
-        dex_id: T::DEXId,
+        dex_id: T::DexId,
         base_asset_id: &AssetIdOf<T>,
         target_asset_id: &AssetIdOf<T>,
         weight: &mut Weight,

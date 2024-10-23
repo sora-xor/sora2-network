@@ -31,7 +31,7 @@
 use super::{alice, bob, charlie, dave, FrameSystem, QaToolsPallet};
 use assets::AssetIdOf;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, DexId, DexIdOf, PredefinedAssetId,
     PriceVariant, PSWAP, VAL, XOR,
 };
 use frame_support::dispatch::{Pays, PostDispatchInfo};
@@ -71,7 +71,7 @@ fn test_creates_orderbook(
     amount_range: (Balance, Balance),
 ) -> OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>> {
     let order_book_id = OrderBookId {
-        dex_id: DEXId::Polkaswap.into(),
+        dex_id: DexId::Polkaswap.into(),
         base,
         quote,
     };
@@ -234,12 +234,12 @@ fn should_create_and_fill_orderbook_random_amount() {
 fn should_respect_orderbook_seed() {
     ext().execute_with(|| {
         let order_book_id_1 = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
         let order_book_id_2 = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: PSWAP,
             quote: XOR,
         };
@@ -303,12 +303,12 @@ fn should_respect_orderbook_seed() {
 fn should_keep_orderbook_randomness_independent() {
     ext().execute_with(|| {
         let order_book_id_1 = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
         let order_book_id_2 = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: PSWAP,
             quote: XOR,
         };
@@ -409,7 +409,7 @@ fn should_keep_orderbook_randomness_independent() {
 fn should_reject_incorrect_orderbook_fill_settings() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
@@ -476,7 +476,7 @@ fn should_reject_incorrect_orderbook_fill_settings() {
 fn should_reject_too_many_orders() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
@@ -585,7 +585,7 @@ fn should_reject_too_many_orders() {
 fn should_create_and_fill_orderbook_max_orders_count() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
@@ -648,7 +648,7 @@ fn should_create_and_fill_orderbook_max_orders_count() {
 fn should_not_create_existing_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
@@ -713,7 +713,7 @@ fn should_not_create_existing_order_book() {
 fn should_not_fill_non_existing_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
@@ -761,7 +761,7 @@ fn should_not_fill_non_existing_order_book() {
 fn should_fill_order_book() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };
@@ -816,7 +816,7 @@ fn should_fill_order_book() {
 fn should_fill_orderbook_max_orders_count() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId {
-            dex_id: DEXId::Polkaswap.into(),
+            dex_id: DexId::Polkaswap.into(),
             base: VAL,
             quote: XOR,
         };

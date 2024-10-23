@@ -34,7 +34,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use common::{
-    balance, AssetIdOf, DEXId, DexInfoProvider, LiquidityRegistry, LiquiditySourceFilter,
+    balance, AssetIdOf, DexId, DexInfoProvider, LiquidityRegistry, LiquiditySourceFilter,
     LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
@@ -42,7 +42,7 @@ use frame_system::{EventRecord, RawOrigin};
 use liquidity_proxy::ExchangePath;
 use sp_std::prelude::*;
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 #[cfg(test)]
 mod mock;
@@ -71,18 +71,18 @@ benchmarks! {
     enable_liquidity_source {
         liquidity_proxy::Pallet::<T>::disable_liquidity_source(
             RawOrigin::Root.into(),
-            LiquiditySourceType::XSTPool
+            LiquiditySourceType::XstPool
         )?;
     }: {
         liquidity_proxy::Pallet::<T>::enable_liquidity_source(
             RawOrigin::Root.into(),
-            LiquiditySourceType::XSTPool
+            LiquiditySourceType::XstPool
         ).unwrap();
     }
     verify {
         assert_last_event::<T>(
             liquidity_proxy::Event::<T>::LiquiditySourceEnabled(
-                LiquiditySourceType::XSTPool
+                LiquiditySourceType::XstPool
             ).into()
         );
     }
@@ -91,13 +91,13 @@ benchmarks! {
     }: {
         liquidity_proxy::Pallet::<T>::disable_liquidity_source(
             RawOrigin::Root.into(),
-            LiquiditySourceType::XSTPool
+            LiquiditySourceType::XstPool
         ).unwrap();
     }
     verify {
         assert_last_event::<T>(
             liquidity_proxy::Event::<T>::LiquiditySourceDisabled(
-                LiquiditySourceType::XSTPool
+                LiquiditySourceType::XstPool
             ).into()
         );
     }
@@ -131,12 +131,12 @@ benchmarks! {
     list_liquidity_sources {
         let from_asset: T::AssetId = XOR.into();
         let to_asset: T::AssetId = VAL.into();
-        let filter = LiquiditySourceFilter::<T::DEXId, LiquiditySourceType>::with_allowed(
+        let filter = LiquiditySourceFilter::<T::DexId, LiquiditySourceType>::with_allowed(
             DEX.into(),
             [
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-                LiquiditySourceType::XSTPool,
+                LiquiditySourceType::XstPool,
             ]
             .to_vec()
         );

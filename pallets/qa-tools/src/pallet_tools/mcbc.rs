@@ -33,7 +33,7 @@ use crate::{pallet_tools, Error};
 use codec::{Decode, Encode};
 use common::prelude::FixedWrapper;
 use common::{
-    AssetIdOf, AssetInfoProvider, Balance, DEXId, GetBaseAssetIdOf, TradingPairSourceManager, TBCD,
+    AssetIdOf, AssetInfoProvider, Balance, DexId, GetBaseAssetIdOf, TradingPairSourceManager, TBCD,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -105,12 +105,12 @@ fn initialize_single_collateral_unchecked<T: Config>(
     let reference_asset = multicollateral_bonding_curve_pool::ReferenceAssetId::<T>::get();
 
     if !<T as Config>::TradingPairSourceManager::is_trading_pair_enabled(
-        &DEXId::Polkaswap.into(),
+        &DexId::Polkaswap.into(),
         &base_asset,
         &input.asset,
     )? {
         <T as Config>::TradingPairSourceManager::register_pair(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             base_asset,
             input.asset,
         )?;

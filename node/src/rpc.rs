@@ -33,7 +33,7 @@
 use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
-    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
+    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DexId,
     FilterMode, Index, LiquiditySourceType, ResolveTime, Runtime, SwapVariant, Symbol,
 };
 use jsonrpsee::RpcModule;
@@ -114,16 +114,16 @@ where
     C::Api: dex_api_rpc::DEXRuntimeAPI<
         Block,
         AssetId,
-        DEXId,
+        DexId,
         Balance,
         LiquiditySourceType,
         SwapVariant,
     >,
     C::Api: oracle_proxy_rpc::OracleProxyRuntimeApi<Block, Symbol, ResolveTime>,
-    C::Api: dex_manager_rpc::DEXManagerRuntimeAPI<Block, DEXId>,
+    C::Api: dex_manager_rpc::DexManagerRuntimeAPI<Block, DexId>,
     C::Api: trading_pair_rpc::TradingPairRuntimeAPI<
         Block,
-        DEXId,
+        DexId,
         TradingPair<AssetId>,
         AssetId,
         LiquiditySourceType,
@@ -141,7 +141,7 @@ where
     >,
     C::Api: liquidity_proxy_rpc::LiquidityProxyRuntimeAPI<
         Block,
-        DEXId,
+        DexId,
         AssetId,
         Balance,
         SwapVariant,
@@ -182,8 +182,8 @@ where
     use assets_rpc::{AssetsAPIServer, AssetsClient};
     use beefy_gadget_rpc::{Beefy, BeefyApiServer};
     use bridge_proxy_rpc::{BridgeProxyAPIServer, BridgeProxyClient};
-    use dex_api_rpc::{DEXAPIServer, DEX};
-    use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
+    use dex_api_rpc::{Dex, DexApiServer};
+    use dex_manager_rpc::{DexManager, DexManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
     use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
@@ -218,8 +218,8 @@ where
 
     io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
     io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
-    io.merge(DEX::new(client.clone()).into_rpc())?;
-    io.merge(DEXManager::new(client.clone()).into_rpc())?;
+    io.merge(Dex::new(client.clone()).into_rpc())?;
+    io.merge(DexManager::new(client.clone()).into_rpc())?;
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
     io.merge(AssetsClient::new(client.clone()).into_rpc())?;
     io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;

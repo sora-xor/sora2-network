@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId, LiquidityProxyTrait,
+    mock_pallet_balances_config, mock_tokens_config, AssetId32, DexId, LiquidityProxyTrait,
     LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
@@ -93,14 +93,14 @@ parameter_types! {
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
     pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+    pub const GetBuyBackDexId: DexId = DexId::Polkaswap;
 }
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<DexId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -121,13 +121,13 @@ impl permissions::Config for Runtime {
 
 pub struct MockLiquidityProxy;
 
-impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+impl LiquidityProxyTrait<DexId, AccountId, AssetId> for MockLiquidityProxy {
     fn quote(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: common::prelude::QuoteAmount<Balance>,
-        _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
+        _filter: common::LiquiditySourceFilter<DexId, common::LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         // Implement if needed
@@ -138,13 +138,13 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     ///
     /// Make sure to give some liquidity to this account before calling this function.
     fn exchange(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
-        _filter: LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, common::LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         let amount = amount.amount();
 

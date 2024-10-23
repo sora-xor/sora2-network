@@ -69,12 +69,12 @@ fn should_register_technical_account() {
         .unwrap();
 
         let order_books = [
-            OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            OrderBookId::<AssetIdOf<Runtime>, DexId> {
                 dex_id: DEX.into(),
                 base: VAL,
                 quote: XOR,
             },
-            OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            OrderBookId::<AssetIdOf<Runtime>, DexId> {
                 dex_id: DEX.into(),
                 base: nft,
                 quote: XOR,
@@ -94,7 +94,7 @@ fn should_register_technical_account() {
 }
 
 fn test_lock_unlock_same_account(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DexId>,
     asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     account: &<Runtime as frame_system::Config>::AccountId,
@@ -123,7 +123,7 @@ fn test_lock_unlock_same_account(
 }
 
 fn test_lock_unlock_other_account(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DexId>,
     asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     lock_account: &<Runtime as frame_system::Config>::AccountId,
@@ -160,7 +160,7 @@ fn test_lock_unlock_other_account(
 }
 
 fn test_lock_unlock_other_accounts(
-    order_book_id: OrderBookId<AssetIdOf<Runtime>, DEXId>,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>, DexId>,
     asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     lock_account: &<Runtime as frame_system::Config>::AccountId,
@@ -223,7 +223,7 @@ fn should_lock_unlock_base_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -271,7 +271,7 @@ fn should_lock_unlock_other_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -317,7 +317,7 @@ fn should_lock_unlock_indivisible_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR,
@@ -358,7 +358,7 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR,
@@ -389,7 +389,7 @@ fn should_not_lock_insufficient_base_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -420,7 +420,7 @@ fn should_not_lock_insufficient_other_asset() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -459,7 +459,7 @@ fn should_not_lock_insufficient_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR,
@@ -491,7 +491,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -530,7 +530,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -576,7 +576,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR,
@@ -599,7 +599,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
 fn should_expire_order() {
     ext().execute_with(|| {
         let caller = accounts::alice::<Runtime>();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -671,7 +671,7 @@ fn should_expire_order() {
 fn should_cleanup_on_expiring() {
     ext().execute_with(|| {
         let caller = accounts::alice::<Runtime>();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -816,7 +816,7 @@ fn should_cleanup_on_expiring() {
 #[test]
 fn should_enforce_expiration_and_weight_limits() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -941,31 +941,31 @@ fn should_emit_event_on_expiration_failure() {
 #[test]
 fn should_assemble_order_book_id() {
     ext().execute_with(|| {
-        let polkaswap_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let polkaswap_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
         };
 
-        let polkaswap_xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: common::DEXId::PolkaswapXSTUSD.into(),
+        let polkaswap_xstusd_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
+            dex_id: common::DexId::PolkaswapXstUsd.into(),
             base: VAL,
             quote: XSTUSD,
         };
 
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &XOR, &VAL)
+            OrderBookPallet::assemble_order_book_id(common::DexId::Polkaswap.into(), &XOR, &VAL)
                 .unwrap(),
             polkaswap_order_book_id
         );
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &VAL, &XOR)
+            OrderBookPallet::assemble_order_book_id(common::DexId::Polkaswap.into(), &VAL, &XOR)
                 .unwrap(),
             polkaswap_order_book_id
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::PolkaswapXSTUSD.into(),
+                common::DexId::PolkaswapXstUsd.into(),
                 &XSTUSD,
                 &VAL
             )
@@ -974,7 +974,7 @@ fn should_assemble_order_book_id() {
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::PolkaswapXSTUSD.into(),
+                common::DexId::PolkaswapXstUsd.into(),
                 &VAL,
                 &XSTUSD
             )
@@ -988,28 +988,28 @@ fn should_assemble_order_book_id() {
 fn should_not_assemble_order_book_id_without_dex_base() {
     ext().execute_with(|| {
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &XSTUSD, &VAL),
+            OrderBookPallet::assemble_order_book_id(common::DexId::Polkaswap.into(), &XSTUSD, &VAL),
             None
         );
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &VAL, &XSTUSD),
+            OrderBookPallet::assemble_order_book_id(common::DexId::Polkaswap.into(), &VAL, &XSTUSD),
             None
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::Polkaswap.into(),
+                common::DexId::Polkaswap.into(),
                 &XSTUSD,
                 &XSTUSD
             ),
             None
         );
         assert_eq!(
-            OrderBookPallet::assemble_order_book_id(common::DEXId::Polkaswap.into(), &XOR, &XOR),
+            OrderBookPallet::assemble_order_book_id(common::DexId::Polkaswap.into(), &XOR, &XOR),
             None
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::PolkaswapXSTUSD.into(),
+                common::DexId::PolkaswapXstUsd.into(),
                 &XOR,
                 &VAL
             ),
@@ -1017,7 +1017,7 @@ fn should_not_assemble_order_book_id_without_dex_base() {
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::PolkaswapXSTUSD.into(),
+                common::DexId::PolkaswapXstUsd.into(),
                 &VAL,
                 &XOR
             ),
@@ -1025,7 +1025,7 @@ fn should_not_assemble_order_book_id_without_dex_base() {
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::PolkaswapXSTUSD.into(),
+                common::DexId::PolkaswapXstUsd.into(),
                 &XOR,
                 &XOR
             ),
@@ -1033,7 +1033,7 @@ fn should_not_assemble_order_book_id_without_dex_base() {
         );
         assert_eq!(
             OrderBookPallet::assemble_order_book_id(
-                common::DEXId::PolkaswapXSTUSD.into(),
+                common::DexId::PolkaswapXstUsd.into(),
                 &XSTUSD,
                 &XSTUSD
             ),
@@ -1045,7 +1045,7 @@ fn should_not_assemble_order_book_id_without_dex_base() {
 #[test]
 fn can_exchange() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1069,7 +1069,7 @@ fn cannot_exchange_with_non_existed_order_book() {
 #[test]
 fn cannot_exchange_with_not_trade_status() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1109,7 +1109,7 @@ fn cannot_exchange_with_not_trade_status() {
 #[test]
 fn should_quote() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1255,7 +1255,7 @@ fn should_not_quote_with_non_existed_order_book() {
 #[test]
 fn should_not_quote_with_empty_side() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1290,7 +1290,7 @@ fn should_not_quote_with_empty_side() {
 #[test]
 fn should_not_quote_with_small_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1347,7 +1347,7 @@ fn should_not_quote_with_small_amount() {
 #[test]
 fn should_not_quote_with_wrong_order_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1845,7 +1845,7 @@ fn should_not_quote_with_wrong_order_amount() {
 #[test]
 fn should_not_quote_if_amount_is_greater_than_liquidity() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1880,7 +1880,7 @@ fn should_not_quote_if_amount_is_greater_than_liquidity() {
 #[test]
 fn should_quote_without_impact() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2018,7 +2018,7 @@ fn should_not_quote_without_impact_with_non_existed_order_book() {
 #[test]
 fn should_not_quote_without_impact_with_empty_side() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2053,7 +2053,7 @@ fn should_not_quote_without_impact_with_empty_side() {
 #[test]
 fn should_not_quote_without_impact_with_small_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2110,7 +2110,7 @@ fn should_not_quote_without_impact_with_small_amount() {
 #[test]
 fn should_step_quote_when_liquidity_is_less_than_max_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2587,7 +2587,7 @@ fn should_step_quote_when_liquidity_is_less_than_max_amount() {
 #[test]
 fn should_step_quote_when_liquidity_is_more_than_max_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3075,7 +3075,7 @@ fn should_step_quote_when_liquidity_is_more_than_max_amount() {
 #[test]
 fn should_step_quote_and_return_empty_for_small_liquidity() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3215,7 +3215,7 @@ fn should_not_step_quote_with_non_existed_order_book() {
 #[test]
 fn should_exchange_and_transfer_to_owner() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3345,7 +3345,7 @@ fn should_exchange_and_transfer_to_owner() {
 #[test]
 fn should_exchange_and_transfer_to_another_account() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3560,7 +3560,7 @@ fn should_not_exchange_with_non_existed_order_book() {
 #[test]
 fn should_not_exchange_with_invalid_slippage() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,

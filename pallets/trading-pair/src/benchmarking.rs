@@ -36,14 +36,14 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    AssetManager, AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    AssetManager, AssetName, AssetSymbol, Balance, DexId, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {

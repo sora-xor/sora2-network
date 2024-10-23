@@ -84,7 +84,7 @@ fn should_return_error_for_invalid_limit_order_amount() {
 
 #[test]
 fn should_return_error_for_invalid_market_order_amount() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -146,7 +146,7 @@ fn should_pass_valid_limit_order() {
 
 #[test]
 fn should_pass_valid_market_order() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,

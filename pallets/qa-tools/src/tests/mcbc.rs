@@ -32,7 +32,7 @@ use super::{alice, register_custom_asset, QaToolsPallet};
 use assets::AssetIdOf;
 use common::prelude::{BalanceUnit, QuoteAmount};
 use common::{
-    assert_approx_eq, balance, AccountIdOf, AssetInfoProvider, Balance, DEXId, LiquiditySource,
+    assert_approx_eq, balance, AccountIdOf, AssetInfoProvider, Balance, DexId, LiquiditySource,
     PriceToolsProvider, PriceVariant, CERES_ASSET_ID, ETH, TBCD, VAL, XOR,
 };
 use frame_support::dispatch::{DispatchError, RawOrigin};
@@ -56,7 +56,7 @@ fn should_init_mcbc_base_supply() {
             assets::Pallet::<Runtime>::total_balance(&XOR, &xor_holder).unwrap();
         assert!(
             multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &collateral_asset_id,
                 &XOR,
                 QuoteAmount::WithDesiredOutput {
@@ -811,7 +811,7 @@ fn init_mcbc_and_check_quote_exchange(
     );
     let (collateral_quote_result, _) =
         multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &XOR,
             &collateral_asset_id,
             QuoteAmount::WithDesiredInput {
@@ -825,7 +825,7 @@ fn init_mcbc_and_check_quote_exchange(
         expected_collateral_quote_amount_out
     );
     let (tbcd_quote_result, _) = multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-        &DEXId::Polkaswap.into(),
+        &DexId::Polkaswap.into(),
         &XOR,
         &TBCD,
         QuoteAmount::WithDesiredInput {
@@ -840,7 +840,7 @@ fn init_mcbc_and_check_quote_exchange(
 fn test_quote(collateral_asset_id: AssetIdOf<Runtime>) {
     assert!(
         multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &collateral_asset_id,
             &XOR,
             QuoteAmount::WithDesiredOutput {
@@ -929,7 +929,7 @@ fn ref_xor_price_update_changes_quote() {
         let collateral_asset_id = VAL;
         assert!(
             multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-                &DEXId::Polkaswap.into(),
+                &DexId::Polkaswap.into(),
                 &collateral_asset_id,
                 &XOR,
                 QuoteAmount::WithDesiredOutput {
@@ -983,7 +983,7 @@ fn ref_xor_price_update_changes_quote() {
             }),
         ));
         let (quote_result, _) = multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &XOR,
             &collateral_asset_id,
             QuoteAmount::WithDesiredInput {
@@ -1007,7 +1007,7 @@ fn ref_xor_price_update_changes_quote() {
         ));
 
         let (quote_result_2, _) = multicollateral_bonding_curve_pool::Pallet::<Runtime>::quote(
-            &DEXId::Polkaswap.into(),
+            &DexId::Polkaswap.into(),
             &XOR,
             &collateral_asset_id,
             QuoteAmount::WithDesiredInput {

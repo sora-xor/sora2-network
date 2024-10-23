@@ -35,7 +35,7 @@ use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_assets_config,
     mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
-    mock_vested_rewards_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    mock_vested_rewards_config, Amount, AssetId32, AssetName, AssetSymbol, DexInfo, Fixed,
     FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, RewardReason, DAI,
     DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
@@ -59,11 +59,11 @@ use std::collections::{BTreeSet, HashMap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type DEXId = u32;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type DexId = u32;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
-type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
+type ReservesInit = Vec<(DexId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -83,10 +83,10 @@ pub fn adar() -> AccountId {
     GetADARAccountId::get()
 }
 
-pub const DEX_A_ID: DEXId = 1;
-pub const DEX_B_ID: DEXId = 2;
-pub const DEX_C_ID: DEXId = 3;
-pub const DEX_D_ID: DEXId = 0;
+pub const DEX_A_ID: DexId = 1;
+pub const DEX_B_ID: DexId = 2;
+pub const DEX_C_ID: DexId = 3;
+pub const DEX_D_ID: DexId = 0;
 
 pub fn special_asset() -> AssetId {
     AssetId::from_str("0x02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()
@@ -161,14 +161,14 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        MbcPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>);
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
@@ -182,8 +182,8 @@ impl Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarketTBC = MockMCBCPool;
-    type PrimaryMarketXST = MockXSTPool;
+    type PrimaryMarketTbc = MockMcbcPool;
+    type PrimaryMarketXst = MockXstPool;
     type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
     type GetADARAccountId = GetADARAccountId;
@@ -201,35 +201,35 @@ impl Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetTbcBuyBackTbcdPercent: Fixed = fixed!(0.025);
 }
 
 impl dex_manager::Config for Runtime {}
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee0;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee10;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee20;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee30;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
@@ -248,9 +248,9 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type XYKPool = pool_xyk::Pallet<Runtime>;
-    type MulticollateralBondingCurvePool = MockMCBCPool;
-    type XSTPool = MockXSTPool;
+    type XykPool = pool_xyk::Pallet<Runtime>;
+    type MulticollateralBondingCurvePool = MockMcbcPool;
+    type XstPool = MockXstPool;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type OrderBook = (); // todo (m.tagirov) ALT
     type WeightInfo = ();
@@ -258,7 +258,7 @@ impl dex_api::Config for Runtime {
 
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -274,7 +274,7 @@ impl pswap_distribution::Config for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
+    type EnsureDexManager = ();
     type OnPswapBurnedAggregator = ();
     type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type WeightInfo = ();
@@ -303,13 +303,13 @@ impl extended_assets::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DexId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
@@ -318,7 +318,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
     type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
-    type XSTMarketInfo = ();
+    type XstMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -338,7 +338,7 @@ impl pallet_timestamp::Config for Runtime {
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXyk;
+    type XykPool = PoolXyk;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
@@ -349,12 +349,12 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type BuyBackHandler = LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type BuyBackTbcdPercent = GetTbcBuyBackTbcdPercent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = ();
@@ -362,12 +362,12 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 pub struct ExtBuilder {
     pub total_supply: Balance,
-    pub xyk_reserves: Vec<(DEXId, AssetId, (Balance, Balance))>,
+    pub xyk_reserves: Vec<(DexId, AssetId, (Balance, Balance))>,
     pub reserves: ReservesInit,
     pub reserves_2: ReservesInit,
     pub reserves_3: ReservesInit,
     pub reserves_4: ReservesInit,
-    pub dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    pub dex_list: Vec<(DexId, DexInfo<AssetId>)>,
     pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
@@ -411,7 +411,7 @@ impl Default for ExtBuilder {
             dex_list: vec![
                 (
                     DEX_A_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -419,7 +419,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_B_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -427,7 +427,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_C_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -435,7 +435,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_D_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -454,7 +454,7 @@ impl Default for ExtBuilder {
             ],
             source_types: vec![
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-                LiquiditySourceType::XSTPool,
+                LiquiditySourceType::XstPool,
                 LiquiditySourceType::MockPool,
                 LiquiditySourceType::MockPool2,
                 LiquiditySourceType::MockPool3,
@@ -523,9 +523,9 @@ impl Default for ExtBuilder {
     }
 }
 
-pub struct MockMCBCPool;
+pub struct MockMcbcPool;
 
-impl MockMCBCPool {
+impl MockMcbcPool {
     pub fn init(reserves: Vec<(AssetId, Balance)>) -> Result<(), DispatchError> {
         let reserves_tech_account_id =
             TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
@@ -563,8 +563,8 @@ impl MockMCBCPool {
     }
 }
 
-impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockMCBCPool {
-    fn can_exchange(_dex_id: &DEXId, _input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
+impl LiquiditySource<DexId, AccountId, AssetId, Balance, DispatchError> for MockMcbcPool {
+    fn can_exchange(_dex_id: &DexId, _input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
         if output_asset_id == &XOR.into() {
             return true;
         }
@@ -577,7 +577,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -692,7 +692,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn step_quote(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -752,7 +752,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     fn exchange(
         _sender: &AccountId,
         _receiver: &AccountId,
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _desired_amount: SwapAmount<Balance>,
@@ -761,7 +761,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn check_rewards(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         _input_amount: Balance,
@@ -783,7 +783,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_without_impact(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -811,7 +811,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetMarketInfo<AssetId> for MockMCBCPool {
+impl GetMarketInfo<AssetId> for MockMcbcPool {
     fn buy_price(
         _base_asset: &AssetId,
         collateral_asset: &AssetId,
@@ -902,7 +902,7 @@ impl ExtBuilder {
             reserves: xyk_reserves,
             dex_list: vec![(
                 0,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: GetBaseAssetId::get(),
                     synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
@@ -925,7 +925,7 @@ impl ExtBuilder {
             (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
             (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
         ];
-        self.source_types.push(LiquiditySourceType::XYKPool);
+        self.source_types.push(LiquiditySourceType::XykPool);
         self
     }
 
@@ -1097,10 +1097,10 @@ impl ExtBuilder {
     }
 }
 
-pub struct MockXSTPool;
+pub struct MockXstPool;
 
 #[allow(unused)]
-impl MockXSTPool {
+impl MockXstPool {
     pub fn init() -> Result<(), DispatchError> {
         let reserves_tech_account_id =
             TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
@@ -1112,8 +1112,8 @@ impl MockXSTPool {
     }
 }
 
-impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockXSTPool {
-    fn can_exchange(_dex_id: &DEXId, input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
+impl LiquiditySource<DexId, AccountId, AssetId, Balance, DispatchError> for MockXstPool {
+    fn can_exchange(_dex_id: &DexId, input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
         if output_asset_id == &XST.into() && input_asset_id == &XSTUSD.into() {
             return true;
         } else if input_asset_id == &XST.into() && output_asset_id == &XSTUSD.into() {
@@ -1124,7 +1124,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -1160,7 +1160,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn step_quote(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -1213,7 +1213,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     fn exchange(
         _sender: &AccountId,
         _receiver: &AccountId,
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _desired_amount: SwapAmount<Balance>,
@@ -1222,7 +1222,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn check_rewards(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _input_amount: Balance,
@@ -1232,7 +1232,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_without_impact(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -1260,7 +1260,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetMarketInfo<AssetId> for MockXSTPool {
+impl GetMarketInfo<AssetId> for MockXstPool {
     fn buy_price(
         _base_asset_id: &AssetId,
         synthetic_asset: &AssetId,

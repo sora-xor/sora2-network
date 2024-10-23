@@ -42,20 +42,20 @@ use sp_std::vec::Vec;
 use std::sync::Arc;
 
 // Runtime API imports.
-pub use dex_manager_runtime_api::DEXManagerAPI as DEXManagerRuntimeAPI;
+pub use dex_manager_runtime_api::DexManagerAPI as DexManagerRuntimeAPI;
 
 #[rpc(server, client)]
-pub trait DEXManagerAPI<BlockHash, DEXId> {
-    #[method(name = "dexManager_listDEXIds")]
-    fn list_dex_ids(&self, at: Option<BlockHash>) -> Result<Vec<DEXId>>;
+pub trait DexManagerAPI<BlockHash, DexId> {
+    #[method(name = "dexManager_listDexIds")]
+    fn list_dex_ids(&self, at: Option<BlockHash>) -> Result<Vec<DexId>>;
 }
 
-pub struct DEXManager<C, B> {
+pub struct DexManager<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,
 }
 
-impl<C, B> DEXManager<C, B> {
+impl<C, B> DexManager<C, B> {
     /// Construct default `DEX`.
     pub fn new(client: Arc<C>) -> Self {
         Self {
@@ -65,15 +65,15 @@ impl<C, B> DEXManager<C, B> {
     }
 }
 
-impl<C, Block, DEXId> DEXManagerAPIServer<<Block as BlockT>::Hash, DEXId> for DEXManager<C, Block>
+impl<C, Block, DexId> DexManagerAPIServer<<Block as BlockT>::Hash, DexId> for DexManager<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: DEXManagerRuntimeAPI<Block, DEXId>,
-    DEXId: Codec,
+    C::Api: DexManagerRuntimeAPI<Block, DexId>,
+    DexId: Codec,
 {
-    fn list_dex_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<DEXId>> {
+    fn list_dex_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<DexId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

@@ -44,14 +44,14 @@ use std::sync::Arc;
 pub use trading_pair_runtime_api::TradingPairAPI as TradingPairRuntimeAPI;
 
 #[rpc(client, server)]
-pub trait TradingPairAPI<BlockHash, DEXId, TradingPair, AssetId, LiquiditySourceType> {
+pub trait TradingPairAPI<BlockHash, DexId, TradingPair, AssetId, LiquiditySourceType> {
     #[method(name = "tradingPair_listEnabledPairs")]
-    fn list_enabled_pairs(&self, dex_id: DEXId, at: Option<BlockHash>) -> Result<Vec<TradingPair>>;
+    fn list_enabled_pairs(&self, dex_id: DexId, at: Option<BlockHash>) -> Result<Vec<TradingPair>>;
 
     #[method(name = "tradingPair_isPairEnabled")]
     fn is_pair_enabled(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
         at: Option<BlockHash>,
@@ -60,7 +60,7 @@ pub trait TradingPairAPI<BlockHash, DEXId, TradingPair, AssetId, LiquiditySource
     #[method(name = "tradingPair_listEnabledSourcesForPair")]
     fn list_enabled_sources_for_pair(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
         at: Option<BlockHash>,
@@ -69,7 +69,7 @@ pub trait TradingPairAPI<BlockHash, DEXId, TradingPair, AssetId, LiquiditySource
     #[method(name = "tradingPair_isSourceEnabledForPair")]
     fn is_source_enabled_for_pair(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
         source_type: LiquiditySourceType,
@@ -92,22 +92,22 @@ impl<C, B> TradingPairClient<C, B> {
     }
 }
 
-impl<C, Block, DEXId, TradingPair, AssetId, LiquiditySourceType>
-    TradingPairAPIServer<<Block as BlockT>::Hash, DEXId, TradingPair, AssetId, LiquiditySourceType>
+impl<C, Block, DexId, TradingPair, AssetId, LiquiditySourceType>
+    TradingPairAPIServer<<Block as BlockT>::Hash, DexId, TradingPair, AssetId, LiquiditySourceType>
     for TradingPairClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: TradingPairRuntimeAPI<Block, DEXId, TradingPair, AssetId, LiquiditySourceType>,
-    DEXId: Codec,
+    C::Api: TradingPairRuntimeAPI<Block, DexId, TradingPair, AssetId, LiquiditySourceType>,
+    DexId: Codec,
     TradingPair: Codec,
     AssetId: Codec,
     LiquiditySourceType: Codec,
 {
     fn list_enabled_pairs(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<TradingPair>> {
         let api = self.client.runtime_api();
@@ -121,7 +121,7 @@ where
 
     fn is_pair_enabled(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,
@@ -137,7 +137,7 @@ where
 
     fn list_enabled_sources_for_pair(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,
@@ -153,7 +153,7 @@ where
 
     fn is_source_enabled_for_pair(
         &self,
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
         source_type: LiquiditySourceType,

@@ -11,7 +11,7 @@ use sp_std::collections::btree_set::BTreeSet;
 use crate::aliases::AccountIdOf;
 use crate::{AccountPools, Config, Pallet};
 
-generate_storage_instance!(PoolXYK, AccountPools);
+generate_storage_instance!(PoolXyk, AccountPools);
 type OldAccountPools<T> = StorageMap<
     AccountPoolsOldInstance,
     Identity,

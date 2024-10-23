@@ -79,8 +79,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfosV2 (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:0 w:1)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:0 w:1)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_reference_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1007`
@@ -98,14 +98,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfosV2 (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:0)
 	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSymbols (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSynthetics (r:0 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSymbols (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:0 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn enable_synthetic_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2258`
@@ -115,10 +115,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:1)
 	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
 	fn disable_synthetic_asset() -> Weight {
@@ -130,10 +130,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSymbols (r:0 w:1)
-	/// Proof Skipped: XSTPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSymbols (r:0 w:1)
+	/// Proof Skipped: XstPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
 	fn remove_synthetic_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `309`
@@ -155,18 +155,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:2 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:1)
 	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSymbols (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSymbols (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfosV2 (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSynthetics (r:0 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:0 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn register_synthetic_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3714`
@@ -176,8 +176,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(14_u64))
 			.saturating_add(T::DbWeight::get().writes(10_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn set_synthetic_asset_fee() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `309`
@@ -187,8 +187,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:0 w:1)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:0 w:1)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_synthetic_base_asset_floor_price() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
@@ -197,20 +197,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(16_080_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: OracleProxy SymbolProviders (r:1 w:0)
 	/// Proof Skipped: OracleProxy SymbolProviders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:1 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:1 w:0)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:1 w:0)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:2 w:0)
 	/// Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:1 w:0)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:1 w:0)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	fn quote() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3084`
@@ -219,20 +219,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(82_883_000, 35448)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: OracleProxy SymbolProviders (r:1 w:0)
 	/// Proof Skipped: OracleProxy SymbolProviders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:1 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:1 w:0)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:1 w:0)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:2 w:0)
 	/// Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:1 w:0)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:1 w:0)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	fn step_quote() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3084`
@@ -241,20 +241,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(138_087_000, 35448)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: OracleProxy SymbolProviders (r:1 w:0)
 	/// Proof Skipped: OracleProxy SymbolProviders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:1 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:1 w:0)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:1 w:0)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:2 w:0)
 	/// Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:1 w:0)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:1 w:0)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:3 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
@@ -284,8 +284,8 @@ impl WeightInfo for () {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfosV2 (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:0 w:1)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:0 w:1)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_reference_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1007`
@@ -303,14 +303,14 @@ impl WeightInfo for () {
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfosV2 (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:0)
 	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSymbols (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSynthetics (r:0 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSymbols (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:0 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn enable_synthetic_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2258`
@@ -320,10 +320,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:1)
 	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
 	fn disable_synthetic_asset() -> Weight {
@@ -335,10 +335,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSymbols (r:0 w:1)
-	/// Proof Skipped: XSTPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSymbols (r:0 w:1)
+	/// Proof Skipped: XstPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
 	fn remove_synthetic_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `309`
@@ -360,18 +360,18 @@ impl WeightInfo for () {
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:2 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:1)
 	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSymbols (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSymbols (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSymbols (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfosV2 (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool EnabledSynthetics (r:0 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:0 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn register_synthetic_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3714`
@@ -381,8 +381,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(14_u64))
 			.saturating_add(RocksDbWeight::get().writes(10_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:1)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:1)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	fn set_synthetic_asset_fee() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `309`
@@ -392,8 +392,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:0 w:1)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:0 w:1)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_synthetic_base_asset_floor_price() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
@@ -402,20 +402,20 @@ impl WeightInfo for () {
 		Weight::from_parts(16_080_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: OracleProxy SymbolProviders (r:1 w:0)
 	/// Proof Skipped: OracleProxy SymbolProviders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:1 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:1 w:0)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:1 w:0)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:2 w:0)
 	/// Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:1 w:0)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:1 w:0)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	fn quote() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3084`
@@ -424,20 +424,20 @@ impl WeightInfo for () {
 		Weight::from_parts(82_883_000, 35448)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: OracleProxy SymbolProviders (r:1 w:0)
 	/// Proof Skipped: OracleProxy SymbolProviders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:1 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:1 w:0)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:1 w:0)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:2 w:0)
 	/// Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:1 w:0)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:1 w:0)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	fn step_quote() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `3084`
@@ -446,20 +446,20 @@ impl WeightInfo for () {
 		Weight::from_parts(138_087_000, 35448)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 	}
-	/// Storage: XSTPool EnabledSynthetics (r:1 w:0)
-	/// Proof Skipped: XSTPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
+	/// Storage: XstPool EnabledSynthetics (r:1 w:0)
+	/// Proof Skipped: XstPool EnabledSynthetics (max_values: None, max_size: None, mode: Measured)
 	/// Storage: OracleProxy EnabledOracles (r:1 w:0)
 	/// Proof Skipped: OracleProxy EnabledOracles (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: OracleProxy SymbolProviders (r:1 w:0)
 	/// Proof Skipped: OracleProxy SymbolProviders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Band SymbolRates (r:1 w:0)
 	/// Proof Skipped: Band SymbolRates (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool ReferenceAssetId (r:1 w:0)
-	/// Proof Skipped: XSTPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool ReferenceAssetId (r:1 w:0)
+	/// Proof Skipped: XstPool ReferenceAssetId (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: PriceTools PriceInfos (r:2 w:0)
 	/// Proof Skipped: PriceTools PriceInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XSTPool SyntheticBaseAssetFloorPrice (r:1 w:0)
-	/// Proof Skipped: XSTPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: XstPool SyntheticBaseAssetFloorPrice (r:1 w:0)
+	/// Proof Skipped: XstPool SyntheticBaseAssetFloorPrice (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:3 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)

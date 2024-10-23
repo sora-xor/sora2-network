@@ -30,11 +30,11 @@
 
 use super::pallet::{Config, Pallet};
 use codec::Decode;
-use common::{AssetIdOf, DEXInfo, XST};
+use common::{AssetIdOf, DexInfo, XST};
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
-use crate::DEXInfos;
+use crate::DexInfos;
 
 pub mod kusd_dex;
 #[cfg(test)]
@@ -42,7 +42,7 @@ mod tests;
 pub mod vxor_dex;
 
 #[derive(Decode)]
-struct DEXInfoV0<T: Config> {
+struct DexInfoV0<T: Config> {
     base_asset_id: AssetIdOf<T>,
     is_public: bool,
 }
@@ -55,9 +55,9 @@ pub fn migrate<T: Config>() -> Weight {
     }
 
     let mut weight = 0;
-    DEXInfos::<T>::translate::<DEXInfoV0<T>, _>(|_, dex_info| {
+    DexInfos::<T>::translate::<DexInfoV0<T>, _>(|_, dex_info| {
         weight += 1;
-        Some(DEXInfo {
+        Some(DexInfo {
             base_asset_id: dex_info.base_asset_id,
             synthetic_base_asset_id: XST.into(),
             is_public: dex_info.is_public,

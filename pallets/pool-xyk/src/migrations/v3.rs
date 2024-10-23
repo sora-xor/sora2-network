@@ -44,12 +44,12 @@ use crate::{PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
 use ceres_liquidity_locker::LockerData;
 use demeter_farming_platform::UserInfos;
 
-pub struct XYKPoolUpgrade<T, L>(core::marker::PhantomData<(T, L)>);
+pub struct XykPoolUpgrade<T, L>(core::marker::PhantomData<(T, L)>);
 
-impl<T, L> XYKPoolUpgrade<T, L>
+impl<T, L> XykPoolUpgrade<T, L>
 where
     T: crate::Config,
-    L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)>>,
+    L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DexId)>>,
 {
     /// Unlocks and withdraws a liquidity portion provided by `user_account`
     /// Returns resulting weight and error flag, indicating that there was some problem
@@ -59,7 +59,7 @@ where
         user_account: T::AccountId,
         base_asset: AssetIdOf<T>,
         target_asset: AssetIdOf<T>,
-        dex_id: T::DEXId,
+        dex_id: T::DexId,
         lp_tokens: u128,
     ) -> DispatchResult {
         weight_meter.check_accrue(
@@ -107,7 +107,7 @@ where
     /// Also deregisters pool account and fee account from technical pallet
     fn remove_pool(
         weight_meter: &mut WeightMeter,
-        dex_id: T::DEXId,
+        dex_id: T::DexId,
         base_asset: AssetIdOf<T>,
         target_asset: AssetIdOf<T>,
         pool_account: T::AccountId,
@@ -145,9 +145,9 @@ where
             return Ok(());
         }
 
-        info!("Migrating PoolXYK to v3");
+        info!("Migrating PoolXyk to v3");
 
-        let swap_pairs_to_be_deleted: Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)> = L::get();
+        let swap_pairs_to_be_deleted: Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DexId)> = L::get();
 
         for (base_asset, target_asset, dex_id) in swap_pairs_to_be_deleted {
             weight_meter.check_accrue(T::DbWeight::get().reads(1));
@@ -209,11 +209,11 @@ where
     }
 }
 
-/// Migration which removes invalid pools from `XYKPool` and their corresponding dependencies.
-impl<T, L> OnRuntimeUpgrade for XYKPoolUpgrade<T, L>
+/// Migration which removes invalid pools from `XykPool` and their corresponding dependencies.
+impl<T, L> OnRuntimeUpgrade for XykPoolUpgrade<T, L>
 where
     T: crate::Config,
-    L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DEXId)>>,
+    L: Get<Vec<(AssetIdOf<T>, AssetIdOf<T>, T::DexId)>>,
 {
     fn on_runtime_upgrade() -> Weight {
         let mut weight_meter = WeightMeter::max_limit();
@@ -221,9 +221,9 @@ where
         if let Err(err) =
             frame_support::storage::with_storage_layer(|| Self::migrate(&mut weight_meter))
         {
-            error!("Failed to migrate PoolXYK to v3: {:?}, rollback", err);
+            error!("Failed to migrate PoolXyk to v3: {:?}, rollback", err);
         } else {
-            info!("Successfully migrated PoolXYK to v3");
+            info!("Successfully migrated PoolXyk to v3");
         };
         weight_meter.consumed
     }

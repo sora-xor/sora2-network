@@ -37,9 +37,9 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::prelude::{Balance, DEXInfo, FixedWrapper};
+use common::prelude::{Balance, DexInfo, FixedWrapper};
 use common::{
-    balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
+    balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DexId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
     KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
@@ -54,13 +54,13 @@ use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
+    DemocracyConfig, DexApiConfig, DexManagerConfig, EthBridgeConfig, GenesisConfig,
     GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
     GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
     StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XstPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
@@ -731,35 +731,35 @@ fn bonding_curve_distribution_accounts(
 
     let xor_allocation = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             TechPurpose::Identifier(b"xor_allocation".to_vec()),
         )),
         val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             TechPurpose::Identifier(b"sora_citizens".to_vec()),
         )),
         projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             TechPurpose::Identifier(b"stores_and_shops".to_vec()),
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             TechPurpose::Identifier(b"projects".to_vec()),
         )),
         projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             TechPurpose::Identifier(b"val_holders".to_vec()),
         )),
         val_holders_buy_back_coefficient.get().unwrap(),
@@ -950,9 +950,9 @@ fn testnet_genesis(
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
 
     let xst_pool_permissioned_tech_account_id =
-        framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
+        framenode_runtime::GetXstPoolPermissionedTechAccountId::get();
     let xst_pool_permissioned_account_id =
-        framenode_runtime::GetXSTPoolPermissionedAccountId::get();
+        framenode_runtime::GetXstPoolPermissionedAccountId::get();
 
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
@@ -1563,11 +1563,11 @@ fn testnet_genesis(
             ],
         },
         balances: BalancesConfig { balances },
-        dex_manager: DEXManagerConfig {
+        dex_manager: DexManagerConfig {
             dex_list: vec![
                 (
                     0,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -1575,7 +1575,7 @@ fn testnet_genesis(
                 ),
                 (
                     1,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: XSTUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -1583,7 +1583,7 @@ fn testnet_genesis(
                 ),
                 (
                     2,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: KUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -1591,7 +1591,7 @@ fn testnet_genesis(
                 ),
                 (
                     3,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: VXOR,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -1610,11 +1610,11 @@ fn testnet_genesis(
                 .map(|target_asset_id| create_trading_pair(XOR, target_asset_id))
                 .collect(),
         },
-        dexapi: DEXAPIConfig {
+        dex_api: DexApiConfig {
             source_types: [
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-                LiquiditySourceType::XSTPool,
+                LiquiditySourceType::XstPool,
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
@@ -1702,7 +1702,7 @@ fn testnet_genesis(
         elections_phragmen: Default::default(),
         technical_membership: Default::default(),
         im_online: Default::default(),
-        xst_pool: XSTPoolConfig {
+        xst_pool: XstPoolConfig {
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![(
                 XSTUSD.into(),
@@ -1907,9 +1907,9 @@ fn mainnet_genesis(
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
 
     let xst_pool_permissioned_tech_account_id =
-        framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
+        framenode_runtime::GetXstPoolPermissionedTechAccountId::get();
     let xst_pool_permissioned_account_id =
-        framenode_runtime::GetXSTPoolPermissionedAccountId::get();
+        framenode_runtime::GetXstPoolPermissionedAccountId::get();
 
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
@@ -2438,11 +2438,11 @@ fn mainnet_genesis(
             )
             .collect(),
         },
-        dex_manager: DEXManagerConfig {
+        dex_manager: DexManagerConfig {
             dex_list: vec![
                 (
                     0,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -2450,7 +2450,7 @@ fn mainnet_genesis(
                 ),
                 (
                     1,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: XSTUSD.into(),
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -2458,7 +2458,7 @@ fn mainnet_genesis(
                 ),
                 (
                     2,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: KUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -2466,7 +2466,7 @@ fn mainnet_genesis(
                 ),
                 (
                     3,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: VXOR,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
@@ -2513,9 +2513,9 @@ fn mainnet_genesis(
                 .map(|target_asset_id| create_trading_pair(XOR.into(), target_asset_id))
                 .collect(),
         },
-        dexapi: DEXAPIConfig {
+        dex_api: DexApiConfig {
             source_types: [
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::OrderBook,
             ]
@@ -2582,7 +2582,7 @@ fn mainnet_genesis(
         elections_phragmen: Default::default(),
         technical_membership: Default::default(),
         im_online: Default::default(),
-        xst_pool: XSTPoolConfig {
+        xst_pool: XstPoolConfig {
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![(
                 XSTUSD,
@@ -2601,7 +2601,7 @@ fn create_trading_pair(
     target_asset_id: AssetId,
 ) -> (u32, common::TradingPair<AssetId>) {
     (
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         common::TradingPair {
             base_asset_id,
             target_asset_id,

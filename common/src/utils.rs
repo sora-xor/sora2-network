@@ -247,9 +247,9 @@ pub mod fee_serialization {
 
 /// Generalized filtration mechanism for listing liquidity sources.
 #[derive(Encode, Decode, Clone, RuntimeDebug, scale_info::TypeInfo)]
-pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
+pub struct LiquiditySourceFilter<DexId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
     /// DEX Id to which listing is limited.
-    pub dex_id: DEXId,
+    pub dex_id: DexId,
     /// Selected Liquidity Source Indices, e.g. Types comprising filter.
     pub selected: Vec<LiquiditySourceIndex>,
     /// Switch to either include only sources selected if `false`,
@@ -257,11 +257,11 @@ pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: 
     pub forbid_selected: bool,
 }
 
-impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
-    LiquiditySourceFilter<DEXId, LiquiditySourceIndex>
+impl<DexId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
+    LiquiditySourceFilter<DexId, LiquiditySourceIndex>
 {
     /// Create filter with no effect.
-    pub fn empty(dex_id: DEXId) -> Self {
+    pub fn empty(dex_id: DexId) -> Self {
         Self {
             dex_id,
             selected: Vec::new(),
@@ -270,7 +270,7 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     }
 
     pub fn new(
-        dex_id: DEXId,
+        dex_id: DexId,
         selected_indices: Vec<LiquiditySourceIndex>,
         forbid_selected: bool,
     ) -> Self {
@@ -282,7 +282,7 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     }
 
     /// Create filter with fully identified liquidity sources which are forbidden, all other sources are allowed.
-    pub fn with_forbidden(dex_id: DEXId, forbidden_indices: Vec<LiquiditySourceIndex>) -> Self {
+    pub fn with_forbidden(dex_id: DexId, forbidden_indices: Vec<LiquiditySourceIndex>) -> Self {
         Self {
             dex_id,
             selected: forbidden_indices,
@@ -291,7 +291,7 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     }
 
     /// Create filter with fully identified liquidity sources which are allowed, all other sources are forbidden.
-    pub fn with_allowed(dex_id: DEXId, allowed_indices: Vec<LiquiditySourceIndex>) -> Self {
+    pub fn with_allowed(dex_id: DexId, allowed_indices: Vec<LiquiditySourceIndex>) -> Self {
         Self {
             dex_id,
             selected: allowed_indices,
@@ -300,7 +300,7 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     }
 
     pub fn with_mode(
-        dex_id: DEXId,
+        dex_id: DexId,
         mode: FilterMode,
         selected_indices: Vec<LiquiditySourceIndex>,
     ) -> Self {
@@ -315,7 +315,7 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
         }
     }
 
-    pub fn matches_dex_id(&self, dex_id: DEXId) -> bool {
+    pub fn matches_dex_id(&self, dex_id: DexId) -> bool {
         self.dex_id == dex_id
     }
 
@@ -331,7 +331,7 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     /// Check if given liquidity source is allowed by filter. Return True if allowed.
     pub fn matches(
         &self,
-        liquidity_source_id: &LiquiditySourceId<DEXId, LiquiditySourceIndex>,
+        liquidity_source_id: &LiquiditySourceId<DexId, LiquiditySourceIndex>,
     ) -> bool {
         self.matches_dex_id(liquidity_source_id.dex_id)
             && self.matches_index(liquidity_source_id.liquidity_source_index)

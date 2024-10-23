@@ -6,7 +6,7 @@ mod test {
     use common::APOLLO_ASSET_ID;
     use common::CERES_ASSET_ID;
     use common::{
-        balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
+        balance, AssetInfoProvider, Balance, DexId, DexId::Polkaswap, DAI, DOT, KSM, XOR,
     };
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
@@ -216,7 +216,7 @@ mod test {
         ));
     }
 
-    fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
+    fn init_pool(dex_id: DexId, base_asset: AssetId, other_asset: AssetId) {
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
             RuntimeOrigin::signed(charles()),
             dex_id,

@@ -119,7 +119,7 @@ mod tests {
                     &dex_id,
                     &XOR.into(),
                     &CERES_ASSET_ID.into(),
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                 )
                 .expect("Failed to query trading pair status.")
             );
@@ -163,7 +163,7 @@ mod tests {
                     &dex_id_xst,
                     &XSTUSD.into(),
                     &CERES_ASSET_ID.into(),
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                 )
                 .expect("Failed to query trading pair status.")
             );
@@ -1043,7 +1043,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     asset_xor,
                     asset_ceres,
                 )
@@ -1052,7 +1052,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let mut pooled_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -1096,7 +1096,7 @@ mod tests {
             assert_eq!(lp_tokens, fee);
 
             // Deposit to other XOR/CERES pool with different reward token
-            pooled_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            pooled_tokens = <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -1212,7 +1212,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     asset_xstusd,
                     asset_ceres,
                 )
@@ -1221,7 +1221,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let mut pooled_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -1266,7 +1266,7 @@ mod tests {
             assert_eq!(lp_tokens, fee);
 
             // Deposit to other XSTUSD/CERES pool with different reward token
-            pooled_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            pooled_tokens = <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -1751,7 +1751,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     asset_xstusd,
                     asset_ceres,
                 )
@@ -1760,7 +1760,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let mut pooled_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3144,7 +3144,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     pool_asset,
                     reward_asset,
                 )
@@ -3153,7 +3153,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3271,7 +3271,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     pool_asset,
                     reward_asset,
                 )
@@ -3279,7 +3279,7 @@ mod tests {
                 .0;
             // Calculate number of pool tokens of user's account
             let pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3375,7 +3375,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     pool_asset,
                     reward_asset,
                 )
@@ -3384,7 +3384,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3502,7 +3502,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     pool_asset,
                     reward_asset,
                 )
@@ -3511,7 +3511,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3587,7 +3587,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     pool_asset,
                     reward_asset,
                 )
@@ -3596,7 +3596,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let mut pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3620,7 +3620,7 @@ mod tests {
                 true
             ));
 
-            pool_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            pool_tokens = <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )
@@ -3706,7 +3706,7 @@ mod tests {
 
             // Get pool account
             let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::properties(
                     pool_asset,
                     reward_asset,
                 )
@@ -3715,7 +3715,7 @@ mod tests {
 
             // Calculate number of pool tokens of user's account
             let mut pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                     pool_account.clone(),
                     ALICE,
                 )
@@ -3739,7 +3739,7 @@ mod tests {
                 true
             ));
 
-            pool_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+            pool_tokens = <Runtime as ceres_liquidity_locker::Config>::XykPool::pool_providers(
                 pool_account.clone(),
                 ALICE,
             )

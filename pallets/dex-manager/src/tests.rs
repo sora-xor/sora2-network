@@ -30,8 +30,8 @@
 
 use crate::mock::*;
 use crate::{Error, Pallet};
-use common::prelude::DEXInfo;
-use common::{hash, DexInfoProvider, EnsureDEXManager, ManagementMode, VAL, XOR, XST};
+use common::prelude::DexInfo;
+use common::{hash, DexInfoProvider, EnsureDexManager, ManagementMode, VAL, XOR, XST};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use permissions::{Scope, MANAGE_DEX};
@@ -44,7 +44,7 @@ fn test_initialize_dex_should_pass() {
         initial_dex_list: vec![
             (
                 DEX_A_ID,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
                     is_public: true,
@@ -52,7 +52,7 @@ fn test_initialize_dex_should_pass() {
             ),
             (
                 DEX_B_ID,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: VAL,
                     synthetic_base_asset_id: XST,
                     is_public: false,
@@ -67,7 +67,7 @@ fn test_initialize_dex_should_pass() {
     ext.execute_with(|| {
         assert_eq!(
             DEXPallet::dex_id(DEX_A_ID),
-            Some(DEXInfo {
+            Some(DexInfo {
                 base_asset_id: XOR,
                 synthetic_base_asset_id: XST,
                 is_public: true,
@@ -75,7 +75,7 @@ fn test_initialize_dex_should_pass() {
         );
         assert_eq!(
             DEXPallet::dex_id(DEX_B_ID),
-            Some(DEXInfo {
+            Some(DexInfo {
                 base_asset_id: VAL,
                 synthetic_base_asset_id: XST,
                 is_public: false,
@@ -89,7 +89,7 @@ fn test_share_manage_dex_permission_should_pass() {
     let mut ext = ExtBuilder {
         initial_dex_list: vec![(
             DEX_A_ID,
-            DEXInfo {
+            DexInfo {
                 base_asset_id: XOR,
                 synthetic_base_asset_id: XST,
                 is_public: false,
@@ -141,7 +141,7 @@ fn test_own_multiple_dexes_should_pass() {
         initial_dex_list: vec![
             (
                 DEX_A_ID,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
                     is_public: true,
@@ -149,7 +149,7 @@ fn test_own_multiple_dexes_should_pass() {
             ),
             (
                 DEX_B_ID,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
                     is_public: true,
@@ -188,7 +188,7 @@ fn test_can_manage_on_private_dex_should_pass() {
     let mut ext = ExtBuilder {
         initial_dex_list: vec![(
             DEX_A_ID,
-            DEXInfo {
+            DexInfo {
                 base_asset_id: XOR,
                 synthetic_base_asset_id: XST,
                 is_public: false,
@@ -243,7 +243,7 @@ fn test_can_manage_on_public_dex_should_pass() {
     let mut ext = ExtBuilder {
         initial_dex_list: vec![(
             DEX_A_ID,
-            DEXInfo {
+            DexInfo {
                 base_asset_id: XOR,
                 synthetic_base_asset_id: XST,
                 is_public: true,
@@ -298,7 +298,7 @@ fn test_ensure_dex_exists_should_pass() {
     let mut ext = ExtBuilder {
         initial_dex_list: vec![(
             DEX_A_ID,
-            DEXInfo {
+            DexInfo {
                 base_asset_id: XOR,
                 synthetic_base_asset_id: XST,
                 is_public: true,
@@ -325,7 +325,7 @@ fn test_list_dex_ids_empty_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        assert_eq!(DEXPallet::list_dex_ids(), Vec::<common::DEXId>::new());
+        assert_eq!(DEXPallet::list_dex_ids(), Vec::<common::DexId>::new());
     })
 }
 
@@ -335,7 +335,7 @@ fn test_list_dex_ids_should_pass() {
         initial_dex_list: vec![
             (
                 DEX_A_ID,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
                     is_public: true,
@@ -343,7 +343,7 @@ fn test_list_dex_ids_should_pass() {
             ),
             (
                 DEX_B_ID,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: XOR,
                     synthetic_base_asset_id: XST,
                     is_public: true,

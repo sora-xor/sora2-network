@@ -37,7 +37,7 @@ use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
+    AssetInfoProvider, AssetName, AssetSymbol, DataFeed, DexId, FromGenericPair,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
     PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
     DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD, XOR, XST,
@@ -65,7 +65,7 @@ type BlockNumber = u64;
 type Hash = H256;
 type Moment = u64;
 type Signature = MultiSignature;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 
@@ -120,15 +120,15 @@ impl MockLiquidityProxy {
     }
 }
 
-impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+impl LiquidityProxyTrait<DexId, AccountId, AssetId> for MockLiquidityProxy {
     /// Mocks liquidity provider quote
     /// output_asset_id must be KUSD
     fn quote(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         _input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         _amount: QuoteAmount<common::Balance>,
-        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id != KUSD
@@ -153,13 +153,13 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     /// output_asset_id - must be KUSD
     /// Use MockLiquidityProxy::set_amounts_for_the_next_exchange() prior to this method.
     fn exchange(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         _amount: SwapAmount<common::Balance>,
-        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<common::Balance, AssetId>, DispatchError> {
         if *output_asset_id != KUSD
             && *output_asset_id != KEN
@@ -217,9 +217,9 @@ impl DataFeed<SymbolName, Rate, u64> for MockOracle {
 
 pub struct MockTradingPairSourceManager;
 
-impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
+impl TradingPairSourceManager<DexId, AssetId> for MockTradingPairSourceManager {
     fn list_enabled_sources_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
@@ -227,7 +227,7 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
     }
 
     fn is_source_enabled_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
@@ -236,7 +236,7 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
     }
 
     fn enable_source_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
@@ -245,7 +245,7 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
     }
 
     fn disable_source_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
@@ -254,7 +254,7 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
     }
 
     fn is_trading_pair_enabled(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
     ) -> Result<bool, DispatchError> {
@@ -262,7 +262,7 @@ impl TradingPairSourceManager<DEXId, AssetId> for MockTradingPairSourceManager {
     }
 
     fn register_pair(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         _base_asset_id: AssetId,
         _target_asset_id: AssetId,
     ) -> Result<(), DispatchError> {

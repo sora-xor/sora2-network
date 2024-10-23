@@ -57,7 +57,7 @@ use common::prelude::{
     TradingPairSourceManager,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
+    balance, fixed_const, fixed_wrapper, DexId, LiquidityProxyTrait, LiquiditySourceFilter,
     OnPoolReservesChanged, PriceVariant, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -282,8 +282,8 @@ pub mod pallet {
         frame_system::Config + common::Config + technical::Config + pool_xyk::Config
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
-        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type LiquidityProxy: LiquidityProxyTrait<Self::DexId, Self::AccountId, AssetIdOf<Self>>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DexId, AssetIdOf<Self>>;
         type WeightInfo: WeightInfo;
     }
 
@@ -409,17 +409,17 @@ impl<T: Config> Pallet<T> {
             )
     }
 
-    fn secondary_market_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
+    fn secondary_market_filter() -> LiquiditySourceFilter<T::DexId, LiquiditySourceType> {
         LiquiditySourceFilter::with_allowed(
-            DEXId::Polkaswap.into(),
-            [LiquiditySourceType::XYKPool].into(),
+            DexId::Polkaswap.into(),
+            [LiquiditySourceType::XykPool].into(),
         )
     }
 
     /// Get current spot price for
     pub fn spot_price(asset_id: &AssetIdOf<T>) -> Result<Balance, DispatchError> {
         T::LiquidityProxy::quote(
-            DEXId::Polkaswap.into(),
+            DexId::Polkaswap.into(),
             &XOR.into(),
             &asset_id,
             QuoteAmount::with_desired_input(balance!(1)),

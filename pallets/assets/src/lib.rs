@@ -208,8 +208,8 @@ pub mod pallet {
             + scale_info::TypeInfo
             + Eq
             + PartialEq
-            + From<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
-            + Into<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
+            + From<common::AssetIdExtraAssetRecordArg<Self::DexId, Self::LstId, Self::ExtraAccountId>>
+            + Into<common::AssetIdExtraAssetRecordArg<Self::DexId, Self::LstId, Self::ExtraAccountId>>;
 
         /// DEX assets (currency) identifier.
         type AssetId: Parameter
@@ -243,10 +243,10 @@ pub mod pallet {
         type GetBuyBackAccountId: Get<Self::AccountId>;
 
         /// DEX id to buy-back and burn [`GetBuyBackAssetId`] through [`BuyBackLiquidityProxy`]
-        type GetBuyBackDexId: Get<Self::DEXId>;
+        type GetBuyBackDexId: Get<Self::DexId>;
 
         /// Liquidity proxy to perform [`GetBuyBackAssetId`] buy-back and burn
-        type BuyBackLiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
+        type BuyBackLiquidityProxy: LiquidityProxyTrait<Self::DexId, Self::AccountId, Self::AssetId>;
 
         /// Currency to transfer, reserve/unreserve, lock/unlock assets
         type Currency: MultiLockableCurrency<

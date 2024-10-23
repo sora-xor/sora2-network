@@ -166,7 +166,7 @@ impl CustomFees {
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::BridgeProxy(bridge_proxy::Call::burn { .. })
-            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
+            | RuntimeCall::PoolXyk(pool_xyk::Call::withdraw_liquidity { .. })
             | RuntimeCall::Rewards(rewards::Call::claim { .. })
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
                 ..
@@ -177,7 +177,7 @@ impl CustomFees {
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
-            | RuntimeCall::PoolXYK(..)
+            | RuntimeCall::PoolXyk(..)
             | RuntimeCall::Rewards(..)
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
@@ -207,7 +207,7 @@ impl CustomFees {
             RuntimeCall::Assets(assets::Call::register { .. })
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::BridgeProxy(bridge_proxy::Call::burn { .. })
-            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
+            | RuntimeCall::PoolXyk(pool_xyk::Call::withdraw_liquidity { .. })
             | RuntimeCall::Rewards(rewards::Call::claim { .. })
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
                 ..
@@ -218,7 +218,7 @@ impl CustomFees {
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
-            | RuntimeCall::PoolXYK(..)
+            | RuntimeCall::PoolXyk(..)
             | RuntimeCall::Rewards(..)
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
@@ -465,7 +465,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
         match call {
             RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
-                // Fee source should be set to referrer by `get_fee_source` method, if not 
+                // Fee source should be set to referrer by `get_fee_source` method, if not
                 // it means that user can't set referrer
                 if Referrals::can_set_referrer(who) =>
             {

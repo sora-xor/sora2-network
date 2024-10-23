@@ -46,7 +46,7 @@ use sp_std::rc::Rc;
 
 type PresetFunction<'a> = Rc<
     dyn Fn(
-            crate::mock::DEXId,
+            crate::mock::DexId,
             AssetId,
             AssetId,
             AssetId,
@@ -133,7 +133,7 @@ impl<'a> crate::Pallet<Runtime> {
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                 )
                 .expect("Failed to query trading pair status.")
             );
@@ -1263,7 +1263,7 @@ fn sum_step_quote<AssetId: Ord + Clone>(
 }
 
 fn compare_quotes(
-    dex_id: &DEXId,
+    dex_id: &DexId,
     input_asset_id: &AssetId,
     output_asset_id: &AssetId,
     amount: QuoteAmount<Balance>,
@@ -3100,79 +3100,79 @@ fn test_get_pair_info() {
         let asset_chameleon = Potato.into();
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_target).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_base, &asset_target).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_base).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_target, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_target_2).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_base, &asset_target_2).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_target_2, &asset_base).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_target_2, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_target_2).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_chameleon, &asset_target_2).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_target_2, &asset_chameleon).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_target_2, &asset_chameleon).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target_2);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, true);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_chameleon).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_base, &asset_chameleon).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_chameleon);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
         let (pair, asset_chameleon_opt, flag) =
-            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_base).unwrap();
+            PoolXyk::get_pair_info(&asset_base, &asset_chameleon, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_chameleon);
         assert_eq!(asset_chameleon_opt, Some(asset_chameleon));
         assert_eq!(flag, false);
 
         assert_noop!(
-            PoolXYK::get_pair_info(&asset_base, &asset_base, &asset_base),
+            PoolXyk::get_pair_info(&asset_base, &asset_base, &asset_base),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
         assert_noop!(
-            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_chameleon),
+            PoolXyk::get_pair_info(&asset_base, &asset_chameleon, &asset_chameleon),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
         assert_noop!(
-            PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_target_2),
+            PoolXyk::get_pair_info(&asset_base, &asset_target, &asset_target_2),
             crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
         );
         assert_noop!(
-            PoolXYK::get_pair_info(&asset_base, &asset_chameleon, &asset_target),
+            PoolXyk::get_pair_info(&asset_base, &asset_chameleon, &asset_target),
             crate::Error::<Runtime>::RestrictedChameleonPool
         );
         assert_noop!(
-            PoolXYK::get_pair_info(&asset_base, &asset_target, &asset_chameleon),
+            PoolXyk::get_pair_info(&asset_base, &asset_target, &asset_chameleon),
             crate::Error::<Runtime>::RestrictedChameleonPool
         );
     });
@@ -3189,7 +3189,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         let initial_reserve_target_b = balance!(20);
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE(), &base_asset),
+            PoolXyk::account_pools(&ALICE(), &base_asset),
             Default::default()
         );
 
@@ -3205,7 +3205,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE(), &base_asset),
+            PoolXyk::account_pools(&ALICE(), &base_asset),
             [target_asset_a].iter().cloned().collect()
         );
 
@@ -3221,7 +3221,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE(), &base_asset),
+            PoolXyk::account_pools(&ALICE(), &base_asset),
             [target_asset_a].iter().cloned().collect()
         );
 
@@ -3267,15 +3267,15 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE(), &base_asset),
+            PoolXyk::account_pools(&ALICE(), &base_asset),
             [target_asset_a, target_asset_b].iter().cloned().collect()
         );
 
         let (_, tech_account_a) =
-            PoolXYK::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset_a)
+            PoolXyk::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset_a)
                 .unwrap();
         let pool_account_a = Technical::tech_account_id_to_account_id(&tech_account_a).unwrap();
-        let user_balance_a = PoolXYK::pool_providers(&pool_account_a, &ALICE()).unwrap();
+        let user_balance_a = PoolXyk::pool_providers(&pool_account_a, &ALICE()).unwrap();
 
         assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -3288,7 +3288,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE(), &base_asset),
+            PoolXyk::account_pools(&ALICE(), &base_asset),
             [target_asset_b].iter().cloned().collect()
         );
     })]);
@@ -3453,7 +3453,7 @@ fn price_without_impact_small_amount() {
             |dex_id, _, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
                 let amount = balance!(1);
                 // Buy base asset with desired input
-                let (quote_outcome_a, _) = PoolXYK::quote(
+                let (quote_outcome_a, _) = PoolXyk::quote(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3461,7 +3461,7 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_a = PoolXYK::quote_without_impact(
+                let quote_without_impact_a = PoolXyk::quote_without_impact(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3477,7 +3477,7 @@ fn price_without_impact_small_amount() {
                 assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
                 // Buy base asset with desired output
-                let (quote_outcome_b, _) = PoolXYK::quote(
+                let (quote_outcome_b, _) = PoolXyk::quote(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3485,7 +3485,7 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_b = PoolXYK::quote_without_impact(
+                let quote_without_impact_b = PoolXyk::quote_without_impact(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3501,7 +3501,7 @@ fn price_without_impact_small_amount() {
                 assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
                 // Sell base asset with desired input
-                let (quote_outcome_c, _) = PoolXYK::quote(
+                let (quote_outcome_c, _) = PoolXyk::quote(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3509,7 +3509,7 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_c = PoolXYK::quote_without_impact(
+                let quote_without_impact_c = PoolXyk::quote_without_impact(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3525,7 +3525,7 @@ fn price_without_impact_small_amount() {
                 assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
                 // Sell base asset with desired input
-                let (quote_outcome_d, _) = PoolXYK::quote(
+                let (quote_outcome_d, _) = PoolXyk::quote(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3533,7 +3533,7 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_d = PoolXYK::quote_without_impact(
+                let quote_without_impact_d = PoolXyk::quote_without_impact(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3560,7 +3560,7 @@ fn price_without_impact_large_amount() {
             |dex_id, _, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
                 let amount = balance!(100000);
                 // Buy base asset with desired input
-                let (quote_outcome_a, _) = PoolXYK::quote(
+                let (quote_outcome_a, _) = PoolXyk::quote(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3568,7 +3568,7 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_a = PoolXYK::quote_without_impact(
+                let quote_without_impact_a = PoolXyk::quote_without_impact(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3584,7 +3584,7 @@ fn price_without_impact_large_amount() {
                 assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
                 // Buy base asset with desired output
-                let (quote_outcome_b, _) = PoolXYK::quote(
+                let (quote_outcome_b, _) = PoolXyk::quote(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3592,7 +3592,7 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_b = PoolXYK::quote_without_impact(
+                let quote_without_impact_b = PoolXyk::quote_without_impact(
                     &dex_id,
                     &BlackPepper.into(),
                     &GoldenTicket.into(),
@@ -3608,7 +3608,7 @@ fn price_without_impact_large_amount() {
                 assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
                 // Sell base asset with desired input
-                let (quote_outcome_c, _) = PoolXYK::quote(
+                let (quote_outcome_c, _) = PoolXyk::quote(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3616,7 +3616,7 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_c = PoolXYK::quote_without_impact(
+                let quote_without_impact_c = PoolXyk::quote_without_impact(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3632,7 +3632,7 @@ fn price_without_impact_large_amount() {
                 assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
                 // Sell base asset with desired input
-                let (quote_outcome_d, _) = PoolXYK::quote(
+                let (quote_outcome_d, _) = PoolXyk::quote(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3640,7 +3640,7 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote.");
-                let quote_without_impact_d = PoolXYK::quote_without_impact(
+                let quote_without_impact_d = PoolXyk::quote_without_impact(
                     &dex_id,
                     &GoldenTicket.into(),
                     &BlackPepper.into(),
@@ -3692,13 +3692,13 @@ fn initialize_pool_with_different_dex() {
             AppleTree.into(),
             GoldenTicket.into()
         ));
-        assert_ok!(PoolXYK::initialize_pool(
+        assert_ok!(PoolXyk::initialize_pool(
             RuntimeOrigin::signed(ALICE()),
             DEX_B_ID,
             AppleTree.into(),
             GoldenTicket.into()
         ));
-        assert_ok!(PoolXYK::deposit_liquidity(
+        assert_ok!(PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
             DEX_B_ID,
             AppleTree.into(),
@@ -3798,7 +3798,7 @@ fn initialize_pool_with_synthetics() {
 
         // XOR-<Synthetic asset> pool must not be created
         assert_noop!(
-            PoolXYK::initialize_pool(
+            PoolXyk::initialize_pool(
                 RuntimeOrigin::signed(ALICE()),
                 DEX_A_ID,
                 GoldenTicket.into(),
@@ -3809,7 +3809,7 @@ fn initialize_pool_with_synthetics() {
         // XSTUSD-XOR pool must not be created (this case also applicable to XST,
         // since it is added along with XOR to restricted assets)
         assert_noop!(
-            PoolXYK::initialize_pool(
+            PoolXyk::initialize_pool(
                 RuntimeOrigin::signed(ALICE()),
                 DEX_C_ID,
                 Mango.into(),
@@ -3819,7 +3819,7 @@ fn initialize_pool_with_synthetics() {
         );
         // XSTUSD-<Other synthetic asset> pool must not be created
         assert_noop!(
-            PoolXYK::initialize_pool(
+            PoolXyk::initialize_pool(
                 RuntimeOrigin::signed(ALICE()),
                 DEX_C_ID,
                 Mango.into(),
@@ -3828,7 +3828,7 @@ fn initialize_pool_with_synthetics() {
             crate::Error::<Runtime>::TargetAssetIsRestricted
         );
         // XSTUSD-<Allowed asset> pool must be created
-        assert_ok!(PoolXYK::initialize_pool(
+        assert_ok!(PoolXyk::initialize_pool(
             RuntimeOrigin::signed(ALICE()),
             DEX_C_ID,
             Mango.into(),
@@ -4146,7 +4146,7 @@ fn test_pool_fails_with_regulated_asset() {
             Apple.into(),
         ));
 
-        assert_ok!(PoolXYK::initialize_pool(
+        assert_ok!(PoolXyk::initialize_pool(
             RuntimeOrigin::signed(ALICE()),
             DEX_A_ID,
             GoldenTicket.into(),
@@ -4154,7 +4154,7 @@ fn test_pool_fails_with_regulated_asset() {
         ));
 
         assert_err!(
-            PoolXYK::deposit_liquidity(
+            PoolXyk::deposit_liquidity(
                 RuntimeOrigin::signed(ALICE()),
                 DEX_A_ID,
                 GoldenTicket.into(),
@@ -4168,7 +4168,7 @@ fn test_pool_fails_with_regulated_asset() {
         );
 
         assert_err!(
-            PoolXYK::withdraw_liquidity(
+            PoolXyk::withdraw_liquidity(
                 RuntimeOrigin::signed(ALICE()),
                 DEX_A_ID,
                 Apple.into(),
@@ -4181,7 +4181,7 @@ fn test_pool_fails_with_regulated_asset() {
         );
 
         assert_err!(
-            PoolXYK::deposit_liquidity(
+            PoolXyk::deposit_liquidity(
                 RuntimeOrigin::signed(BOB()),
                 DEX_A_ID,
                 GoldenTicket.into(),
@@ -4195,7 +4195,7 @@ fn test_pool_fails_with_regulated_asset() {
         );
 
         assert_err!(
-            PoolXYK::withdraw_liquidity(
+            PoolXyk::withdraw_liquidity(
                 RuntimeOrigin::signed(BOB()),
                 DEX_A_ID,
                 Apple.into(),
@@ -4275,7 +4275,7 @@ fn test_pool_works_with_regulated_asset() {
             Apple.into(),
         ));
 
-        assert_ok!(PoolXYK::initialize_pool(
+        assert_ok!(PoolXyk::initialize_pool(
             RuntimeOrigin::signed(ALICE()),
             DEX_A_ID,
             GoldenTicket.into(),
@@ -4296,7 +4296,7 @@ fn test_pool_works_with_regulated_asset() {
         assert_ok!(Assets::mint_to(&sbt_asset_id, &ALICE(), &ALICE(), 1));
         assert_ok!(Assets::mint_to(&sbt_asset_id, &ALICE(), &BOB(), 1));
 
-        assert_ok!(PoolXYK::deposit_liquidity(
+        assert_ok!(PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
             DEX_A_ID,
             GoldenTicket.into(),
@@ -4307,7 +4307,7 @@ fn test_pool_works_with_regulated_asset() {
             balance!(227683.9915321233119024),
         ));
 
-        assert_ok!(PoolXYK::withdraw_liquidity(
+        assert_ok!(PoolXyk::withdraw_liquidity(
             RuntimeOrigin::signed(ALICE()),
             DEX_A_ID,
             Apple.into(),
@@ -4317,7 +4317,7 @@ fn test_pool_works_with_regulated_asset() {
             balance!(14400),
         ));
 
-        assert_ok!(PoolXYK::deposit_liquidity(
+        assert_ok!(PoolXyk::deposit_liquidity(
             RuntimeOrigin::signed(BOB()),
             DEX_A_ID,
             GoldenTicket.into(),
@@ -4328,7 +4328,7 @@ fn test_pool_works_with_regulated_asset() {
             balance!(227683.9915321233119024),
         ));
 
-        assert_ok!(PoolXYK::withdraw_liquidity(
+        assert_ok!(PoolXyk::withdraw_liquidity(
             RuntimeOrigin::signed(BOB()),
             DEX_A_ID,
             Apple.into(),

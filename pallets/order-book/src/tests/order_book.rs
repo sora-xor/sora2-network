@@ -50,7 +50,7 @@ use sp_std::vec::Vec;
 
 #[test]
 fn should_create_new() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -81,7 +81,7 @@ fn should_create_new() {
 
 #[test]
 fn should_increment_order_id() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -111,7 +111,7 @@ fn should_place_limit_order() {
         let owner = accounts::alice::<Runtime>();
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -204,7 +204,7 @@ fn should_place_nft_limit_order() {
             INIT_BALANCE.try_into().unwrap()
         ));
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR,
@@ -263,7 +263,7 @@ fn should_place_limit_order_out_of_spread() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -640,7 +640,7 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -694,7 +694,7 @@ fn should_not_place_invalid_limit_order() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -769,7 +769,7 @@ fn should_not_place_invalid_nft_limit_order() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR,
@@ -822,7 +822,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
     ext().execute_with(|| {
         let mut data = CacheDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -886,7 +886,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
     ext().execute_with(|| {
         let mut data = CacheDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -964,7 +964,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
     ext().execute_with(|| {
         let mut data = CacheDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1048,7 +1048,7 @@ fn should_not_place_limit_order_in_spread() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1101,7 +1101,7 @@ fn should_cancel_limit_order() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1162,7 +1162,7 @@ fn should_not_cancel_unknown_limit_order() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1193,7 +1193,7 @@ fn should_not_cancel_limit_order_when_status_doesnt_allow() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1228,7 +1228,7 @@ fn should_cancel_all_limit_orders() {
         let mut data = StorageDataLayer::<Runtime>::new();
         let owner = accounts::bob::<Runtime>();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1300,7 +1300,7 @@ fn should_not_get_best_bid_from_empty_order_book() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1317,7 +1317,7 @@ fn should_get_best_bid() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1337,7 +1337,7 @@ fn should_not_get_best_ask_from_empty_order_book() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1354,7 +1354,7 @@ fn should_get_best_ask() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1372,7 +1372,7 @@ fn should_get_best_ask() {
 #[test]
 fn should_not_get_direction_if_any_asset_is_not_in_order_book_id() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1391,7 +1391,7 @@ fn should_not_get_direction_if_any_asset_is_not_in_order_book_id() {
 #[test]
 fn should_get_direction() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1413,7 +1413,7 @@ fn should_get_direction() {
 #[test]
 fn should_align_amount() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1466,7 +1466,7 @@ fn should_not_sum_market_with_filled_target_if_limit_is_greater_than_liquidity()
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1519,7 +1519,7 @@ fn should_sum_market_without_filled_target_if_limit_is_greater_than_liquidity() 
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1592,7 +1592,7 @@ fn should_sum_market_with_zero_limit() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1663,7 +1663,7 @@ fn should_sum_market() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -1956,7 +1956,7 @@ fn should_not_calculate_deal_with_small_amount() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2008,7 +2008,7 @@ fn should_calculate_deal() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2096,7 +2096,7 @@ fn should_not_execute_market_order_with_non_trade_status() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2137,7 +2137,7 @@ fn should_not_execute_market_order_with_empty_amount() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2166,13 +2166,13 @@ fn should_not_execute_market_order_with_invalid_order_book_id() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
         };
 
-        let wrong_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let wrong_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: DOT,
             quote: XOR,
@@ -2200,7 +2200,7 @@ fn should_not_execute_market_order_with_invalid_amount() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2244,7 +2244,7 @@ fn should_execute_market_order_and_transfer_to_owner() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -2740,7 +2740,7 @@ fn should_execute_market_order_and_transfer_to_another_account() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3326,7 +3326,7 @@ fn should_align_limit_orders() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3403,7 +3403,7 @@ fn should_not_calculate_market_order_impact_with_empty_side() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3445,7 +3445,7 @@ fn should_not_calculate_market_order_impact_if_liquidity_is_not_enough() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -3487,7 +3487,7 @@ fn should_calculate_market_order_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -4082,7 +4082,7 @@ fn should_calculate_market_order_impact() {
 #[test]
 fn should_calculate_limit_order_impact() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -4170,7 +4170,7 @@ fn should_calculate_cancellation_limit_order_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -4332,7 +4332,7 @@ fn should_calculate_cancellation_of_all_limit_orders_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -4411,7 +4411,7 @@ fn should_calculate_align_limit_orders_impact() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -4619,7 +4619,7 @@ fn should_apply_market_change() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -4861,7 +4861,7 @@ fn should_calculate_market_depth_volume_to_price() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -5040,7 +5040,7 @@ fn should_cross_spread() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -5271,7 +5271,7 @@ fn should_cross_spread_with_small_remaining_amount() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -5540,7 +5540,7 @@ fn should_return_empty_market_depth() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -5565,7 +5565,7 @@ fn should_return_market_depth() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,

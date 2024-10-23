@@ -506,12 +506,12 @@ pub mod pallet {
                     pooled_tokens,
                 )?;
             } else {
-                let pool_account = T::XYKPool::properties_of_pool(base_asset, pool_asset.clone())
+                let pool_account = T::XykPool::properties_of_pool(base_asset, pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
 
                 let mut lp_tokens =
-                    T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                    T::XykPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                         .unwrap_or(0);
                 if lp_tokens < user_info.pooled_tokens {
                     lp_tokens = user_info.pooled_tokens;
@@ -528,7 +528,7 @@ pub mod pallet {
                     .unwrap_or(0);
                     pooled_tokens -= fee;
 
-                    T::XYKPool::transfer_lp_tokens(
+                    T::XykPool::transfer_lp_tokens(
                         pool_account.clone(),
                         base_asset,
                         pool_asset,
@@ -538,7 +538,7 @@ pub mod pallet {
                     )?;
 
                     lp_tokens =
-                        T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                        T::XykPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                             .unwrap_or(0);
                 }
 
@@ -1232,7 +1232,7 @@ pub mod pallet {
         ) -> bool {
             // Get pool account
             let pool_account: AccountIdOf<T> =
-                if let Some(account) = T::XYKPool::properties_of_pool(asset_a, asset_b) {
+                if let Some(account) = T::XykPool::properties_of_pool(asset_a, asset_b) {
                     account.0
                 } else {
                     return false;
@@ -1240,7 +1240,7 @@ pub mod pallet {
 
             // Calculate number of pool tokens
             let pool_tokens =
-                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                T::XykPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                     .unwrap_or(0);
             if pool_tokens == 0 {
                 return false;

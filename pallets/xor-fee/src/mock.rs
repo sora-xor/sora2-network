@@ -66,12 +66,12 @@ use traits::MultiCurrency;
 pub use crate::{self as xor_fee, Config, Pallet};
 
 // Configure a mock runtime to test the pallet.
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type DEXId = common::DEXId;
+type DexId = common::DexId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -96,7 +96,7 @@ parameter_types! {
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const VXorId: AssetId = VXOR;
-    pub const DEXIdValue: DEXId = DEXId::Polkaswap;
+    pub const DexIdValue: DexId = DexId::Polkaswap;
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
     pub GetParliamentAccountId: AccountId = account_from_str("sora-parliament");
@@ -239,7 +239,7 @@ impl Config for Runtime {
     type XorId = XorId;
     type ValId = ValId;
     type VXorId = VXorId;
-    type DEXIdValue = DEXIdValue;
+    type DexIdValue = DexIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator;
     type CustomFees = CustomFees;
@@ -369,15 +369,15 @@ impl MockLiquidityProxy {
     }
 }
 
-impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+impl LiquidityProxyTrait<DexId, AccountId, AssetId> for MockLiquidityProxy {
     fn exchange(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
-        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::exchange_inner(
             Some(sender),
@@ -389,11 +389,11 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     }
 
     fn quote(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
-        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         Self::exchange_inner(None, None, input_asset_id, output_asset_id, amount)

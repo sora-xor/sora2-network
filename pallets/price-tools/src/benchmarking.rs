@@ -87,7 +87,7 @@ fn create_pair_with_xor<T: Config>(
     T::AssetManager::mint(origin.clone(), asset, owner, balance!(1000000)).unwrap();
 
     <T as Config>::TradingPairSourceManager::register_pair(
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         asset,
     )
@@ -95,7 +95,7 @@ fn create_pair_with_xor<T: Config>(
 
     pool_xyk::Pallet::<T>::initialize_pool(
         origin.clone(),
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         asset,
     )
@@ -103,7 +103,7 @@ fn create_pair_with_xor<T: Config>(
 
     pool_xyk::Pallet::<T>::deposit_liquidity(
         origin.clone(),
-        DEXId::Polkaswap.into(),
+        DexId::Polkaswap.into(),
         XOR.into(),
         asset,
         balance!(1000),

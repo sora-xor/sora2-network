@@ -146,21 +146,21 @@ mod tests {
 
         // xyk pool - average price = 9
         aggregation.push_chunk(
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
             SwapChunk::new(balance!(10), balance!(100), Default::default()),
         );
         aggregation.push_chunk(
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
             SwapChunk::new(balance!(10), balance!(80), Default::default()),
         );
 
         // xst pool - average price = 8
         aggregation.push_chunk(
-            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::XstPool,
             SwapChunk::new(balance!(10), balance!(80), Default::default()),
         );
         aggregation.push_chunk(
-            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::XstPool,
             SwapChunk::new(balance!(10), balance!(80), Default::default()),
         );
 
@@ -187,8 +187,8 @@ mod tests {
         assert_eq!(
             aggregation.get_total_price_ascending_queue(),
             vec![
-                LiquiditySourceType::XSTPool,                         // price 8
-                LiquiditySourceType::XYKPool,                         // price 9
+                LiquiditySourceType::XstPool,                         // price 8
+                LiquiditySourceType::XykPool,                         // price 9
                 LiquiditySourceType::MulticollateralBondingCurvePool, // price 10
                 LiquiditySourceType::OrderBook                        // price 13
             ]

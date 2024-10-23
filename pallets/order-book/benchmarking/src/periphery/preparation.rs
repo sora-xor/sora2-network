@@ -130,13 +130,13 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
 ) -> (
-    OrderBookId<AssetIdOf<T>, T::DEXId>,
+    OrderBookId<AssetIdOf<T>, T::DexId>,
     OrderPrice,
     OrderVolume,
     PriceVariant,
     MomentOf<T>,
 ) {
-    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
         dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
@@ -207,7 +207,7 @@ pub fn place_limit_order_without_cross_spread<T: Config>(
     // we are going to fill this lifespan, so skipping it for possible future use of the iter
     let _lifespans = lifespans.skip_while(|b| *b == to_fill);
     // different order book because we just want to fill expirations
-    let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+    let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DexId> {
         dex_id: DEX.into(),
         base: ETH.into(),
         quote: XOR.into(),
@@ -290,8 +290,8 @@ pub fn cancel_limit_order<T: Config>(
     fill_settings: FillSettings<T>,
     author: T::AccountId,
     place_first_expiring: bool,
-) -> (OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId) {
-    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+) -> (OrderBookId<AssetIdOf<T>, T::DexId>, T::OrderId) {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
         dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
@@ -387,7 +387,7 @@ pub fn cancel_limit_order<T: Config>(
 
     // different order book because we just want to fill expirations and don't face restrictions
     // from the first one
-    let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+    let order_book_id_2 = OrderBookId::<AssetIdOf<T>, T::DexId> {
         dex_id: DEX.into(),
         base: ETH.into(),
         quote: XOR.into(),
@@ -442,13 +442,13 @@ pub fn cancel_limit_order<T: Config>(
 pub fn quote<T: Config>(
     fill_settings: FillSettings<T>,
 ) -> (
-    T::DEXId,
+    T::DexId,
     AssetIdOf<T>,
     AssetIdOf<T>,
     QuoteAmount<Balance>,
     bool,
 ) {
-    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
         dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),
@@ -506,12 +506,12 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
     author: T::AccountId,
     is_divisible: bool,
 ) -> (
-    OrderBookId<AssetIdOf<T>, T::DEXId>,
+    OrderBookId<AssetIdOf<T>, T::DexId>,
     DealInfo<AssetIdOf<T>>,
     usize,
 ) {
     let order_book_id = if is_divisible {
-        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
             dex_id: DEX.into(),
             base: VAL.into(),
             quote: XOR.into(),
@@ -545,7 +545,7 @@ pub fn market_order_execution<T: Config + trading_pair::Config>(
         )
         .unwrap();
 
-        let id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+        let id = OrderBookId::<AssetIdOf<T>, T::DexId> {
             dex_id: DEX.into(),
             base: nft,
             quote: XOR.into(),
@@ -619,7 +619,7 @@ pub fn align_single_order<T: Config>(
     fill_settings: FillSettings<T>,
     side: PriceVariant,
 ) -> (OrderBook<T>, LimitOrder<T>) {
-    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<T>, T::DexId> {
         dex_id: DEX.into(),
         base: VAL.into(),
         quote: XOR.into(),

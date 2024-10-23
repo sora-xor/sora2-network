@@ -32,7 +32,7 @@ use crate::{self as pool_xyk, Config};
 use common::prelude::{AssetName, AssetSymbol, Balance, Fixed, FromGenericPair, SymbolName};
 use common::{
     balance, fixed, hash, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, DEXInfo, GetMarketInfo, VXOR,
+    mock_pallet_balances_config, mock_technical_config, DexInfo, GetMarketInfo, VXOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -55,13 +55,13 @@ pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 
-pub type DEXId = u32;
+pub type DexId = u32;
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
 pub type Amount = i128;
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 pub type Moment = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -106,10 +106,10 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
-        XSTPools: xst::{Pallet, Call, Storage, Event<T>},
+        XstPools: xst::{Pallet, Call, Storage, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>},
@@ -118,7 +118,7 @@ construct_runtime! {
 
 mock_pallet_balances_config!(Runtime);
 mock_currencies_config!(Runtime);
-mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_technical_config!(Runtime, crate::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 
@@ -126,14 +126,14 @@ parameter_types! {
     pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
     pub const GetBuyBackPercentage: u8 = 0;
-    pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
+    pub GetBuyBackDexId: DexId = DexId::from(common::DexId::PolkaswapXstUsd);
 }
 
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DexId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -156,7 +156,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -190,11 +190,11 @@ impl pswap_distribution::Config for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
+    type EnsureDexManager = ();
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = GetChameleonPools;
@@ -211,7 +211,7 @@ impl pallet_timestamp::Config for Runtime {
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
+    type XykPool = PoolXyk;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
@@ -226,7 +226,7 @@ impl demeter_farming_platform::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
+    pub GetXstPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             xst::TECH_ACCOUNT_PREFIX.to_vec(),
             xst::TECH_ACCOUNT_PERMISSIONED.to_vec(),
@@ -261,8 +261,8 @@ impl oracle_proxy::Config for Runtime {
 impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
-    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
-    type EnsureDEXManager = DexManager;
+    type GetXstPoolPermissionedTechAccountId = GetXstPoolPermissionedTechAccountId;
+    type EnsureDexManager = DexManager;
     type PriceToolsPallet = ();
     type WeightInfo = ();
     type Oracle = OracleProxy;
@@ -305,12 +305,12 @@ parameter_type_with_key! {
 impl Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = crate::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = crate::PairSwapAction<DexId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type PolySwapAction = crate::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
@@ -319,7 +319,7 @@ impl Config for Runtime {
     type GetMaxIssuanceRatio = GetMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type XSTMarketInfo = xst::Pallet<Runtime>;
+    type XstMarketInfo = xst::Pallet<Runtime>;
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -344,15 +344,15 @@ pub fn CHARLIE() -> AccountId {
     AccountId32::from([35; 32])
 }
 
-pub const DEX_A_ID: DEXId = 220;
-pub const DEX_B_ID: DEXId = 221;
-pub const DEX_C_ID: DEXId = 222;
-// XSTPool uses hardcoded DEXId (DEXId::Polkaswap), without this
-// DEX XSTPool initializes with error
-pub const DEX_D_ID: DEXId = 0;
+pub const DEX_A_ID: DexId = 220;
+pub const DEX_B_ID: DexId = 221;
+pub const DEX_C_ID: DexId = 222;
+// XstPool uses hardcoded DexId (DexId::Polkaswap), without this
+// DEX XstPool initializes with error
+pub const DEX_D_ID: DexId = 0;
 
 pub struct ExtBuilder {
-    initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    initial_dex_list: Vec<(DexId, DexInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     endowed_accounts_for_synthetics_platform:
         Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
@@ -367,7 +367,7 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![
                 (
                     DEX_A_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GoldenTicket.into(),
                         synthetic_base_asset_id: BatteryForMusicPlayer.into(),
                         is_public: true,
@@ -375,7 +375,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_B_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: AppleTree.into(),
                         synthetic_base_asset_id: BatteryForMusicPlayer.into(),
                         is_public: true,
@@ -383,7 +383,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_C_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: Mango.into(),
                         synthetic_base_asset_id: BatteryForMusicPlayer.into(),
                         is_public: true,
@@ -391,7 +391,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_D_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: GoldenTicket.into(),
                         synthetic_base_asset_id: BatteryForMusicPlayer.into(),
                         is_public: true,
@@ -407,7 +407,7 @@ impl Default for ExtBuilder {
                 (CHARLIE(), Potato.into(), balance!(2000000)),
             ],
             // some assets must be registered (synthetic assets and base synthetic asset)
-            // before the initialization of XSTPool
+            // before the initialization of XstPool
             endowed_accounts_for_synthetics_platform: vec![
                 (
                     ALICE(),

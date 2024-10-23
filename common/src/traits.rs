@@ -59,9 +59,9 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
-pub trait EnsureDEXManager<DEXId, AccountId, Error> {
+pub trait EnsureDexManager<DexId, AccountId, Error> {
     fn ensure_can_manage<OuterOrigin>(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         origin: OuterOrigin,
         mode: ManagementMode,
     ) -> Result<Option<AccountId>, Error>
@@ -69,9 +69,9 @@ pub trait EnsureDEXManager<DEXId, AccountId, Error> {
         OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>;
 }
 
-impl<DEXId, AccountId> EnsureDEXManager<DEXId, AccountId, DispatchError> for () {
+impl<DexId, AccountId> EnsureDexManager<DexId, AccountId, DispatchError> for () {
     fn ensure_can_manage<OuterOrigin>(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         origin: OuterOrigin,
         _mode: ManagementMode,
     ) -> Result<Option<AccountId>, DispatchError>
@@ -86,17 +86,17 @@ impl<DEXId, AccountId> EnsureDEXManager<DEXId, AccountId, DispatchError> for () 
     }
 }
 
-pub trait EnsureTradingPairExists<DEXId, AssetId, Error> {
+pub trait EnsureTradingPairExists<DexId, AssetId, Error> {
     fn ensure_trading_pair_exists(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         base_asset_id: &AssetId,
         target_asset_id: &AssetId,
     ) -> Result<(), Error>;
 }
 
-impl<DEXId, AssetId> EnsureTradingPairExists<DEXId, AssetId, DispatchError> for () {
+impl<DexId, AssetId> EnsureTradingPairExists<DexId, AssetId, DispatchError> for () {
     fn ensure_trading_pair_exists(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
     ) -> Result<(), DispatchError> {
@@ -104,50 +104,50 @@ impl<DEXId, AssetId> EnsureTradingPairExists<DEXId, AssetId, DispatchError> for 
     }
 }
 
-pub trait TradingPairSourceManager<DEXId, AssetId> {
+pub trait TradingPairSourceManager<DexId, AssetId> {
     fn list_enabled_sources_for_trading_pair(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         base_asset_id: &AssetId,
         target_asset_id: &AssetId,
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError>;
 
     fn is_source_enabled_for_trading_pair(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         base_asset_id: &AssetId,
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> Result<bool, DispatchError>;
 
     fn enable_source_for_trading_pair(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         base_asset_id: &AssetId,
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> DispatchResult;
 
     fn disable_source_for_trading_pair(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         base_asset_id: &AssetId,
         target_asset_id: &AssetId,
         source_type: LiquiditySourceType,
     ) -> DispatchResult;
 
     fn is_trading_pair_enabled(
-        dex_id: &DEXId,
+        dex_id: &DexId,
         base_asset_id: &AssetId,
         target_asset_id: &AssetId,
     ) -> Result<bool, DispatchError>;
 
     fn register_pair(
-        dex_id: DEXId,
+        dex_id: DexId,
         base_asset_id: AssetId,
         target_asset_id: AssetId,
     ) -> Result<(), DispatchError>;
 }
 
-impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
+impl<DexId, AssetId> TradingPairSourceManager<DexId, AssetId> for () {
     fn list_enabled_sources_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
     ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
@@ -155,7 +155,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 
     fn is_source_enabled_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
@@ -164,7 +164,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 
     fn enable_source_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
@@ -173,7 +173,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 
     fn disable_source_for_trading_pair(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
         _source_type: LiquiditySourceType,
@@ -182,7 +182,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 
     fn is_trading_pair_enabled(
-        _dex_id: &DEXId,
+        _dex_id: &DexId,
         _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
     ) -> Result<bool, DispatchError> {
@@ -190,7 +190,7 @@ impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
     }
 
     fn register_pair(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         _base_asset_id: AssetId,
         _target_asset_id: AssetId,
     ) -> Result<(), DispatchError> {
@@ -277,12 +277,12 @@ pub trait LockedLiquiditySourcesManager<LiquiditySourceType> {
 }
 
 /// Implements trading pair EnabledSources storage
-pub trait EnabledSourcesManager<DEXId, AssetId> {
-    fn mutate_remove(dex_id: &DEXId, base_asset_id: &AssetId, target_asset_id: &AssetId);
+pub trait EnabledSourcesManager<DexId, AssetId> {
+    fn mutate_remove(dex_id: &DexId, base_asset_id: &AssetId, target_asset_id: &AssetId);
 }
 
-impl<DEXId, AssetId> EnabledSourcesManager<DEXId, AssetId> for () {
-    fn mutate_remove(_dex_id: &DEXId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) {
+impl<DexId, AssetId> EnabledSourcesManager<DexId, AssetId> for () {
+    fn mutate_remove(_dex_id: &DexId, _baset_asset_id: &AssetId, _target_asset_id: &AssetId) {
         unimplemented!()
     }
 }
@@ -345,11 +345,11 @@ impl<Symbol> OnSymbolDisabled<Symbol> for () {
     fn disable_symbol(_symbol: &Symbol) {}
 }
 
-impl<DEXId, AccountId, AssetId: Ord + Clone>
-    LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError> for ()
+impl<DexId, AccountId, AssetId: Ord + Clone>
+    LiquiditySource<DexId, AccountId, AssetId, Fixed, DispatchError> for ()
 {
     fn can_exchange(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
     ) -> bool {
@@ -357,7 +357,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn quote(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
@@ -367,7 +367,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn step_quote(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
@@ -380,7 +380,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     fn exchange(
         _sender: &AccountId,
         _receiver: &AccountId,
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Fixed>,
@@ -389,7 +389,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn check_rewards(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _input_amount: Fixed,
@@ -399,7 +399,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn quote_without_impact(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
@@ -425,11 +425,11 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 }
 
-impl<DEXId, AccountId, AssetId: Ord + Clone>
-    LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for ()
+impl<DexId, AccountId, AssetId: Ord + Clone>
+    LiquiditySource<DexId, AccountId, AssetId, Balance, DispatchError> for ()
 {
     fn can_exchange(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
     ) -> bool {
@@ -437,7 +437,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn quote(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
@@ -447,7 +447,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn step_quote(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
@@ -460,7 +460,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     fn exchange(
         _sender: &AccountId,
         _receiver: &AccountId,
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
@@ -469,7 +469,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn check_rewards(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _input_amount: Balance,
@@ -479,7 +479,7 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 
     fn quote_without_impact(
-        _target_id: &DEXId,
+        _target_id: &DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
@@ -506,15 +506,15 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
 }
 
 pub trait LiquidityRegistry<
-    DEXId,
+    DexId,
     AccountId,
     AssetId: Ord + Clone,
     LiquiditySourceIndex,
     Amount,
     Error,
 >:
-    LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error> where
-    DEXId: PartialEq + Clone + Copy,
+    LiquiditySource<LiquiditySourceId<DexId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error> where
+    DexId: PartialEq + Clone + Copy,
     LiquiditySourceIndex: PartialEq + Clone + Copy,
 {
     /// Enumerate available liquidity sources which provide
@@ -522,8 +522,8 @@ pub trait LiquidityRegistry<
     fn list_liquidity_sources(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        filter: &LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
-    ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
+        filter: &LiquiditySourceFilter<DexId, LiquiditySourceIndex>,
+    ) -> Result<Vec<LiquiditySourceId<DexId, LiquiditySourceIndex>>, Error>;
 
     fn exchange_weight_filtered(
         enabled_sources: impl Iterator<Item = LiquiditySourceIndex>,
@@ -531,7 +531,7 @@ pub trait LiquidityRegistry<
 }
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-pub type DexIdOf<T> = <T as Config>::DEXId;
+pub type DexIdOf<T> = <T as Config>::DexId;
 pub type AssetIdOf<T> = <<T as Config>::AssetManager as AssetManager<
     T,
     AssetSymbol,
@@ -563,12 +563,12 @@ pub type BalanceOf<T> = <<T as Config>::MultiCurrency as MultiCurrency<AccountId
 /// Common DEX trait. Used for DEX-related pallets.
 pub trait Config: frame_system::Config {
     /// DEX identifier.
-    type DEXId: Parameter
+    type DexId: Parameter
         + MaybeSerializeDeserialize
         + Ord
         + Copy
         + Default
-        + From<crate::primitives::DEXId>
+        + From<crate::primitives::DexId>
         + Clone
         + Encode
         + Decode
@@ -729,14 +729,14 @@ pub trait ToFeeAccount: Sized {
     fn to_fee_account(&self) -> Option<Self>;
 }
 
-pub trait ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
-    fn to_xyk_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair)
+pub trait ToXykTechUnitFromDEXAndTradingPair<DexId, TradingPair>: Sized {
+    fn to_xyk_tech_unit_from_dex_and_trading_pair(dex_id: DexId, trading_pair: TradingPair)
         -> Self;
 }
 
-pub trait ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
+pub trait ToOrderTechUnitFromDEXAndTradingPair<DexId, TradingPair>: Sized {
     fn to_order_tech_unit_from_dex_and_trading_pair(
-        dex_id: DEXId,
+        dex_id: DexId,
         trading_pair: TradingPair,
     ) -> Self;
 }
@@ -874,11 +874,11 @@ pub trait DemeterFarming<AccountId, AssetId> {
 
 pub trait OnPoolCreated {
     type AccountId;
-    type DEXId;
+    type DexId;
 
     fn on_pool_created(
         fee_account: Self::AccountId,
-        dex_id: Self::DEXId,
+        dex_id: Self::DexId,
         pool_account: Self::AccountId,
     ) -> DispatchResult;
 }
@@ -917,19 +917,19 @@ impl<AssetId> PriceToolsProvider<AssetId> for () {
     }
 }
 
-impl<AccountId, DEXId, A, B> OnPoolCreated for (A, B)
+impl<AccountId, DexId, A, B> OnPoolCreated for (A, B)
 where
     AccountId: Clone,
-    DEXId: Clone,
-    A: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
-    B: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+    DexId: Clone,
+    A: OnPoolCreated<AccountId = AccountId, DexId = DexId>,
+    B: OnPoolCreated<AccountId = AccountId, DexId = DexId>,
 {
     type AccountId = AccountId;
-    type DEXId = DEXId;
+    type DexId = DexId;
 
     fn on_pool_created(
         fee_account: Self::AccountId,
-        dex_id: Self::DEXId,
+        dex_id: Self::DexId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
         A::on_pool_created(fee_account.clone(), dex_id.clone(), pool_account.clone())?;
@@ -961,84 +961,84 @@ impl OnValBurned for () {
 }
 
 /// Indicates that particular object can be used to perform exchanges with aggregation capability.
-pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId: Ord> {
+pub trait LiquidityProxyTrait<DexId: PartialEq + Copy, AccountId, AssetId: Ord> {
     /// Get spot price of tokens based on desired amount, None returned if liquidity source
     /// does not have available exchange methods for indicated path.
     fn quote(
-        dex_id: DEXId,
+        dex_id: DexId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
-        dex_id: DEXId,
+        dex_id: DexId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError>;
 }
 
-impl<DEXId: PartialEq + Copy, AccountId, AssetId: Ord>
-    LiquidityProxyTrait<DEXId, AccountId, AssetId> for ()
+impl<DexId: PartialEq + Copy, AccountId, AssetId: Ord>
+    LiquidityProxyTrait<DexId, AccountId, AssetId> for ()
 {
     fn quote(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
-        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         unimplemented!()
     }
 
     fn exchange(
-        _dex_id: DEXId,
+        _dex_id: DexId,
         _sender: &AccountId,
         _receiver: &AccountId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: SwapAmount<Balance>,
-        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _filter: LiquiditySourceFilter<DexId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance, AssetId>, DispatchError> {
         unimplemented!()
     }
 }
 
-/// Trait to provide DEXInfo
+/// Trait to provide DexInfo
 pub trait DexInfoProvider<
-    DEXId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
-    DEXInfo: Clone + PartialEq + Eq + Default,
+    DexId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
+    DexInfo: Clone + PartialEq + Eq + Default,
 >
 {
-    fn get_dex_info(dex_id: &DEXId) -> Result<DEXInfo, DispatchError>;
+    fn get_dex_info(dex_id: &DexId) -> Result<DexInfo, DispatchError>;
 
-    fn ensure_dex_exists(dex_id: &DEXId) -> DispatchResult;
+    fn ensure_dex_exists(dex_id: &DexId) -> DispatchResult;
 
-    fn list_dex_ids() -> Vec<DEXId>;
+    fn list_dex_ids() -> Vec<DexId>;
 }
 
 impl<
-        DEXId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
-        DEXInfo: Clone + PartialEq + Eq + Default,
-    > DexInfoProvider<DEXId, DEXInfo> for ()
+        DexId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
+        DexInfo: Clone + PartialEq + Eq + Default,
+    > DexInfoProvider<DexId, DexInfo> for ()
 {
-    fn get_dex_info(_dex_id: &DEXId) -> Result<DEXInfo, DispatchError> {
+    fn get_dex_info(_dex_id: &DexId) -> Result<DexInfo, DispatchError> {
         unimplemented!()
     }
 
-    fn ensure_dex_exists(_dex_id: &DEXId) -> DispatchResult {
+    fn ensure_dex_exists(_dex_id: &DexId) -> DispatchResult {
         unimplemented!()
     }
 
-    fn list_dex_ids() -> Vec<DEXId> {
+    fn list_dex_ids() -> Vec<DexId> {
         unimplemented!()
     }
 }

@@ -10,9 +10,9 @@ use frame_support::{
 #[cfg(feature = "try-runtime")]
 use sp_std::prelude::*;
 
-pub struct InitializeXSTPool<T>(core::marker::PhantomData<T>);
+pub struct InitializeXstPool<T>(core::marker::PhantomData<T>);
 
-impl<T> OnRuntimeUpgrade for InitializeXSTPool<T>
+impl<T> OnRuntimeUpgrade for InitializeXstPool<T>
 where
     T: crate::Config,
 {

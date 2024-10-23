@@ -34,7 +34,7 @@ use common::prelude::Balance;
 use common::{
     self, fixed_from_basis_points, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed, XOR, XST,
+    mock_tokens_config, Amount, AssetId32, DexId, DexInfo, Fixed, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
@@ -50,7 +50,7 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -58,8 +58,8 @@ pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
 
-pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
+pub const DEX_A_ID: DexId = DexId::Polkaswap;
+pub const DEX_B_ID: DexId = DexId::PolkaswapXstUsd;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -102,14 +102,14 @@ mock_assets_config!(Runtime);
 
 impl Config<crate::Instance1> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl Config<crate::Instance2> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
@@ -145,7 +145,7 @@ impl ExtBuilder {
             dex_list: vec![
                 (
                     DEX_A_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: XOR,
                         synthetic_base_asset_id: XST,
                         is_public: true,
@@ -153,7 +153,7 @@ impl ExtBuilder {
                 ),
                 (
                     DEX_B_ID,
-                    DEXInfo {
+                    DexInfo {
                         base_asset_id: XOR,
                         synthetic_base_asset_id: XST,
                         is_public: true,

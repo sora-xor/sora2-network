@@ -77,7 +77,7 @@ mod tests {
                 )
                 .unwrap();
 
-                let (_, tech_account) = PoolXYK::tech_account_from_dex_and_asset_pair(
+                let (_, tech_account) = PoolXyk::tech_account_from_dex_and_asset_pair(
                     dex_id,
                     base_asset.clone(),
                     target_asset.clone(),

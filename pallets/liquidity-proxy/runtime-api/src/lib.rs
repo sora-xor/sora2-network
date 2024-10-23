@@ -217,8 +217,8 @@ pub struct RewardsInfo<Balance, AssetId> {
 
 sp_api::decl_runtime_apis! {
     #[api_version(3)]
-    pub trait LiquidityProxyAPI<DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode> where
-        DEXId: Codec,
+    pub trait LiquidityProxyAPI<DexId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode> where
+        DexId: Codec,
         AssetId: Codec + MaybeFromStr + MaybeDisplay + Ord,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
         SwapVariant: Codec,
@@ -226,7 +226,7 @@ sp_api::decl_runtime_apis! {
         FilterMode: Codec,
     {
         fn quote(
-            dex_id: DEXId,
+            dex_id: DexId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
             amount: BalanceWrapper,
@@ -237,7 +237,7 @@ sp_api::decl_runtime_apis! {
 
         #[changed_in(3)]
         fn quote(
-            dex_id: DEXId,
+            dex_id: DexId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
             amount: BalanceWrapper,
@@ -248,7 +248,7 @@ sp_api::decl_runtime_apis! {
 
         #[changed_in(2)]
         fn quote(
-            dex_id: DEXId,
+            dex_id: DexId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
             amount: BalanceWrapper,
@@ -258,13 +258,13 @@ sp_api::decl_runtime_apis! {
         ) -> Option<SwapOutcomeInfoV1<Balance, AssetId>>;
 
         fn is_path_available(
-            dex_id: DEXId,
+            dex_id: DexId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> bool;
 
         fn list_enabled_sources_for_path(
-            dex_id: DEXId,
+            dex_id: DexId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType>;

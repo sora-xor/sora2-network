@@ -66,8 +66,8 @@ pub trait WeightInfo {
 /// Weights for trading_pair using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetOwners (r:2 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:1)
@@ -85,8 +85,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DexManager DexInfos (r:1 w:0)
+	/// Proof Skipped: DexManager DexInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetOwners (r:2 w:0)
 	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: TradingPair EnabledSources (r:1 w:1)

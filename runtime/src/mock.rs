@@ -31,10 +31,10 @@
 use common::mock::alice;
 use price_tools::AVG_BLOCK_SPAN;
 
-use crate::{AssetId, PoolXYK, PriceTools, RuntimeOrigin};
+use crate::{AssetId, PoolXyk, PriceTools, RuntimeOrigin};
 
 pub fn ensure_pool_initialized(asset_a: AssetId, asset_b: AssetId) {
-    PoolXYK::initialize_pool(RuntimeOrigin::signed(alice()), 0, asset_a, asset_b).unwrap();
+    PoolXyk::initialize_pool(RuntimeOrigin::signed(alice()), 0, asset_a, asset_b).unwrap();
 }
 
 pub fn fill_spot_price() {

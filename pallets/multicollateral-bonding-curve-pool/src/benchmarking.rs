@@ -47,11 +47,11 @@ use price_tools::AVG_BLOCK_SPAN;
 use common::prelude::SwapAmount;
 use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, USDT, XOR};
 
-use crate::Pallet as MBCPool;
+use crate::Pallet as MbcPool;
 use permissions::Pallet as Permissions;
-use pool_xyk::Pallet as XYKPool;
+use pool_xyk::Pallet as XykPool;
 
-pub const DEX: DEXId = DEXId::Polkaswap;
+pub const DEX: DexId = DexId::Polkaswap;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -129,9 +129,9 @@ where
     T::AssetManager::mint_to(&XOR.into(), &owner, &owner, balance!(1000)).unwrap();
     T::AssetManager::mint_to(&asset_id, &owner, &owner, balance!(50000000)).unwrap();
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), asset_id).unwrap();
+    XykPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), asset_id).unwrap();
 
-    XYKPool::<T>::deposit_liquidity(
+    XykPool::<T>::deposit_liquidity(
         owner_origin,
         DEX.into(),
         XOR.into(),
@@ -178,7 +178,7 @@ benchmarks! {
     initialize_pool {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -215,7 +215,7 @@ benchmarks! {
     set_reference_asset {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -247,7 +247,7 @@ benchmarks! {
     set_optional_reward_multiplier {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -267,7 +267,7 @@ benchmarks! {
             None
         ).unwrap();
         <T as Config>::TradingPairSourceManager::register_pair(dex_id, XOR.into(), USDT.into()).unwrap();
-        MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
+        MbcPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {
         Pallet::<T>::set_optional_reward_multiplier(
             RawOrigin::Signed(caller.clone()).into(),
@@ -291,7 +291,7 @@ benchmarks! {
     set_price_change_config {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -314,7 +314,7 @@ benchmarks! {
     set_price_bias {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -335,7 +335,7 @@ benchmarks! {
     quote {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -388,7 +388,7 @@ benchmarks! {
 
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -439,7 +439,7 @@ benchmarks! {
     exchange {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -505,7 +505,7 @@ benchmarks! {
     can_exchange {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -534,7 +534,7 @@ benchmarks! {
             USDT.into()
         ).unwrap();
     }: {
-        assert!(MBCPool::<T>::can_exchange(
+        assert!(MbcPool::<T>::can_exchange(
             &dex_id,
             &XOR.into(),
             &USDT.into(),
@@ -546,7 +546,7 @@ benchmarks! {
     check_rewards {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let dex_id: T::DexId = common::DexId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
             &caller,
@@ -591,7 +591,7 @@ benchmarks! {
             incoming_spot_price::<T>(USDT.into(), balance!(1));
         }
     }: {
-        let (rewards, _) = MBCPool::<T>::check_rewards(&dex_id, &USDT.into(), &XOR.into(), balance!(1000), balance!(10)).unwrap();
+        let (rewards, _) = MbcPool::<T>::check_rewards(&dex_id, &USDT.into(), &XOR.into(), balance!(1000), balance!(10)).unwrap();
         assert!(!rewards.is_empty());
     }
     verify {

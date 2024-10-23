@@ -46,7 +46,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{self, Perbill};
 
-type DEXId = common::DEXId;
+type DexId = common::DexId;
 type AccountId = AccountId32;
 type AssetId = AssetId32<PredefinedAssetId>;
 type BlockNumber = u64;

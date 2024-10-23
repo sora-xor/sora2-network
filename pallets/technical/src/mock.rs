@@ -33,7 +33,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, DEXId, XST,
+    mock_pallet_balances_config, mock_tokens_config, DexId, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
@@ -58,7 +58,7 @@ pub use common::TradingPair;
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
 pub type Amount = i128;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 type TechAmount = Amount;

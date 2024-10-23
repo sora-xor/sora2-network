@@ -44,7 +44,7 @@ fn get_liquidity_aggregator_with_desired_input_and_equal_chunks(
 ) -> LiquidityAggregator<Runtime, LiquiditySourceType> {
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -58,7 +58,7 @@ fn get_liquidity_aggregator_with_desired_input_and_equal_chunks(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -95,7 +95,7 @@ fn get_liquidity_aggregator_with_desired_output_and_equal_chunks(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -109,7 +109,7 @@ fn get_liquidity_aggregator_with_desired_output_and_equal_chunks(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
@@ -145,7 +145,7 @@ fn get_liquidity_aggregator_with_desired_input_and_different_chunks(
 ) -> LiquidityAggregator<Runtime, LiquiditySourceType> {
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -159,7 +159,7 @@ fn get_liquidity_aggregator_with_desired_input_and_different_chunks(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -204,7 +204,7 @@ fn get_liquidity_aggregator_with_desired_output_and_different_chunks(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), Default::default()),
@@ -218,7 +218,7 @@ fn get_liquidity_aggregator_with_desired_output_and_different_chunks(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(12.5), balance!(100), Default::default()),
@@ -255,7 +255,7 @@ fn get_liquidity_aggregator_with_desired_input_and_max_amount_limits(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -269,7 +269,7 @@ fn get_liquidity_aggregator_with_desired_input_and_max_amount_limits(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -306,7 +306,7 @@ fn get_liquidity_aggregator_with_desired_output_and_max_amount_limits(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -320,7 +320,7 @@ fn get_liquidity_aggregator_with_desired_output_and_max_amount_limits(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
@@ -357,7 +357,7 @@ fn get_liquidity_aggregator_with_desired_input_and_min_amount_limits(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -371,7 +371,7 @@ fn get_liquidity_aggregator_with_desired_input_and_min_amount_limits(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -408,7 +408,7 @@ fn get_liquidity_aggregator_with_desired_output_and_min_amount_limits(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -422,7 +422,7 @@ fn get_liquidity_aggregator_with_desired_output_and_min_amount_limits(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(16), balance!(100), OutcomeFee::xst(balance!(1))),
@@ -459,7 +459,7 @@ fn get_liquidity_aggregator_with_desired_input_and_precision_limits_for_input(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -470,7 +470,7 @@ fn get_liquidity_aggregator_with_desired_input_and_precision_limits_for_input(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -504,7 +504,7 @@ fn get_liquidity_aggregator_with_desired_input_and_precision_limits_for_output(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredInput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -515,7 +515,7 @@ fn get_liquidity_aggregator_with_desired_input_and_precision_limits_for_output(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -549,7 +549,7 @@ fn get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -560,7 +560,7 @@ fn get_liquidity_aggregator_with_desired_output_and_precision_limits_for_input(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
@@ -594,7 +594,7 @@ fn get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output(
     let mut aggregator = LiquidityAggregator::new(SwapVariant::WithDesiredOutput);
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -605,7 +605,7 @@ fn get_liquidity_aggregator_with_desired_output_and_precision_limits_for_output(
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(12.5), balance!(100), OutcomeFee::xst(balance!(1))),
@@ -698,7 +698,7 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(30)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
+                (LiquiditySourceType::XykPool, (balance!(10), balance!(100))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(220))
@@ -706,7 +706,7 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(10), balance!(100))
                 ),
                 (
@@ -726,7 +726,7 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(40)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
+                (LiquiditySourceType::XykPool, (balance!(20), balance!(190))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(220))
@@ -734,7 +734,7 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(190))
                 ),
                 (
@@ -754,8 +754,8 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(50)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
-                (LiquiditySourceType::XSTPool, (balance!(10), balance!(85))),
+                (LiquiditySourceType::XykPool, (balance!(20), balance!(190))),
+                (LiquiditySourceType::XstPool, (balance!(10), balance!(85))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(220))
@@ -763,11 +763,11 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(190))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(10), balance!(85))
                 ),
                 (
@@ -790,8 +790,8 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(60)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
-                (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
+                (LiquiditySourceType::XykPool, (balance!(20), balance!(190))),
+                (LiquiditySourceType::XstPool, (balance!(20), balance!(170))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(20), balance!(220))
@@ -799,11 +799,11 @@ fn check_aggregate_liquidity_with_desired_input_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(190))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(170))
                 ),
                 (
@@ -861,7 +861,7 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(300)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
+                (LiquiditySourceType::XykPool, (balance!(10), balance!(100))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(18), balance!(200))
@@ -869,7 +869,7 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(100), balance!(10))
                 ),
                 (
@@ -889,7 +889,7 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(400)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
+                (LiquiditySourceType::XykPool, (balance!(21), balance!(200))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(18), balance!(200))
@@ -897,7 +897,7 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(200), balance!(21))
                 ),
                 (
@@ -917,7 +917,7 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(500)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                (LiquiditySourceType::XykPool, (balance!(33), balance!(300))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(18), balance!(200))
@@ -925,7 +925,7 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(300), balance!(33))
                 ),
                 (
@@ -945,9 +945,9 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(600)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                (LiquiditySourceType::XykPool, (balance!(33), balance!(300))),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     (balance!(12.5), balance!(100))
                 ),
                 (
@@ -957,11 +957,11 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(300), balance!(33))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(100), balance!(12.5))
                 ),
                 (
@@ -981,8 +981,8 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
         aggregator.aggregate_liquidity(balance!(700)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
-                (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
+                (LiquiditySourceType::XykPool, (balance!(33), balance!(300))),
+                (LiquiditySourceType::XstPool, (balance!(25), balance!(200))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(18), balance!(200))
@@ -990,11 +990,11 @@ fn check_aggregate_liquidity_with_desired_output_and_equal_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(300), balance!(33))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(200), balance!(25))
                 ),
                 (
@@ -1055,7 +1055,7 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
         aggregator.aggregate_liquidity(balance!(30)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
+                (LiquiditySourceType::XykPool, (balance!(8), balance!(80))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1063,7 +1063,7 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(8), balance!(80))
                 ),
                 (
@@ -1083,7 +1083,7 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
         aggregator.aggregate_liquidity(balance!(40)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(18), balance!(172))),
+                (LiquiditySourceType::XykPool, (balance!(18), balance!(172))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1091,7 +1091,7 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(18), balance!(172))
                 ),
                 (
@@ -1111,8 +1111,8 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
         aggregator.aggregate_liquidity(balance!(50)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
-                (LiquiditySourceType::XSTPool, (balance!(6), balance!(51))),
+                (LiquiditySourceType::XykPool, (balance!(22), balance!(208))),
+                (LiquiditySourceType::XstPool, (balance!(6), balance!(51))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1120,11 +1120,11 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(22), balance!(208))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(6), balance!(51))
                 ),
                 (
@@ -1147,8 +1147,8 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
         aggregator.aggregate_liquidity(balance!(60)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(22), balance!(208))),
-                (LiquiditySourceType::XSTPool, (balance!(16), balance!(136))),
+                (LiquiditySourceType::XykPool, (balance!(22), balance!(208))),
+                (LiquiditySourceType::XstPool, (balance!(16), balance!(136))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1156,11 +1156,11 @@ fn check_aggregate_liquidity_with_desired_input_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(22), balance!(208))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(16), balance!(136))
                 ),
                 (
@@ -1221,7 +1221,7 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
         aggregator.aggregate_liquidity(balance!(250)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(6), balance!(60))),
+                (LiquiditySourceType::XykPool, (balance!(6), balance!(60))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(17), balance!(190))
@@ -1229,7 +1229,7 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(60), balance!(6))
                 ),
                 (
@@ -1250,7 +1250,7 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(15.5), balance!(150))
                 ),
                 (
@@ -1260,7 +1260,7 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(150), balance!(15.5))
                 ),
                 (
@@ -1281,10 +1281,10 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(18.5), balance!(175))
                 ),
-                (LiquiditySourceType::XSTPool, (balance!(5), balance!(40))),
+                (LiquiditySourceType::XstPool, (balance!(5), balance!(40))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(17), balance!(190))
@@ -1292,11 +1292,11 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(175), balance!(18.5))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(40), balance!(5))
                 ),
                 (
@@ -1317,11 +1317,11 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(18.5), balance!(175))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     (balance!(17.5), balance!(140))
                 ),
                 (
@@ -1331,11 +1331,11 @@ fn check_aggregate_liquidity_with_desired_output_and_different_chunks() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(175), balance!(18.5))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(140), balance!(17.5))
                 ),
                 (
@@ -1396,7 +1396,7 @@ fn check_aggregate_liquidity_with_desired_input_and_max_amount_limits() {
         aggregator.aggregate_liquidity(balance!(30)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
+                (LiquiditySourceType::XykPool, (balance!(8), balance!(80))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1404,7 +1404,7 @@ fn check_aggregate_liquidity_with_desired_input_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(8), balance!(80))
                 ),
                 (
@@ -1424,8 +1424,8 @@ fn check_aggregate_liquidity_with_desired_input_and_max_amount_limits() {
         aggregator.aggregate_liquidity(balance!(50)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
-                (LiquiditySourceType::XSTPool, (balance!(8), balance!(68))),
+                (LiquiditySourceType::XykPool, (balance!(20), balance!(190))),
+                (LiquiditySourceType::XstPool, (balance!(8), balance!(68))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1433,11 +1433,11 @@ fn check_aggregate_liquidity_with_desired_input_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(190))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(8), balance!(68))
                 ),
                 (
@@ -1460,9 +1460,9 @@ fn check_aggregate_liquidity_with_desired_input_and_max_amount_limits() {
         aggregator.aggregate_liquidity(balance!(60)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(23), balance!(214))),
+                (LiquiditySourceType::XykPool, (balance!(23), balance!(214))),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     (balance!(15), balance!(127.5))
                 ),
                 (
@@ -1472,11 +1472,11 @@ fn check_aggregate_liquidity_with_desired_input_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(23), balance!(214))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(15), balance!(127.5))
                 ),
                 (
@@ -1518,7 +1518,7 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
         aggregator.aggregate_liquidity(balance!(200)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(1), balance!(10))),
+                (LiquiditySourceType::XykPool, (balance!(1), balance!(10))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(17), balance!(190))
@@ -1526,7 +1526,7 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(10), balance!(1))
                 ),
                 (
@@ -1547,7 +1547,7 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(11.1), balance!(110))
                 ),
                 (
@@ -1557,7 +1557,7 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(110), balance!(11.1))
                 ),
                 (
@@ -1577,8 +1577,8 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
         aggregator.aggregate_liquidity(balance!(500)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
-                (LiquiditySourceType::XSTPool, (balance!(1.25), balance!(10))),
+                (LiquiditySourceType::XykPool, (balance!(33), balance!(300))),
+                (LiquiditySourceType::XstPool, (balance!(1.25), balance!(10))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(17), balance!(190))
@@ -1586,11 +1586,11 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(300), balance!(33))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(10), balance!(1.25))
                 ),
                 (
@@ -1610,9 +1610,9 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
         aggregator.aggregate_liquidity(balance!(600)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(33), balance!(300))),
+                (LiquiditySourceType::XykPool, (balance!(33), balance!(300))),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     (balance!(13.75), balance!(110))
                 ),
                 (
@@ -1622,11 +1622,11 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(300), balance!(33))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(110), balance!(13.75))
                 ),
                 (
@@ -1647,11 +1647,11 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(40.8), balance!(360))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     (balance!(18.75), balance!(150))
                 ),
                 (
@@ -1661,11 +1661,11 @@ fn check_aggregate_liquidity_with_desired_output_and_max_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(360), balance!(40.8))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(150), balance!(18.75))
                 ),
                 (
@@ -1687,9 +1687,9 @@ fn check_aggregate_liquidity_with_desired_input_and_min_amount_limits() {
     assert_eq!(
         aggregator.aggregate_liquidity(balance!(10)).unwrap(),
         AggregationResult::new(
-            SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
+            SwapInfo::from([(LiquiditySourceType::XykPool, (balance!(10), balance!(100)))]),
             vec![(
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 SwapAmount::with_desired_input(balance!(10), balance!(100))
             )],
             balance!(10),
@@ -1703,9 +1703,9 @@ fn check_aggregate_liquidity_with_desired_input_and_min_amount_limits() {
     assert_eq!(
         aggregator.aggregate_liquidity(balance!(20)).unwrap(),
         AggregationResult::new(
-            SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(20), balance!(190)))]),
+            SwapInfo::from([(LiquiditySourceType::XykPool, (balance!(20), balance!(190)))]),
             vec![(
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 SwapAmount::with_desired_input(balance!(20), balance!(190))
             )],
             balance!(20),
@@ -1721,7 +1721,7 @@ fn check_aggregate_liquidity_with_desired_input_and_min_amount_limits() {
         aggregator.aggregate_liquidity(balance!(30)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(8), balance!(80))),
+                (LiquiditySourceType::XykPool, (balance!(8), balance!(80))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(22), balance!(244))
@@ -1729,7 +1729,7 @@ fn check_aggregate_liquidity_with_desired_input_and_min_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(8), balance!(80))
                 ),
                 (
@@ -1751,9 +1751,9 @@ fn check_aggregate_liquidity_with_desired_output_and_min_amount_limits() {
     assert_eq!(
         aggregator.aggregate_liquidity(balance!(100)).unwrap(),
         AggregationResult::new(
-            SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(10), balance!(100)))]),
+            SwapInfo::from([(LiquiditySourceType::XykPool, (balance!(10), balance!(100)))]),
             vec![(
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 SwapAmount::with_desired_output(balance!(100), balance!(10))
             )],
             balance!(100),
@@ -1767,9 +1767,9 @@ fn check_aggregate_liquidity_with_desired_output_and_min_amount_limits() {
     assert_eq!(
         aggregator.aggregate_liquidity(balance!(200)).unwrap(),
         AggregationResult::new(
-            SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(23), balance!(200)))]),
+            SwapInfo::from([(LiquiditySourceType::XykPool, (balance!(23), balance!(200)))]),
             vec![(
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 SwapAmount::with_desired_output(balance!(200), balance!(23))
             )],
             balance!(200),
@@ -1785,7 +1785,7 @@ fn check_aggregate_liquidity_with_desired_output_and_min_amount_limits() {
         aggregator.aggregate_liquidity(balance!(300)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(10), balance!(100))),
+                (LiquiditySourceType::XykPool, (balance!(10), balance!(100))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(18.25), balance!(200))
@@ -1793,7 +1793,7 @@ fn check_aggregate_liquidity_with_desired_output_and_min_amount_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(100), balance!(10))
                 ),
                 (
@@ -1817,7 +1817,7 @@ fn check_aggregate_liquidity_with_desired_input_and_precision_limits() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(0.05), balance!(0.5))
                 ),
                 (
@@ -1827,7 +1827,7 @@ fn check_aggregate_liquidity_with_desired_input_and_precision_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(0.05), balance!(0.5))
                 ),
                 (
@@ -1851,7 +1851,7 @@ fn check_aggregate_liquidity_with_desired_output_and_precision_limits() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(0.0005), balance!(0.005))
                 ),
                 (
@@ -1861,7 +1861,7 @@ fn check_aggregate_liquidity_with_desired_output_and_precision_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(0.005), balance!(0.0005))
                 ),
                 (
@@ -1882,7 +1882,7 @@ fn check_aggregate_liquidity_with_desired_output_and_precision_limits() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(0.0085), balance!(0.085))
                 ),
                 (
@@ -1892,7 +1892,7 @@ fn check_aggregate_liquidity_with_desired_output_and_precision_limits() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(0.085), balance!(0.0085))
                 ),
                 (
@@ -1913,7 +1913,7 @@ fn check_returning_back_several_chunks() {
     let mut aggregator =
         LiquidityAggregator::<Runtime, LiquiditySourceType>::new(SwapVariant::WithDesiredInput);
     aggregator.add_source(
-        LiquiditySourceType::XSTPool,
+        LiquiditySourceType::XstPool,
         DiscreteQuotation {
             chunks: vec![SwapChunk::new(balance!(0.1), balance!(1), Default::default()); 100]
                 .into(),
@@ -1926,7 +1926,7 @@ fn check_returning_back_several_chunks() {
     );
 
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: vec![SwapChunk::new(balance!(1), balance!(8), Default::default()); 100].into(),
             limits: SwapLimits::new(None, None, None),
@@ -1939,9 +1939,9 @@ fn check_returning_back_several_chunks() {
             .aggregate_liquidity(balance!(1.5))
             .unwrap(),
         AggregationResult::new(
-            SwapInfo::from([(LiquiditySourceType::XYKPool, (balance!(1.5), balance!(12))),]),
+            SwapInfo::from([(LiquiditySourceType::XykPool, (balance!(1.5), balance!(12))),]),
             vec![(
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
                 SwapAmount::with_desired_input(balance!(1.5), balance!(12))
             ),],
             balance!(1.5),
@@ -1955,16 +1955,16 @@ fn check_returning_back_several_chunks() {
         aggregator.aggregate_liquidity(balance!(4)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(1), balance!(8))),
-                (LiquiditySourceType::XSTPool, (balance!(3), balance!(30)))
+                (LiquiditySourceType::XykPool, (balance!(1), balance!(8))),
+                (LiquiditySourceType::XstPool, (balance!(3), balance!(30)))
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(1), balance!(8))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(3), balance!(30))
                 )
             ],
@@ -1984,8 +1984,8 @@ fn check_rounding_with_desired_input_amount_and_input_precision() {
         aggregator.aggregate_liquidity(balance!(52.05)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
-                (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
+                (LiquiditySourceType::XykPool, (balance!(20), balance!(190))),
+                (LiquiditySourceType::XstPool, (balance!(20), balance!(170))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(12), balance!(145.5))
@@ -1993,11 +1993,11 @@ fn check_rounding_with_desired_input_amount_and_input_precision() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(190))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(170))
                 ),
                 (
@@ -2021,8 +2021,8 @@ fn check_rounding_with_desired_output_amount_and_output_precision() {
         aggregator.aggregate_liquidity(balance!(525.123)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
-                (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
+                (LiquiditySourceType::XykPool, (balance!(21), balance!(200))),
+                (LiquiditySourceType::XstPool, (balance!(25), balance!(200))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(10.026), balance!(125.13))
@@ -2030,11 +2030,11 @@ fn check_rounding_with_desired_output_amount_and_output_precision() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(200), balance!(21))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(200), balance!(25))
                 ),
                 (
@@ -2058,8 +2058,8 @@ fn check_rounding_with_desired_input_amount_and_output_precision() {
         aggregator.aggregate_liquidity(balance!(52.05)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(20), balance!(190))),
-                (LiquiditySourceType::XSTPool, (balance!(20), balance!(170))),
+                (LiquiditySourceType::XykPool, (balance!(20), balance!(190))),
+                (LiquiditySourceType::XstPool, (balance!(20), balance!(170))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(12.04), balance!(142.7))
@@ -2067,11 +2067,11 @@ fn check_rounding_with_desired_input_amount_and_output_precision() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(190))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_input(balance!(20), balance!(170))
                 ),
                 (
@@ -2095,8 +2095,8 @@ fn check_rounding_with_desired_output_amount_and_input_precision() {
         aggregator.aggregate_liquidity(balance!(625.615)).unwrap(),
         AggregationResult::new(
             SwapInfo::from([
-                (LiquiditySourceType::XYKPool, (balance!(21), balance!(200))),
-                (LiquiditySourceType::XSTPool, (balance!(25), balance!(200))),
+                (LiquiditySourceType::XykPool, (balance!(21), balance!(200))),
+                (LiquiditySourceType::XstPool, (balance!(25), balance!(200))),
                 (
                     LiquiditySourceType::OrderBook,
                     (balance!(21.13), balance!(225.65))
@@ -2104,11 +2104,11 @@ fn check_rounding_with_desired_output_amount_and_input_precision() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_output(balance!(200), balance!(21))
                 ),
                 (
-                    LiquiditySourceType::XSTPool,
+                    LiquiditySourceType::XstPool,
                     SwapAmount::with_desired_output(balance!(200), balance!(25))
                 ),
                 (
@@ -2128,7 +2128,7 @@ fn check_rounding_with_desired_output_amount_and_input_precision() {
 fn check_sources_with_min_amount() {
     let mut aggregator = LiquidityAggregator::<Runtime, _>::new(SwapVariant::WithDesiredInput);
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), Default::default()),
@@ -2185,7 +2185,7 @@ fn check_sources_with_min_amount() {
 fn check_sources_with_precision() {
     let mut aggregator = LiquidityAggregator::<Runtime, _>::new(SwapVariant::WithDesiredInput);
     aggregator.add_source(
-        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::XykPool,
         DiscreteQuotation {
             chunks: VecDeque::from([
                 SwapChunk::new(balance!(10), balance!(100), Default::default()),
@@ -2222,7 +2222,7 @@ fn check_sources_with_precision() {
         AggregationResult::new(
             SwapInfo::from([
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     (balance!(0.099), balance!(0.99))
                 ),
                 (
@@ -2232,7 +2232,7 @@ fn check_sources_with_precision() {
             ]),
             vec![
                 (
-                    LiquiditySourceType::XYKPool,
+                    LiquiditySourceType::XykPool,
                     SwapAmount::with_desired_input(balance!(0.099), balance!(0.99))
                 ),
                 (

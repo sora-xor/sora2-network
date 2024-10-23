@@ -71,7 +71,7 @@ fn check_order_amount() {
         OrderAmount::Quote(balance!(110).into())
     );
 
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -316,13 +316,13 @@ fn check_deal_info_amounts() {
 
 #[test]
 fn should_fail_payment_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
     };
 
-    let other_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let other_order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: DAI,
         quote: XOR,
@@ -357,7 +357,7 @@ fn should_fail_payment_merge() {
 
 #[test]
 fn check_payment_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -656,7 +656,7 @@ fn check_payment_merge() {
 #[test]
 fn check_payment_execute_all() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
             dex_id: DEX.into(),
             base: VAL,
             quote: XOR,
@@ -751,7 +751,7 @@ fn check_payment_execute_all() {
 
 #[test]
 fn should_fail_market_change_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -898,7 +898,7 @@ fn should_fail_market_change_merge() {
 
 #[test]
 fn check_market_change_merge() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
@@ -1462,14 +1462,14 @@ fn check_market_change_merge() {
 
 #[test]
 fn check_market_change_count_of_executed_orders() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DexId> {
         dex_id: DEX.into(),
         base: VAL,
         quote: XOR,
     };
 
     let empty_payment =
-        Payment::<AssetIdOf<Runtime>, <Runtime as frame_system::Config>::AccountId, DEXId> {
+        Payment::<AssetIdOf<Runtime>, <Runtime as frame_system::Config>::AccountId, DexId> {
             order_book_id,
             to_lock: BTreeMap::<
                 AssetIdOf<Runtime>,

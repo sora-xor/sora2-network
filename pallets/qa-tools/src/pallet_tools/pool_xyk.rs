@@ -32,7 +32,7 @@ use crate::{Config, Error};
 use codec::{Decode, Encode};
 use common::prelude::BalanceUnit;
 use common::{
-    balance, AssetIdOf, AssetInfoProvider, AssetManager, Balance, DEXInfo, DexIdOf,
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, Balance, DexIdOf, DexInfo,
     DexInfoProvider, TradingPair, TradingPairSourceManager, XOR,
 };
 use frame_support::dispatch::{DispatchError, RawOrigin};
@@ -41,8 +41,8 @@ use sp_std::fmt::Debug;
 use sp_std::vec::Vec;
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
-pub struct AssetPairInput<DEXId, AssetId> {
-    pub dex_id: DEXId,
+pub struct AssetPairInput<DexId, AssetId> {
+    pub dex_id: DexId,
     pub asset_a: AssetId,
     pub asset_b: AssetId,
     /// Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
@@ -51,10 +51,10 @@ pub struct AssetPairInput<DEXId, AssetId> {
     pub maybe_asset_a_reserves: Option<Balance>,
 }
 
-impl<DEXId, AssetId> AssetPairInput<DEXId, AssetId> {
+impl<DexId, AssetId> AssetPairInput<DexId, AssetId> {
     // `price` - Price of `asset_a` in terms of `asset_b` (how much `asset_b` is needed to buy 1 `asset_a`)
     pub fn new(
-        dex_id: DEXId,
+        dex_id: DexId,
         asset_a: AssetId,
         asset_b: AssetId,
         price: Balance,
@@ -72,7 +72,7 @@ impl<DEXId, AssetId> AssetPairInput<DEXId, AssetId> {
 
 /// `None` if neither of the assets is base
 fn trading_pair_from_asset_ids<T: Config>(
-    dex_info: DEXInfo<AssetIdOf<T>>,
+    dex_info: DexInfo<AssetIdOf<T>>,
     asset_a: AssetIdOf<T>,
     asset_b: AssetIdOf<T>,
 ) -> Option<TradingPair<AssetIdOf<T>>> {

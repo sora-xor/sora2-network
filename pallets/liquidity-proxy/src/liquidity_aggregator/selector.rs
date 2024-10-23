@@ -226,7 +226,7 @@ mod tests {
 
         let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredInput);
         selector.add_source(
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -236,7 +236,7 @@ mod tests {
             },
         );
         selector.add_source(
-            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::XstPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -285,7 +285,7 @@ mod tests {
         // just take the best price in all cases below
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XYKPool);
+        assert_eq!(source, LiquiditySourceType::XykPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1)))
@@ -293,7 +293,7 @@ mod tests {
         aggregation.push_chunk(source, chunk);
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XYKPool);
+        assert_eq!(source, LiquiditySourceType::XykPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9)))
@@ -309,7 +309,7 @@ mod tests {
         aggregation.push_chunk(source, chunk);
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XSTPool);
+        assert_eq!(source, LiquiditySourceType::XstPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
@@ -317,7 +317,7 @@ mod tests {
         aggregation.push_chunk(source, chunk);
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XSTPool);
+        assert_eq!(source, LiquiditySourceType::XstPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
@@ -345,7 +345,7 @@ mod tests {
 
         let mut selector: Selector<Runtime, _> = Selector::new(SwapVariant::WithDesiredInput);
         selector.add_source(
-            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::XykPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1))),
@@ -355,7 +355,7 @@ mod tests {
             },
         );
         selector.add_source(
-            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::XstPool,
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85))),
@@ -387,7 +387,7 @@ mod tests {
         // just take the best price in all cases below, excluding Order Book.
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XYKPool);
+        assert_eq!(source, LiquiditySourceType::XykPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(100), OutcomeFee::xor(balance!(1)))
@@ -395,7 +395,7 @@ mod tests {
         aggregation.push_chunk(source, chunk);
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XYKPool);
+        assert_eq!(source, LiquiditySourceType::XykPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(90), OutcomeFee::xor(balance!(0.9)))
@@ -403,7 +403,7 @@ mod tests {
         aggregation.push_chunk(source, chunk);
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XSTPool);
+        assert_eq!(source, LiquiditySourceType::XstPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))
@@ -411,7 +411,7 @@ mod tests {
         aggregation.push_chunk(source, chunk);
 
         let (source, chunk) = selector.select_chunk(amount, &aggregation).unwrap();
-        assert_eq!(source, LiquiditySourceType::XSTPool);
+        assert_eq!(source, LiquiditySourceType::XstPool);
         assert_eq!(
             chunk,
             SwapChunk::new(balance!(10), balance!(85), OutcomeFee::xst(balance!(0.85)))

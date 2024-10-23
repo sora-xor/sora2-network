@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::pallet::{Config, Pallet};
-use crate::DEXInfos;
-use common::{DEXId, DEXInfo, DexIdOf, KUSD, XST};
+use crate::DexInfos;
+use common::{DexId, DexIdOf, DexInfo, KUSD, XST};
 use core::marker::PhantomData;
 use frame_support::pallet_prelude::Get;
 use frame_support::traits::OnRuntimeUpgrade;
@@ -45,14 +45,14 @@ impl<T: Config> OnRuntimeUpgrade for AddKusdBasedDex<T> {
             return Weight::zero();
         }
 
-        let dex_id: DexIdOf<T> = DEXId::PolkaswapKUSD.into();
+        let dex_id: DexIdOf<T> = DexId::PolkaswapKUSD.into();
 
         let reads = 1;
         let mut writes = 0;
-        if !DEXInfos::<T>::contains_key(dex_id) {
-            DEXInfos::<T>::insert(
+        if !DexInfos::<T>::contains_key(dex_id) {
+            DexInfos::<T>::insert(
                 dex_id,
-                DEXInfo {
+                DexInfo {
                     base_asset_id: KUSD.into(),
                     synthetic_base_asset_id: XST.into(),
                     is_public: true,
@@ -77,16 +77,16 @@ mod tests {
         let mut ext = ExtBuilder {
             initial_dex_list: vec![
                 (
-                    DEXId::Polkaswap,
-                    DEXInfo {
+                    DexId::Polkaswap,
+                    DexInfo {
                         base_asset_id: XOR,
                         synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
                 (
-                    DEXId::PolkaswapXSTUSD,
-                    DEXInfo {
+                    DexId::PolkaswapXstUsd,
+                    DexInfo {
                         base_asset_id: XSTUSD,
                         synthetic_base_asset_id: XST,
                         is_public: true,
@@ -99,23 +99,23 @@ mod tests {
         ext.execute_with(|| {
             StorageVersion::new(2).put::<Pallet<Runtime>>();
 
-            let mut dex_infos: Vec<_> = DEXInfos::<Runtime>::iter().collect();
+            let mut dex_infos: Vec<_> = DexInfos::<Runtime>::iter().collect();
             dex_infos.sort_by(|(left_dex_id, _), (right_dex_id, _)| left_dex_id.cmp(right_dex_id));
 
             assert_eq!(
                 dex_infos,
                 vec![
                     (
-                        DEXId::Polkaswap,
-                        DEXInfo {
+                        DexId::Polkaswap,
+                        DexInfo {
                             base_asset_id: XOR,
                             synthetic_base_asset_id: XST,
                             is_public: true,
                         },
                     ),
                     (
-                        DEXId::PolkaswapXSTUSD,
-                        DEXInfo {
+                        DexId::PolkaswapXstUsd,
+                        DexInfo {
                             base_asset_id: XSTUSD,
                             synthetic_base_asset_id: XST,
                             is_public: true,
@@ -127,30 +127,30 @@ mod tests {
             // migration
             AddKusdBasedDex::<Runtime>::on_runtime_upgrade();
 
-            let mut dex_infos: Vec<_> = DEXInfos::<Runtime>::iter().collect();
+            let mut dex_infos: Vec<_> = DexInfos::<Runtime>::iter().collect();
             dex_infos.sort_by(|(left_dex_id, _), (right_dex_id, _)| left_dex_id.cmp(right_dex_id));
             assert_eq!(
                 dex_infos,
                 vec![
                     (
-                        DEXId::Polkaswap,
-                        DEXInfo {
+                        DexId::Polkaswap,
+                        DexInfo {
                             base_asset_id: XOR,
                             synthetic_base_asset_id: XST,
                             is_public: true,
                         },
                     ),
                     (
-                        DEXId::PolkaswapXSTUSD,
-                        DEXInfo {
+                        DexId::PolkaswapXstUsd,
+                        DexInfo {
                             base_asset_id: XSTUSD,
                             synthetic_base_asset_id: XST,
                             is_public: true,
                         },
                     ),
                     (
-                        DEXId::PolkaswapKUSD,
-                        DEXInfo {
+                        DexId::PolkaswapKUSD,
+                        DexInfo {
                             base_asset_id: KUSD,
                             synthetic_base_asset_id: XST,
                             is_public: true,

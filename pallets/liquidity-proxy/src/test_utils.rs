@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::{adar, AccountId, Assets, DEXId, LiquidityProxy};
+use crate::mock::{adar, AccountId, Assets, DexId, LiquidityProxy};
 use crate::{BatchReceiverInfo, SwapBatchInfo};
 use common::prelude::{FixedWrapper, QuoteAmount, SwapOutcome};
 use common::{
@@ -38,7 +38,7 @@ use common::{
 use std::collections::HashMap;
 
 #[inline]
-pub fn mcbc_excluding_filter(dex: DEXId) -> LiquiditySourceFilter<DEXId, LiquiditySourceType> {
+pub fn mcbc_excluding_filter(dex: DexId) -> LiquiditySourceFilter<DexId, LiquiditySourceType> {
     LiquiditySourceFilter::with_forbidden(
         dex,
         [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
@@ -46,7 +46,7 @@ pub fn mcbc_excluding_filter(dex: DEXId) -> LiquiditySourceFilter<DEXId, Liquidi
 }
 
 pub fn check_swap_batch_executed_amount(
-    swap_batches: Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DexId, AccountId>>,
 ) {
     swap_batches.into_iter().for_each(|batch| {
         let asset_id = batch.outcome_asset_id;
@@ -86,7 +86,7 @@ pub fn calculate_adar_commission(amount: Balance) -> Balance {
 }
 
 pub fn check_adar_commission(
-    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DexId, AccountId>>,
     sources: Vec<LiquiditySourceType>,
 ) {
     let actual_input_amount = calculate_swap_batch_input_amount(swap_batches, sources);
@@ -101,7 +101,7 @@ pub fn check_adar_commission(
 }
 
 pub fn calculate_swap_batch_input_amount(
-    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DexId, AccountId>>,
     sources: Vec<LiquiditySourceType>,
 ) -> Balance {
     let actual_input_amount: Balance = swap_batches
@@ -139,7 +139,7 @@ pub fn calculate_swap_batch_input_amount(
 }
 
 pub fn calculate_swap_batch_input_amount_with_adar_commission(
-    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DEXId, AccountId>>,
+    swap_batches: &Vec<SwapBatchInfo<AssetId32<PredefinedAssetId>, DexId, AccountId>>,
     sources: Vec<LiquiditySourceType>,
 ) -> Balance {
     let amount_in = calculate_swap_batch_input_amount(swap_batches, sources);

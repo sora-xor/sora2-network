@@ -39,7 +39,7 @@ use common::{
     balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
     mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
     mock_technical_config, mock_tokens_config, mock_vested_rewards_config, Amount, AssetId32,
-    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
+    AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, DexId, DexInfo, Fixed,
     FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
     PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT,
     VAL, VXOR, XOR, XST,
@@ -63,7 +63,7 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DexId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -128,8 +128,8 @@ construct_runtime! {
         DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
-        MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        MbcPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -140,7 +140,7 @@ construct_runtime! {
 
 mock_currencies_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>);
 mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
@@ -152,8 +152,8 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarketTBC = ();
-    type PrimaryMarketXST = ();
+    type PrimaryMarketTbc = ();
+    type PrimaryMarketXst = ();
     type SecondaryMarket = ();
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
     type LockedLiquiditySourcesManager = trading_pair::Pallet<Runtime>;
@@ -171,35 +171,35 @@ impl liquidity_proxy::Config for Runtime {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
+    pub GetTbcBuyBackTbcdPercent: Fixed = fixed!(0.025);
 }
 
 impl dex_manager::Config for Runtime {}
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
 }
@@ -214,8 +214,8 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
-    type XYKPool = pool_xyk::Pallet<Runtime>;
-    type XSTPool = ();
+    type XykPool = pool_xyk::Pallet<Runtime>;
+    type XstPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type OrderBook = ();
@@ -224,7 +224,7 @@ impl dex_api::Config for Runtime {
 
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -248,13 +248,13 @@ impl extended_assets::Config for Runtime {
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<DexId, AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type PolySwapAction = pool_xyk::PolySwapAction<DexId, AssetId, AccountId, TechAccountId>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
@@ -263,7 +263,7 @@ impl pool_xyk::Config for Runtime {
     type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
-    type XSTMarketInfo = ();
+    type XstMarketInfo = ();
     type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
@@ -283,7 +283,7 @@ impl pallet_timestamp::Config for Runtime {
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
+    type XykPool = PoolXyk;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
@@ -309,35 +309,35 @@ fn bonding_curve_distribution_accounts() -> DistributionAccounts<
 
     let xor_allocation = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap,
+            DexId::Polkaswap,
             TechPurpose::Identifier(b"xor_allocation".to_vec()),
         )),
         val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap,
+            DexId::Polkaswap,
             TechPurpose::Identifier(b"sora_citizens".to_vec()),
         )),
         projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap,
+            DexId::Polkaswap,
             TechPurpose::Identifier(b"stores_and_shops".to_vec()),
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap,
+            DexId::Polkaswap,
             TechPurpose::Identifier(b"projects".to_vec()),
         )),
         projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
-            DEXId::Polkaswap,
+            DexId::Polkaswap,
             TechPurpose::Identifier(b"val_holders".to_vec()),
         )),
         val_holders_buy_back_coefficient.get().unwrap(),
@@ -406,14 +406,14 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
         output_asset_id: &AssetId,
         _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
-        let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
-            DEXId::PolkaswapXSTUSD,
+        let res = <LiquidityProxy as LiquidityProxyTrait<DexId, AccountId, AssetId>>::quote(
+            DexId::PolkaswapXstUsd,
             input_asset_id,
             output_asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::with_allowed(
-                DEXId::Polkaswap,
-                [LiquiditySourceType::XYKPool].to_vec(),
+                DexId::Polkaswap,
+                [LiquiditySourceType::XykPool].to_vec(),
             ),
             true,
         );
@@ -430,13 +430,13 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureDexManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = MockPriceTools;
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type BuyBackTbcdPercent = GetTbcBuyBackTbcdPercent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = ();
@@ -452,11 +452,11 @@ impl pswap_distribution::Config for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
+    type EnsureDexManager = ();
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
     type BuyBackHandler = ();
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;
@@ -473,7 +473,7 @@ impl price_tools::Config for Runtime {
 impl Config for Runtime {}
 
 pub struct ExtBuilder {
-    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    dex_list: Vec<(DexId, DexInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     source_types: Vec<LiquiditySourceType>,
@@ -495,8 +495,8 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             dex_list: vec![(
-                DEXId::Polkaswap,
-                DEXInfo {
+                DexId::Polkaswap,
+                DexInfo {
                     base_asset_id: GetBaseAssetId::get(),
                     synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
@@ -518,7 +518,7 @@ impl Default for ExtBuilder {
             ],
             source_types: vec![
                 LiquiditySourceType::MulticollateralBondingCurvePool,
-                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::XykPool,
             ],
             tech_accounts: vec![
                 (
@@ -672,14 +672,14 @@ impl ExtBuilder {
         trading_pair::GenesisConfig::<Runtime> {
             trading_pairs: vec![
                 (
-                    DEXId::Polkaswap,
+                    DexId::Polkaswap,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: VAL,
                     },
                 ),
                 (
-                    DEXId::Polkaswap,
+                    DexId::Polkaswap,
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: PSWAP,
