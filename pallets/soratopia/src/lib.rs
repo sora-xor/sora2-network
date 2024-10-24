@@ -47,7 +47,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use crate::weights::WeightInfo;
-    use common::{AssetManager, Balance, XOR};
+    use common::{AccountIdOf, AssetManager, Balance, XOR};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -74,7 +74,10 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    pub enum Event<T: Config> {}
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        CheckIn(AccountIdOf<T>),
+    }
 
     #[pallet::error]
     pub enum Error<T> {}
@@ -96,6 +99,7 @@ pub mod pallet {
                 &T::AdminAccount::get(),
                 T::CheckInTransferAmount::get(),
             )?;
+            Self::deposit_event(Event::CheckIn(who));
             Ok(().into())
         }
     }
