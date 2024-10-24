@@ -39,7 +39,7 @@ use crate::{
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 use common::DOT;
 use common::{
     assert_approx_eq_abs, balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode,
@@ -59,11 +59,11 @@ use referrals::ReferrerBalances;
 use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 use vested_rewards::vesting_currencies::{
     LinearVestingSchedule, VestingSchedule, VestingScheduleVariant,
 };
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 use vested_rewards::{Config, WeightInfo};
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToVXor, XorToVal};
@@ -1351,7 +1351,6 @@ fn fee_payment_postpone_failed_xorless_transfer() {
     });
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
 #[test]
 fn right_custom_fee_for_vested_transfer_ok() {
     ext().execute_with(|| {
@@ -1412,7 +1411,6 @@ fn right_custom_fee_for_vested_transfer_ok() {
     });
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
 #[test]
 fn right_custom_fee_for_vested_transfer_err() {
     ext().execute_with(|| {
