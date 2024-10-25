@@ -134,7 +134,6 @@ pub struct Claim<AssetId, AccountId> {
 pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     fn do_claim_unlocked(
         asset_id: AssetIdOf<T>,
         who: &T::AccountId,
@@ -148,7 +147,6 @@ impl<T: Config> Pallet<T> {
         Ok(locked)
     }
 
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     /// Returns locked balance based on current block number.
     fn locked_balance(
         asset_id: AssetIdOf<T>,
@@ -189,7 +187,6 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     fn do_vested_transfer(
         from: &T::AccountId,
         to: &T::AccountId,
@@ -221,7 +218,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     fn do_update_vesting_schedules(
         who: &T::AccountId,
         new_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
@@ -282,7 +278,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    #[cfg(feature = "wip")] // Pending Vesting
     fn do_unlock_pending_schedule_by_manager(
         manager: T::AccountId,
         dest: T::AccountId,
@@ -330,39 +325,34 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[allow(unused)]
     fn set_auto_claim_block(
         who: AccountIdOf<T>,
         schedule: &VestingScheduleOf<T>,
     ) -> DispatchResult {
-        #[cfg(feature = "wip")] // Auto Vesting
-        {
-            let claim_asset_for_account = Claim::<AssetIdOf<T>, AccountIdOf<T>> {
-                account_id: who.clone(),
-                asset_id: schedule.asset_id(),
-            };
+        let claim_asset_for_account = Claim::<AssetIdOf<T>, AccountIdOf<T>> {
+            account_id: who.clone(),
+            asset_id: schedule.asset_id(),
+        };
 
-            if let Some(block_number) =
-                schedule.next_claim_block::<T>(frame_system::Pallet::<T>::current_block_number())?
-            {
-                if !<ClaimSchedules<T>>::get(block_number).contains(&claim_asset_for_account) {
-                    <ClaimSchedules<T>>::append(block_number, claim_asset_for_account.clone())
-                }
-            } else {
-                if let Ok(vesting_schedules) = <VestingSchedules<T>>::try_get(who) {
-                    if schedule.end().is_some()
-                        && vesting_schedules.contains(schedule)
-                        && !<PendingClaims<T>>::get().contains(&claim_asset_for_account)
-                    {
-                        <PendingClaims<T>>::append(claim_asset_for_account)
-                    }
+        if let Some(block_number) =
+            schedule.next_claim_block::<T>(frame_system::Pallet::<T>::current_block_number())?
+        {
+            if !<ClaimSchedules<T>>::get(block_number).contains(&claim_asset_for_account) {
+                <ClaimSchedules<T>>::append(block_number, claim_asset_for_account.clone())
+            }
+        } else {
+            if let Ok(vesting_schedules) = <VestingSchedules<T>>::try_get(who) {
+                if schedule.end().is_some()
+                    && vesting_schedules.contains(schedule)
+                    && !<PendingClaims<T>>::get().contains(&claim_asset_for_account)
+                {
+                    <PendingClaims<T>>::append(claim_asset_for_account)
                 }
             }
         }
         Ok(())
     }
 
-    #[cfg(feature = "wip")] // Auto Vesting
     fn do_auto_claim(claim: &ClaimOf<T>) {
         match Self::do_claim_unlocked(claim.asset_id, &claim.account_id) {
             Ok(locked_amount) => {
@@ -378,7 +368,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(feature = "wip")] // Auto Vesting
     fn claim_for_vec(
         claim_for: Vec<ClaimOf<T>>,
         max_claims: usize,
@@ -399,7 +388,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[cfg(feature = "wip")] // Auto Vesting
     /// Auto claim unlocked tokens from VestingSchedules
     fn auto_claim(current_block: BlockNumberFor<T>, claim_weight: Weight) -> Weight {
         let mut weight: Weight = T::DbWeight::get().reads(3);
@@ -871,7 +859,6 @@ pub mod pallet {
         AccountIdOf<T>,
     >;
 
-    #[cfg(feature = "wip")] // Auto Vesting
     pub(crate) type ClaimOf<T> = Claim<AssetIdOf<T>, AccountIdOf<T>>;
 
     #[pallet::config]
@@ -1002,7 +989,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[allow(unused_variables)]
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked())]
         pub fn claim_unlocked(
@@ -1010,20 +996,16 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            #[cfg(feature = "wip")] // ORML multi asset vesting
-            {
-                let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
+            let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
 
-                Self::deposit_event(Event::ClaimedVesting {
-                    who,
-                    asset_id,
-                    locked_amount,
-                });
-            }
+            Self::deposit_event(Event::ClaimedVesting {
+                who,
+                asset_id,
+                locked_amount,
+            });
             Ok(().into())
         }
 
-        #[allow(unused_variables)]
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::vested_transfer())]
         pub fn vested_transfer(
@@ -1032,31 +1014,27 @@ pub mod pallet {
             schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin)?;
-            #[cfg(feature = "wip")] // ORML multi asset vesting
-            {
-                let to = T::Lookup::lookup(dest)?;
+            let to = T::Lookup::lookup(dest)?;
 
-                if to == from {
-                    ensure!(
-                        T::Currency::free_balance(schedule.asset_id(), &from)
-                            >= VestingScheduleVariant::total_amount(&schedule)
-                                .ok_or(Error::<T>::ArithmeticError)?,
-                        Error::<T>::InsufficientBalanceToLock,
-                    );
-                }
-
-                Self::do_vested_transfer(&from, &to, schedule.clone())?;
-
-                Self::deposit_event(Event::VestingScheduleAdded {
-                    from,
-                    to,
-                    vesting_schedule: schedule,
-                });
+            if to == from {
+                ensure!(
+                    T::Currency::free_balance(schedule.asset_id(), &from)
+                        >= VestingScheduleVariant::total_amount(&schedule)
+                            .ok_or(Error::<T>::ArithmeticError)?,
+                    Error::<T>::InsufficientBalanceToLock,
+                );
             }
+
+            Self::do_vested_transfer(&from, &to, schedule.clone())?;
+
+            Self::deposit_event(Event::VestingScheduleAdded {
+                from,
+                to,
+                vesting_schedule: schedule,
+            });
             Ok(().into())
         }
 
-        #[allow(unused_variables)]
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::update_vesting_schedules())]
         pub fn update_vesting_schedules(
@@ -1065,17 +1043,14 @@ pub mod pallet {
             vesting_schedules: BoundedVec<VestingScheduleOf<T>, T::MaxVestingSchedules>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            #[cfg(feature = "wip")] // ORML multi asset vesting
-            {
-                let account = T::Lookup::lookup(who)?;
-                Self::do_update_vesting_schedules(&account, vesting_schedules)?;
 
-                Self::deposit_event(Event::VestingSchedulesUpdated { who: account });
-            }
+            let account = T::Lookup::lookup(who)?;
+            Self::do_update_vesting_schedules(&account, vesting_schedules)?;
+
+            Self::deposit_event(Event::VestingSchedulesUpdated { who: account });
             Ok(().into())
         }
 
-        #[allow(unused_variables)]
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_unlocked())]
         pub fn claim_for(
@@ -1084,22 +1059,17 @@ pub mod pallet {
             dest: <T::Lookup as StaticLookup>::Source,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_signed(origin)?;
-            #[cfg(feature = "wip")] // ORML multi asset vesting
-            {
-                let who = T::Lookup::lookup(dest)?;
-                let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
+            let who = T::Lookup::lookup(dest)?;
+            let locked_amount = Self::do_claim_unlocked(asset_id, &who)?;
 
-                Self::deposit_event(Event::ClaimedVesting {
-                    who,
-                    asset_id,
-                    locked_amount,
-                });
-            }
+            Self::deposit_event(Event::ClaimedVesting {
+                who,
+                asset_id,
+                locked_amount,
+            });
             Ok(().into())
         }
 
-        #[allow(unused_variables)]
-        #[allow(unused_mut)]
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::unlock_pending_schedule_by_manager())]
         pub fn unlock_pending_schedule_by_manager(
@@ -1108,11 +1078,8 @@ pub mod pallet {
             mut filter_schedule: VestingScheduleOf<T>,
         ) -> DispatchResultWithPostInfo {
             let manager = ensure_signed(origin)?;
-            #[cfg(feature = "wip")] // Pending Vesting
-            {
-                let dest = T::Lookup::lookup(dest)?;
-                Self::do_unlock_pending_schedule_by_manager(manager, dest, &mut filter_schedule)?;
-            }
+            let dest = T::Lookup::lookup(dest)?;
+            Self::do_unlock_pending_schedule_by_manager(manager, dest, &mut filter_schedule)?;
             Ok(().into())
         }
     }
@@ -1200,14 +1167,12 @@ pub mod pallet {
         },
     }
 
-    #[cfg(feature = "wip")] // Auto Vesting
     /// Claims was not processed.
     #[pallet::storage]
     #[pallet::getter(fn pending_claims)]
     #[pallet::unbounded]
     pub type PendingClaims<T: Config> = StorageValue<_, Vec<ClaimOf<T>>, ValueQuery>;
 
-    #[cfg(feature = "wip")] // Auto Vesting
     /// Vesting claims of a block.
     ///
     /// VestingSchedules: map AccountId => Vec<VestingSchedule>
@@ -1217,7 +1182,6 @@ pub mod pallet {
     pub type ClaimSchedules<T: Config> =
         StorageMap<_, Blake2_128Concat, BlockNumberFor<T>, Vec<ClaimOf<T>>, ValueQuery>;
 
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     /// Vesting schedules of an account.
     ///
     /// VestingSchedules: map AccountId => Vec<VestingSchedule>
@@ -1273,7 +1237,6 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        #[cfg(feature = "wip")] // Auto Vesting
         fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
             let claim_weight = <T as Config>::WeightInfo::claim_unlocked();
             Self::auto_claim(current_block, claim_weight)
