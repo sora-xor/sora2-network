@@ -428,7 +428,6 @@ impl ExtBuilder {
     }
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
 pub fn run_to_block(n: u64) {
     while System::block_number() < n {
         System::on_initialize(System::block_number());
