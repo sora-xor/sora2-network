@@ -1258,43 +1258,6 @@
 <a href="#1243" id="1243">1243</a>
 <a href="#1244" id="1244">1244</a>
 <a href="#1245" id="1245">1245</a>
-<a href="#1246" id="1246">1246</a>
-<a href="#1247" id="1247">1247</a>
-<a href="#1248" id="1248">1248</a>
-<a href="#1249" id="1249">1249</a>
-<a href="#1250" id="1250">1250</a>
-<a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
-<a href="#1253" id="1253">1253</a>
-<a href="#1254" id="1254">1254</a>
-<a href="#1255" id="1255">1255</a>
-<a href="#1256" id="1256">1256</a>
-<a href="#1257" id="1257">1257</a>
-<a href="#1258" id="1258">1258</a>
-<a href="#1259" id="1259">1259</a>
-<a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
-<a href="#1265" id="1265">1265</a>
-<a href="#1266" id="1266">1266</a>
-<a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1431,8 +1394,7 @@
 <span class="kw">pub use </span>weights::WeightInfo;
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-    </span><span class="kw">fn </span>do_claim_unlocked(
+    <span class="kw">fn </span>do_claim_unlocked(
         asset_id: AssetIdOf&lt;T&gt;,
         who: <span class="kw-2">&amp;</span>T::AccountId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BalanceOf&lt;T&gt;, DispatchError&gt; {
@@ -1445,8 +1407,7 @@
         <span class="prelude-val">Ok</span>(locked)
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-    </span><span class="doccomment">/// Returns locked balance based on current block number.
+    <span class="doccomment">/// Returns locked balance based on current block number.
     </span><span class="kw">fn </span>locked_balance(
         asset_id: AssetIdOf&lt;T&gt;,
         who: <span class="kw-2">&amp;</span>T::AccountId,
@@ -1486,8 +1447,7 @@
         })
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-    </span><span class="kw">fn </span>do_vested_transfer(
+    <span class="kw">fn </span>do_vested_transfer(
         from: <span class="kw-2">&amp;</span>T::AccountId,
         to: <span class="kw-2">&amp;</span>T::AccountId,
         schedule: VestingScheduleOf&lt;T&gt;,
@@ -1518,8 +1478,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-    </span><span class="kw">fn </span>do_update_vesting_schedules(
+    <span class="kw">fn </span>do_update_vesting_schedules(
         who: <span class="kw-2">&amp;</span>T::AccountId,
         new_schedules: BoundedVec&lt;VestingScheduleOf&lt;T&gt;, T::MaxVestingSchedules&gt;,
     ) -&gt; DispatchResult {
@@ -1579,8 +1538,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Pending Vesting
-    </span><span class="kw">fn </span>do_unlock_pending_schedule_by_manager(
+    <span class="kw">fn </span>do_unlock_pending_schedule_by_manager(
         manager: T::AccountId,
         dest: T::AccountId,
         filter_schedule: <span class="kw-2">&amp;mut </span>VestingScheduleOf&lt;T&gt;,
@@ -1627,40 +1585,35 @@
         }
     }
 
-    <span class="attr">#[allow(unused)]
-    </span><span class="kw">fn </span>set_auto_claim_block(
+    <span class="kw">fn </span>set_auto_claim_block(
         who: AccountIdOf&lt;T&gt;,
         schedule: <span class="kw-2">&amp;</span>VestingScheduleOf&lt;T&gt;,
     ) -&gt; DispatchResult {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-        </span>{
-            <span class="kw">let </span>claim_asset_for_account = Claim::&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt; {
-                account_id: who.clone(),
-                asset_id: schedule.asset_id(),
-            };
+        <span class="kw">let </span>claim_asset_for_account = Claim::&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt; {
+            account_id: who.clone(),
+            asset_id: schedule.asset_id(),
+        };
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(block_number) =
-                schedule.next_claim_block::&lt;T&gt;(frame_system::Pallet::&lt;T&gt;::current_block_number())<span class="question-mark">?
-            </span>{
-                <span class="kw">if </span>!&lt;ClaimSchedules&lt;T&gt;&gt;::get(block_number).contains(<span class="kw-2">&amp;</span>claim_asset_for_account) {
-                    &lt;ClaimSchedules&lt;T&gt;&gt;::append(block_number, claim_asset_for_account.clone())
-                }
-            } <span class="kw">else </span>{
-                <span class="kw">if let </span><span class="prelude-val">Ok</span>(vesting_schedules) = &lt;VestingSchedules&lt;T&gt;&gt;::try_get(who) {
-                    <span class="kw">if </span>schedule.end().is_some()
-                        &amp;&amp; vesting_schedules.contains(schedule)
-                        &amp;&amp; !&lt;PendingClaims&lt;T&gt;&gt;::get().contains(<span class="kw-2">&amp;</span>claim_asset_for_account)
-                    {
-                        &lt;PendingClaims&lt;T&gt;&gt;::append(claim_asset_for_account)
-                    }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(block_number) =
+            schedule.next_claim_block::&lt;T&gt;(frame_system::Pallet::&lt;T&gt;::current_block_number())<span class="question-mark">?
+        </span>{
+            <span class="kw">if </span>!&lt;ClaimSchedules&lt;T&gt;&gt;::get(block_number).contains(<span class="kw-2">&amp;</span>claim_asset_for_account) {
+                &lt;ClaimSchedules&lt;T&gt;&gt;::append(block_number, claim_asset_for_account.clone())
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(vesting_schedules) = &lt;VestingSchedules&lt;T&gt;&gt;::try_get(who) {
+                <span class="kw">if </span>schedule.end().is_some()
+                    &amp;&amp; vesting_schedules.contains(schedule)
+                    &amp;&amp; !&lt;PendingClaims&lt;T&gt;&gt;::get().contains(<span class="kw-2">&amp;</span>claim_asset_for_account)
+                {
+                    &lt;PendingClaims&lt;T&gt;&gt;::append(claim_asset_for_account)
                 }
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-    </span><span class="kw">fn </span>do_auto_claim(claim: <span class="kw-2">&amp;</span>ClaimOf&lt;T&gt;) {
+    <span class="kw">fn </span>do_auto_claim(claim: <span class="kw-2">&amp;</span>ClaimOf&lt;T&gt;) {
         <span class="kw">match </span><span class="self">Self</span>::do_claim_unlocked(claim.asset_id, <span class="kw-2">&amp;</span>claim.account_id) {
             <span class="prelude-val">Ok</span>(locked_amount) =&gt; {
                 <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::ClaimedVesting {
@@ -1675,8 +1628,7 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-    </span><span class="kw">fn </span>claim_for_vec(
+    <span class="kw">fn </span>claim_for_vec(
         claim_for: Vec&lt;ClaimOf&lt;T&gt;&gt;,
         max_claims: usize,
         total_claims: <span class="kw-2">&amp;mut </span>usize,
@@ -1696,8 +1648,7 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-    </span><span class="doccomment">/// Auto claim unlocked tokens from VestingSchedules
+    <span class="doccomment">/// Auto claim unlocked tokens from VestingSchedules
     </span><span class="kw">fn </span>auto_claim(current_block: BlockNumberFor&lt;T&gt;, claim_weight: Weight) -&gt; Weight {
         <span class="kw">let </span><span class="kw-2">mut </span>weight: Weight = T::DbWeight::get().reads(<span class="number">3</span>);
         <span class="kw">let </span>max_weight = T::MaxWeightForAutoClaim::get();
@@ -2168,8 +2119,7 @@
         AccountIdOf&lt;T&gt;,
     &gt;;
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ClaimOf&lt;T&gt; = Claim&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt;;
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ClaimOf&lt;T&gt; = Claim&lt;AssetIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt;;
 
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
@@ -2299,29 +2249,24 @@
             <span class="prelude-val">Ok</span>(().into())
         }
 
-        <span class="attr">#[allow(unused_variables)]
-        #[pallet::call_index(<span class="number">4</span>)]
+        <span class="attr">#[pallet::call_index(<span class="number">4</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::claim_unlocked())]
         </span><span class="kw">pub fn </span>claim_unlocked(
             origin: OriginFor&lt;T&gt;,
             asset_id: AssetIdOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-            </span>{
-                <span class="kw">let </span>locked_amount = <span class="self">Self</span>::do_claim_unlocked(asset_id, <span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
+            <span class="kw">let </span>locked_amount = <span class="self">Self</span>::do_claim_unlocked(asset_id, <span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
 
-                <span class="self">Self</span>::deposit_event(Event::ClaimedVesting {
-                    who,
-                    asset_id,
-                    locked_amount,
-                });
-            }
+            <span class="self">Self</span>::deposit_event(Event::ClaimedVesting {
+                who,
+                asset_id,
+                locked_amount,
+            });
             <span class="prelude-val">Ok</span>(().into())
         }
 
-        <span class="attr">#[allow(unused_variables)]
-        #[pallet::call_index(<span class="number">5</span>)]
+        <span class="attr">#[pallet::call_index(<span class="number">5</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::vested_transfer())]
         </span><span class="kw">pub fn </span>vested_transfer(
             origin: OriginFor&lt;T&gt;,
@@ -2329,32 +2274,28 @@
             schedule: VestingScheduleOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>from = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-            </span>{
-                <span class="kw">let </span>to = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
+            <span class="kw">let </span>to = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
 
-                <span class="kw">if </span>to == from {
-                    <span class="macro">ensure!</span>(
-                        T::Currency::free_balance(schedule.asset_id(), <span class="kw-2">&amp;</span>from)
-                            &gt;= VestingScheduleVariant::total_amount(<span class="kw-2">&amp;</span>schedule)
-                                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
-                        Error::&lt;T&gt;::InsufficientBalanceToLock,
-                    );
-                }
-
-                <span class="self">Self</span>::do_vested_transfer(<span class="kw-2">&amp;</span>from, <span class="kw-2">&amp;</span>to, schedule.clone())<span class="question-mark">?</span>;
-
-                <span class="self">Self</span>::deposit_event(Event::VestingScheduleAdded {
-                    from,
-                    to,
-                    vesting_schedule: schedule,
-                });
+            <span class="kw">if </span>to == from {
+                <span class="macro">ensure!</span>(
+                    T::Currency::free_balance(schedule.asset_id(), <span class="kw-2">&amp;</span>from)
+                        &gt;= VestingScheduleVariant::total_amount(<span class="kw-2">&amp;</span>schedule)
+                            .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
+                    Error::&lt;T&gt;::InsufficientBalanceToLock,
+                );
             }
+
+            <span class="self">Self</span>::do_vested_transfer(<span class="kw-2">&amp;</span>from, <span class="kw-2">&amp;</span>to, schedule.clone())<span class="question-mark">?</span>;
+
+            <span class="self">Self</span>::deposit_event(Event::VestingScheduleAdded {
+                from,
+                to,
+                vesting_schedule: schedule,
+            });
             <span class="prelude-val">Ok</span>(().into())
         }
 
-        <span class="attr">#[allow(unused_variables)]
-        #[pallet::call_index(<span class="number">6</span>)]
+        <span class="attr">#[pallet::call_index(<span class="number">6</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::update_vesting_schedules())]
         </span><span class="kw">pub fn </span>update_vesting_schedules(
             origin: OriginFor&lt;T&gt;,
@@ -2362,18 +2303,15 @@
             vesting_schedules: BoundedVec&lt;VestingScheduleOf&lt;T&gt;, T::MaxVestingSchedules&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-            </span>{
-                <span class="kw">let </span>account = T::Lookup::lookup(who)<span class="question-mark">?</span>;
-                <span class="self">Self</span>::do_update_vesting_schedules(<span class="kw-2">&amp;</span>account, vesting_schedules)<span class="question-mark">?</span>;
 
-                <span class="self">Self</span>::deposit_event(Event::VestingSchedulesUpdated { who: account });
-            }
+            <span class="kw">let </span>account = T::Lookup::lookup(who)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::do_update_vesting_schedules(<span class="kw-2">&amp;</span>account, vesting_schedules)<span class="question-mark">?</span>;
+
+            <span class="self">Self</span>::deposit_event(Event::VestingSchedulesUpdated { who: account });
             <span class="prelude-val">Ok</span>(().into())
         }
 
-        <span class="attr">#[allow(unused_variables)]
-        #[pallet::call_index(<span class="number">7</span>)]
+        <span class="attr">#[pallet::call_index(<span class="number">7</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::claim_unlocked())]
         </span><span class="kw">pub fn </span>claim_for(
             origin: OriginFor&lt;T&gt;,
@@ -2381,23 +2319,18 @@
             dest: &lt;T::Lookup <span class="kw">as </span>StaticLookup&gt;::Source,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let _ </span>= ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-            </span>{
-                <span class="kw">let </span>who = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
-                <span class="kw">let </span>locked_amount = <span class="self">Self</span>::do_claim_unlocked(asset_id, <span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
+            <span class="kw">let </span>who = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
+            <span class="kw">let </span>locked_amount = <span class="self">Self</span>::do_claim_unlocked(asset_id, <span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
 
-                <span class="self">Self</span>::deposit_event(Event::ClaimedVesting {
-                    who,
-                    asset_id,
-                    locked_amount,
-                });
-            }
+            <span class="self">Self</span>::deposit_event(Event::ClaimedVesting {
+                who,
+                asset_id,
+                locked_amount,
+            });
             <span class="prelude-val">Ok</span>(().into())
         }
 
-        <span class="attr">#[allow(unused_variables)]
-        #[allow(unused_mut)]
-        #[pallet::call_index(<span class="number">8</span>)]
+        <span class="attr">#[pallet::call_index(<span class="number">8</span>)]
         #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::unlock_pending_schedule_by_manager())]
         </span><span class="kw">pub fn </span>unlock_pending_schedule_by_manager(
             origin: OriginFor&lt;T&gt;,
@@ -2405,11 +2338,8 @@
             <span class="kw-2">mut </span>filter_schedule: VestingScheduleOf&lt;T&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>manager = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Pending Vesting
-            </span>{
-                <span class="kw">let </span>dest = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
-                <span class="self">Self</span>::do_unlock_pending_schedule_by_manager(manager, dest, <span class="kw-2">&amp;mut </span>filter_schedule)<span class="question-mark">?</span>;
-            }
+            <span class="kw">let </span>dest = T::Lookup::lookup(dest)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::do_unlock_pending_schedule_by_manager(manager, dest, <span class="kw-2">&amp;mut </span>filter_schedule)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(().into())
         }
     }
@@ -2497,15 +2427,13 @@
         },
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-    </span><span class="doccomment">/// Claims was not processed.
+    <span class="doccomment">/// Claims was not processed.
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>pending_claims)]
     #[pallet::unbounded]
     </span><span class="kw">pub type </span>PendingClaims&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Vec&lt;ClaimOf&lt;T&gt;&gt;, ValueQuery&gt;;
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-    </span><span class="doccomment">/// Vesting claims of a block.
+    <span class="doccomment">/// Vesting claims of a block.
     ///
     /// VestingSchedules: map AccountId =&gt; Vec&lt;VestingSchedule&gt;
     </span><span class="attr">#[pallet::storage]
@@ -2514,8 +2442,7 @@
     </span><span class="kw">pub type </span>ClaimSchedules&lt;T: Config&gt; =
         StorageMap&lt;<span class="kw">_</span>, Blake2_128Concat, BlockNumberFor&lt;T&gt;, Vec&lt;ClaimOf&lt;T&gt;&gt;, ValueQuery&gt;;
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// ORML multi asset vesting
-    </span><span class="doccomment">/// Vesting schedules of an account.
+    <span class="doccomment">/// Vesting schedules of an account.
     ///
     /// VestingSchedules: map AccountId =&gt; Vec&lt;VestingSchedule&gt;
     </span><span class="attr">#[pallet::storage]
@@ -2570,8 +2497,7 @@
 
     <span class="attr">#[pallet::hooks]
     </span><span class="kw">impl</span>&lt;T: Config&gt; Hooks&lt;BlockNumberFor&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Auto Vesting
-        </span><span class="kw">fn </span>on_initialize(current_block: BlockNumberFor&lt;T&gt;) -&gt; Weight {
+        <span class="kw">fn </span>on_initialize(current_block: BlockNumberFor&lt;T&gt;) -&gt; Weight {
             <span class="kw">let </span>claim_weight = &lt;T <span class="kw">as </span>Config&gt;::WeightInfo::claim_unlocked();
             <span class="self">Self</span>::auto_claim(current_block, claim_weight)
         }

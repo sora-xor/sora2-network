@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["CrowdloanInfos","CrowdloanUserInfos","Module","Rewards","TotalRewards"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["ClaimSchedules","CrowdloanInfos","CrowdloanUserInfos","Module","PendingClaims","Rewards","TotalRewards","VestingSchedules"]};
