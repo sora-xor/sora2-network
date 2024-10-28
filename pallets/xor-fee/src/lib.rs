@@ -702,9 +702,11 @@ pub use weights::WeightInfo;
 pub mod pallet {
     use super::*;
     use common::AssetIdOf;
+    use frame_support::dispatch::extract_actual_weight;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::StorageVersion;
+    use frame_support::traits::{IsSubType, StorageVersion};
     use frame_system::pallet_prelude::*;
+    use std::fmt::Debug;
 
     #[pallet::config]
     pub trait Config:
@@ -738,6 +740,11 @@ pub mod pallet {
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;
+        type MaxWhiteListTokens: Get<u32>;
+        type RuntimeCall: Parameter
+            + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo>
+            + GetDispatchInfo
+            + From<frame_system::Call<Self>>;
     }
 
     /// The current storage version.
@@ -831,6 +838,27 @@ pub mod pallet {
             }
             Ok(().into())
         }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::xorless_call())]
+        pub fn xorless_call(
+            origin: OriginFor<T>,
+            call: Box<<T as Config>::RuntimeCall>, // <T as Config>::RuntimeCall
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_signed(origin.clone())?;
+            let call_info = call.get_dispatch_info();
+            let call_result = call.dispatch(origin);
+            let whole_weight = T::WeightInfo::xorless_call()
+                .saturating_add(extract_actual_weight(&call_result, &call_info));
+
+            call_result
+                .map_err(|mut err| {
+                    err.post_info = Some(whole_weight).into();
+                    err
+                })
+                .map(|_| Some(whole_weight).into())
+        }
     }
 
     #[pallet::event]
@@ -857,6 +885,13 @@ pub mod pallet {
         /// `SmallReferenceAmount` is unsupported
         InvalidSmallReferenceAmount,
     }
+
+    #[cfg(feature = "wip")] // Xorless fee
+    /// Tokens allowed for xorless execution
+    #[pallet::storage]
+    #[pallet::getter(fn whitelist_tokens)]
+    pub type WhitelistTokensForFee<T: Config> =
+        StorageValue<_, BoundedVec<AssetIdOf<T>, T::MaxWhiteListTokens>, ValueQuery>;
 
     #[cfg(feature = "wip")] // Dynamic fee
     /// Small fee value should be `SmallReferenceAmount` in reference asset id

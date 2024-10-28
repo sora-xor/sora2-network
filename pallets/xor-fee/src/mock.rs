@@ -100,6 +100,7 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
     pub GetParliamentAccountId: AccountId = account_from_str("sora-parliament");
+    pub const MaxWhiteListTokens: u32 = 50;
 }
 
 construct_runtime! {
@@ -255,6 +256,8 @@ impl Config for Runtime {
     #[cfg(feature = "wip")] // Dynamic fee
     type DynamicMultiplier = DynamicMultiplier;
     type PermittedSetPeriod = EnsureRoot<AccountId>;
+    type MaxWhiteListTokens = MaxWhiteListTokens;
+    type RuntimeCall = RuntimeCall;
 }
 
 #[cfg(feature = "wip")] // Dynamic fee
