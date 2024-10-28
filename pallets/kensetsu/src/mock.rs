@@ -63,7 +63,6 @@ type Balance = u128;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type BlockNumber = u64;
 type Hash = H256;
-type Moment = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;

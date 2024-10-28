@@ -70,7 +70,6 @@ parameter_types! {
 }
 
 mock_pallet_balances_config!(Runtime);
-
 mock_frame_system_config!(Runtime);
 
 impl Config for Runtime {

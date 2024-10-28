@@ -32,10 +32,12 @@ use crate::Config;
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::Balance;
 use common::{
-    self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair,
-    DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    self, balance, fixed, hash, mock_assets_config, mock_band_config, mock_common_config,
+    mock_currencies_config, mock_dex_api_config, mock_dex_manager_config, mock_frame_system_config,
+    mock_oracle_proxy_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_price_tools_config, mock_technical_config, mock_tokens_config,
+    mock_trading_pair_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -58,7 +60,6 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -95,9 +96,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
-    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
-    pub const GetBandRateStaleBlockPeriod: u64 = 600; // 1 hour
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             xst::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -152,16 +150,14 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-
-impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_dex_manager_config!(Runtime);
+mock_trading_pair_config!(Runtime);
+mock_band_config!(Runtime, OracleProxy, XSTPool);
+mock_oracle_proxy_config!(Runtime, Band);
+mock_dex_api_config!(Runtime, (), MockLiquiditySource, XSTPool);
+mock_permissions_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_price_tools_config!(Runtime);
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = ();
@@ -184,45 +180,8 @@ impl xst::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl band::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Symbol = common::SymbolName;
-    type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = OracleProxy;
-    type Time = Timestamp;
-    type GetBandRateStalePeriod = GetBandRateStalePeriod;
-    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
-    type OnSymbolDisabledHook = XSTPool;
-    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
-}
-
-impl oracle_proxy::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
-    type Symbol = <Runtime as band::Config>::Symbol;
-    type BandChainOracle = Band;
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-impl dex_api::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type MockLiquiditySource = ();
-    type MockLiquiditySource2 = ();
-    type MockLiquiditySource3 = ();
-    type MockLiquiditySource4 = ();
-    type XYKPool = MockLiquiditySource;
-    type XSTPool = XSTPool;
-    type MulticollateralBondingCurvePool = ();
-    type DexInfoProvider = ();
-    type OrderBook = ();
-    type WeightInfo = ();
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -282,13 +241,6 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
 impl Config for Runtime {}
 
 impl ceres_liquidity_locker::Config for Runtime {
@@ -297,13 +249,6 @@ impl ceres_liquidity_locker::Config for Runtime {
     type XYKPool = PoolXYK;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
-    type WeightInfo = ();
-}
-
-impl price_tools::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
-    type TradingPairSourceManager = ();
     type WeightInfo = ();
 }
 

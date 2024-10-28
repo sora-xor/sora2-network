@@ -3,8 +3,10 @@ use {
     common::{
         balance, fixed, hash,
         mock::{ExistentialDeposits, GetTradingPairRestrictedFlag},
-        mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-        mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
+        mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_api_config,
+        mock_dex_manager_config, mock_frame_system_config, mock_pallet_balances_config,
+        mock_pallet_timestamp_config, mock_permissions_config, mock_price_tools_config,
+        mock_technical_config, mock_tokens_config, mock_trading_pair_config,
         mock_vested_rewards_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
@@ -33,7 +35,6 @@ use {
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type Moment = u64;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -98,6 +99,12 @@ mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
+mock_dex_api_config!(Runtime);
+mock_trading_pair_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_price_tools_config!(Runtime);
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
 where
@@ -119,7 +126,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([100; 32]);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([101; 32]);
-    pub const MinimumPeriod: u64 = 5;
 }
 
 parameter_types! {
@@ -127,7 +133,6 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = APOLLO_ASSET_ID;
     pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
-
         TechAccountId::from_generic_pair(
             liquidity_proxy::TECH_ACCOUNT_PREFIX.to_vec(),
             liquidity_proxy::TECH_ACCOUNT_MAIN.to_vec(),
@@ -135,7 +140,6 @@ parameter_types! {
     };
     pub GetLiquidityProxyAccountId: AccountId = {
         let tech_account_id = GetLiquidityProxyTechAccountId::get();
-
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.")
     };
@@ -178,28 +182,6 @@ impl ceres_liquidity_locker::Config for Runtime {
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
-}
-
-impl dex_api::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type MockLiquiditySource = ();
-    type MockLiquiditySource2 = ();
-    type MockLiquiditySource3 = ();
-    type MockLiquiditySource4 = ();
-    type MulticollateralBondingCurvePool = ();
-    type XYKPool = pool_xyk::Pallet<Runtime>;
-    type XSTPool = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type OrderBook = ();
-    type WeightInfo = ();
-}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -265,26 +247,6 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-impl dex_manager::Config for Runtime {}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl price_tools::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = LiquidityProxy;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
 pub struct MockPriceTools;

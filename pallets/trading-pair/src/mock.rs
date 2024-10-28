@@ -32,10 +32,10 @@ use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol,
-    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
-    VXOR, XOR, XST, XSTUSD,
+    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_manager_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
+    Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -90,6 +90,8 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_dex_manager_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -101,17 +103,8 @@ impl Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-}
-
-parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(

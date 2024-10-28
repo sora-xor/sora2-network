@@ -33,8 +33,9 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     self, fixed_from_basis_points, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed, XOR, XST,
+    mock_dex_manager_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId,
+    DEXInfo, Fixed, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
@@ -99,6 +100,8 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_dex_manager_config!(Runtime);
 
 impl Config<crate::Instance1> for Runtime {
     type GetFee = GetFee;
@@ -117,12 +120,6 @@ impl Config<crate::Instance2> for Runtime {
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     // add additional fields for other pallets genesis

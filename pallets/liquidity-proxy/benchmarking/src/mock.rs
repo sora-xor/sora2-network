@@ -37,12 +37,12 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount};
 use common::{
     balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
-    mock_currencies_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_technical_config, mock_tokens_config, mock_vested_rewards_config, Amount, AssetId32,
-    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, DEXInfo, Description, Fixed,
-    FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    PriceToolsProvider, PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT,
-    VAL, VXOR, XOR, XST,
+    mock_currencies_config, mock_extended_assets_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
+    mock_vested_rewards_config, Amount, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXId, DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PriceToolsProvider, PriceVariant, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
@@ -146,6 +146,7 @@ mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
+mock_extended_assets_config!(Runtime);
 
 impl liquidity_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
@@ -236,13 +237,6 @@ impl demeter_farming_platform::Config for Runtime {
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl extended_assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {

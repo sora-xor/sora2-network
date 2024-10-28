@@ -34,8 +34,10 @@ use crate::{Config, *};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, DEXId, DEXInfo, Fixed, PSWAP, VXOR, XST,
+    mock_dex_manager_config, mock_extended_assets_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, mock_trading_pair_config, Amount, DEXId, DEXInfo,
+    Fixed, PSWAP, VXOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -77,7 +79,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
@@ -113,23 +114,14 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_extended_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_trading_pair_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl dex_api::Config for Runtime {
@@ -152,13 +144,6 @@ impl demeter_farming_platform::Config for Runtime {
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl extended_assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -208,13 +193,6 @@ impl pswap_distribution::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type GetChameleonPools = common::mock::GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {

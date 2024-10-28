@@ -35,7 +35,8 @@ use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome}
 use common::weights::BlockWeights;
 use common::{
     balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_dex_manager_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
     mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
     Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
     KSM, PSWAP, TBCD, VXOR, XOR, XST,
@@ -140,6 +141,9 @@ mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -157,7 +161,6 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub const CrowdloanVestingPeriod: u64 = 14400;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
@@ -182,9 +185,6 @@ impl Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-}
-
-parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
@@ -259,19 +259,6 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
-    type WeightInfo = ();
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_manager::Config for Runtime {}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
 
