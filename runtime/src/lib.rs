@@ -1815,8 +1815,8 @@ impl pallet_offences::Config for Runtime {
 parameter_types! {
     pub const MaxVestingSchedules: u32 = 20;
     pub const MinVestedTransfer: Balance = 1;
-    // TODO: set after benchmarking
-    pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+    pub MaxWeightForAutoClaim: Weight = BlockWeights::get().per_class.get(DispatchClass::Operational)
+        .reserved.expect("Error get reserved weight") * Perbill::from_percent(10);
 }
 
 impl vested_rewards::Config for Runtime {

@@ -388,7 +388,7 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                 )
             }
             CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims)) => {
-                return if _result.is_err() {
+                if _result.is_err() {
                     Some(fee_without_claims)
                 } else {
                     Some(fee)
