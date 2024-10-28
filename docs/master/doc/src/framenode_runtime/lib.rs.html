@@ -5370,8 +5370,8 @@
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>MaxVestingSchedules: u32 = <span class="number">20</span>;
     <span class="kw">pub const </span>MinVestedTransfer: Balance = <span class="number">1</span>;
-    <span class="comment">// TODO: set after benchmarking
-    </span><span class="kw">pub </span>MaxWeightForAutoClaim: Weight = Perbill::from_percent(<span class="number">10</span>) * BlockWeights::get().max_block;
+    <span class="kw">pub </span>MaxWeightForAutoClaim: Weight = BlockWeights::get().per_class.get(DispatchClass::Operational)
+        .reserved.expect(<span class="string">&quot;Error get reserved weight&quot;</span>) * Perbill::from_percent(<span class="number">10</span>);
 }
 
 <span class="kw">impl </span>vested_rewards::Config <span class="kw">for </span>Runtime {
