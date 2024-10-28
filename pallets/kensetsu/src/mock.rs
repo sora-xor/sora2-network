@@ -52,8 +52,8 @@ use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
 use sp_core::{ConstU32, H256};
 use sp_runtime::{
-    testing::{Header, TestXt},
-    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+    testing::TestXt,
+    traits::{IdentifyAccount, Verify},
 };
 use sp_runtime::{DispatchError, MultiSignature};
 

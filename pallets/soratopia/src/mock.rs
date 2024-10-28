@@ -43,11 +43,10 @@ use frame_support::traits::Everything;
 use frame_system::offchain::SendTransactionTypes;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
 use sp_runtime::MultiSignature;
 use sp_runtime::{
-    testing::{Header, TestXt},
-    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+    testing::TestXt,
+    traits::{IdentifyAccount, Verify},
 };
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
