@@ -29,14 +29,19 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::alloc::collections::HashSet;
-use common::{fixed, DataFeed};
+use common::{fixed, DataFeed, SymbolName};
 use frame_support::{assert_err, error::BadOrigin};
 use sp_core::TryCollect;
+use sp_std::str::FromStr;
 
 use crate::{mock::*, Oracle, Rate};
 
 fn relay_symbols() {
-    let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];
+    let symbols = vec![
+        SymbolName::from_str("USD").expect("`USD` is a valid symbol name"),
+        SymbolName::from_str("RUB").expect("`RUB` is a valid symbol name"),
+        SymbolName::from_str("YEN").expect("`YEN` is a valid symbol name"),
+    ];
     let rates = vec![1, 2, 3];
     let relayer = 1;
     let initial_resolve_time = 0;
@@ -101,7 +106,11 @@ fn quote_and_list_enabled_symbols_should_work() {
         OracleProxy::enable_oracle(RuntimeOrigin::root(), oracle.clone())
             .expect("Failed to enable oracle");
 
-        let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];
+        let symbols = vec![
+            SymbolName::from_str("USD").expect("`USD` is a valid symbol name"),
+            SymbolName::from_str("RUB").expect("`RUB` is a valid symbol name"),
+            SymbolName::from_str("YEN").expect("`YEN` is a valid symbol name"),
+        ];
         let rates = vec![1, 2, 3];
         let resolve_time = 0;
 
@@ -116,16 +125,16 @@ fn quote_and_list_enabled_symbols_should_work() {
                     dynamic_fee: fixed!(0),
                 };
                 assert_eq!(
-                    <OracleProxy as DataFeed<String, Rate, u64>>::quote(symbol),
+                    <OracleProxy as DataFeed<SymbolName, Rate, u64>>::quote(symbol),
                     Ok(Some(rate))
                 );
             });
 
-        let enabled_symbols: HashSet<(String, u64)> =
+        let enabled_symbols: HashSet<(SymbolName, u64)> =
             symbols.into_iter().map(|sym| (sym, resolve_time)).collect();
 
-        let enabled_symbols_res: HashSet<(String, u64)> =
-            <OracleProxy as DataFeed<String, Rate, u64>>::list_enabled_symbols()
+        let enabled_symbols_res: HashSet<(SymbolName, u64)> =
+            <OracleProxy as DataFeed<SymbolName, Rate, u64>>::list_enabled_symbols()
                 .expect("Failed to resolve symbols")
                 .into_iter()
                 .collect();
@@ -140,12 +149,14 @@ fn quote_and_list_enabled_symbols_should_not_work_with_disabled_oracle() {
         relay_symbols();
 
         assert_eq!(
-            <OracleProxy as DataFeed<String, Rate, u64>>::quote(&"USD".to_string()),
+            <OracleProxy as DataFeed<SymbolName, Rate, u64>>::quote(
+                &SymbolName::from_str("USD").expect("`USD` is a valid symbol name")
+            ),
             Ok(None)
         );
 
         assert_eq!(
-            <OracleProxy as DataFeed<String, Rate, u64>>::list_enabled_symbols(),
+            <OracleProxy as DataFeed<SymbolName, Rate, u64>>::list_enabled_symbols(),
             Ok(vec![])
         )
     });

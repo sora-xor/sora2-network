@@ -33,7 +33,8 @@ use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
+    mock_dex_manager_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
     mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
     ETH, PSWAP, USDT, VAL, VXOR, XOR, XST,
@@ -98,7 +99,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
@@ -126,15 +126,16 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-
-impl dex_manager::Config for Runtime {}
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = ();
@@ -153,11 +154,6 @@ impl Config for Runtime {
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
 }
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
@@ -268,13 +264,6 @@ impl pool_xyk::Config for Runtime {
     type AssetRegulator = ();
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
-    type WeightInfo = ();
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
 

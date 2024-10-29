@@ -34,9 +34,9 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, VAL, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -96,22 +96,17 @@ construct_runtime!(
     }
 );
 
-mock_technical_config!(Runtime);
-// Required by assets::Config
-mock_currencies_config!(Runtime);
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl referrals::Config for Runtime {

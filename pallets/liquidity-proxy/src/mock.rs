@@ -33,11 +33,13 @@ use common::alt::{DiscreteQuotation, SwapChunk};
 use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, mock_assets_config,
-    mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_technical_config, mock_tokens_config,
-    mock_vested_rewards_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, RewardReason, DAI,
-    DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    mock_common_config, mock_currencies_config, mock_dex_api_config, mock_dex_manager_config,
+    mock_extended_assets_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, mock_trading_pair_config, mock_vested_rewards_config, Amount, AssetId32,
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
+    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT,
+    VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -130,7 +132,6 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
-    pub const MinimumPeriod: u64 = 5;
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetInternalSlippageTolerancePercent: Permill = Permill::from_rational(1u32, 1000); // 0.1%
@@ -168,13 +169,28 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_pallet_balances_config!(Runtime);
-mock_currencies_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_dex_api_config!(
+    Runtime,
+    MockMCBCPool,
+    pool_xyk::Pallet<Runtime>,
+    MockXSTPool,
+    mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>,
+    mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance2>,
+    mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>,
+    mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>
+);
+mock_dex_manager_config!(Runtime);
+mock_extended_assets_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
+mock_trading_pair_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
 
 impl Config for Runtime {
@@ -204,8 +220,6 @@ parameter_types! {
     pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
-impl dex_manager::Config for Runtime {}
-
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee0;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
@@ -232,36 +246,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_api::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type MockLiquiditySource =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
-    type MockLiquiditySource2 =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance2>;
-    type MockLiquiditySource3 =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
-    type MockLiquiditySource4 =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type XYKPool = pool_xyk::Pallet<Runtime>;
-    type MulticollateralBondingCurvePool = MockMCBCPool;
-    type XSTPool = MockXSTPool;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type OrderBook = (); // todo (m.tagirov) ALT
-    type WeightInfo = ();
-}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -293,13 +277,6 @@ impl demeter_farming_platform::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
-impl extended_assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxRegulatedAssetsPerSBT = ConstU32<1000>;
-    type WeightInfo = ();
-}
-
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -325,13 +302,6 @@ impl pool_xyk::Config for Runtime {
     type AssetRegulator = extended_assets::Pallet<Runtime>;
     type IrreducibleReserve = GetXykIrreducibleReservePercent;
     type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
-    type WeightInfo = ();
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
 
