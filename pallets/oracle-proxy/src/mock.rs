@@ -30,6 +30,7 @@
 
 use crate::{self as oracle_proxy, Config};
 use band;
+use common::{self, mock_band_config, mock_pallet_timestamp_config, SymbolName};
 use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
 use sp_core::H256;
@@ -40,7 +41,6 @@ use sp_runtime::{
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type Moment = u64;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -84,36 +84,14 @@ impl system::Config for Runtime {
 }
 
 impl Config for Runtime {
-    type Symbol = String;
+    type Symbol = SymbolName;
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
-frame_support::parameter_types! {
-    pub const GetBandRateStalePeriod: Moment = 5*60*1000; // 5 minutes
-    pub const GetBandRateStaleBlockPeriod: u64 = 600; // 1 hour in blocks
-    pub const MinimumPeriod: u64 = 5;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-impl band::Config for Runtime {
-    type Symbol = <Runtime as Config>::Symbol;
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
-    type Time = Timestamp;
-    type GetBandRateStalePeriod = GetBandRateStalePeriod;
-    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
-    type OnSymbolDisabledHook = ();
-    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
-}
+mock_band_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {

@@ -63,7 +63,6 @@ type Balance = u128;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type BlockNumber = u64;
 type Hash = H256;
-type Moment = u64;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
@@ -334,14 +333,14 @@ parameter_types! {
 }
 
 mock_assets_config!(TestRuntime);
-mock_pallet_balances_config!(TestRuntime);
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
-mock_permissions_config!(TestRuntime);
-mock_tokens_config!(TestRuntime);
+mock_pallet_balances_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
+mock_permissions_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
+mock_tokens_config!(TestRuntime);
 
 impl kensetsu::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
