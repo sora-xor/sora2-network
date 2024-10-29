@@ -69,8 +69,8 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

@@ -90,14 +90,14 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 
 pub const BASE_EVM_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
-mock_pallet_balances_config!(Test);
-mock_technical_config!(Test);
-mock_currencies_config!(Test);
-mock_common_config!(Test);
-mock_tokens_config!(Test);
 mock_assets_config!(Test);
-mock_permissions_config!(Test);
+mock_common_config!(Test);
+mock_currencies_config!(Test);
+mock_pallet_balances_config!(Test);
 mock_pallet_timestamp_config!(Test);
+mock_permissions_config!(Test);
+mock_technical_config!(Test);
+mock_tokens_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

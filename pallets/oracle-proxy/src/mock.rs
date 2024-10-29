@@ -90,8 +90,8 @@ impl Config for Runtime {
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
-mock_pallet_timestamp_config!(Runtime);
 mock_band_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {

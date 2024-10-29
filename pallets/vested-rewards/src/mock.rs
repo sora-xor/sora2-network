@@ -134,16 +134,16 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-mock_permissions_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

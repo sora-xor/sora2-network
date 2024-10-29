@@ -74,12 +74,12 @@ pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT: AccountId = 24;
 
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
 mock_permissions_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

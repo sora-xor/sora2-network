@@ -93,15 +93,15 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_currencies_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-mock_permissions_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 impl Config<crate::Instance1> for Runtime {
     type GetFee = GetFee;

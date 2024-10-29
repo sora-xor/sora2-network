@@ -54,15 +54,6 @@ type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type BlockNumber = u64;
 
-mock_common_config!(TestRuntime);
-mock_currencies_config!(TestRuntime);
-mock_tokens_config!(TestRuntime);
-mock_pallet_balances_config!(TestRuntime);
-mock_frame_system_config!(TestRuntime);
-mock_permissions_config!(TestRuntime);
-mock_technical_config!(TestRuntime);
-mock_pallet_timestamp_config!(TestRuntime);
-mock_extended_assets_config!(TestRuntime);
 mock_assets_config!(
     TestRuntime,
     (
@@ -70,6 +61,15 @@ mock_assets_config!(
         permissions::Pallet<TestRuntime>,
     )
 );
+mock_common_config!(TestRuntime);
+mock_currencies_config!(TestRuntime);
+mock_extended_assets_config!(TestRuntime);
+mock_frame_system_config!(TestRuntime);
+mock_pallet_balances_config!(TestRuntime);
+mock_pallet_timestamp_config!(TestRuntime);
+mock_permissions_config!(TestRuntime);
+mock_technical_config!(TestRuntime);
+mock_tokens_config!(TestRuntime);
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;

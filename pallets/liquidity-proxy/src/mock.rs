@@ -169,19 +169,9 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_pallet_balances_config!(Runtime);
-mock_currencies_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-mock_vested_rewards_config!(Runtime);
-mock_extended_assets_config!(Runtime);
-mock_dex_manager_config!(Runtime);
-mock_permissions_config!(Runtime);
-mock_trading_pair_config!(Runtime);
-mock_pallet_timestamp_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_dex_api_config!(
     Runtime,
     MockMCBCPool,
@@ -192,6 +182,16 @@ mock_dex_api_config!(
     mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>,
     mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>
 );
+mock_dex_manager_config!(Runtime);
+mock_extended_assets_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
+mock_trading_pair_config!(Runtime);
+mock_vested_rewards_config!(Runtime);
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

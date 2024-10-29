@@ -143,21 +143,21 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-mock_dex_manager_config!(Runtime);
-mock_trading_pair_config!(Runtime);
 mock_band_config!(Runtime, OracleProxy, XSTPool);
-mock_oracle_proxy_config!(Runtime, Band);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
 mock_dex_api_config!(Runtime, (), MockLiquiditySource, XSTPool);
-mock_permissions_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_oracle_proxy_config!(Runtime, Band);
+mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_price_tools_config!(Runtime);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
+mock_trading_pair_config!(Runtime);
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = ();

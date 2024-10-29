@@ -117,19 +117,19 @@ construct_runtime! {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
-mock_currencies_config!(Runtime);
-mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
 mock_assets_config!(Runtime);
-mock_extended_assets_config!(Runtime);
-mock_orml_tokens_config!(Runtime);
-mock_permissions_config!(Runtime);
-mock_dex_manager_config!(Runtime);
-mock_pallet_timestamp_config!(Runtime);
 mock_band_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_extended_assets_config!(Runtime);
+mock_frame_system_config!(Runtime);
 mock_oracle_proxy_config!(Runtime);
+mock_orml_tokens_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
