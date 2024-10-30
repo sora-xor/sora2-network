@@ -55,6 +55,7 @@ use sp_runtime::traits::{
 };
 use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
 use sp_staking::SessionIndex;
+use sp_std::boxed::Box;
 use sp_std::vec::Vec;
 
 pub mod extension;
@@ -702,11 +703,9 @@ pub use weights::WeightInfo;
 pub mod pallet {
     use super::*;
     use common::AssetIdOf;
-    use frame_support::dispatch::extract_actual_weight;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::{IsSubType, StorageVersion};
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use std::fmt::Debug;
 
     #[pallet::config]
     pub trait Config:
@@ -839,6 +838,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[allow(unused_variables)] // Used in extension
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::xorless_call())]
         pub fn xorless_call(
@@ -847,17 +847,22 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_signed(origin.clone())?;
-            let call_info = call.get_dispatch_info();
-            let call_result = call.dispatch(origin);
-            let whole_weight = T::WeightInfo::xorless_call()
-                .saturating_add(extract_actual_weight(&call_result, &call_info));
+            #[cfg(feature = "wip")] // Xorless fee
+            return {
+                let call_info = call.get_dispatch_info();
+                let call_result = call.dispatch(origin);
+                let whole_weight = T::WeightInfo::xorless_call()
+                    .saturating_add(extract_actual_weight(&call_result, &call_info));
 
-            call_result
-                .map_err(|mut err| {
-                    err.post_info = Some(whole_weight).into();
-                    err
-                })
-                .map(|_| Some(whole_weight).into())
+                call_result
+                    .map_err(|mut err| {
+                        err.post_info = Some(whole_weight).into();
+                        err
+                    })
+                    .map(|_| Some(whole_weight).into())
+            };
+            #[cfg(not(feature = "wip"))] // Xorless fee
+            Ok(().into())
         }
     }
 
@@ -884,7 +889,16 @@ pub mod pallet {
         MultiplierCalculationFailed,
         /// `SmallReferenceAmount` is unsupported
         InvalidSmallReferenceAmount,
+        /// Asset is not supported for fee payments
+        AssetIsNotSupportedForFee,
     }
+
+    #[cfg(feature = "wip")] // Xorless fee
+    /// AssetId -> Amount to pay for fee
+    #[pallet::storage]
+    #[pallet::getter(fn burnt_for_fee)]
+    pub type BurntForFee<T: Config> =
+        StorageMap<_, Blake2_128Concat, AssetIdOf<T>, BalanceOf<T>, ValueQuery>;
 
     #[cfg(feature = "wip")] // Xorless fee
     /// Tokens allowed for xorless execution

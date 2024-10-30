@@ -1307,6 +1307,7 @@ where
 
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
+    pub const MaxWhiteListTokens: u32 = 50;
 }
 
 impl xor_fee::Config for Runtime {
@@ -1340,6 +1341,8 @@ impl xor_fee::Config for Runtime {
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
+    type MaxWhiteListTokens = MaxWhiteListTokens;
+    type RuntimeCall = RuntimeCall;
 }
 
 pub struct ConstantFeeMultiplier;

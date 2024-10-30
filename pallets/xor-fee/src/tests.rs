@@ -35,12 +35,12 @@ use crate::extension::ChargeTransactionPayment;
 use crate::{mock::*, LiquidityInfo, XorToVal};
 #[cfg(feature = "wip")] // Dynamic fee
 use crate::{CalculateMultiplier, Error, Multiplier, UpdatePeriod};
-use common::balance;
 use common::mock::{alice, bob};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
 #[cfg(feature = "wip")] // Dynamic fee
 use common::weights::constants::SMALL_FEE;
+use common::{balance, XOR};
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
 use frame_support::error::BadOrigin;
@@ -587,5 +587,20 @@ fn test_set_small_reference_amount() {
             XorFee::set_small_reference_amount(RuntimeOrigin::root(), balance!(0)),
             expected_error
         );
+    });
+}
+
+#[cfg(feature = "wip")] // Xorless fee
+#[test]
+fn check_debug() {
+    ExtBuilder::build().execute_with(|| {
+        System::set_block_number(0);
+        assert_ok!(System::remark(RuntimeOrigin::signed(alice()), vec![]));
+        let remark_call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
+        assert_ok!(XorFee::xorless_call(
+            RuntimeOrigin::signed(alice()),
+            Box::from(remark_call),
+            XOR
+        ));
     });
 }

@@ -36,6 +36,8 @@ use common::prelude::FixedWrapper;
 use common::LiquidityProxyTrait;
 #[cfg(feature = "wip")] // EVM bridge
 use common::PriceToolsProvider;
+#[cfg(feature = "wip")] // Xorless fee
+use common::PriceVariant;
 use frame_support::dispatch::DispatchResult;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
@@ -43,6 +45,8 @@ use sp_runtime::traits::Zero;
 use sp_runtime::FixedU128;
 use vested_rewards::vesting_currencies::VestingSchedule;
 use vested_rewards::{Config, WeightInfo};
+#[cfg(feature = "wip")] // Xorless fee
+use xor_fee::BurntForFee;
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
@@ -471,8 +475,29 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
             {
                 Referrals::withdraw_fee(referrer, fee)?;
             }
+            #[allow(unused_variables)] // Xorless fee
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call {call: _, asset_id}) => {
+                #[cfg(feature = "wip")] // Xorless fee
+                match *asset_id {
+                    XOR => {},
+                    asset_id if XorFee::whitelist_tokens().contains(&asset_id) => {
+                        let asset_fee = PriceTools::get_average_price(&XOR, &asset_id, PriceVariant::Buy)?.saturating_mul(fee);
+                        return Ok((
+                            fee_source.clone(),
+                            Some(Tokens::withdraw(
+                                asset_id,
+                                fee_source,
+                                asset_fee,
+                            ).map(|_| {
+                                BurntForFee::<Runtime>::mutate(asset_id, |balance| *balance = balance.saturating_sub(asset_fee));
+                                NegativeImbalanceOf::<Runtime>::new(asset_fee)
+                            })?)
+                        ))
+                    }
+                    _ => { return Err(xor_fee::Error::<Runtime>::AssetIsNotSupportedForFee.into()) }
+                }
+            }
             _ => {
-
             }
         }
         #[cfg(feature = "wip")] // EVM bridge

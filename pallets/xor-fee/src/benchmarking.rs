@@ -73,6 +73,7 @@ benchmarks! {
     }
 
     xorless_call {
+        // TODO: update with whitelisted token
         let caller = alice::<T>();
         <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1))?;
         let call: Box<<T as Config>::RuntimeCall> = Box::new(frame_system::Call::remark { remark: vec![] }.into());

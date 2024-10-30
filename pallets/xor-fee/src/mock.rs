@@ -31,7 +31,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::mock::ExistentialDeposits;
+use common::mock::{alice, ExistentialDeposits};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::weights::constants::SMALL_FEE;
@@ -420,7 +420,10 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(GetXorFeeAccountId::get(), initial_balance())],
+            balances: vec![
+                (GetXorFeeAccountId::get(), initial_balance()),
+                (alice(), initial_balance()),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
