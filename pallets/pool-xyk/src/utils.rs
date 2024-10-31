@@ -321,7 +321,7 @@ impl<T: Config> Pallet<T> {
         *weight = weight.saturating_add(T::DbWeight::get().writes(1));
         TotalIssuances::<T>::insert(&pool_acc, new_issuance);
         frame_support::log::debug!(
-            "Pool adjusted {} for {} providers: issuance {} -> {}",
+            "Pool adjusted {:?} for {} providers: issuance {} -> {}",
             pool_acc,
             providers,
             current_issuance,

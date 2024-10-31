@@ -51,7 +51,7 @@ impl OnRuntimeUpgrade for DenominateVXor {
                         data.frozen /= DENOM_COEFF;
                         new_issuance += data.free;
                         log::debug!(
-                            "Denominated balance of {}, balance:  {} => {}",
+                            "Denominated balance of {:?}, balance:  {} => {}",
                             account,
                             before,
                             data.free
@@ -68,7 +68,7 @@ impl OnRuntimeUpgrade for DenominateVXor {
                     for lock in locks.iter_mut() {
                         lock.amount /= DENOM_COEFF;
                     }
-                    log::debug!("Denominated locks of {}", account);
+                    log::debug!("Denominated locks of {:?}", account);
                 }
                 Some(locks)
             });
