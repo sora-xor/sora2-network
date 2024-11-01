@@ -37,11 +37,9 @@ use common::{
     PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::Everything;
+use frame_support::traits::{ConstU32, Everything};
 use frame_support::{construct_runtime, parameter_types};
-use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::{AccountId32, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;

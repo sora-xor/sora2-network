@@ -35,10 +35,11 @@ use common::{
     mock_currencies_config, mock_dex_manager_config, mock_extended_assets_config,
     mock_frame_system_config, mock_oracle_proxy_config, mock_orml_tokens_config,
     mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_technical_config, DEXInfo, GetMarketInfo, VXOR,
+    mock_pswap_distribution_config, mock_technical_config, mock_trading_pair_config,
+    mock_xst_config, DEXInfo, GetMarketInfo, VXOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{ConstU32, Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -46,9 +47,6 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -74,7 +72,6 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
-    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
@@ -129,39 +126,13 @@ mock_orml_tokens_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
 mock_permissions_config!(Runtime);
+mock_pswap_distribution_config!(Runtime, PoolXYK, GetChameleonPools);
 mock_technical_config!(Runtime, crate::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_trading_pair_config!(Runtime);
+mock_xst_config!(Runtime);
 
 parameter_types! {
     pub GetBuyBackAssetId: AssetId = VXOR.into();
-}
-
-impl pswap_distribution::Config for Runtime {
-    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
-    type RuntimeEvent = RuntimeEvent;
-    type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type LiquidityProxy = ();
-    type CompatBalance = Balance;
-    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
-    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
-    type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
-    type OnPswapBurnedAggregator = ();
-    type WeightInfo = ();
-    type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
-    type BuyBackHandler = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPools = GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
@@ -191,20 +162,6 @@ parameter_types! {
     };
     pub GetSyntheticBaseAssetId: AssetId = BatteryForMusicPlayer.into();
     pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000000);
-}
-
-impl xst::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
-    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
-    type EnsureDEXManager = DexManager;
-    type PriceToolsPallet = ();
-    type WeightInfo = ();
-    type Oracle = OracleProxy;
-    type Symbol = SymbolName;
-    type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 parameter_type_with_key! {
