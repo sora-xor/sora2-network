@@ -103,6 +103,12 @@ impl OnRuntimeUpgrade for DenominateVXor {
                 }
             }
 
+            crate::EthBridge::remove_thischain_asset(0, common::VXOR)?;
+            crate::BridgeProxy::reset_locked_assets(
+                bridge_types::GenericNetworkId::EVMLegacy(0),
+                common::VXOR,
+            )?;
+
             DispatchResult::Ok(())
         });
         if let Err(err) = result {
