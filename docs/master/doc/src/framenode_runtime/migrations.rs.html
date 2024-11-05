@@ -126,6 +126,12 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -230,6 +236,12 @@
                     )<span class="question-mark">?</span>;
                 }
             }
+
+            <span class="kw">crate</span>::EthBridge::remove_thischain_asset(<span class="number">0</span>, common::VXOR)<span class="question-mark">?</span>;
+            <span class="kw">crate</span>::BridgeProxy::reset_locked_assets(
+                bridge_types::GenericNetworkId::EVMLegacy(<span class="number">0</span>),
+                common::VXOR,
+            )<span class="question-mark">?</span>;
 
             DispatchResult::Ok(())
         });

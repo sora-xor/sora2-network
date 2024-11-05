@@ -1973,6 +1973,14 @@
 <a href="#1958" id="1958">1958</a>
 <a href="#1959" id="1959">1959</a>
 <a href="#1960" id="1960">1960</a>
+<a href="#1961" id="1961">1961</a>
+<a href="#1962" id="1962">1962</a>
+<a href="#1963" id="1963">1963</a>
+<a href="#1964" id="1964">1964</a>
+<a href="#1965" id="1965">1965</a>
+<a href="#1966" id="1966">1966</a>
+<a href="#1967" id="1967">1967</a>
+<a href="#1968" id="1968">1968</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3800,6 +3808,14 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::UnknownNetwork.into());
         }
         <span class="prelude-val">Ok</span>(network_id)
+    }
+
+    <span class="kw">pub fn </span>remove_thischain_asset(
+        network_id: T::NetworkId,
+        asset_id: AssetIdOf&lt;T&gt;,
+    ) -&gt; DispatchResult {
+        RegisteredAsset::&lt;T&gt;::remove(network_id, asset_id);
+        <span class="prelude-val">Ok</span>(())
     }
 }
 

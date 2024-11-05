@@ -758,6 +758,14 @@
 <a href="#743" id="743">743</a>
 <a href="#744" id="744">744</a>
 <a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -1255,6 +1263,14 @@
         technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span><span class="self">Self</span>::bridge_fee_tech_account(
             network_id,
         ))
+    }
+
+    <span class="kw">pub fn </span>reset_locked_assets(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf&lt;T&gt;,
+    ) -&gt; DispatchResult {
+        LockedAssets::&lt;T&gt;::remove(network_id, asset_id);
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
