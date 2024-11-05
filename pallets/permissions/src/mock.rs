@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as permissions, Config, Scope, BURN, INIT_DEX, MINT, SLASH};
+use crate::{self as permissions, Scope, BURN, INIT_DEX, MINT, SLASH};
 use common::prelude::Balance;
-use common::{mock_frame_system_config, mock_pallet_balances_config};
+use common::{mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config};
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
@@ -68,10 +68,7 @@ parameter_types! {
 
 mock_frame_system_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
-
-impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
+mock_permissions_config!(Runtime);
 
 pub struct ExtBuilder {
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,

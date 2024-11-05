@@ -35,22 +35,23 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed, FromGenericPair,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId,
-    PriceToolsProvider, PriceVariant, Rate, SymbolName, TradingPairSourceManager, DAI,
-    DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD, XOR, XST,
+    mock_frame_system_config, mock_kensetsu_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
+    DataFeed, FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PredefinedAssetId, PriceToolsProvider, PriceVariant, Rate, SymbolName,
+    TradingPairSourceManager, DAI, DEFAULT_BALANCE_PRECISION, KARMA, KEN, KGOLD, KUSD, KXOR, TBCD,
+    XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU64, Everything, GenesisBuild, Randomness};
+use frame_support::traits::{GenesisBuild, Randomness};
 use frame_system::offchain::SendTransactionTypes;
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
-use sp_core::{ConstU32, H256};
+use sp_core::H256;
 use sp_runtime::{
     testing::TestXt,
     traits::{IdentifyAccount, Verify},
@@ -336,33 +337,12 @@ mock_assets_config!(TestRuntime);
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
+mock_kensetsu_config!(TestRuntime);
 mock_pallet_balances_config!(TestRuntime);
 mock_pallet_timestamp_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
-
-impl kensetsu::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type Randomness = MockRandomness;
-    type AssetInfoProvider = Assets;
-    type PriceTools = MockPriceTools;
-    type LiquidityProxy = MockLiquidityProxy;
-    type Oracle = MockOracle;
-    type TradingPairSourceManager = MockTradingPairSourceManager;
-    type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
-    type TreasuryTechAccount = KensetsuTreasuryTechAccountId;
-    type KenAssetId = KenAssetId;
-    type KarmaAssetId = KarmaAssetId;
-    type TbcdAssetId = TbcdAssetId;
-    type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
-    type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
-    type MaxCdpsPerOwner = ConstU32<10000>;
-    type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
-    type UnsignedPriority = ConstU64<100>;
-    type UnsignedLongevity = ConstU64<100>;
-    type WeightInfo = ();
-}
 
 // Builds testing externalities
 pub fn new_test_ext() -> sp_io::TestExternalities {

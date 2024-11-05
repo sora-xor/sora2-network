@@ -280,7 +280,7 @@ pub mod v2 {
                 rates_vec.iter().cloned().for_each(|symbol| {
                     assert_eq!(SymbolRatesV1::<Runtime>::get(symbol), None);
                     assert!(!SymbolCheckBlock::<Runtime>::get(
-                        1 + GetRateStaleBlockPeriod::get(),
+                        1 + GetBandRateStaleBlockPeriod::get(),
                         symbol
                     ));
                     SymbolRatesV1::<Runtime>::insert(symbol, Some(sample_rate.clone()));
@@ -295,7 +295,7 @@ pub mod v2 {
                         .last_updated_block;
                     assert_eq!(last_updated_block, 1);
                     assert!(SymbolCheckBlock::<Runtime>::get(
-                        1 + GetRateStaleBlockPeriod::get(),
+                        1 + GetBandRateStaleBlockPeriod::get(),
                         symbol
                     ));
                 }

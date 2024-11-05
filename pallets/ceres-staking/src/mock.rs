@@ -1,4 +1,4 @@
-use crate::{self as ceres_staking};
+use crate::{self as ceres_staking, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
@@ -10,7 +10,7 @@ use common::{
     ContentSource, DEXId, Description, CERES_ASSET_ID, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -72,7 +72,7 @@ parameter_types! {
     pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
-impl crate::Config for Runtime {
+impl Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
     type RuntimeEvent = RuntimeEvent;
     type CeresPerDay = CeresPerDay;

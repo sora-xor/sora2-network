@@ -36,9 +36,10 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    balance, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
-    mock_currencies_config, mock_dex_api_config, mock_dex_manager_config,
-    mock_extended_assets_config, mock_frame_system_config, mock_liquidity_proxy_config,
+    balance, fixed_from_basis_points, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
+    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
+    mock_dex_api_config, mock_dex_manager_config, mock_extended_assets_config,
+    mock_frame_system_config, mock_liquidity_proxy_config, mock_liquidity_source_config,
     mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
     mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
     mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
@@ -51,7 +52,7 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
 
-use frame_support::traits::{ConstU32, Everything, GenesisBuild};
+use frame_support::traits::{ConstU32, GenesisBuild};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use multicollateral_bonding_curve_pool::{
@@ -121,13 +122,43 @@ construct_runtime! {
 }
 
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_api_config!(Runtime, multicollateral_bonding_curve_pool::Pallet<Runtime>);
 mock_dex_manager_config!(Runtime);
 mock_extended_assets_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_liquidity_proxy_config!(Runtime);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance1,
+    dex_manager::Pallet<Runtime>,
+    GetFee,
+    trading_pair::Pallet<Runtime>
+);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance2,
+    dex_manager::Pallet<Runtime>,
+    GetFee,
+    trading_pair::Pallet<Runtime>
+);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance3,
+    dex_manager::Pallet<Runtime>,
+    GetFee,
+    trading_pair::Pallet<Runtime>
+);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance4,
+    dex_manager::Pallet<Runtime>,
+    GetFee,
+    trading_pair::Pallet<Runtime>
+);
 mock_multicollateral_bonding_curve_pool_config!(
     Runtime,
     liquidity_proxy::Pallet<Runtime>,
@@ -147,51 +178,6 @@ mock_vested_rewards_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
 }
 
 fn bonding_curve_distribution_accounts() -> DistributionAccounts<
