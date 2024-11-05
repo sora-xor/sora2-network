@@ -210,52 +210,66 @@ pub fn charlie() -> AccountId32 {
 /// Mock of pallet `assets::Config`.
 #[macro_export]
 macro_rules! mock_assets_config {
-    ($runtime:ty) => {
-        parameter_types! {
+    ($runtime:ty, $asset_regulator:ty) => {
+        frame_support::parameter_types! {
             pub GetBuyBackAccountId: AccountId = AccountId32::from([23; 32]);
             pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
             pub const GetBuyBackPercentage: u8 = 0;
             pub GetBuyBackDexId: DEXId = DEXId::from(common::DEXId::PolkaswapXSTUSD);
         }
         impl assets::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
+            type AssetId = AssetId;
+            type AssetRegulator = $asset_regulator;
+            type BuyBackLiquidityProxy = ();
+            type Currency = currencies::Pallet<$runtime>;
             type ExtraAccountId = [u8; 32];
             type ExtraAssetRecordArg =
                 common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-            type AssetId = AssetId;
             type GetBaseAssetId = GetBaseAssetId;
-            type GetBuyBackAssetId = GetBuyBackAssetId;
-            type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-            type GetBuyBackPercentage = GetBuyBackPercentage;
             type GetBuyBackAccountId = GetBuyBackAccountId;
+            type GetBuyBackAssetId = GetBuyBackAssetId;
             type GetBuyBackDexId = GetBuyBackDexId;
-            type BuyBackLiquidityProxy = ();
-            type Currency = currencies::Pallet<$runtime>;
+            type GetBuyBackPercentage = GetBuyBackPercentage;
+            type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
             type GetTotalBalance = ();
+            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
-            type AssetRegulator = permissions::Pallet<$runtime>;
         }
+    };
+    ($runtime:ty) => {
+        mock_assets_config!($runtime, permissions::Pallet<$runtime>);
     };
 }
 
-/// Mock of pallet `pallet_balances::Config`.
+/// Mock of pallet `band::Config`.
 #[macro_export]
-macro_rules! mock_pallet_balances_config {
-    ($runtime:ty) => {
-        parameter_types! {
-            pub const ExistentialDeposit: u128 = 0;
+macro_rules! mock_band_config {
+    ($runtime:ty, $on_new_symbol_relayed_hook:ty, $on_symbol_disabled_hook:ty) => {
+        frame_support::parameter_types! {
+            pub const GetBandRateStalePeriod: u64 = 60*10*1000; // 10 minutes
+            pub const GetBandRateStaleBlockPeriod: u64 = 600;
         }
-        impl pallet_balances::Config for $runtime {
-            type Balance = Balance;
-            type DustRemoval = ();
+        impl band::Config for $runtime {
+            type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
+            type GetBandRateStalePeriod = GetBandRateStalePeriod;
+            type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
+            type OnNewSymbolsRelayedHook = $on_new_symbol_relayed_hook;
+            type OnSymbolDisabledHook = $on_symbol_disabled_hook;
             type RuntimeEvent = RuntimeEvent;
-            type ExistentialDeposit = ExistentialDeposit;
-            type AccountStore = System;
+            type Symbol = common::SymbolName;
+            type Time = Timestamp;
             type WeightInfo = ();
-            type MaxLocks = ();
-            type MaxReserves = ();
-            type ReserveIdentifier = ();
         }
+    };
+    ($runtime:ty, $on_symbol_disabled_hook:ty) => {
+        mock_band_config!(
+            $runtime,
+            oracle_proxy::Pallet<$runtime>,
+            $on_symbol_disabled_hook
+        );
+    };
+    ($runtime:ty) => {
+        mock_band_config!($runtime, oracle_proxy::Pallet<$runtime>, ());
     };
 }
 
@@ -264,10 +278,10 @@ macro_rules! mock_pallet_balances_config {
 macro_rules! mock_common_config {
     ($runtime:ty) => {
         impl common::Config for $runtime {
+            type AssetManager = assets::Pallet<$runtime>;
             type DEXId = DEXId;
             type LstId = common::LiquiditySourceType;
             type MultiCurrency = currencies::Pallet<$runtime>;
-            type AssetManager = assets::Pallet<$runtime>;
         }
     };
 }
@@ -277,9 +291,68 @@ macro_rules! mock_common_config {
 macro_rules! mock_currencies_config {
     ($runtime:ty) => {
         impl currencies::Config for $runtime {
+            type GetNativeCurrencyId = <$runtime as assets::Config>::GetBaseAssetId;
             type MultiCurrency = Tokens;
             type NativeCurrency = BasicCurrencyAdapter<$runtime, Balances, Amount, BlockNumber>;
-            type GetNativeCurrencyId = <$runtime as assets::Config>::GetBaseAssetId;
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `dex_api::Config`.
+#[macro_export]
+macro_rules! mock_dex_api_config {
+    (
+        $runtime:ty,
+        $mcbc_pool:ty,
+        $xyk_pool:ty,
+        $xst_pool:ty,
+        $liquidity_source:ty,
+        $liquidity_source2:ty,
+        $liquidity_source3:ty,
+        $liquidity_source4:ty
+    ) => {
+        impl dex_api::Config for $runtime {
+            type DexInfoProvider = dex_manager::Pallet<$runtime>;
+            type MockLiquiditySource = $liquidity_source;
+            type MockLiquiditySource2 = $liquidity_source2;
+            type MockLiquiditySource3 = $liquidity_source3;
+            type MockLiquiditySource4 = $liquidity_source4;
+            type MulticollateralBondingCurvePool = $mcbc_pool;
+            type OrderBook = ();
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
+            type XSTPool = $xst_pool;
+            type XYKPool = $xyk_pool;
+        }
+    };
+    ($runtime:ty, $mcbc_pool:ty, $xyk_pool:ty, $xst_pool:ty) => {
+        mock_dex_api_config!($runtime, $mcbc_pool, $xyk_pool, $xst_pool, (), (), (), ());
+    };
+    ($runtime:ty, $mcbc_pool:ty) => {
+        mock_dex_api_config!($runtime, $mcbc_pool, pool_xyk::Pallet<$runtime>, ());
+    };
+    ($runtime:ty) => {
+        mock_dex_api_config!($runtime, ());
+    };
+}
+
+/// Mock of pallet `dex_manager::Config`.
+#[macro_export]
+macro_rules! mock_dex_manager_config {
+    ($runtime:ty) => {
+        impl dex_manager::Config for $runtime {}
+    };
+}
+
+/// Mock of pallet `extended_assets::Config`.
+#[macro_export]
+macro_rules! mock_extended_assets_config {
+    ($runtime:ty) => {
+        impl extended_assets::Config for $runtime {
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type MaxRegulatedAssetsPerSBT = ConstU32<10000>;
+            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };
@@ -288,32 +361,204 @@ macro_rules! mock_currencies_config {
 /// Mock of pallet `frame_system::Config`.
 #[macro_export]
 macro_rules! mock_frame_system_config {
-    ($runtime:ty) => {
+    ($runtime:ty, $ss58_prefix:ty, $max_consumers:ty, $account_data:ty) => {
         impl frame_system::Config for $runtime {
-            type BaseCallFilter = frame_support::traits::Everything;
-            type BlockWeights = ();
-            type BlockLength = ();
-            type RuntimeOrigin = RuntimeOrigin;
-            type RuntimeCall = RuntimeCall;
-            type Index = u64;
-            type BlockNumber = u64;
-            type Hash = H256;
-            type Hashing = BlakeTwo256;
+            type AccountData = $account_data;
             type AccountId = AccountId;
-            type Lookup = IdentityLookup<Self::AccountId>;
-            type Header = Header;
-            type RuntimeEvent = RuntimeEvent;
+            type BaseCallFilter = frame_support::traits::Everything;
             type BlockHashCount = frame_support::traits::ConstU64<250>;
+            type BlockLength = ();
+            type BlockNumber = u64;
+            type BlockWeights = ();
             type DbWeight = ();
-            type Version = ();
-            type PalletInfo = PalletInfo;
-            type AccountData = pallet_balances::AccountData<Balance>;
-            type OnNewAccount = ();
+            type Hash = sp_core::H256;
+            type Hashing = sp_runtime::traits::BlakeTwo256;
+            type Header = sp_runtime::testing::Header;
+            type Index = u64;
+            type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
+            type MaxConsumers = $max_consumers;
             type OnKilledAccount = ();
-            type SystemWeightInfo = ();
-            type SS58Prefix = ();
+            type OnNewAccount = ();
             type OnSetCode = ();
-            type MaxConsumers = frame_support::traits::ConstU32<65536>;
+            type PalletInfo = PalletInfo;
+            type RuntimeCall = RuntimeCall;
+            type RuntimeEvent = RuntimeEvent;
+            type RuntimeOrigin = RuntimeOrigin;
+            type SS58Prefix = $ss58_prefix;
+            type SystemWeightInfo = ();
+            type Version = ();
+        }
+    };
+    ($runtime:ty, $ss58_prefix:ty, $max_consumers:ty) => {
+        mock_frame_system_config!(
+            $runtime,
+            $ss58_prefix,
+            $max_consumers,
+            pallet_balances::AccountData<Balance>
+        );
+    };
+    ($runtime:ty, $ss58_prefix:ty) => {
+        mock_frame_system_config!(
+            $runtime,
+            $ss58_prefix,
+            frame_support::traits::ConstU32<65536>
+        );
+    };
+    ($runtime:ty) => {
+        mock_frame_system_config!($runtime, ());
+    };
+}
+
+/// Mock of pallet `liquidity_proxy::Config`.
+#[macro_export]
+macro_rules! mock_liquidity_proxy_config {
+    ($runtime:ty) => {
+        frame_support::parameter_types! {
+            pub GetLiquidityProxyTechAccountId: TechAccountId = {
+                TechAccountId::from_generic_pair(
+                    liquidity_proxy::TECH_ACCOUNT_PREFIX.to_vec(),
+                    liquidity_proxy::TECH_ACCOUNT_MAIN.to_vec(),
+                )
+            };
+            pub GetLiquidityProxyAccountId: AccountId = {
+                let tech_account_id = GetLiquidityProxyTechAccountId::get();
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                    .expect("Failed to get ordinary account id for technical account id.")
+            };
+            pub GetInternalSlippageTolerancePercent: sp_runtime::Permill = sp_runtime::Permill::from_rational(1u32, 1000); // 0.1%
+        }
+        impl liquidity_proxy::Config for $runtime {
+            type ADARCommissionRatioUpdateOrigin =
+                frame_system::EnsureRoot<sp_runtime::AccountId32>;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type DexInfoProvider = dex_manager::Pallet<$runtime>;
+            type GetADARAccountId = GetADARAccountId;
+            type GetChameleonPools = common::mock::GetChameleonPools;
+            type GetNumSamples = GetNumSamples;
+            type GetTechnicalAccountId = GetLiquidityProxyAccountId;
+            type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
+            type LiquidityRegistry = dex_api::Pallet<$runtime>;
+            type LockedLiquiditySourcesManager = trading_pair::Pallet<$runtime>;
+            type MaxAdditionalDataLengthSwapTransferBatch = ConstU32<2000>;
+            type MaxAdditionalDataLengthXorlessTransfer = ConstU32<128>;
+            type PrimaryMarketTBC = ();
+            type PrimaryMarketXST = ();
+            type RuntimeEvent = RuntimeEvent;
+            type SecondaryMarket = ();
+            type TradingPairSourceManager = trading_pair::Pallet<$runtime>;
+            type VestedRewardsPallet = vested_rewards::Pallet<$runtime>;
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `multicollateral_bonding_curve_pool::Config`.
+#[macro_export]
+macro_rules! mock_multicollateral_bonding_curve_pool_config {
+    ($runtime:ty, $liquidity_proxy:ty, $buy_back_handler:ty, $price_tool:ty, $trading_pair:ty) => {
+        frame_support::parameter_types! {
+            pub GetTBCBuyBackTBCDPercent: common::Fixed = common::fixed!(0.025);
+            pub GetTbcIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
+        }
+        impl multicollateral_bonding_curve_pool::Config for $runtime {
+            const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type BuyBackHandler = $buy_back_handler;
+            type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+            type EnsureDEXManager = dex_manager::Pallet<$runtime>;
+            type EnsureTradingPairExists = $trading_pair;
+            type IrreducibleReserve = GetTbcIrreducibleReservePercent;
+            type LiquidityProxy = $liquidity_proxy;
+            type PriceToolsPallet = $price_tool;
+            type RuntimeEvent = RuntimeEvent;
+            type TradingPairSourceManager = $trading_pair;
+            type VestedRewardsPallet = VestedRewards;
+            type WeightInfo = ();
+        }
+    };
+    ($runtime:ty, $liquidity_proxy:ty, $buy_back_handler:ty, $price_tool:ty) => {
+        mock_multicollateral_bonding_curve_pool_config!($runtime, $liquidity_proxy, $buy_back_handler, $price_tool, trading_pair::Pallet<$runtime>);
+    };
+    ($runtime:ty, $liquidity_proxy:ty, $buy_back_handler:ty) => {
+        mock_multicollateral_bonding_curve_pool_config!($runtime, $liquidity_proxy, $buy_back_handler, ());
+    };
+    ($runtime:ty, $liquidity_proxy:ty) => {
+        mock_multicollateral_bonding_curve_pool_config!($runtime, $liquidity_proxy, ());
+    };
+    ($runtime:ty) => {
+        mock_multicollateral_bonding_curve_pool_config!($runtime, ());
+    };
+}
+
+/// Mock of pallet `oracle_proxy::Config`.
+#[macro_export]
+macro_rules! mock_oracle_proxy_config {
+    ($runtime:ty, $band_chain_oracle:ty) => {
+        impl oracle_proxy::Config for $runtime {
+            type BandChainOracle = $band_chain_oracle;
+            type RuntimeEvent = RuntimeEvent;
+            type Symbol = <$runtime as band::Config>::Symbol;
+            type WeightInfo = ();
+        }
+    };
+    ($runtime:ty) => {
+        mock_oracle_proxy_config!($runtime, band::Pallet<$runtime>);
+    };
+}
+
+/// Mock of pallet `orml_tokens::Config`.
+#[macro_export]
+macro_rules! mock_orml_tokens_config {
+    ($runtime:ty) => {
+        impl orml_tokens::Config for $runtime {
+            type Amount = Amount;
+            type Balance = Balance;
+            type CurrencyHooks = ();
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
+            type DustRemovalWhitelist = Everything;
+            type ExistentialDeposits = ExistentialDeposits;
+            type MaxLocks = ();
+            type MaxReserves = ();
+            type ReserveIdentifier = ();
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `pallet_balances::Config`.
+#[macro_export]
+macro_rules! mock_pallet_balances_config {
+    ($runtime:ty) => {
+        frame_support::parameter_types! {
+            pub const ExistentialDeposit: u128 = 0;
+        }
+        impl pallet_balances::Config for $runtime {
+            type AccountStore = System;
+            type Balance = Balance;
+            type DustRemoval = ();
+            type ExistentialDeposit = ExistentialDeposit;
+            type MaxLocks = ();
+            type MaxReserves = ();
+            type ReserveIdentifier = ();
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
+        }
+    };
+}
+
+/// Mock of pallet `pallet_timestamp::Config`.
+#[macro_export]
+macro_rules! mock_pallet_timestamp_config {
+    ($runtime:ty) => {
+        frame_support::parameter_types! {
+            pub const MinimumPeriod: u64 = 5;
+        }
+        impl pallet_timestamp::Config for $runtime {
+            type MinimumPeriod = MinimumPeriod;
+            type Moment = u64;
+            type OnTimestampSet = ();
+            type WeightInfo = ();
         }
     };
 }
@@ -328,30 +573,147 @@ macro_rules! mock_permissions_config {
     };
 }
 
+/// Mock of pallet `pool_xyk::Config`.
+#[macro_export]
+macro_rules! mock_pool_xyk_config {
+    ($runtime:ty, $trading_pair:ty, $enabled_sources:ty, $on_pool_created:ty) => {
+        frame_support::parameter_types! {
+            pub GetXykFee: common::Fixed = common::fixed!(0.003);
+            pub GetXykIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
+            pub GetXykMaxIssuanceRatio: common::Fixed = common::fixed!(1.5);
+        }
+        impl pool_xyk::Config for $runtime {
+            const MIN_XOR: Balance = balance!(0.0007);
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type AssetRegulator = ();
+            type DepositLiquidityAction =
+                pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+            type DexInfoProvider = dex_manager::Pallet<$runtime>;
+            type EnabledSourcesManager = $enabled_sources;
+            type EnsureDEXManager = dex_manager::Pallet<$runtime>;
+            type EnsureTradingPairExists = $enabled_sources;
+            type GetChameleonPools = common::mock::GetChameleonPools;
+            type GetFee = GetXykFee;
+            type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
+            type GetTradingPairRestrictedFlag = common::mock::GetTradingPairRestrictedFlag;
+            type IrreducibleReserve = GetXykIrreducibleReservePercent;
+            type OnPoolCreated = $on_pool_created;
+            type OnPoolReservesChanged = ();
+            type PairSwapAction =
+                pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+            type PolySwapAction =
+                pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
+            type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
+            type RuntimeEvent = RuntimeEvent;
+            type TradingPairSourceManager = $trading_pair;
+            type WeightInfo = ();
+            type WithdrawLiquidityAction =
+                pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+            type XSTMarketInfo = ();
+        }
+    };
+    ($runtime:ty, $trading_pair:ty, $enabled_trading_pair:ty) => {
+        mock_pool_xyk_config!(
+            $runtime,
+            $trading_pair,
+            $enabled_trading_pair,
+            PswapDistribution
+        );
+    };
+    ($runtime:ty, $trading_pair:ty) => {
+        mock_pool_xyk_config!($runtime, $trading_pair, trading_pair::Pallet<$runtime>);
+    };
+    ($runtime:ty) => {
+        mock_pool_xyk_config!($runtime, trading_pair::Pallet<$runtime>);
+    };
+}
+
+/// Mock of pallet `price_tools::Config`.
+#[macro_export]
+macro_rules! mock_price_tools_config {
+    ($runtime:ty, $liquidity_proxy:ty) => {
+        impl price_tools::Config for $runtime {
+            type LiquidityProxy = $liquidity_proxy;
+            type RuntimeEvent = RuntimeEvent;
+            type TradingPairSourceManager = trading_pair::Pallet<$runtime>;
+            type WeightInfo = price_tools::weights::SubstrateWeight<$runtime>;
+        }
+    };
+    ($runtime:ty) => {
+        mock_price_tools_config!($runtime, ());
+    };
+}
+
+/// Mock of pallet `pswap_distribution::Config`.
+#[macro_export]
+macro_rules! mock_pswap_distribution_config {
+    (
+        $runtime:ty,
+        $xyk_pool:ty,
+        $chameleon_pools:ty,
+        $liquidity_proxy:ty,
+        $buy_back_handler:ty
+    ) => {
+        frame_support::parameter_types! {
+            pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+        }
+        impl pswap_distribution::Config for $runtime {
+            const PSWAP_BURN_PERCENT: sp_runtime::Percent = sp_runtime::Percent::from_percent(3);
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type BuyBackHandler = $buy_back_handler;
+            type CompatBalance = Balance;
+            type DexInfoProvider = dex_manager::Pallet<$runtime>;
+            type EnsureDEXManager = ();
+            type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
+            type GetBuyBackAssetId = GetBuyBackAssetId;
+            type GetChameleonPools = $chameleon_pools;
+            type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+            type GetIncentiveAssetId = GetIncentiveAssetId;
+            type GetParliamentAccountId = GetParliamentAccountId;
+            type GetTechnicalAccountId = GetPswapDistributionAccountId;
+            type LiquidityProxy = $liquidity_proxy;
+            type OnPswapBurnedAggregator = ();
+            type PoolXykPallet = $xyk_pool;
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
+        }
+    };
+    ($runtime:ty, $xyk_pool:ty, $chameleon_pools:ty, $liquidity_proxy:ty) => {
+        mock_pswap_distribution_config!(
+            $runtime,
+            $xyk_pool,
+            $chameleon_pools,
+            $liquidity_proxy,
+            ()
+        );
+    };
+    ($runtime:ty, $xyk_pool:ty, $chameleon_pools:ty) => {
+        mock_pswap_distribution_config!($runtime, $xyk_pool, $chameleon_pools, ());
+    };
+    ($runtime:ty, $xyk_pool:ty) => {
+        mock_pswap_distribution_config!($runtime, $xyk_pool, common::mock::GetChameleonPools);
+    };
+    ($runtime:ty) => {
+        mock_pswap_distribution_config!($runtime, pool_xyk::Pallet<$runtime>);
+    };
+}
+
 /// Mock of pallet `technical::Config`.
 #[macro_export]
 macro_rules! mock_technical_config {
-    ($runtime:ty) => {
-        impl technical::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type TechAssetId = TechAssetId;
-            type TechAccountId = TechAccountId;
-            type Trigger = ();
-            type Condition = ();
-            type SwapAction = ();
-            type AssetInfoProvider = assets::Pallet<$runtime>;
-        }
-    };
     ($runtime:ty, $swap_action:ty) => {
         impl technical::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type TechAssetId = TechAssetId;
-            type TechAccountId = TechAccountId;
-            type Trigger = ();
-            type Condition = ();
-            type SwapAction = $swap_action;
             type AssetInfoProvider = assets::Pallet<$runtime>;
+            type Condition = ();
+            type RuntimeEvent = RuntimeEvent;
+            type SwapAction = $swap_action;
+            type TechAccountId = TechAccountId;
+            type TechAssetId = TechAssetId;
+            type Trigger = ();
         }
+    };
+    ($runtime:ty) => {
+        mock_technical_config!($runtime, ());
     };
 }
 
@@ -359,36 +721,34 @@ macro_rules! mock_technical_config {
 #[macro_export]
 macro_rules! mock_tokens_config {
     ($runtime:ty) => {
-        parameter_types! {
+        frame_support::parameter_types! {
             pub const MaxLocks: u32 = 1;
         }
         impl tokens::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type Balance = Balance;
             type Amount = Amount;
-            type CurrencyId = <$runtime as assets::Config>::AssetId;
-            type WeightInfo = ();
-            type ExistentialDeposits = ExistentialDeposits;
+            type Balance = Balance;
             type CurrencyHooks = ();
+            type CurrencyId = <$runtime as assets::Config>::AssetId;
+            type DustRemovalWhitelist = Everything;
+            type ExistentialDeposits = ExistentialDeposits;
             type MaxLocks = MaxLocks;
             type MaxReserves = ();
             type ReserveIdentifier = ();
-            type DustRemovalWhitelist = Everything;
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
         }
     };
 }
 
-/// Mock of pallet `pallet_timestamp::Config`.
+/// Mock of pallet `trading_pair::Config`.
 #[macro_export]
-macro_rules! mock_pallet_timestamp_config {
+macro_rules! mock_trading_pair_config {
     ($runtime:ty) => {
-        parameter_types! {
-            pub const MinimumPeriod: u64 = 5;
-        }
-        impl pallet_timestamp::Config for $runtime {
-            type Moment = Moment;
-            type OnTimestampSet = ();
-            type MinimumPeriod = MinimumPeriod;
+        impl trading_pair::Config for $runtime {
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type DexInfoProvider = dex_manager::Pallet<$runtime>;
+            type EnsureDEXManager = dex_manager::Pallet<$runtime>;
+            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };
@@ -398,22 +758,45 @@ macro_rules! mock_pallet_timestamp_config {
 #[macro_export]
 macro_rules! mock_vested_rewards_config {
     ($runtime:ty) => {
-        parameter_types! {
+        frame_support::parameter_types! {
             pub const MaxVestingSchedules: u32 = 0;
-            pub const MinVestedTransfer: Balance = 0;
+            pub const MinVestedTransfer: common::prelude::Balance = 0;
         }
-        impl vested_rewards::Config for Runtime {
+        impl vested_rewards::Config for $runtime {
             const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
-            type RuntimeEvent = RuntimeEvent;
-            type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type Currency = Tokens;
             type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
             type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-            type WeightInfo = ();
-            type AssetInfoProvider = assets::Pallet<Runtime>;
+            type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
             type MaxVestingSchedules = MaxVestingSchedules;
-            type Currency = Tokens;
-            type MinVestedTransfer = MinVestedTransfer;
             type MaxWeightForAutoClaim = ();
+            type MinVestedTransfer = MinVestedTransfer;
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
         }
+    };
+}
+
+/// Mock of pallet `xst::Config`.
+#[macro_export]
+macro_rules! mock_xst_config {
+    ($runtime:ty, $price_tool:ty) => {
+        impl xst::Config for $runtime {
+            type AssetInfoProvider = assets::Pallet<$runtime>;
+            type EnsureDEXManager = dex_manager::Pallet<$runtime>;
+            type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
+            type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
+            type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
+            type Oracle = OracleProxy;
+            type PriceToolsPallet = $price_tool;
+            type RuntimeEvent = RuntimeEvent;
+            type Symbol = common::SymbolName;
+            type TradingPairSourceManager = trading_pair::Pallet<$runtime>;
+            type WeightInfo = ();
+        }
+    };
+    ($runtime:ty) => {
+        mock_xst_config!($runtime, ());
     };
 }

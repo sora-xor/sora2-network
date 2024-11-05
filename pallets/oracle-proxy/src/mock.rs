@@ -30,17 +30,15 @@
 
 use crate::{self as oracle_proxy, Config};
 use band;
-use frame_support::traits::{ConstU16, ConstU64};
-use frame_system as system;
-use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+use common::{
+    self, mock_band_config, mock_frame_system_config, mock_pallet_timestamp_config, SymbolName,
 };
+use frame_support::traits::{ConstU16, ConstU32};
+use frame_system;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type Moment = u64;
+type AccountId = u64;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -56,68 +54,20 @@ frame_support::construct_runtime!(
     }
 );
 
-impl system::Config for Runtime {
-    type BaseCallFilter = frame_support::traits::Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type DbWeight = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = ConstU64<250>;
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = ();
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ConstU16<42>;
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<16>;
-}
-
 impl Config for Runtime {
-    type Symbol = String;
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
     type BandChainOracle = band::Pallet<Runtime>;
-}
-
-frame_support::parameter_types! {
-    pub const GetBandRateStalePeriod: Moment = 5*60*1000; // 5 minutes
-    pub const GetBandRateStaleBlockPeriod: u64 = 600; // 1 hour in blocks
-    pub const MinimumPeriod: u64 = 5;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-impl band::Config for Runtime {
-    type Symbol = <Runtime as Config>::Symbol;
     type RuntimeEvent = RuntimeEvent;
+    type Symbol = SymbolName;
     type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
-    type Time = Timestamp;
-    type GetBandRateStalePeriod = GetBandRateStalePeriod;
-    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
-    type OnSymbolDisabledHook = ();
-    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
 }
+
+mock_band_config!(Runtime);
+mock_frame_system_config!(Runtime, ConstU16<42>, ConstU32<16>, ());
+mock_pallet_timestamp_config!(Runtime);
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    system::GenesisConfig::default()
+    frame_system::GenesisConfig::default()
         .build_storage::<Runtime>()
         .unwrap()
         .into()

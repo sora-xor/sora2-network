@@ -45,8 +45,9 @@ use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -61,10 +62,9 @@ use frame_support::sp_runtime::offchain::testing::{
     OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
 use frame_support::sp_runtime::serde::{Serialize, Serializer};
-use frame_support::sp_runtime::testing::Header;
 use frame_support::sp_runtime::traits::{
-    self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-    IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
+    self, Applyable, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount, PostDispatchInfoOf,
+    SignedExtension, ValidateUnsigned, Verify,
 };
 use frame_support::sp_runtime::transaction_validity::{
     TransactionSource, TransactionValidity, TransactionValidityError,
@@ -274,12 +274,13 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
@@ -329,10 +330,6 @@ where
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 impl bridge_multisig::Config for Runtime {

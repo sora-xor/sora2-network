@@ -33,8 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     self, fixed_from_basis_points, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId,
-    DEXInfo, Fixed, DOT, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_tokens_config, AssetId32, DEXId, DEXInfo, Fixed, DOT, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -43,9 +43,6 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::Scope;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
 
 pub type AccountId = AccountId32;
@@ -90,18 +87,15 @@ construct_runtime! {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
 
 impl Config for Runtime {}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;

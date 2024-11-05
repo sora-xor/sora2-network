@@ -33,7 +33,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, DEXId, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, DEXId, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
@@ -43,9 +43,6 @@ use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
@@ -91,16 +88,13 @@ construct_runtime! {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
 
 parameter_types! {
     pub GetBuyBackAssetId: AssetId = XST.into();

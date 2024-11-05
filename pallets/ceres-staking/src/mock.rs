@@ -5,9 +5,9 @@ pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, CERES_ASSET_ID, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_technical_config, mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXId, Description, CERES_ASSET_ID, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -15,11 +15,8 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
-use hex_literal::hex;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::traits::Zero;
 use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -50,20 +47,17 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
-pub const ALICE: AccountId = AccountId::new(hex!(
-    "0000000000000000000000000000000000000000000000000000000000000001"
-));
-pub const BOB: AccountId = AccountId::new(hex!(
-    "0000000000000000000000000000000000000000000000000000000000000002"
-));
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 
-mock_technical_config!(Runtime);
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_technical_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -90,10 +84,6 @@ impl crate::Config for Runtime {
 parameter_types! {
     pub const GetBaseAssetId: AssetId = CERES_ASSET_ID;
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct ExtBuilder {

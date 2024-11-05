@@ -40,20 +40,16 @@ use bridge_types::{GenericNetworkId, H160};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_pallet_balances_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
     AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
-use frame_system as system;
-use sp_core::{ConstU128, ConstU64};
+use frame_support::traits::{ConstU128, ConstU32, ConstU64, Everything, GenesisBuild};
+use frame_system::{self, EnsureRoot};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{
-    BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
-};
+use sp_runtime::traits::{Convert, IdentifyAccount, Keccak256, Verify};
 use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
-use system::EnsureRoot;
 
 use crate as proxy;
 
@@ -84,54 +80,21 @@ frame_support::construct_runtime!(
 );
 
 pub type Signature = MultiSignature;
-
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
 pub const BASE_EVM_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
-mock_pallet_balances_config!(Test);
-mock_technical_config!(Test);
-mock_currencies_config!(Test);
-mock_common_config!(Test);
-mock_tokens_config!(Test);
 mock_assets_config!(Test);
+mock_common_config!(Test);
+mock_currencies_config!(Test);
+mock_frame_system_config!(Test, (), ConstU32<65536>);
+mock_pallet_balances_config!(Test);
+mock_pallet_timestamp_config!(Test);
+mock_permissions_config!(Test);
+mock_technical_config!(Test);
+mock_tokens_config!(Test);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-}
-
-impl system::Config for Test {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
-
-impl permissions::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
 }
@@ -156,6 +119,7 @@ parameter_types! {
     pub const Decimals: u32 = 12;
 }
 pub struct FeeConverter;
+
 impl Convert<U256, Balance> for FeeConverter {
     fn convert(amount: U256) -> Balance {
         common::eth::unwrap_balance(amount, Decimals::get())
@@ -295,15 +259,8 @@ impl proxy::Config for Test {
     type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
-impl pallet_timestamp::Config for Test {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = ();
-    type WeightInfo = ();
-}
-
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
+    let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
 

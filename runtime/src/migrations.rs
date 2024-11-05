@@ -28,4 +28,92 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type Migrations = ();
+use common::Balance;
+use frame_support::{dispatch::DispatchResult, traits::OnRuntimeUpgrade};
+use sp_runtime::BoundedVec;
+
+pub type Migrations = (DenominateVXor,);
+
+const DENOM_COEFF: Balance = 100_000_000_000_000;
+
+pub struct DenominateVXor;
+
+impl OnRuntimeUpgrade for DenominateVXor {
+    fn on_runtime_upgrade() -> frame_election_provider_support::Weight {
+        let result = common::with_transaction(|| {
+            let mut new_issuance = 0;
+            tokens::Accounts::<crate::Runtime>::translate::<tokens::AccountData<Balance>, _>(
+                |account, asset_id, mut data| {
+                    if asset_id == common::VXOR {
+                        let before = data.free;
+                        data.free /= DENOM_COEFF;
+                        data.reserved /= DENOM_COEFF;
+                        data.frozen /= DENOM_COEFF;
+                        new_issuance += data.free;
+                        log::debug!(
+                            "Denominated balance of {:?}, balance:  {} => {}",
+                            account,
+                            before,
+                            data.free
+                        );
+                    }
+                    Some(data)
+                },
+            );
+            tokens::Locks::<crate::Runtime>::translate::<
+                BoundedVec<tokens::BalanceLock<Balance>, crate::MaxLocksTokens>,
+                _,
+            >(|account, asset_id, mut locks| {
+                if asset_id == common::VXOR {
+                    for lock in locks.iter_mut() {
+                        lock.amount /= DENOM_COEFF;
+                    }
+                    log::debug!("Denominated locks of {:?}", account);
+                }
+                Some(locks)
+            });
+            tokens::TotalIssuance::<crate::Runtime>::mutate(common::VXOR, |issuance| {
+                *issuance = new_issuance;
+            });
+
+            for (dex_id, dex_info) in dex_manager::DEXInfos::<crate::Runtime>::iter() {
+                if dex_info.base_asset_id == common::VXOR {
+                    for (target_asset_id, (pool_account, _fee_account)) in
+                        pool_xyk::Properties::<crate::Runtime>::iter_prefix(dex_info.base_asset_id)
+                    {
+                        pool_xyk::Pallet::<crate::Runtime>::fix_pool_parameters(
+                            dex_id,
+                            &pool_account,
+                            &dex_info.base_asset_id,
+                            &target_asset_id,
+                        )?;
+                    }
+                } else if let Some((pool_account, _fee_account)) =
+                    pool_xyk::Properties::<crate::Runtime>::get(
+                        &dex_info.base_asset_id,
+                        &common::VXOR,
+                    )
+                {
+                    pool_xyk::Pallet::<crate::Runtime>::fix_pool_parameters(
+                        dex_id,
+                        &pool_account,
+                        &dex_info.base_asset_id,
+                        &common::VXOR,
+                    )?;
+                }
+            }
+
+            crate::EthBridge::remove_thischain_asset(0, common::VXOR)?;
+            crate::BridgeProxy::reset_locked_assets(
+                bridge_types::GenericNetworkId::EVMLegacy(0),
+                common::VXOR,
+            )?;
+
+            DispatchResult::Ok(())
+        });
+        if let Err(err) = result {
+            log::info!("Failed to denominate VXOR, reverting...: {:?}", err);
+        }
+        crate::BlockWeights::get().max_block
+    }
+}

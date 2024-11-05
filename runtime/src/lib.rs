@@ -255,10 +255,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 101,
+    spec_version: 104,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 101,
+    transaction_version: 104,
     state_version: 0,
 };
 
@@ -1815,8 +1815,8 @@ impl pallet_offences::Config for Runtime {
 parameter_types! {
     pub const MaxVestingSchedules: u32 = 20;
     pub const MinVestedTransfer: Balance = 1;
-    // TODO: set after benchmarking
-    pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+    pub MaxWeightForAutoClaim: Weight = BlockWeights::get().per_class.get(DispatchClass::Operational)
+        .reserved.expect("Error get reserved weight") * Perbill::from_percent(10);
 }
 
 impl vested_rewards::Config for Runtime {
@@ -1969,7 +1969,7 @@ impl oracle_proxy::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStalePeriod: Moment = 60*10*1000; // 10 minutes
     pub const GetBandRateStaleBlockPeriod: u32 = 600; // 1 hour in blocks
     pub const BandMaxRelaySymbols: u32 = 100;
 }

@@ -33,16 +33,13 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
 use common::{
     mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, AssetId32, DEXId, LiquidityProxyTrait,
-    LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, AssetId32, DEXId,
+    LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::DispatchError;
 use sp_runtime::Perbill;
 
@@ -74,10 +71,11 @@ pub const BOB: AccountId = 2;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT: AccountId = 24;
 
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
 mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
 
 parameter_types! {
@@ -113,10 +111,6 @@ impl Config for Runtime {
     type GetTotalBalance = ();
     type WeightInfo = ();
     type AssetRegulator = permissions::Pallet<Runtime>;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct MockLiquidityProxy;

@@ -320,12 +320,39 @@ impl<T: Config> Pallet<T> {
         }
         *weight = weight.saturating_add(T::DbWeight::get().writes(1));
         TotalIssuances::<T>::insert(&pool_acc, new_issuance);
+        frame_support::log::debug!(
+            "Pool adjusted {:?} for {} providers: issuance {} -> {}",
+            pool_acc,
+            providers,
+            current_issuance,
+            new_issuance
+        );
         Self::deposit_event(crate::Event::<T>::PoolAdjusted {
             pool: pool_acc,
             old_issuance: current_issuance,
             new_issuance,
             providers,
         });
+        Ok(())
+    }
+
+    pub fn fix_pool_parameters(
+        dex_id: T::DEXId,
+        pool_account: &AccountIdOf<T>,
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+    ) -> DispatchResult {
+        let (reserve_a, reserve_b, _) =
+            Self::get_actual_reserves(pool_account, asset_a, asset_a, asset_b)?;
+        Self::update_reserves(asset_a, asset_a, asset_b, (&reserve_a, &reserve_b));
+        frame_support::log::debug!(
+            "Updated reserves for {:?}({}) => {:?}({})",
+            asset_a,
+            reserve_a,
+            asset_b,
+            reserve_b
+        );
+        Self::adjust_liquidity_in_pool(dex_id, asset_a, asset_b, &mut Default::default())?;
         Ok(())
     }
 }

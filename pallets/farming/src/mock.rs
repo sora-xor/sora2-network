@@ -29,12 +29,15 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as farming, Config};
-use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
+use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, mock_vested_rewards_config, AssetName, AssetSymbol, DEXId, DEXInfo, Fixed,
+    balance, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    mock_dex_manager_config, mock_frame_system_config,
+    mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config,
+    mock_trading_pair_config, mock_vested_rewards_config, AssetName, AssetSymbol, DEXId, DEXInfo,
     DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -45,10 +48,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::EnsureRoot;
 use permissions::*;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::Perbill;
 use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
 
@@ -113,19 +113,13 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into(), DOT.into()];
-    pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
-    pub const MinimumPeriod: u64 = 5;
-    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
-    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -155,32 +149,29 @@ construct_runtime! {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_multicollateral_bonding_curve_pool_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_pool_xyk_config!(
+    Runtime,
+    trading_pair::Pallet<Runtime>,
+    trading_pair::Pallet<Runtime>,
+    (PswapDistribution, Farming)
+);
+mock_pswap_distribution_config!(Runtime, PoolXYK);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
+mock_trading_pair_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -189,71 +180,6 @@ impl demeter_farming_platform::Config for Runtime {
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pool_xyk::Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.007);
-    type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
-    type GetFee = GetXykFee;
-    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
-    type OnPoolCreated = (PswapDistribution, Farming);
-    type OnPoolReservesChanged = ();
-    type XSTMarketInfo = ();
-    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPools = common::mock::GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type AssetRegulator = ();
-    type IrreducibleReserve = GetXykIrreducibleReservePercent;
-    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
-    type WeightInfo = ();
-}
-
-impl pswap_distribution::Config for Runtime {
-    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
-    type RuntimeEvent = RuntimeEvent;
-    type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type LiquidityProxy = ();
-    type CompatBalance = Balance;
-    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
-    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
-    type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
-    type OnPswapBurnedAggregator = ();
-    type WeightInfo = ();
-    type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
-    type BuyBackHandler = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPools = common::mock::GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl multicollateral_bonding_curve_pool::Config for Runtime {
-    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type PriceToolsPallet = ();
-    type VestedRewardsPallet = VestedRewards;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type BuyBackHandler = ();
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
-    type WeightInfo = ();
 }
 
 /// Used the compare the privilege of an origin inside the scheduler.
@@ -285,13 +211,6 @@ impl pallet_scheduler::Config for Runtime {
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
     type Preimages = ();
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
