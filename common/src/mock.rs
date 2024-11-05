@@ -246,7 +246,7 @@ macro_rules! mock_assets_config {
 macro_rules! mock_band_config {
     ($runtime:ty, $on_new_symbol_relayed_hook:ty, $on_symbol_disabled_hook:ty) => {
         frame_support::parameter_types! {
-            pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+            pub const GetBandRateStalePeriod: u64 = 60*10*1000; // 10 minutes
             pub const GetBandRateStaleBlockPeriod: u64 = 600;
         }
         impl band::Config for $runtime {

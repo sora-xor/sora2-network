@@ -496,6 +496,14 @@ impl<T: Config> Pallet<T> {
             network_id,
         ))
     }
+
+    pub fn reset_locked_assets(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+    ) -> DispatchResult {
+        LockedAssets::<T>::remove(network_id, asset_id);
+        Ok(())
+    }
 }
 
 impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
