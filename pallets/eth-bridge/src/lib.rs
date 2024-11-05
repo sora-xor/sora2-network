@@ -1826,6 +1826,14 @@ impl<T: Config> Pallet<T> {
         }
         Ok(network_id)
     }
+
+    pub fn remove_thischain_asset(
+        network_id: T::NetworkId,
+        asset_id: AssetIdOf<T>,
+    ) -> DispatchResult {
+        RegisteredAsset::<T>::remove(network_id, asset_id);
+        Ok(())
+    }
 }
 
 impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pallet<T> {

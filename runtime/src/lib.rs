@@ -255,10 +255,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 103,
+    spec_version: 104,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 103,
+    transaction_version: 104,
     state_version: 0,
 };
 
@@ -1969,7 +1969,7 @@ impl oracle_proxy::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const GetBandRateStalePeriod: Moment = 60*10*1000; // 10 minutes
     pub const GetBandRateStaleBlockPeriod: u32 = 600; // 1 hour in blocks
     pub const BandMaxRelaySymbols: u32 = 100;
 }
