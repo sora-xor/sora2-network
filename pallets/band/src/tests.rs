@@ -490,7 +490,7 @@ fn quote_invalid_rate_should_fail() {
         Band::relay(
             RuntimeOrigin::signed(relayer),
             vec![("RUB".to_owned(), 1)].try_into().unwrap(),
-            60 * 5 + 1,
+            60 * 10 + 1,
             0,
         )
         .expect("Failed to relay rates");
