@@ -19,10 +19,16 @@ jobs:
           submodules: 'true'
 
       # - uses: arduino/setup-protoc@a8b67ba40b37d35169e222f3bb352603327985b6
+      
       - uses: arduino/setup-protoc@v3
 
       # v2.7.1
-      - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
+      # - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
+      #   with:
+      #     # 20GB of cache per repo per week
+      #     cache-provider: "buildjet"
+      
+      - uses: Swatinem/rust-cache@v2
         with:
           # 20GB of cache per repo per week
           cache-provider: "buildjet"
