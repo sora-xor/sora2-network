@@ -31,7 +31,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           # 20GB of cache per repo per week
-          cache-provider: "buildjet"
+          cache-provider: "github"
 
       # latest v2
       - name: cargo install
