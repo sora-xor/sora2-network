@@ -10,7 +10,7 @@ env:
 
 jobs:
   static_analysis:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       # v4.1.1
