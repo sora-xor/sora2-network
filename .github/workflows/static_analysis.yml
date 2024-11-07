@@ -18,6 +18,11 @@ jobs:
         with:
           submodules: 'true'
 
+
+      - name: free disk space
+        run: |
+          df -h
+
       # v2.1.0
       - uses: arduino/setup-protoc@a8b67ba40b37d35169e222f3bb352603327985b6
 
