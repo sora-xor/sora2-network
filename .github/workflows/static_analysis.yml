@@ -22,17 +22,23 @@ jobs:
       
       - uses: arduino/setup-protoc@v3
 
+      - name: Check disk space before cleanup
+        run: df -h /
+
+      - name: Remove boost and tools directories
+        run: |
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Check disk space after cleanup
+        run: df -h /
+
       # v2.7.1
-      # - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
-      #   with:
-      #     # 20GB of cache per repo per week
-      #     cache-provider: "buildjet"
-      
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
         with:
           # 20GB of cache per repo per week
-          cache-provider: "github"
-
+          cache-provider: "buildjet"
+      
       # latest v2
       - name: cargo install
         uses: taiki-e/install-action@v2
