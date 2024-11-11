@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as extended_assets};
+use crate as extended_assets;
 use common::mock::ExistentialDeposits;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_extended_assets_config,
@@ -37,10 +37,10 @@ use common::{
     PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{ConstU32, Everything};
+use frame_support::traits::ConstU32;
 use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::MultiSignature;
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;

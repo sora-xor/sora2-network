@@ -32,16 +32,18 @@ use crate::Config;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, balance, hash, mock_assets_config, mock_band_config, mock_common_config,
-    mock_currencies_config, mock_dex_api_config, mock_dex_manager_config, mock_frame_system_config,
-    mock_oracle_proxy_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_pool_xyk_config, mock_price_tools_config,
-    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config,
-    mock_trading_pair_config, mock_xst_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    self, balance, hash, mock_assets_config, mock_band_config, mock_ceres_liquidity_locker_config,
+    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
+    mock_dex_api_config, mock_dex_manager_config, mock_frame_system_config,
+    mock_liquidity_source_config, mock_oracle_proxy_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
+    mock_tokens_config, mock_trading_pair_config, mock_xst_config, Amount, AssetId32, AssetName,
+    AssetSymbol, DEXInfo, FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR,
+    XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -139,11 +141,14 @@ construct_runtime! {
 
 mock_assets_config!(Runtime);
 mock_band_config!(Runtime, OracleProxy, XSTPool);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_api_config!(Runtime, (), MockLiquiditySource, XSTPool);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_liquidity_source_config!(Runtime, mock_liquidity_source::Instance1);
 mock_oracle_proxy_config!(Runtime, Band);
 mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
@@ -160,31 +165,7 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
-    type GetFee = ();
-    type EnsureDEXManager = ();
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
 impl Config for Runtime {}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
-}
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,

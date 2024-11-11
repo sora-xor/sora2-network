@@ -3,12 +3,14 @@ use {
     common::{
         balance, hash,
         mock::ExistentialDeposits,
-        mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_api_config,
-        mock_dex_manager_config, mock_frame_system_config, mock_liquidity_proxy_config,
-        mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
-        mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
-        mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
-        mock_tokens_config, mock_trading_pair_config, mock_vested_rewards_config,
+        mock_apollo_platform_config, mock_assets_config, mock_ceres_liquidity_locker_config,
+        mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
+        mock_dex_api_config, mock_dex_manager_config, mock_frame_system_config,
+        mock_liquidity_proxy_config, mock_multicollateral_bonding_curve_pool_config,
+        mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+        mock_pool_xyk_config, mock_price_tools_config, mock_pswap_distribution_config,
+        mock_technical_config, mock_tokens_config, mock_trading_pair_config,
+        mock_vested_rewards_config,
         prelude::{Balance, SwapOutcome},
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
@@ -20,7 +22,7 @@ use {
         construct_runtime,
         pallet_prelude::Weight,
         parameter_types,
-        traits::{ConstU32, ConstU64, Everything, GenesisBuild, Hooks},
+        traits::{GenesisBuild, Hooks},
     },
     frame_system::{
         self, offchain::SendTransactionTypes, pallet_prelude::BlockNumberFor, RawOrigin,
@@ -87,9 +89,12 @@ construct_runtime! {
 
 pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
 
+mock_apollo_platform_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_api_config!(Runtime, multicollateral_bonding_curve_pool::Pallet<Runtime>);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
@@ -133,15 +138,6 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
 }
 
 pub struct MockPriceTools;
@@ -197,14 +193,6 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
     }
 }
 
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
 pub struct MockLiquidityProxy;
 
 impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
@@ -255,16 +243,6 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 
         Ok(SwapOutcome::new(amount.amount(), Default::default()))
     }
-}
-
-impl crate::Config for Runtime {
-    const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self> = 150;
-    type RuntimeEvent = RuntimeEvent;
-    type PriceTools = MockPriceTools;
-    type LiquidityProxyPallet = MockLiquidityProxy;
-    type UnsignedPriority = ConstU64<100>;
-    type UnsignedLongevity = ConstU64<100>;
-    type WeightInfo = ();
 }
 
 pub struct ExtBuilder {

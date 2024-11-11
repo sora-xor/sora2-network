@@ -2,14 +2,15 @@ use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
 use common::{
-    balance, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_dex_manager_config, mock_frame_system_config, mock_orml_tokens_config,
-    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_pool_xyk_config, mock_pswap_distribution_config, mock_technical_config,
-    mock_trading_pair_config, DEXId, DEXInfo, VXOR, XOR, XST,
+    balance, hash, mock_assets_config, mock_ceres_liquidity_locker_config, mock_common_config,
+    mock_currencies_config, mock_demeter_farming_platform_config, mock_dex_manager_config,
+    mock_frame_system_config, mock_orml_tokens_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_pswap_distribution_config, mock_technical_config, mock_trading_pair_config, DEXId,
+    DEXInfo, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -32,8 +33,6 @@ pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-
-pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 pub const ALICE: AccountId = AccountId::new([1; 32]);
 pub const BOB: AccountId = AccountId::new([2; 32]);
@@ -85,8 +84,10 @@ construct_runtime! {
 }
 
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK, CeresAssetId);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_orml_tokens_config!(Runtime);
@@ -100,23 +101,6 @@ mock_trading_pair_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = CeresAssetId;
-    type WeightInfo = ();
 }
 
 #[allow(non_snake_case)]

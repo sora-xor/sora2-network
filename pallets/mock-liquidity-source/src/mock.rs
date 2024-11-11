@@ -28,18 +28,18 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as mock_liquidity_source, Config};
+use crate::{self as mock_liquidity_source, Instance1, Instance2};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     self, fixed_from_basis_points, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_dex_manager_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId,
-    DEXInfo, Fixed, XOR, XST,
+    mock_dex_manager_config, mock_frame_system_config, mock_liquidity_source_config,
+    mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::Perbill;
@@ -95,24 +95,12 @@ mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_liquidity_source_config!(Runtime, Instance1, dex_manager::Pallet<Runtime>, GetFee);
+mock_liquidity_source_config!(Runtime, Instance2, dex_manager::Pallet<Runtime>, GetFee);
 mock_pallet_balances_config!(Runtime);
 mock_permissions_config!(Runtime);
 mock_technical_config!(Runtime);
 mock_tokens_config!(Runtime);
-
-impl Config<crate::Instance1> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl Config<crate::Instance2> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;

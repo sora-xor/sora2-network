@@ -34,15 +34,12 @@ use common::mock::ExistentialDeposits;
 use common::Amount;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_technical_config,
-    mock_tokens_config, AssetId32, DEXId, PredefinedAssetId, XOR, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_soratopia_config,
+    mock_technical_config, mock_tokens_config, AssetId32, DEXId, PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
-use frame_support::traits::Everything;
 use frame_system::offchain::SendTransactionTypes;
-use hex_literal::hex;
-use sp_core::crypto::AccountId32;
 use sp_runtime::MultiSignature;
 use sp_runtime::{
     testing::TestXt,
@@ -96,20 +93,9 @@ mock_currencies_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
 mock_pallet_balances_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
+mock_soratopia_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
 mock_tokens_config!(TestRuntime);
-
-parameter_types! {
-    pub AdminAccount: AccountId = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48").into();
-    pub const CheckInTransferAmount: Balance = 1_000;
-}
-
-impl soratopia::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type AdminAccount = AdminAccount;
-    type CheckInTransferAmount = CheckInTransferAmount;
-    type WeightInfo = ();
-}
 
 // Builds testing externalities
 pub fn new_test_ext() -> sp_io::TestExternalities {
