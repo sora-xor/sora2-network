@@ -28,28 +28,24 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate as rewards;
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::Perbill;
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
+    mock_rewards_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName,
+    AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
-
-use crate::{self as rewards, Config};
 
 pub type AccountId = AccountId32;
 
@@ -105,34 +101,18 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime);
-// Required by assets::Config
-mock_currencies_config!(Runtime);
-// Required by currencies::Config
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
-
-impl Config for Runtime {
-    const BLOCKS_PER_DAY: BlockNumber = 20;
-    const UPDATE_FREQUENCY: BlockNumber = 5;
-    const MAX_CHUNK_SIZE: usize = 1;
-    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
-    const TIME_TO_SATURATION: BlockNumber = 100;
-    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
-}
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_rewards_config!(Runtime);
+mock_technical_config!(Runtime);
+mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-// Required by assets::Config
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct ExtBuilder {

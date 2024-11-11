@@ -1,26 +1,27 @@
-use crate::{self as ceres_launchpad};
-use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
+use crate::{self as ceres_launchpad, Config};
+use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{
-    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, mock_vested_rewards_config, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, DEXId, DEXInfo, Description, Fixed, CERES_ASSET_ID, PSWAP, VXOR, XOR, XST,
-    XSTUSD,
+    balance, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
+    mock_ceres_token_locker_config, mock_common_config, mock_currencies_config,
+    mock_demeter_farming_platform_config, mock_dex_manager_config, mock_frame_system_config,
+    mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config,
+    mock_trading_pair_config, mock_vested_rewards_config, AssetName, AssetSymbol, BalancePrecision,
+    ContentSource, DEXId, DEXInfo, Description, CERES_ASSET_ID, PSWAP, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{MultiSignature, Perbill, Percent};
+use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::{MultiSignature, Perbill};
 
 pub type BlockNumber = u64;
 
@@ -68,13 +69,23 @@ pub const EMILY: AccountId = AccountId32::new([5u8; 32]);
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK, CeresAssetId);
+mock_ceres_token_locker_config!(Runtime);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
+mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_multicollateral_bonding_curve_pool_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_pool_xyk_config!(Runtime);
+mock_pswap_distribution_config!(Runtime, PoolXYK);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
+mock_trading_pair_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
 
 parameter_types! {
@@ -82,9 +93,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub GetIncentiveAssetId: AssetId = PSWAP;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::new([100u8; 32]);
@@ -93,11 +101,9 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::new([103u8; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::new([104u8; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
-    pub const MinimumPeriod: u64 = 5;
-    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
-impl crate::Config for Runtime {
+impl Config for Runtime {
     const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
@@ -108,122 +114,10 @@ impl crate::Config for Runtime {
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = VXOR;
-    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
-    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pool_xyk::Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.0007);
-    type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
-    type GetFee = GetXykFee;
-    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
-    type OnPoolCreated = PswapDistribution;
-    type OnPoolReservesChanged = ();
-    type XSTMarketInfo = ();
-    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPools = common::mock::GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type AssetRegulator = ();
-    type IrreducibleReserve = GetXykIrreducibleReservePercent;
-    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
-    type WeightInfo = ();
-}
-
-impl multicollateral_bonding_curve_pool::Config for Runtime {
-    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type PriceToolsPallet = ();
-    type VestedRewardsPallet = VestedRewards;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type BuyBackHandler = ();
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
-    type WeightInfo = ();
 }
 
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
-}
-
-impl ceres_token_locker::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = CeresAssetId;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = CeresAssetId;
-    type WeightInfo = ();
-}
-
-impl pswap_distribution::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
-    type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type LiquidityProxy = ();
-    type CompatBalance = Balance;
-    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
-    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
-    type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
-    type OnPswapBurnedAggregator = ();
-    type WeightInfo = ();
-    type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
-    type BuyBackHandler = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPools = common::mock::GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 #[allow(clippy::type_complexity)]

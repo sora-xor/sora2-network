@@ -34,7 +34,8 @@ use crate::*;
 use common::{AssetId32, PredefinedAssetId, TechAccountId, XOR};
 use frame_support::{assert_err, assert_ok};
 use permissions::MINT;
-use sp_core::crypto::AccountId32;
+use sp_core::ConstU32;
+use sp_runtime::AccountId32;
 
 #[test]
 fn test_tech_account_can_pass_check_permission() {
@@ -404,16 +405,12 @@ fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
         let sbt_metadata_1 = ExtendedAssets::soulbound_asset(sbt_asset_id_1).unwrap();
         let sbt_metadata_2 = ExtendedAssets::soulbound_asset(sbt_asset_id_2).unwrap();
 
-        let mut regulated_assets_1: BoundedBTreeSet<
-            AssetId32<PredefinedAssetId>,
-            MockMaxRegulatedAssetsPerSBT,
-        > = BoundedBTreeSet::new();
+        let mut regulated_assets_1: BoundedBTreeSet<AssetId32<PredefinedAssetId>, ConstU32<10000>> =
+            BoundedBTreeSet::new();
         regulated_assets_1.try_insert(regulated_asset_id_1).unwrap();
 
-        let mut regulated_assets_2: BoundedBTreeSet<
-            AssetId32<PredefinedAssetId>,
-            MockMaxRegulatedAssetsPerSBT,
-        > = BoundedBTreeSet::new();
+        let mut regulated_assets_2: BoundedBTreeSet<AssetId32<PredefinedAssetId>, ConstU32<10000>> =
+            BoundedBTreeSet::new();
         regulated_assets_2.try_insert(regulated_asset_id_2).unwrap();
 
         assert_eq!(sbt_metadata_1.regulated_assets, regulated_assets_1);
@@ -434,7 +431,7 @@ fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
 
         let mut after_regulated_assets_2: BoundedBTreeSet<
             AssetId32<PredefinedAssetId>,
-            MockMaxRegulatedAssetsPerSBT,
+            ConstU32<10000>,
         > = BoundedBTreeSet::new();
         after_regulated_assets_2
             .try_insert(regulated_asset_id_2)
@@ -445,7 +442,7 @@ fn test_binding_regulated_asset_to_sbt_succeeds_with_valid_metadata() {
 
         assert_eq!(
             after_sbt_metadata_1.regulated_assets,
-            BoundedBTreeSet::<AssetId32<PredefinedAssetId>, MockMaxRegulatedAssetsPerSBT>::new()
+            BoundedBTreeSet::<AssetId32<PredefinedAssetId>, ConstU32<10000>>::new()
         );
         assert_eq!(
             after_sbt_metadata_2.regulated_assets,

@@ -480,7 +480,7 @@ fn quote_invalid_rate_should_fail() {
         )
         .expect("Failed to relay rates");
 
-        Timestamp::set_timestamp(GetRateStalePeriod::get() + 10);
+        Timestamp::set_timestamp(GetBandRateStalePeriod::get() + 10);
 
         assert_eq!(
             <Band as DataFeed<String, Rate, u64>>::quote(&"USD".to_owned()),
@@ -490,7 +490,7 @@ fn quote_invalid_rate_should_fail() {
         Band::relay(
             RuntimeOrigin::signed(relayer),
             vec![("RUB".to_owned(), 1)].try_into().unwrap(),
-            60 * 5 + 1,
+            60 * 10 + 1,
             0,
         )
         .expect("Failed to relay rates");
@@ -521,7 +521,7 @@ fn check_block_symbol_should_work() {
         .expect("Failed to relay rates");
 
         assert!(SymbolCheckBlock::<Runtime>::get(
-            1 + GetRateStaleBlockPeriod::get(),
+            1 + GetBandRateStaleBlockPeriod::get(),
             "USD".to_owned()
         ));
 

@@ -39,9 +39,10 @@ use common::weights::constants::SMALL_FEE;
 use common::DAI;
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned, ReferrerAccountProvider, PSWAP, TBCD, VAL, VXOR, XOR,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_transaction_payment_config,
+    mock_permissions_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    ReferrerAccountProvider, PSWAP, TBCD, VAL, VXOR, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
@@ -49,16 +50,11 @@ use sp_arithmetic::FixedU128;
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
-use frame_support::traits::{
-    ConstU128, Currency, Everything, ExistenceRequirement, GenesisBuild, WithdrawReasons,
-};
-use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
+use frame_support::traits::{Currency, ExistenceRequirement, GenesisBuild, WithdrawReasons};
+use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Percent};
 use sp_staking::SessionIndex;
 use traits::MultiCurrency;
@@ -120,32 +116,17 @@ construct_runtime! {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_transaction_payment_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
-
-parameter_types! {
-    pub const OperationalFeeMultiplier: u8 = 5;
-}
-
-impl pallet_transaction_payment::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type OnChargeTransaction = XorFee;
-    type WeightToFee = IdentityFee<Balance>;
-    type FeeMultiplierUpdate = ();
-    type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
-    type OperationalFeeMultiplier = OperationalFeeMultiplier;
-}
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct CustomFees;

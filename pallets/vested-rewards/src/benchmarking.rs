@@ -36,7 +36,7 @@ use super::*;
 use codec::Decode;
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 use frame_system::EventRecord;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -46,7 +46,6 @@ use traits::MultiCurrency;
 
 use common::{AssetManager, AssetName, AssetSymbol, CrowdloanTag, FromGenericPair, PSWAP, XOR};
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
 use crate::vesting_currencies::{LinearPendingVestingSchedule, LinearVestingSchedule};
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
@@ -56,7 +55,7 @@ fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 fn bob<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27c");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
@@ -121,11 +120,11 @@ fn prepare_rewards_update<T: Config>(
     }
     rewards
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 benchmarks! {
     claim_rewards {
         let caller = alice::<T>();
@@ -340,87 +339,6 @@ benchmarks! {
         assert_ok!(VestedRewards::<T>::claim_unlocked(RawOrigin::Signed(caller.clone()).into(), asset_id));
         assert_eq!(VestingSchedules::<T>::get(&caller).len(), (max_schedules - 1) as usize);
     }
-
-    impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::default().build(), mock::Runtime)
-}
-
-#[cfg(not(feature = "wip"))] // ORML multi asset vesting
-benchmarks! {
-    claim_rewards {
-        let caller = alice::<T>();
-
-        <T as common::Config>::MultiCurrency::deposit(PSWAP.into(), &T::GetBondingCurveRewardsAccountId::get(), balance!(100)).unwrap();
-        <T as common::Config>::MultiCurrency::deposit(PSWAP.into(), &T::GetMarketMakerRewardsAccountId::get(), balance!(200)).unwrap();
-        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1)).unwrap(); // to prevent inc ref error
-
-        VestedRewards::<T>::add_tbc_reward(&caller, balance!(100)).expect("Failed to add reward.");
-        VestedRewards::<T>::distribute_limits(balance!(100));
-    }: _(
-        RawOrigin::Signed(caller.clone())
-    )
-    verify {
-        assert_eq!(
-            <T as common::Config>::MultiCurrency::free_balance(PSWAP.into(), &caller),
-            balance!(100)
-        );
-    }
-
-    update_rewards {
-        let n in 0 .. 100;
-        let rewards = prepare_rewards_update::<T>(n.into());
-    }: {
-        Pallet::<T>::update_rewards(RawOrigin::Root.into(), rewards).unwrap()
-    }
-    verify {
-        assert_eq!(
-            TotalRewards::<T>::get(),
-            balance!(n) * 2
-        );
-    }
-
-    register_crowdloan {
-        let m in 1 .. 1000;
-        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
-        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
-        let rewards = prepare_crowdloan_rewards::<T>(10);
-        let contributions = prepare_crowdloan_contributions::<T>(m as u128);
-    }: _(RawOrigin::Root, tag.clone(), 0u32.into(), 100u32.into(), rewards, contributions)
-    verify {
-        assert!(crate::CrowdloanInfos::<T>::contains_key(&tag));
-    }
-
-    claim_crowdloan_rewards {
-        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &alice::<T>(), balance!(1)).unwrap(); // to prevent inc ref error
-        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
-        let rewards = prepare_crowdloan_rewards::<T>(5);
-        let contributions = prepare_crowdloan_contributions::<T>(100);
-        let account = contributions.get(0).cloned().unwrap().0;
-        let first_asset_id = rewards.get(0).cloned().unwrap().0;
-        Pallet::<T>::register_crowdloan(RawOrigin::Root.into(), tag.clone(), 0u32.into(), T::BLOCKS_PER_DAY * 4u32.into(), rewards.clone(), contributions).unwrap();
-        let info = crate::CrowdloanInfos::<T>::get(&tag).unwrap();
-        for (asset_id, _) in rewards {
-            <T as common::Config>::MultiCurrency::deposit(asset_id.clone(), &info.account, balance!(1000)).unwrap();
-        }
-        frame_system::Pallet::<T>::set_block_number(T::BLOCKS_PER_DAY);
-    }: _(RawOrigin::Signed(account.clone()), tag.clone())
-    verify {
-        assert_eq!(
-            <T as common::Config>::MultiCurrency::free_balance(first_asset_id, &account),
-            balance!(0.025) // 10 / 100 / 4
-        );
-    }
-
-    claim_unlocked {}: {}
-    verify {}
-
-    vested_transfer {}: {}
-    verify {}
-
-    update_vesting_schedules {}: {}
-    verify {}
-
-    unlock_pending_schedule_by_manager {}: {}
-    verify {}
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::default().build(), mock::Runtime)
 }
