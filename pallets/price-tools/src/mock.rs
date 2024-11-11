@@ -28,19 +28,21 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as price_tools, Config};
+use crate as price_tools;
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_dex_manager_config, mock_frame_system_config, mock_pallet_balances_config,
-    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
-    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, DEXInfo, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, VXOR, XOR, XST,
+    self, balance, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
+    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
+    mock_dex_manager_config, mock_frame_system_config, mock_liquidity_source_config,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_pool_xyk_config, mock_price_tools_config, mock_pswap_distribution_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
+    ETH, PSWAP, USDT, VAL, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -120,18 +122,14 @@ construct_runtime! {
     }
 }
 
-impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = MockDEXApi;
-    type TradingPairSourceManager = TradingPair;
-    type WeightInfo = ();
-}
-
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXyk);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_liquidity_source_config!(Runtime, mock_liquidity_source::Instance1);
 mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
 mock_permissions_config!(Runtime);
@@ -141,27 +139,13 @@ mock_pool_xyk_config!(
     (),
     pswap_distribution::Pallet<Runtime>
 );
+mock_price_tools_config!(Runtime, MockDEXApi, TradingPair, ());
 mock_pswap_distribution_config!(Runtime);
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
-    type GetFee = ();
-    type EnsureDEXManager = ();
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 pub struct TradingPair;
@@ -218,15 +202,6 @@ impl common::TradingPairSourceManager<DEXId, AssetId> for TradingPair {
     ) -> Result<(), DispatchError> {
         Ok(())
     }
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXyk;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
 }
 
 pub struct MockDEXApi;

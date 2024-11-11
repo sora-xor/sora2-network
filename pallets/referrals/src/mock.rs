@@ -33,11 +33,12 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
+    mock_pallet_balances_config, mock_permissions_config, mock_referrals_config,
+    mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::crypto::AccountId32;
@@ -51,11 +52,8 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const ALICE: AccountId32 = AccountId32::new([1; 32]);
-
 pub const BOB: AccountId32 = AccountId32::new([2; 32]);
-
 pub const MINTING_ACCOUNT: AccountId = AccountId32::new([4; 32]);
-pub const REFERRALS_RESERVES_ACC: AccountId = AccountId32::new([22; 32]);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -66,7 +64,6 @@ parameter_types! {
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
-    pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
 construct_runtime!(
@@ -91,16 +88,11 @@ mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_permissions_config!(Runtime);
+mock_referrals_config!(Runtime);
 mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
-}
-
-impl referrals::Config for Runtime {
-    type ReservesAcc = ReferralsReservesAcc;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
 }
 
 pub fn test_ext() -> sp_io::TestExternalities {

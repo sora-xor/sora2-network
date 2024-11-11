@@ -34,18 +34,19 @@ use common::prelude::{Balance, DEXInfo};
 use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
 use common::weights::BlockWeights;
 use common::{
-    balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
+    balance, fixed, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
+    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
     mock_dex_manager_config, mock_frame_system_config,
     mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
     mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
-    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config, AssetId32,
-    AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, Description, Fixed,
-    LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD,
-    VXOR, XOR, XST,
+    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config,
+    mock_vested_rewards_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    DEXId, Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
+use frame_support::traits::GenesisBuild;
 use frame_support::traits::Hooks;
-use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -137,8 +138,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
 }
 
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXyk);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_multicollateral_bonding_curve_pool_config!(Runtime, MockLiquidityProxy, (), (), ());
@@ -154,6 +157,7 @@ mock_pswap_distribution_config!(
 );
 mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
 mock_tokens_config!(Runtime);
+mock_vested_rewards_config!(Runtime, MaxWeightForAutoClaim, 5, 5);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -169,45 +173,12 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
     pub const CrowdloanVestingPeriod: u64 = 14400;
-    pub const MaxVestingSchedules: u32 = 5;
-    pub const MinVestedTransfer: Balance = 5;
     pub MaxWeightForAutoClaim: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
-}
-
-impl Config for Runtime {
-    const BLOCKS_PER_DAY: BlockNumber = 14400;
-    type RuntimeEvent = RuntimeEvent;
-    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type MaxVestingSchedules = MaxVestingSchedules;
-    type Currency = Tokens;
-    type MinVestedTransfer = MinVestedTransfer;
-    type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXyk;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
 }
 
 pub const ALICE_BALANCE: Balance = 200;

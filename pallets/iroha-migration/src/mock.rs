@@ -34,12 +34,13 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XST,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_multisig_config,
+    mock_permissions_config, mock_referrals_config, mock_technical_config, mock_tokens_config,
+    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
@@ -60,7 +61,6 @@ pub const ALICE: AccountId = AccountId::new([1; 32]);
 pub const BOB: AccountId = AccountId::new([2; 32]);
 pub const CHARLIE: AccountId = AccountId::new([3; 32]);
 pub const MINTING_ACCOUNT: AccountId = AccountId::new([4; 32]);
-pub const REFERRALS_RESERVES_ACC: AccountId = AccountId::new([22; 32]);
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -68,10 +68,6 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
-    pub const DepositBase: u64 = 1;
-    pub const DepositFactor: u64 = 1;
-    pub const MaxSignatories: u16 = 4;
-    pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
 construct_runtime!(
@@ -98,28 +94,14 @@ mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
+mock_pallet_multisig_config!(Runtime);
 mock_permissions_config!(Runtime);
+mock_referrals_config!(Runtime);
 mock_technical_config!(Runtime);
 mock_tokens_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
-}
-
-impl referrals::Config for Runtime {
-    type ReservesAcc = ReferralsReservesAcc;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pallet_multisig::Config for Runtime {
-    type RuntimeCall = RuntimeCall;
-    type RuntimeEvent = RuntimeEvent;
-    type Currency = Balances;
-    type DepositBase = DepositBase;
-    type DepositFactor = DepositFactor;
-    type MaxSignatories = MaxSignatories;
-    type WeightInfo = ();
 }
 
 impl Config for Runtime {

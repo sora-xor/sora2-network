@@ -34,16 +34,16 @@ use common::prelude::{Balance, FixedWrapper};
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    TechPurpose, DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
+    mock_rewards_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName,
+    AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, BURN, MINT};
 use sp_core::crypto::AccountId32;
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::Perbill;
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -107,21 +107,11 @@ mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_permissions_config!(Runtime);
+mock_rewards_config!(Runtime);
 mock_technical_config!(Runtime);
 mock_tokens_config!(Runtime);
 
 impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
-}
-
-impl rewards::Config for Runtime {
-    const BLOCKS_PER_DAY: BlockNumber = 20;
-    const UPDATE_FREQUENCY: BlockNumber = 5;
-    const MAX_CHUNK_SIZE: usize = 1;
-    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
-    const TIME_TO_SATURATION: BlockNumber = 100;
-    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
 }
