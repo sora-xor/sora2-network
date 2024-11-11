@@ -601,7 +601,7 @@
                 rates_vec.iter().cloned().for_each(|symbol| {
                     <span class="macro">assert_eq!</span>(SymbolRatesV1::&lt;Runtime&gt;::get(symbol), <span class="prelude-val">None</span>);
                     <span class="macro">assert!</span>(!SymbolCheckBlock::&lt;Runtime&gt;::get(
-                        <span class="number">1 </span>+ GetRateStaleBlockPeriod::get(),
+                        <span class="number">1 </span>+ GetBandRateStaleBlockPeriod::get(),
                         symbol
                     ));
                     SymbolRatesV1::&lt;Runtime&gt;::insert(symbol, <span class="prelude-val">Some</span>(sample_rate.clone()));
@@ -616,7 +616,7 @@
                         .last_updated_block;
                     <span class="macro">assert_eq!</span>(last_updated_block, <span class="number">1</span>);
                     <span class="macro">assert!</span>(SymbolCheckBlock::&lt;Runtime&gt;::get(
-                        <span class="number">1 </span>+ GetRateStaleBlockPeriod::get(),
+                        <span class="number">1 </span>+ GetBandRateStaleBlockPeriod::get(),
                         symbol
                     ));
                 }
