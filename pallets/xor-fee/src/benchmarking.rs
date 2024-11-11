@@ -32,13 +32,10 @@
 
 use super::*;
 
-use common::balance;
 use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
 
-#[cfg(feature = "wip")] // Dynamic fee
-use crate::pallet::UpdatePeriod;
 use crate::{Config, Pallet};
 
 benchmarks! {
@@ -47,22 +44,6 @@ benchmarks! {
     }: _(RawOrigin::Root, new_multiplier)
     verify {
         assert_eq!(Multiplier::<T>::get(), new_multiplier);
-    }
-
-    set_fee_update_period {
-        let new_block_number = 3600_u32;
-    }: _(RawOrigin::Root, new_block_number.into())
-    verify {
-        #[cfg(feature = "wip")] // Dynamic fee
-        assert_eq!(<UpdatePeriod<T>>::get(), new_block_number.into());
-    }
-
-    set_small_reference_amount {
-        let new_reference_amount = balance!(0.2);
-    }: _(RawOrigin::Root, new_reference_amount)
-    verify {
-        #[cfg(feature = "wip")] // Dynamic fee
-        assert_eq!(<SmallReferenceAmount<T>>::get(), new_reference_amount);
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);

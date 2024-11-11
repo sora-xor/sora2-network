@@ -33,10 +33,6 @@
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
-#[cfg(feature = "wip")] // Dynamic fee
-use common::weights::constants::SMALL_FEE;
-#[cfg(feature = "wip")] // Dynamic fee
-use common::DAI;
 use common::{
     self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
@@ -44,8 +40,6 @@ use common::{
     LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider, PSWAP, TBCD,
     VAL, VXOR, XOR,
 };
-#[cfg(feature = "wip")] // Dynamic fee
-use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
@@ -245,31 +239,8 @@ impl Config for Runtime {
     type BuyBackHandler = ();
     type ReferrerAccountProvider = MockReferrerAccountProvider;
     type WeightInfo = ();
-    #[cfg(not(feature = "wip"))] // Dynamic fee
     type DynamicMultiplier = ();
-    #[cfg(feature = "wip")] // Dynamic fee
-    type DynamicMultiplier = DynamicMultiplier;
     type PermittedSetPeriod = EnsureRoot<AccountId>;
-}
-
-#[cfg(feature = "wip")] // Dynamic fee
-pub struct DynamicMultiplier;
-
-#[cfg(feature = "wip")] // Dynamic fee
-impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for DynamicMultiplier {
-    fn calculate_multiplier(
-        input_asset: &AssetId,
-        ref_asset: &AssetId,
-    ) -> Result<FixedU128, DispatchError> {
-        let price: FixedWrapper = FixedWrapper::from(match (input_asset, ref_asset) {
-            (&XOR, &DAI) => PRICE_XOR_DAI,
-            _ => balance!(0.000000000000000001),
-        });
-        let new_multiplier: Balance = (SMALL_REFERENCE_AMOUNT / (SMALL_FEE * price))
-            .try_into_balance()
-            .map_err(|_| xor_fee::pallet::Error::<Runtime>::MultiplierCalculationFailed)?;
-        Ok(FixedU128::from_inner(new_multiplier))
-    }
 }
 
 pub struct MockReferrerAccountProvider;

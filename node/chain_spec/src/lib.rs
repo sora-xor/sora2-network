@@ -49,8 +49,6 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
-#[cfg(feature = "stage")] // EVM/TON bridge
-use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
@@ -1211,21 +1209,8 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
-        #[cfg(feature = "stage")] // TON bridge
-        jetton_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
-
-        #[cfg(feature = "wip")] // Trustless substrate bridge
-        beefy_light_client: Default::default(),
-
-        #[cfg(feature = "stage")] // EVM/TON bridge
-        bridge_outbound_channel: BridgeOutboundChannelConfig {
-            interval: 10,
-            ..Default::default()
-        },
 
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
@@ -1685,9 +1670,7 @@ fn testnet_genesis(
                 (KXOR, XOR, balance!(100000)),
                 (SB, DAI, balance!(1)),
             ],
-            predefined_stablecoin_oracle_peg: vec![
-                (KGOLD, SymbolName::xau(), balance!(0.001)),
-            ],
+            predefined_stablecoin_oracle_peg: vec![(KGOLD, SymbolName::xau(), balance!(0.001))],
         },
         rewards: rewards_config,
         council: CouncilConfig {
@@ -1721,8 +1704,6 @@ fn testnet_genesis(
         feature = "main-net-coded",
         feature = "test",
         feature = "runtime-benchmarks",
-        feature = "wip",
-        feature = "stage"
     ),
     not(feature = "private-net")
 ))]
@@ -1816,8 +1797,6 @@ pub fn main_net_coded() -> ChainSpec {
         feature = "main-net-coded",
         feature = "test",
         feature = "runtime-benchmarks",
-        feature = "wip",
-        feature = "stage"
     ),
     not(feature = "private-net")
 ))]
@@ -2251,20 +2230,8 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        #[cfg(feature = "stage")] // TON bridge
-        jetton_app: Default::default(),
-        #[cfg(feature = "wip")] // EVM bridge
-        evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
-
-        #[cfg(feature = "wip")] // Trustless substrate bridge
-        beefy_light_client: Default::default(),
-
-        #[cfg(feature = "stage")] // EVM/TON bridge
-        bridge_outbound_channel: BridgeOutboundChannelConfig {
-            interval: 10,
-        },
 
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
@@ -2565,9 +2532,7 @@ fn mainnet_genesis(
                 (KXOR, XOR, balance!(100000)),
                 (SB, DAI, balance!(1)),
             ],
-            predefined_stablecoin_oracle_peg: vec![
-                (KGOLD, SymbolName::xau(), balance!(0.001)),
-            ],
+            predefined_stablecoin_oracle_peg: vec![(KGOLD, SymbolName::xau(), balance!(0.001))],
         },
         rewards: rewards_config,
         council: CouncilConfig {

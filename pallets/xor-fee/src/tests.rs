@@ -33,16 +33,8 @@
 
 use crate::extension::ChargeTransactionPayment;
 use crate::{mock::*, LiquidityInfo, XorToVal};
-#[cfg(feature = "wip")] // Dynamic fee
-use crate::{CalculateMultiplier, Error, Multiplier, UpdatePeriod};
 use common::balance;
 use common::mock::{alice, bob};
-#[cfg(feature = "wip")] // Dynamic fee
-use common::prelude::FixedWrapper;
-#[cfg(feature = "wip")] // Dynamic fee
-use common::weights::constants::SMALL_FEE;
-#[cfg(feature = "wip")] // Dynamic fee
-use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
 use frame_support::error::BadOrigin;
 use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
@@ -502,90 +494,5 @@ fn it_works_referrer_refund() {
             balance!(1000.00007)
         );
         assert_eq!(XorToVal::<Runtime>::get(), balance!(0.00035));
-    });
-}
-
-#[cfg(feature = "wip")] // Dynamic fee
-#[test]
-fn calculate_multiplier_using_ref_amount_works() {
-    ExtBuilder::build().execute_with(|| {
-        let input_asset = common::XOR;
-        let ref_asset = common::DAI;
-
-        let multiplier = DynamicMultiplier::calculate_multiplier(&input_asset, &ref_asset)
-            .unwrap()
-            .into_inner();
-        let ref_amount = FixedWrapper::from(PRICE_XOR_DAI) * SMALL_FEE * multiplier;
-
-        assert_eq!(ref_amount.into_balance(), SMALL_REFERENCE_AMOUNT);
-
-        assert_noop!(
-            DynamicMultiplier::calculate_multiplier(&input_asset, &input_asset),
-            Error::<Runtime>::MultiplierCalculationFailed
-        );
-    });
-}
-
-#[cfg(feature = "wip")] // Dynamic fee
-#[test]
-fn update_multiplier_on_initialize() {
-    ExtBuilder::build().execute_with(|| {
-        System::set_block_number(0);
-
-        UpdatePeriod::<Runtime>::put(10);
-        run_to_block(9);
-        assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
-
-        run_to_block(15);
-        assert_eq!(Multiplier::<Runtime>::get().into_inner(), balance!(1.25));
-        assert_eq!(UpdatePeriod::<Runtime>::get(), 10);
-    });
-}
-
-#[cfg(feature = "wip")] // Dynamic fee
-#[test]
-fn not_update_multiplier_on_initialize() {
-    ExtBuilder::build().execute_with(|| {
-        System::set_block_number(0);
-
-        UpdatePeriod::<Runtime>::put(0);
-        run_to_block(10);
-        assert_eq!(Multiplier::<Runtime>::get(), FixedU128::from(600000));
-    });
-}
-
-#[cfg(feature = "wip")] // Dynamic fee
-#[test]
-fn test_set_update_period() {
-    ExtBuilder::build().execute_with(|| {
-        System::set_block_number(0);
-
-        assert_ok!(XorFee::set_fee_update_period(
-            RuntimeOrigin::root(),
-            BlockNumber::MAX
-        ));
-        assert_eq!(UpdatePeriod::<Runtime>::get(), BlockNumber::MAX);
-    });
-}
-
-#[cfg(feature = "wip")] // Dynamic fee
-#[test]
-fn test_set_small_reference_amount() {
-    ExtBuilder::build().execute_with(|| {
-        System::set_block_number(0);
-
-        assert_ok!(XorFee::set_small_reference_amount(
-            RuntimeOrigin::root(),
-            SMALL_REFERENCE_AMOUNT
-        ));
-        assert_eq!(XorFee::small_reference_amount(), SMALL_REFERENCE_AMOUNT);
-        let expected_error = DispatchErrorWithPostInfo {
-            post_info: Pays::Yes.into(),
-            error: Error::<Runtime>::InvalidSmallReferenceAmount.into(),
-        };
-        assert_noop!(
-            XorFee::set_small_reference_amount(RuntimeOrigin::root(), balance!(0)),
-            expected_error
-        );
     });
 }

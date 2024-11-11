@@ -56,10 +56,6 @@ pub mod weights;
 
 use crate::impls::PreimageWeightInfo;
 use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
-#[cfg(feature = "wip")] // Trustless bridges
-use bridge_types::types::LeafExtraData;
-#[cfg(feature = "wip")] // EVM bridge
-use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, KUSD};
@@ -90,8 +86,6 @@ use pallet_staking::sora::ValBurnedNotifier;
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 pub use sp_beefy::crypto::AuthorityId as BeefyId;
-#[cfg(feature = "wip")] // Trustless bridges
-use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
@@ -157,8 +151,6 @@ use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp,
 pub use order_book_benchmarking;
 #[cfg(feature = "private-net")]
 pub use qa_tools;
-#[cfg(feature = "wip")]
-pub use soratopia;
 pub use {
     assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
     multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
@@ -990,14 +982,6 @@ parameter_types! {
     pub const CheckInTransferAmount: Balance = balance!(1000);
 }
 
-#[cfg(feature = "stage")] // Soratopia
-impl soratopia::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type AdminAccount = AdminAccount;
-    type CheckInTransferAmount = CheckInTransferAmount;
-    type WeightInfo = soratopia::weights::SubstrateWeight<Runtime>;
-}
-
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<PredefinedAssetId>;
 pub type AssetId = AssetId32<PredefinedAssetId>;
@@ -1312,10 +1296,7 @@ impl xor_fee::Config for Runtime {
         pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
         EnsureRoot<AccountId>,
     >;
-    #[cfg(not(feature = "wip"))] // Dynamic fee
     type DynamicMultiplier = ();
-    #[cfg(feature = "wip")] // Dynamic fee
-    type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
@@ -1842,28 +1823,10 @@ impl price_tools::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
-#[cfg(not(feature = "wip"))] // Basic impl for session keys
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
     type MaxAuthorities = MaxAuthorities;
     type OnNewValidatorSet = ();
-}
-
-#[cfg(feature = "wip")] // Trustless bridges
-impl pallet_beefy::Config for Runtime {
-    type BeefyId = BeefyId;
-    type MaxAuthorities = MaxAuthorities;
-    type OnNewValidatorSet = MmrLeaf;
-}
-
-#[cfg(feature = "wip")] // Trustless bridges
-impl pallet_mmr::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = b"mmr";
-    type Hashing = Keccak256;
-    type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
-    type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
-    type WeightInfo = ();
-    type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
 }
 
 impl leaf_provider::Config for Runtime {
@@ -1871,33 +1834,6 @@ impl leaf_provider::Config for Runtime {
     type Hashing = Keccak256;
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
-}
-
-#[cfg(feature = "wip")] // Trustless bridges
-parameter_types! {
-    /// Version of the produced MMR leaf.
-    ///
-    /// The version consists of two parts;
-    /// - `major` (3 bits)
-    /// - `minor` (5 bits)
-    ///
-    /// `major` should be updated only if decoding the previous MMR Leaf format from the payload
-    /// is not possible (i.e. backward incompatible change).
-    /// `minor` should be updated if fields are added to the previous MMR Leaf, which given SCALE
-    /// encoding does not prevent old leafs from being decoded.
-    ///
-    /// Hence we expect `major` to be changed really rarely (think never).
-    /// See [`MmrLeafVersion`] type documentation for more details.
-    pub LeafVersion: MmrLeafVersion = MmrLeafVersion::new(0, 0);
-}
-
-#[cfg(feature = "wip")] // Trustless bridges
-impl pallet_beefy_mmr::Config for Runtime {
-    type LeafVersion = LeafVersion;
-    type BeefyAuthorityToMerkleLeaf = pallet_beefy_mmr::BeefyEcdsaToEthereum;
-    type LeafExtra =
-        LeafExtraData<<Self as leaf_provider::Config>::Hash, <Self as frame_system::Config>::Hash>;
-    type BeefyDataProvider = leaf_provider::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -2153,22 +2089,6 @@ parameter_types! {
 
 // Ethereum bridge pallets
 
-#[cfg(feature = "stage")] // EVM/TON bridge
-impl dispatch::Config<dispatch::Instance1> for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type OriginOutput = bridge_types::types::CallOriginOutput<
-        GenericNetworkId,
-        H256,
-        bridge_types::types::GenericAdditionalInboundData,
-    >;
-    type Origin = RuntimeOrigin;
-    type MessageId = bridge_types::types::MessageId;
-    type Hashing = Keccak256;
-    type Call = DispatchableSubstrateBridgeCall;
-    type CallFilter = SubstrateBridgeCallFilter;
-    type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
-}
-
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u32 = 256;
     pub const BridgeMaxMessagesPerCommit: u32 = 20;
@@ -2177,118 +2097,9 @@ parameter_types! {
     pub const Decimals: u32 = 12;
 }
 
-#[cfg(feature = "wip")] // EVM bridge
-pub struct FeeConverter;
-
-#[cfg(feature = "wip")] // EVM bridge
-impl Convert<U256, Balance> for FeeConverter {
-    fn convert(amount: U256) -> Balance {
-        common::eth::unwrap_balance(amount, Decimals::get())
-            .expect("Should not panic unless runtime is misconfigured")
-    }
-}
-
 parameter_types! {
     pub const FeeCurrency: AssetId = XOR;
     pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
-}
-
-#[cfg(feature = "stage")] // EVM/TON bridge
-impl bridge_channel::inbound::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Verifier = MultiVerifier;
-    type MessageDispatch = Dispatch;
-    type WeightInfo = ();
-    type ThisNetworkId = ThisNetworkId;
-    type UnsignedPriority = DataSignerPriority;
-    type UnsignedLongevity = DataSignerLongevity;
-    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
-    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
-    type AssetId = AssetId;
-    type Balance = Balance;
-    type MessageStatusNotifier = BridgeProxy;
-    type OutboundChannel = BridgeOutboundChannel;
-    #[cfg(feature = "wip")] // EVM bridge
-    type EVMFeeHandler = EVMFungibleApp;
-    #[cfg(not(feature = "wip"))] // EVM bridge
-    type EVMFeeHandler = ();
-    #[cfg(feature = "wip")] // EVM bridge
-    type EVMPriorityFee = EVMBridgePriorityFee;
-    #[cfg(not(feature = "wip"))] // EVM bridge
-    type EVMPriorityFee = ();
-}
-
-#[cfg(feature = "stage")] // EVM/TON bridge
-impl bridge_channel::outbound::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
-    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
-    type MessageStatusNotifier = BridgeProxy;
-    type AuxiliaryDigestHandler = LeafProvider;
-    type ThisNetworkId = ThisNetworkId;
-    type AssetId = AssetId;
-    type Balance = Balance;
-    type MaxGasPerCommit = BridgeMaxTotalGasLimit;
-    type MaxGasPerMessage = BridgeMaxGasPerMessage;
-    type TimepointProvider = GenericTimepointProvider;
-    type WeightInfo = ();
-}
-
-#[cfg(feature = "wip")] // EVM bridge
-parameter_types! {
-    pub const DescendantsUntilFinalized: u8 = 30;
-    pub const VerifyPoW: bool = true;
-    // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
-    // We don't want to have not relevant imports be stuck in transaction pool
-    // for too long
-    pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
-    pub EVMBridgePriorityFee: u128 = 5_000_000_000; // 5 Gwei
-}
-
-#[cfg(feature = "wip")] // EVM bridge
-parameter_types! {
-    pub const BaseFeeLifetime: BlockNumber = 10 * MINUTES;
-}
-
-#[cfg(feature = "wip")] // EVM bridge
-impl evm_fungible_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<
-            GenericNetworkId,
-            H256,
-            bridge_types::types::GenericAdditionalInboundData,
-        >,
-    >;
-    type AppRegistry = BridgeInboundChannel;
-    type MessageStatusNotifier = BridgeProxy;
-    type AssetRegistry = BridgeProxy;
-    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type BridgeAssetLocker = BridgeProxy;
-    type BaseFeeLifetime = BaseFeeLifetime;
-    type PriorityFee = EVMBridgePriorityFee;
-    type WeightInfo = ();
-}
-
-#[cfg(feature = "stage")] // TON bridge
-impl jetton_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<
-            GenericNetworkId,
-            H256,
-            bridge_types::types::GenericAdditionalInboundData,
-        >,
-    >;
-    type MessageStatusNotifier = BridgeProxy;
-    type AssetRegistry = BridgeProxy;
-    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type BridgeAssetLocker = BridgeProxy;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -2299,9 +2110,6 @@ parameter_types! {
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 
-    #[cfg(feature = "wip")] // EVM bridge
-    type FAApp = EVMFungibleApp;
-    #[cfg(not(feature = "wip"))] // EVM bridge
     type FAApp = ();
 
     type HashiBridge = EthBridge;
@@ -2318,12 +2126,6 @@ impl bridge_proxy::Config for Runtime {
     >;
     type WeightInfo = ();
     type AccountIdConverter = sp_runtime::traits::Identity;
-}
-
-#[cfg(feature = "wip")] // Trustless substrate bridge
-impl beefy_light_client::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
 impl dispatch::Config<dispatch::Instance2> for Runtime {
@@ -2353,14 +2155,8 @@ pub struct MultiVerifier;
 
 #[derive(Clone, Debug, PartialEq, codec::Encode, codec::Decode, scale_info::TypeInfo)]
 pub enum MultiProof {
-    #[cfg(feature = "wip")] // Trustless substrate bridge
-    #[codec(index = 0)]
-    Beefy(<BeefyLightClient as Verifier>::Proof),
     #[codec(index = 1)]
     Multisig(<MultisigVerifier as Verifier>::Proof),
-    #[cfg(feature = "stage")] // EVM/TON bridge
-    #[codec(index = 2)]
-    EVMMultisig(<multisig_verifier::MultiEVMVerifier<Runtime> as Verifier>::Proof),
     /// This proof is only used for benchmarking purposes
     #[cfg(feature = "runtime-benchmarks")]
     #[codec(skip)]
@@ -2376,13 +2172,7 @@ impl Verifier for MultiVerifier {
         proof: &Self::Proof,
     ) -> frame_support::pallet_prelude::DispatchResult {
         match proof {
-            #[cfg(feature = "wip")] // Trustless substrate bridge
-            MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            MultiProof::EVMMultisig(proof) => {
-                multisig_verifier::MultiEVMVerifier::<Runtime>::verify(network_id, message, proof)
-            }
             #[cfg(feature = "runtime-benchmarks")]
             MultiProof::Empty => Ok(()),
         }
@@ -2390,13 +2180,7 @@ impl Verifier for MultiVerifier {
 
     fn verify_weight(proof: &Self::Proof) -> Weight {
         match proof {
-            #[cfg(feature = "wip")] // Trustless substrate bridge
-            MultiProof::Beefy(proof) => BeefyLightClient::verify_weight(proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            MultiProof::EVMMultisig(proof) => {
-                multisig_verifier::MultiEVMVerifier::<Runtime>::verify_weight(proof)
-            }
             #[cfg(feature = "runtime-benchmarks")]
             MultiProof::Empty => Default::default(),
         }
@@ -2574,22 +2358,6 @@ construct_runtime! {
         // Generic bridges pallets
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
-        // Trustless EVM bridge
-        #[cfg(feature = "stage")] // EVM/TON bridge
-        BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
-        #[cfg(feature = "stage")] // EVM/TON bridge
-        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        #[cfg(feature = "stage")] // EVM/TON bridge
-        Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
-        #[cfg(feature = "wip")] // EVM bridge
-        EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        #[cfg(feature = "stage")] // TON bridge
-        JettonApp: jetton_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
-
-        // Trustless substrate bridge
-        #[cfg(feature = "wip")] // Trustless substrate bridge
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
-
         // Federated substrate bridge
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 107,
@@ -2601,14 +2369,8 @@ construct_runtime! {
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
 
         // Trustless bridges
-        // Beefy pallets should be placed after channels
-        #[cfg(feature = "wip")] // Trustless bridges
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         // In production needed for session keys
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        #[cfg(feature = "wip")] // Trustless bridges
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-
         // Dev
         #[cfg(feature = "private-net")]
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
@@ -2621,9 +2383,6 @@ construct_runtime! {
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
-
-        #[cfg(feature = "stage")]
-        Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
     }
 }
 
@@ -2676,9 +2435,6 @@ pub type Executive = frame_executive::Executive<
     AllPalletsWithSystem,
     migrations::Migrations,
 >;
-
-#[cfg(feature = "wip")] // Trustless bridges
-pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {
@@ -3008,14 +2764,6 @@ impl_runtime_apis! {
         }
     }
 
-    #[cfg(feature = "wip")] // Trustless substrate bridge
-    impl beefy_light_client_runtime_api::BeefyLightClientAPI<Block, beefy_light_client::BitField> for Runtime {
-        fn get_random_bitfield(network_id: SubNetworkId, prior: beefy_light_client::BitField, num_of_validators: u32) -> beefy_light_client::BitField {
-            let len = prior.len() as usize;
-            BeefyLightClient::create_random_bit_field(network_id, prior, num_of_validators).unwrap_or(beefy_light_client::BitField::with_capacity(len))
-        }
-    }
-
     impl liquidity_proxy_runtime_api::LiquidityProxyAPI<
         Block,
         DEXId,
@@ -3181,67 +2929,30 @@ impl_runtime_apis! {
     // For BEEFY gadget
     impl sp_beefy::BeefyApi<Block> for Runtime {
         fn validator_set() -> Option<sp_beefy::ValidatorSet<BeefyId>> {
-            #[cfg(not(feature = "wip"))] // Trustless bridges
             return None;
-
-            #[cfg(feature = "wip")] // Trustless bridges
-            Beefy::validator_set()
         }
     }
 
     impl mmr::MmrApi<Block, Hash, BlockNumber> for Runtime {
         fn mmr_root() -> Result<Hash, mmr::Error> {
-            #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
-
-            #[cfg(feature = "wip")] // Trustless bridges
-            Ok(Mmr::mmr_root())
         }
 
         fn mmr_leaf_count() -> Result<mmr::LeafIndex, mmr::Error> {
-            #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
-
-            #[cfg(feature = "wip")] // Trustless bridges
-            Ok(Mmr::mmr_leaves())
         }
 
         fn generate_proof(
             _block_numbers: Vec<BlockNumber>,
             _best_known_block_number: Option<BlockNumber>,
         ) -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::Proof<Hash>), mmr::Error> {
-            #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
-
-            #[cfg(feature = "wip")] // Trustless bridges
-            Mmr::generate_proof(_block_numbers, _best_known_block_number).map(
-                |(leaves, proof)| {
-                    (
-                        leaves
-                            .into_iter()
-                            .map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf))
-                            .collect(),
-                        proof,
-                    )
-                },
-            )
         }
 
         fn verify_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
-            #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
-
-            #[cfg(feature = "wip")] // Trustless bridges
-            {
-                pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
-                let leaves = _leaves.into_iter().map(|leaf|
-                    leaf.into_opaque_leaf()
-                    .try_decode()
-                    .ok_or(mmr::Error::Verify)).collect::<Result<Vec<MmrLeaf>, mmr::Error>>()?;
-                Mmr::verify_leaves(leaves, _proof)
-            }
         }
 
         fn verify_proof_stateless(
@@ -3249,14 +2960,7 @@ impl_runtime_apis! {
             _leaves: Vec<mmr::EncodableOpaqueLeaf>,
             _proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
-            #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
-
-            #[cfg(feature = "wip")] // Trustless bridges
-            {
-                let nodes = _leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
-                pallet_mmr::verify_leaves_proof::<MmrHashing, _>(_root, nodes, _proof)
-            }
         }
     }
 
@@ -3362,20 +3066,9 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
-            #[cfg(feature = "wip")] // EVM bridge
-            list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
-            #[cfg(feature = "stage")] // TON bridge
-            list_benchmark!(list, extra, jetton_app, JettonApp);
-
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            list_benchmark!(list, extra, dispatch, Dispatch);
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             list_benchmark!(list, extra, parachain_bridge_app, ParachainBridgeApp);
@@ -3383,9 +3076,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
-
-            #[cfg(feature = "stage")] // Soratopia
-            list_benchmark!(list, extra, soratopia, Soratopia);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3463,20 +3153,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
-            #[cfg(feature = "wip")] // EVM bridge
-            add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
-            #[cfg(feature = "stage")] // TON bridge
-            add_benchmark!(params, batches, jetton_app, JettonApp);
-
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
-            // TODO: fix
-            #[cfg(feature = "stage")] // EVM/TON bridge
-            add_benchmark!(params, batches, dispatch, Dispatch);
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
             add_benchmark!(params, batches, parachain_bridge_app, ParachainBridgeApp);
@@ -3484,9 +3162,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
-
-            #[cfg(feature = "stage")] // Soratopia
-            add_benchmark!(params, batches, soratopia, Soratopia);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

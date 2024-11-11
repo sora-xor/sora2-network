@@ -72,29 +72,6 @@ pub struct FullDeps<C, P> {
     pub beefy: BeefyDeps,
 }
 
-#[cfg(feature = "wip")]
-pub fn add_wip_rpc<C>(
-    mut rpc: RpcExtension,
-    client: Arc<C>,
-) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
-where
-    C: ProvideRuntimeApi<Block>,
-    C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
-    C: Send + Sync + 'static,
-    C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
-{
-    use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
-    rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
-    Ok(rpc)
-}
-
-#[cfg(feature = "stage")]
-pub fn add_stage_rpc(
-    rpc: RpcExtension,
-) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
-    Ok(rpc)
-}
-
 /// Instantiate full RPC extensions.
 pub fn create_full<C, P>(
     deps: FullDeps<C, P>,
