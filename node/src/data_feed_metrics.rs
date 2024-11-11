@@ -69,7 +69,7 @@ where
             .map_err(|rpc_error| format!("RPC error: {:?}", rpc_error))?
             .map_err(|dispatch_error| format!("Dispatch error: {:?}", dispatch_error))?;
 
-        let outdated_threshold: u128 = 300 * MILLISECS_MULTIPLIER; // 5 minutes in milliseconds
+        let outdated_threshold = framenode_runtime::GetBandRateStalePeriod::get() as u128;
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("Time went backwards")
