@@ -28,10 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as oracle_proxy, Config};
+use crate as oracle_proxy;
 use band;
 use common::{
-    self, mock_band_config, mock_frame_system_config, mock_pallet_timestamp_config, SymbolName,
+    self, mock_band_config, mock_frame_system_config, mock_oracle_proxy_config,
+    mock_pallet_timestamp_config, SymbolName,
 };
 use frame_support::traits::{ConstU16, ConstU32};
 use frame_system;
@@ -54,15 +55,9 @@ frame_support::construct_runtime!(
     }
 );
 
-impl Config for Runtime {
-    type BandChainOracle = band::Pallet<Runtime>;
-    type RuntimeEvent = RuntimeEvent;
-    type Symbol = SymbolName;
-    type WeightInfo = ();
-}
-
 mock_band_config!(Runtime);
 mock_frame_system_config!(Runtime, ConstU16<42>, ConstU32<16>, ());
+mock_oracle_proxy_config!(Runtime, band::Pallet<Runtime>, SymbolName);
 mock_pallet_timestamp_config!(Runtime);
 
 // Build genesis storage according to the mock runtime.

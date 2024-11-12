@@ -33,7 +33,8 @@
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::{
-    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_api_config,
+    hash, mock_assets_config, mock_ceres_liquidity_locker_config, mock_common_config,
+    mock_currencies_config, mock_demeter_farming_platform_config, mock_dex_api_config,
     mock_dex_manager_config, mock_extended_assets_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
     mock_pool_xyk_config, mock_pswap_distribution_config, mock_technical_config,
@@ -41,7 +42,7 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::traits::{ConstU32, Everything, GenesisBuild};
+use frame_support::traits::{ConstU32, GenesisBuild};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
@@ -101,8 +102,10 @@ construct_runtime! {
 }
 
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_api_config!(Runtime);
 mock_dex_manager_config!(Runtime);
 mock_extended_assets_config!(Runtime);
@@ -118,23 +121,6 @@ mock_trading_pair_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
 }
 
 impl Config for Runtime {}

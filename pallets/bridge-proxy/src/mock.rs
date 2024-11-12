@@ -39,17 +39,18 @@ use bridge_types::{EVMChainId, U256};
 use bridge_types::{GenericNetworkId, H160};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, mock_assets_config, mock_common_config, mock_currencies_config,
+    balance, mock_assets_config, mock_bridge_channel_outbound_config, mock_common_config,
+    mock_currencies_config, mock_dispatch_config, mock_evm_fungible_app_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
-    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
+    mock_permissions_config, mock_proxy_config, mock_technical_config, mock_tokens_config, Amount,
+    AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI,
+    ETH, XOR, XST,
 };
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU128, ConstU32, ConstU64, Everything, GenesisBuild};
-use frame_system::{self, EnsureRoot};
+use frame_support::traits::{ConstU32, GenesisBuild};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::traits::{Convert, IdentifyAccount, Keccak256, Verify};
-use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
+use sp_runtime::traits::{Convert, IdentifyAccount, Verify};
+use sp_runtime::{DispatchResult, MultiSignature};
 
 use crate as proxy;
 
@@ -81,15 +82,20 @@ frame_support::construct_runtime!(
 
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+pub type OriginOutput = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
 pub const BASE_EVM_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 mock_assets_config!(Test);
+mock_bridge_channel_outbound_config!(Test);
 mock_common_config!(Test);
 mock_currencies_config!(Test);
+mock_dispatch_config!(Test);
+mock_evm_fungible_app_config!(Test);
 mock_frame_system_config!(Test, (), ConstU32<65536>);
 mock_pallet_balances_config!(Test);
 mock_pallet_timestamp_config!(Test);
 mock_permissions_config!(Test);
+mock_proxy_config!(Test);
 mock_technical_config!(Test);
 mock_tokens_config!(Test);
 
@@ -101,17 +107,6 @@ parameter_types! {
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-
-impl dispatch::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type OriginOutput = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
-    type Origin = RuntimeOrigin;
-    type MessageId = MessageId;
-    type Hashing = Keccak256;
-    type Call = RuntimeCall;
-    type CallFilter = Everything;
-    type WeightInfo = ();
-}
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 2048;
@@ -129,23 +124,6 @@ impl Convert<U256, Balance> for FeeConverter {
 
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
-    pub const MaxTotalGasLimit: u64 = 5_000_000;
-    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
-}
-
-impl bridge_channel::outbound::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type MaxMessagePayloadSize = MaxMessagePayloadSize;
-    type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type MessageStatusNotifier = BridgeProxy;
-    type AuxiliaryDigestHandler = ();
-    type ThisNetworkId = ThisNetworkId;
-    type AssetId = AssetId;
-    type Balance = Balance;
-    type MaxGasPerCommit = MaxTotalGasLimit;
-    type MaxGasPerMessage = MaxTotalGasLimit;
-    type TimepointProvider = GenericTimepointProvider;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -211,23 +189,6 @@ impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConve
     }
 }
 
-impl evm_fungible_app::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
-    >;
-    type MessageStatusNotifier = BridgeProxy;
-    type AppRegistry = AppRegistryImpl;
-    type AssetRegistry = BridgeProxy;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
-    type BridgeAssetLocker = BridgeProxy;
-    type BaseFeeLifetime = ConstU64<100>;
-    type PriorityFee = ConstU128<100>;
-    type WeightInfo = ();
-}
-
 pub struct GenericTimepointProvider;
 
 impl TimepointProvider for GenericTimepointProvider {
@@ -244,19 +205,6 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
     ) -> Result<Balance, frame_support::dispatch::DispatchError> {
         Ok(common::balance!(2.5))
     }
-}
-
-impl proxy::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type FAApp = FungibleApp;
-    type ParachainApp = ();
-    type HashiBridge = ();
-    type LiberlandApp = ();
-    type TimepointProvider = GenericTimepointProvider;
-    type ReferencePriceProvider = ReferencePriceProvider;
-    type ManagerOrigin = EnsureRoot<AccountId>;
-    type WeightInfo = ();
-    type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

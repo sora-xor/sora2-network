@@ -28,25 +28,27 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
+use crate::{self as multicollateral_bonding_curve_pool, Rewards, TotalRewards};
 use common::mock::ExistentialDeposits;
 use common::prelude::{
     AssetInfoProvider, Balance, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
     SwapAmount, SwapOutcome,
 };
 use common::{
-    self, balance, fixed, fixed_wrapper, hash, mock_assets_config, mock_common_config,
-    mock_currencies_config, mock_dex_manager_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_pool_xyk_config, mock_price_tools_config, mock_pswap_distribution_config,
-    mock_technical_config, mock_tokens_config, mock_trading_pair_config, Amount, AssetId32,
-    AssetName, AssetSymbol, BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    self, balance, fixed_wrapper, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
+    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
+    mock_dex_manager_config, mock_frame_system_config, mock_liquidity_source_config,
+    mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
+    mock_tokens_config, mock_trading_pair_config, Amount, AssetId32, AssetName, AssetSymbol,
+    BuyBackHandler, DEXInfo, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL,
+    VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, Blake2_128Concat};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -54,7 +56,7 @@ use orml_traits::MultiCurrency;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Zero;
-use sp_runtime::{DispatchError, DispatchResult, Perbill, Percent};
+use sp_runtime::{DispatchError, DispatchResult, Perbill};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
@@ -121,8 +123,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
-    pub GetTBCBuyBackTBCDPercent: Fixed = fixed!(0.025);
-    pub GetTbcIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -153,10 +153,21 @@ construct_runtime! {
 }
 
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_liquidity_source_config!(Runtime, mock_liquidity_source::Instance1);
+mock_multicollateral_bonding_curve_pool_config!(
+    Runtime,
+    MockDEXApi,
+    BuyBackHandlerImpl,
+    MockDEXApi,
+    trading_pair::Pallet<Runtime>,
+    MockVestedRewards
+);
 mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
 mock_permissions_config!(Runtime);
@@ -167,28 +178,6 @@ mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, Account
 mock_tokens_config!(Runtime);
 mock_trading_pair_config!(Runtime);
 
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
-    type GetFee = ();
-    type EnsureDEXManager = ();
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl Config for Runtime {
-    const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = RETRY_DISTRIBUTION_FREQUENCY;
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = MockDEXApi;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type PriceToolsPallet = MockDEXApi;
-    type VestedRewardsPallet = MockVestedRewards;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type BuyBackHandler = BuyBackHandlerImpl;
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type IrreducibleReserve = GetTbcIrreducibleReservePercent;
-    type WeightInfo = ();
-}
 pub struct BuyBackHandlerImpl;
 
 impl BuyBackHandler<AccountId, AssetId> for BuyBackHandlerImpl {
@@ -244,23 +233,6 @@ impl Vesting<AccountId, AssetId> for MockVestedRewards {
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
 }
 
 pub struct MockDEXApi;

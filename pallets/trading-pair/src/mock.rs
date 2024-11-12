@@ -28,17 +28,18 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as trading_pair, Config};
+use crate as trading_pair;
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_manager_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_tokens_config, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD, VXOR, XOR, XST, XSTUSD,
+    mock_tokens_config, mock_trading_pair_config, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
+    VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -90,14 +91,7 @@ mock_frame_system_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
-
-impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
+mock_trading_pair_config!(Runtime);
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;

@@ -28,16 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as assets, Config};
+use crate as assets;
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, SwapAmount, SwapOutcome};
 use common::{
-    mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
     mock_pallet_balances_config, mock_permissions_config, mock_tokens_config, AssetId32, DEXId,
     LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::DispatchError;
@@ -68,9 +68,18 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT: AccountId = 24;
 
+mock_assets_config!(
+    Runtime,
+    permissions::Pallet<Runtime>,
+    AccountId,
+    MockLiquidityProxy,
+    10,
+    23,
+    DEXId::Polkaswap,
+    vec![VAL, PSWAP]
+);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
@@ -88,29 +97,6 @@ parameter_types! {
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
-    pub const GetBuyBackPercentage: u8 = 10;
-    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-
-impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = AccountId;
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = MockLiquidityProxy;
-    type Currency = currencies::Pallet<Runtime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = permissions::Pallet<Runtime>;
 }
 
 pub struct MockLiquidityProxy;

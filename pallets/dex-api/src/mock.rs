@@ -28,21 +28,23 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as dex_api, Config};
+use crate as dex_api;
 use common::alt::DiscreteQuotation;
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, fixed_from_basis_points, hash, mock_assets_config, mock_common_config,
-    mock_currencies_config, mock_dex_manager_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_pool_xyk_config, mock_pswap_distribution_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, DEXId, DEXInfo, Fixed, LiquiditySource,
-    LiquiditySourceType, RewardReason, DOT, KSM, VXOR, XOR, XST,
+    balance, fixed, fixed_from_basis_points, hash, mock_assets_config,
+    mock_ceres_liquidity_locker_config, mock_common_config, mock_currencies_config,
+    mock_demeter_farming_platform_config, mock_dex_api_config, mock_dex_manager_config,
+    mock_frame_system_config, mock_liquidity_source_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_pswap_distribution_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    DEXId, DEXInfo, Fixed, LiquiditySource, LiquiditySourceType, RewardReason, DOT, KSM, VXOR, XOR,
+    XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -74,10 +76,47 @@ pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 mock_assets_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
+mock_dex_api_config!(
+    Runtime,
+    WeightedEmptyLiquiditySource,
+    pool_xyk::Pallet<Runtime>,
+    WeightedEmptyLiquiditySource,
+    mock_liquidity_source::Instance1,
+    mock_liquidity_source::Instance2,
+    mock_liquidity_source::Instance3,
+    mock_liquidity_source::Instance4,
+    WeightedEmptyLiquiditySource
+);
 mock_dex_manager_config!(Runtime);
 mock_frame_system_config!(Runtime);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance1,
+    dex_manager::Pallet<Runtime>,
+    GetFee
+);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance2,
+    dex_manager::Pallet<Runtime>,
+    GetFee
+);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance3,
+    dex_manager::Pallet<Runtime>,
+    GetFee
+);
+mock_liquidity_source_config!(
+    Runtime,
+    mock_liquidity_source::Instance4,
+    dex_manager::Pallet<Runtime>,
+    GetFee
+);
 mock_pallet_balances_config!(Runtime);
 mock_pallet_timestamp_config!(Runtime);
 mock_permissions_config!(Runtime);
@@ -250,73 +289,9 @@ impl<DEXId, AccountId, AssetId: Ord + Clone>
     }
 }
 
-impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type MockLiquiditySource =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
-    type MockLiquiditySource2 =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance2>;
-    type MockLiquiditySource3 =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
-    type MockLiquiditySource4 =
-        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type MulticollateralBondingCurvePool = WeightedEmptyLiquiditySource;
-    type XSTPool = WeightedEmptyLiquiditySource;
-    type XYKPool = pool_xyk::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type OrderBook = WeightedEmptyLiquiditySource;
-    type WeightInfo = ();
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
 }
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
-}
-
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     reserves: ReservesInit,
