@@ -32,12 +32,14 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
+    AssetIdOf, AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
 };
+#[cfg(feature = "wip")] // Xorless fee
+use frame_support::dispatch::extract_actual_weight;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::log::error;
-use frame_support::pallet_prelude::InvalidTransaction;
+use frame_support::pallet_prelude::{DispatchResultWithPostInfo, InvalidTransaction};
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
@@ -57,6 +59,8 @@ use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Per
 use sp_staking::SessionIndex;
 use sp_std::boxed::Box;
 use sp_std::vec::Vec;
+#[cfg(feature = "wip")] // Xorless fee
+use traits::MultiCurrency;
 
 pub mod extension;
 
@@ -87,7 +91,11 @@ type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
 // #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
-    Paid(T::AccountId, Option<NegativeImbalanceOf<T>>),
+    Paid(
+        T::AccountId,
+        Option<NegativeImbalanceOf<T>>,
+        Option<AssetIdOf<T>>,
+    ),
     /// The fee payment has been postponed to after the transaction
     Postponed(T::AccountId),
     /// The fee should not be paid
@@ -97,8 +105,14 @@ pub enum LiquidityInfo<T: Config> {
 impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
     fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
         match self {
-            LiquidityInfo::Paid(a, b) => {
-                write!(f, "Paid({:?}, {:?})", a, b.as_ref().map(|b| b.peek()))
+            LiquidityInfo::Paid(a, b, c) => {
+                write!(
+                    f,
+                    "Paid({:?}, {:?}, {:?})",
+                    a,
+                    b.as_ref().map(|b| b.peek()),
+                    c
+                )
             }
             LiquidityInfo::Postponed(account_id) => {
                 write!(f, "Postponed({:?})", account_id)
@@ -113,8 +127,10 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
 impl<T: Config> PartialEq for LiquidityInfo<T> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (LiquidityInfo::Paid(a1, b1), LiquidityInfo::Paid(a2, b2)) => {
-                (a1 == a2) && b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
+            (LiquidityInfo::Paid(a1, b1, c1), LiquidityInfo::Paid(a2, b2, c2)) => {
+                (a1 == a2)
+                    && b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
+                    && c1.eq(c2)
             }
             (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) => a1 == a2,
             _ => false,
@@ -129,9 +145,21 @@ impl<T: Config> Default for LiquidityInfo<T> {
     }
 }
 
-impl<T: Config> From<(T::AccountId, Option<NegativeImbalanceOf<T>>)> for LiquidityInfo<T> {
-    fn from((account_id, paid): (T::AccountId, Option<NegativeImbalanceOf<T>>)) -> Self {
-        LiquidityInfo::Paid(account_id, paid)
+impl<T: Config>
+    From<(
+        T::AccountId,
+        Option<NegativeImbalanceOf<T>>,
+        Option<AssetIdOf<T>>,
+    )> for LiquidityInfo<T>
+{
+    fn from(
+        (account_id, paid, asset_id): (
+            T::AccountId,
+            Option<NegativeImbalanceOf<T>>,
+            Option<AssetIdOf<T>>,
+        ),
+    ) -> Self {
+        LiquidityInfo::Paid(account_id, paid, asset_id)
     }
 }
 
@@ -152,7 +180,7 @@ where
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
         // Not pay fee at all. It's not possible to withdraw fee if it's disabled here.
         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
-            return Ok((who.clone(), None).into());
+            return Ok((who.clone(), None, None).into());
         }
 
         // Use custom fee source for transaction
@@ -179,8 +207,8 @@ where
         tip: BalanceOf<T>,
         already_withdrawn: Self::LiquidityInfo,
     ) -> Result<(), TransactionValidityError> {
-        let (fee_source, withdrawn) = match already_withdrawn {
-            LiquidityInfo::Paid(a, b) => (a, b),
+        let (fee_source, withdrawn, asset_id) = match already_withdrawn {
+            LiquidityInfo::Paid(a, b, c) => (a, b, c),
             LiquidityInfo::Postponed(fee_source) => {
                 let withdraw_reason = if tip.is_zero() {
                     WithdrawReasons::TRANSACTION_PAYMENT
@@ -194,9 +222,9 @@ where
                     ExistenceRequirement::KeepAlive,
                 )
                 .map_err(|_| InvalidTransaction::Payment)?;
-                (fee_source, Some(result))
+                (fee_source, Some(result), None)
             }
-            LiquidityInfo::NotPaid => (who.clone(), None),
+            LiquidityInfo::NotPaid => (who.clone(), None, None),
         };
 
         if let Some(paid) = withdrawn {
@@ -206,63 +234,108 @@ where
             // call is not subject for custom fee
             let refund_amount = paid.peek().saturating_sub(corrected_fee);
 
-            // Refund to the the account that paid the fees. If this fails, the
-            // account might have dropped below the existential balance. In
-            // that case we don't refund anything.
-            let refund_imbalance =
-                T::XorCurrency::deposit_into_existing(&fee_source, refund_amount).unwrap_or_else(
-                    |_| <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero(),
-                );
+            #[allow(unused_variables)]
+            if let Some(asset_id) = asset_id {
+                #[cfg(feature = "wip")] // Xorless fee
+                {
+                    if paid.peek() < refund_amount {
+                        return Err(TransactionValidityError::Invalid(
+                            InvalidTransaction::Payment,
+                        ));
+                    }
+                    let _ = T::MultiCurrency::deposit(asset_id, &fee_source, refund_amount.into())
+                        .is_ok();
+                    BurntForFee::<T>::mutate(asset_id, |balance| {
+                        *balance = balance.saturating_add(corrected_fee.into())
+                    });
 
-            let adjusted_paid = paid
-                .offset(refund_imbalance)
-                .same()
-                .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+                    Self::deposit_event(Event::FeeWithdrawn(fee_source, asset_id, corrected_fee));
 
-            Self::deposit_event(Event::FeeWithdrawn(fee_source, adjusted_paid.peek()));
+                    if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
+                        let referrer_amount = Self::calculate_portion_fee_from_weight(
+                            T::ReferrerWeight::get(),
+                            corrected_fee.into(),
+                        );
 
-            if adjusted_paid.peek().is_zero() {
-                return Ok(());
-            }
-
-            // Applying VAL buy-back-and-burn logic
-            let mut total_xor_to_vxor = BalanceOf::<T>::zero();
-            let xor_into_vxor_burned_weight = T::XorIntoVXorBurnedWeight::get();
-            let xor_burned_weight = T::XorBurnedWeight::get();
-            let xor_into_val_burned_weight = T::XorIntoValBurnedWeight::get();
-            let (referrer_xor, adjusted_paid) = adjusted_paid.ration(
-                T::ReferrerWeight::get(),
-                xor_burned_weight + xor_into_val_burned_weight + xor_into_vxor_burned_weight,
-            );
-            if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
-                let referrer_portion = referrer_xor.peek();
-                T::XorCurrency::resolve_creating(&referrer, referrer_xor);
-                Self::deposit_event(Event::ReferrerRewarded(
-                    who.clone(),
-                    referrer,
-                    referrer_portion.into(),
-                ));
+                        if let Ok(_) =
+                            T::MultiCurrency::deposit(asset_id, &referrer, referrer_amount.into())
+                        {
+                            Self::deposit_event(Event::ReferrerRewarded(
+                                who.clone(),
+                                referrer,
+                                asset_id,
+                                referrer_amount,
+                            ));
+                        }
+                    }
+                }
             } else {
-                total_xor_to_vxor = total_xor_to_vxor.saturating_add(referrer_xor.peek());
-            }
+                // Refund to the the account that paid the fees. If this fails, the
+                // account might have dropped below the existential balance. In
+                // that case we don't refund anything.
+                let refund_imbalance =
+                    T::XorCurrency::deposit_into_existing(&fee_source, refund_amount)
+                        .unwrap_or_else(|_| {
+                            <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero()
+                        });
 
-            // TODO: decide what should be done with XOR if there is no referrer.
-            // Burn XOR for now
-            let (adjusted_paid, xor_to_val) = adjusted_paid.ration(
-                xor_burned_weight + xor_into_vxor_burned_weight,
-                xor_into_val_burned_weight,
-            );
-            let (_xor_burned, xor_to_vxor) =
-                adjusted_paid.ration(xor_burned_weight, xor_into_vxor_burned_weight);
-            let xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
-            total_xor_to_vxor = total_xor_to_vxor.saturating_add(xor_to_vxor.peek());
-            let xor_to_vxor: Balance = total_xor_to_vxor.unique_saturated_into();
-            XorToVal::<T>::mutate(|balance| {
-                *balance = balance.saturating_add(xor_to_val);
-            });
-            XorToVXor::<T>::mutate(|balance| {
-                *balance = balance.saturating_add(xor_to_vxor);
-            });
+                let adjusted_paid = paid
+                    .offset(refund_imbalance)
+                    .same()
+                    .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+
+                let xor_id = T::XorId::get();
+
+                Self::deposit_event(Event::FeeWithdrawn(
+                    fee_source,
+                    xor_id,
+                    adjusted_paid.peek(),
+                ));
+
+                if adjusted_paid.peek().is_zero() {
+                    return Ok(());
+                }
+
+                // Applying VAL buy-back-and-burn logic
+                let mut total_xor_to_vxor = BalanceOf::<T>::zero();
+                let xor_into_vxor_burned_weight = T::XorIntoVXorBurnedWeight::get();
+                let xor_burned_weight = T::XorBurnedWeight::get();
+                let xor_into_val_burned_weight = T::XorIntoValBurnedWeight::get();
+                let (referrer_xor, adjusted_paid) = adjusted_paid.ration(
+                    T::ReferrerWeight::get(),
+                    xor_burned_weight + xor_into_val_burned_weight + xor_into_vxor_burned_weight,
+                );
+                if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
+                    let referrer_portion = referrer_xor.peek();
+                    T::XorCurrency::resolve_creating(&referrer, referrer_xor);
+                    Self::deposit_event(Event::ReferrerRewarded(
+                        who.clone(),
+                        referrer,
+                        xor_id,
+                        referrer_portion.into(),
+                    ));
+                } else {
+                    total_xor_to_vxor = total_xor_to_vxor.saturating_add(referrer_xor.peek());
+                }
+
+                // TODO: decide what should be done with XOR if there is no referrer.
+                // Burn XOR for now
+                let (adjusted_paid, xor_to_val) = adjusted_paid.ration(
+                    xor_burned_weight + xor_into_vxor_burned_weight,
+                    xor_into_val_burned_weight,
+                );
+                let (_xor_burned, xor_to_vxor) =
+                    adjusted_paid.ration(xor_burned_weight, xor_into_vxor_burned_weight);
+                let xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
+                total_xor_to_vxor = total_xor_to_vxor.saturating_add(xor_to_vxor.peek());
+                let xor_to_vxor: Balance = total_xor_to_vxor.unique_saturated_into();
+                XorToVal::<T>::mutate(|balance| {
+                    *balance = balance.saturating_add(xor_to_val);
+                });
+                XorToVXor::<T>::mutate(|balance| {
+                    *balance = balance.saturating_add(xor_to_vxor);
+                });
+            }
         }
         Ok(())
     }
@@ -298,14 +371,43 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
     }
 
     fn end_session(end_index: SessionIndex) {
-        let xor_to_val = XorToVal::<T>::take();
+        let mut xor_to_val = Balance::zero();
+        let mut xor_to_vxor = Balance::zero();
+
+        #[cfg(feature = "wip")] // Xorless fee
+        BurntForFee::<T>::iter().for_each(|(asset_id, balance)| {
+            match Self::remint_fee_asset(asset_id, balance) {
+                Ok(burnt_xor) => {
+                    xor_to_val =
+                        xor_to_val.saturating_add(Self::calculate_portion_fee_from_weight(
+                            T::XorIntoValBurnedWeight::get(),
+                            burnt_xor,
+                        ));
+                    xor_to_vxor =
+                        xor_to_vxor.saturating_add(Self::calculate_portion_fee_from_weight(
+                            T::XorIntoVXorBurnedWeight::get(),
+                            burnt_xor,
+                        ));
+                    BurntForFee::<T>::remove(asset_id);
+                }
+                Err(e) => {
+                    error!("white listed asset fee remint failed: {:?}", e);
+                    // remove to not accumulate
+                    if let Err(e) = Self::do_remove_asset_from_white_list(asset_id) {
+                        error!("failed remove asset_id from white list: {:?}", e);
+                    }
+                }
+            }
+        });
+
+        xor_to_val = xor_to_val.saturating_add(XorToVal::<T>::take());
         if xor_to_val != 0 {
             if let Err(e) = Self::remint_val(xor_to_val) {
                 error!("xor fee remint failed: {:?}", e);
             }
         }
 
-        let xor_to_vxor = XorToVXor::<T>::take();
+        xor_to_vxor = xor_to_vxor.saturating_add(XorToVXor::<T>::take());
         if xor_to_vxor != 0 {
             if let Err(e) = Self::remint_vxor(xor_to_vxor) {
                 error!("XOR to VXOR remint failed: {:?}", e);
@@ -447,7 +549,14 @@ pub trait WithdrawFee<T: Config> {
         fee_source: &T::AccountId,
         call: &CallOf<T>,
         fee: Balance,
-    ) -> Result<(T::AccountId, Option<NegativeImbalanceOf<T>>), DispatchError>;
+    ) -> Result<
+        (
+            T::AccountId,
+            Option<NegativeImbalanceOf<T>>,
+            Option<AssetIdOf<T>>,
+        ),
+        DispatchError,
+    >;
 }
 
 /// Trait for dynamic fee update via multiplier
@@ -693,6 +802,86 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+
+    #[cfg(feature = "wip")] // Xorless fee
+    pub fn remint_fee_asset(
+        asset_id: AssetIdOf<T>,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
+        let xor = T::XorId::get();
+        T::AssetManager::mint_to(&asset_id, &tech_account_id, &tech_account_id, amount)?;
+        match T::PoolXyk::exchange(
+            &tech_account_id,
+            &tech_account_id,
+            &T::DEXIdValue::get(),
+            &asset_id,
+            &xor,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: amount,
+                min_amount_out: 0,
+            },
+        ) {
+            Ok(xor_to_burn) => {
+                T::AssetManager::burn_from(
+                    &xor,
+                    &tech_account_id,
+                    &tech_account_id,
+                    xor_to_burn.0.amount,
+                )?;
+                return Ok(xor_to_burn.0.amount);
+            }
+            Err(e) => {
+                error!(
+                    "failed to exchange {:?} to xor, burning {} asset, e: {:?}",
+                    asset_id, amount, e
+                );
+                T::AssetManager::burn_from(&asset_id, &tech_account_id, &tech_account_id, amount)?;
+            }
+        }
+        Ok(Balance::zero())
+    }
+
+    #[cfg(feature = "wip")] // Xorless fee
+    fn calculate_portion_fee_from_weight(portion: u32, whole_amount: Balance) -> Balance {
+        let portion = Perbill::from_rational(
+            portion,
+            T::ReferrerWeight::get()
+                .saturating_add(T::XorBurnedWeight::get())
+                .saturating_add(T::XorIntoValBurnedWeight::get())
+                .saturating_add(T::XorIntoVXorBurnedWeight::get()),
+        );
+        portion.mul_floor(whole_amount)
+    }
+
+    #[cfg(feature = "wip")] // Xorless fee
+    fn do_remove_asset_from_white_list(asset_id: AssetIdOf<T>) -> DispatchResultWithPostInfo {
+        WhitelistTokensForFee::<T>::try_mutate(|whitelist| {
+            if let Some(pos) = whitelist.iter().position(|id| *id == asset_id) {
+                whitelist.remove(pos);
+                Self::deposit_event(Event::AssetRemovedFromWhiteList(asset_id));
+                Ok(().into())
+            } else {
+                Err(Error::<T>::AssetNotFound.into())
+            }
+        })
+    }
+
+    #[cfg(feature = "wip")] // Xorless fee
+    fn do_add_asset_to_white_list(asset_id: AssetIdOf<T>) -> DispatchResultWithPostInfo {
+        WhitelistTokensForFee::<T>::try_mutate(|whitelist| {
+            if whitelist.contains(&asset_id) {
+                return Err(Error::<T>::AssetAlreadyWhitelisted.into());
+            }
+
+            whitelist
+                .try_push(asset_id)
+                .map_err(|_| Error::<T>::WhitelistFull)?;
+
+            Self::deposit_event(Event::AssetAddedToWhiteList(asset_id));
+            Ok(().into())
+        })
+    }
 }
 
 pub use pallet::*;
@@ -744,6 +933,14 @@ pub mod pallet {
             + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo>
             + GetDispatchInfo
             + From<frame_system::Call<Self>>;
+        type PoolXyk: LiquiditySource<
+            Self::DEXId,
+            Self::AccountId,
+            AssetIdOf<Self>,
+            Balance,
+            DispatchError,
+        >;
+        type WhiteListOrigin: EnsureOrigin<Self::RuntimeOrigin>;
     }
 
     /// The current storage version.
@@ -843,8 +1040,8 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::xorless_call())]
         pub fn xorless_call(
             origin: OriginFor<T>,
-            call: Box<<T as Config>::RuntimeCall>, // <T as Config>::RuntimeCall
-            asset_id: AssetIdOf<T>,
+            call: Box<<T as Config>::RuntimeCall>,
+            asset_id: Option<AssetIdOf<T>>,
         ) -> DispatchResultWithPostInfo {
             ensure_signed(origin.clone())?;
             #[cfg(feature = "wip")] // Xorless fee
@@ -864,15 +1061,43 @@ pub mod pallet {
             #[cfg(not(feature = "wip"))] // Xorless fee
             Ok(().into())
         }
+
+        #[allow(unused_variables)] // Used in extension
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::xorless_call())] // TODO add benchmark
+        pub fn add_asset_to_white_list(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            <T as Config>::WhiteListOrigin::ensure_origin(origin)?;
+            #[cfg(feature = "wip")] // Xorless fee
+            return { Self::do_add_asset_to_white_list(asset_id) };
+            #[cfg(not(feature = "wip"))] // Xorless fee
+            Ok(().into())
+        }
+
+        #[allow(unused_variables)] // Used in extension
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::xorless_call())] // TODO add benchmark
+        pub fn remove_asset_from_white_list(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            <T as Config>::WhiteListOrigin::ensure_origin(origin)?;
+            #[cfg(feature = "wip")] // Xorless fee
+            return { Self::do_remove_asset_from_white_list(asset_id) };
+            #[cfg(not(feature = "wip"))] // Xorless fee
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
-        FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
-        /// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
-        ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, Balance),
+        /// Fee has been withdrawn from user. [Account Id to withdraw from, Asset Id to withdraw, Fee Amount]
+        FeeWithdrawn(AccountIdOf<T>, AssetIdOf<T>, BalanceOf<T>),
+        /// The portion of fee is sent to the referrer. [Referral, Referrer, AssetId, Amount]
+        ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// New multiplier for weight to fee conversion is set
         /// (*1_000_000_000_000_000_000). [New value]
         WeightToFeeMultiplierUpdated(FixedU128),
@@ -882,6 +1107,10 @@ pub mod pallet {
         #[cfg(feature = "wip")] // Dynamic fee
         /// New small reference amount set. [New value]
         SmallReferenceAmountUpdated(Balance),
+        /// White list updated: [Asset removed]
+        AssetRemovedFromWhiteList(AssetIdOf<T>),
+        /// White list updated: [Asset added]
+        AssetAddedToWhiteList(AssetIdOf<T>),
     }
     #[pallet::error]
     pub enum Error<T> {
@@ -891,6 +1120,12 @@ pub mod pallet {
         InvalidSmallReferenceAmount,
         /// Asset is not supported for fee payments
         AssetIsNotSupportedForFee,
+        /// Asset is not found in white list
+        AssetNotFound,
+        /// Asset already in white list
+        AssetAlreadyWhitelisted,
+        /// White list is filled
+        WhitelistFull,
     }
 
     #[cfg(feature = "wip")] // Xorless fee
@@ -898,7 +1133,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn burnt_for_fee)]
     pub type BurntForFee<T: Config> =
-        StorageMap<_, Blake2_128Concat, AssetIdOf<T>, BalanceOf<T>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, AssetIdOf<T>, Balance, ValueQuery>;
 
     #[cfg(feature = "wip")] // Xorless fee
     /// Tokens allowed for xorless execution
