@@ -33,6 +33,7 @@ use crate::*;
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
+use common::weights::constants::MINIMAL_FEE;
 use common::LiquidityProxyTrait;
 #[cfg(feature = "wip")] // EVM bridge
 use common::PriceToolsProvider;
@@ -180,12 +181,20 @@ impl CustomFees {
             | RuntimeCall::Rewards(..)
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
-            | RuntimeCall::Band(..)
             | RuntimeCall::Referrals(..)
             | RuntimeCall::OrderBook(..)
+            | RuntimeCall::TechnicalCommittee(
+                pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
+            )
+            | RuntimeCall::Council(
+                pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
+            )
             | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => {
                 Some(SMALL_FEE)
             }
+            RuntimeCall::Band(..) => Some(MINIMAL_FEE),
+            #[cfg(feature = "stage")]
+            RuntimeCall::Soratopia(soratopia::Call::check_in {}) => Some(MINIMAL_FEE),
             _ => None,
         }
     }
