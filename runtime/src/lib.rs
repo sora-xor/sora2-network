@@ -914,6 +914,7 @@ parameter_types! {
     pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetKusdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
     pub const GetVXorAssetId: AssetId = common::VXOR;
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
@@ -1307,6 +1308,15 @@ parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
 
+parameter_types! {
+    pub const FeeReferrerWeight: u32 = 10; // 10%
+    pub const FeeXorBurnedWeight: u32 = 20; // 20%
+    pub const FeeValBurnedWeight: u32 = 50; // 50%
+    pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
+    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
+}
+
 impl xor_fee::Config for Runtime {
     type PermittedSetPeriod = EitherOfDiverse<
         pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 3, 4>,
@@ -1321,12 +1331,14 @@ impl xor_fee::Config for Runtime {
     type XorCurrency = Balances;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
-    type VXorId = GetVXorAssetId;
-    type ReferrerWeight = ReferrerWeight;
-    type XorBurnedWeight = XorBurnedWeight;
-    type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackRemintPercent = BuyBackRemintPercent;
+    type KusdId = GetKusdAssetId;
+    type TbcdId = GetTbcdAssetId;
+    type FeeReferrerWeight = FeeReferrerWeight;
+    type FeeXorBurnedWeight = FeeXorBurnedWeight;
+    type FeeValBurnedWeight = FeeValBurnedWeight;
+    type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
+    type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
@@ -1656,11 +1668,15 @@ impl farming::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
+parameter_types! {
+    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::TBCD.into(), Permill::from_rational(39u32, 100u32)), (common::KUSD.into(), Permill::from_rational(1u32, 100u32))];
+}
+
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
-    type GetBuyBackAssetId = GetVXorAssetId;
+    type GetBuyBackFractions = GetBuyBackFractions;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -2142,14 +2158,6 @@ impl order_book::Config for Runtime {
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
-
-parameter_types! {
-    pub const ReferrerWeight: u32 = 25; // 10%
-    pub const XorBurnedWeight: u32 = 1; // 0.4%
-    pub const XorIntoValBurnedWeight: u32 = 125; // 50%
-    pub const XorIntoVXorBurnedWeight: u32 = 99; // 39.6%
-    pub const BuyBackRemintPercent: Percent = Percent::from_percent(10);
-}
 
 // Ethereum bridge pallets
 

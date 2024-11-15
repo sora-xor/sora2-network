@@ -225,14 +225,20 @@ where
             }
 
             // Applying VAL buy-back-and-burn logic
-            let mut total_xor_to_vxor = BalanceOf::<T>::zero();
-            let xor_into_vxor_burned_weight = T::XorIntoVXorBurnedWeight::get();
-            let xor_burned_weight = T::XorBurnedWeight::get();
-            let xor_into_val_burned_weight = T::XorIntoValBurnedWeight::get();
             let (referrer_xor, adjusted_paid) = adjusted_paid.ration(
-                T::ReferrerWeight::get(),
-                xor_burned_weight + xor_into_val_burned_weight + xor_into_vxor_burned_weight,
+                T::FeeReferrerWeight::get(),
+                T::FeeXorBurnedWeight::get()
+                    + T::FeeValBurnedWeight::get()
+                    + T::FeeKusdBurnedWeight::get(),
             );
+            let (xor_to_val, adjusted_paid) = adjusted_paid.ration(
+                T::FeeValBurnedWeight::get(),
+                T::FeeXorBurnedWeight::get() + T::FeeKusdBurnedWeight::get(),
+            );
+            let (xor_to_buy_back, _xor_burned) =
+                adjusted_paid.ration(T::FeeKusdBurnedWeight::get(), T::FeeXorBurnedWeight::get());
+            let mut xor_to_buy_back = xor_to_buy_back.peek();
+
             if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 let referrer_portion = referrer_xor.peek();
                 T::XorCurrency::resolve_creating(&referrer, referrer_xor);
@@ -242,25 +248,17 @@ where
                     referrer_portion.into(),
                 ));
             } else {
-                total_xor_to_vxor = total_xor_to_vxor.saturating_add(referrer_xor.peek());
+                // Use XOR to BBB if there's no referrer
+                xor_to_buy_back = xor_to_buy_back.saturating_add(referrer_xor.peek());
             }
 
-            // TODO: decide what should be done with XOR if there is no referrer.
-            // Burn XOR for now
-            let (adjusted_paid, xor_to_val) = adjusted_paid.ration(
-                xor_burned_weight + xor_into_vxor_burned_weight,
-                xor_into_val_burned_weight,
-            );
-            let (_xor_burned, xor_to_vxor) =
-                adjusted_paid.ration(xor_burned_weight, xor_into_vxor_burned_weight);
             let xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
-            total_xor_to_vxor = total_xor_to_vxor.saturating_add(xor_to_vxor.peek());
-            let xor_to_vxor: Balance = total_xor_to_vxor.unique_saturated_into();
+            let xor_to_buy_back: Balance = xor_to_buy_back.unique_saturated_into();
             XorToVal::<T>::mutate(|balance| {
                 *balance = balance.saturating_add(xor_to_val);
             });
-            XorToVXor::<T>::mutate(|balance| {
-                *balance = balance.saturating_add(xor_to_vxor);
+            XorToBuyBack::<T>::mutate(|balance| {
+                *balance = balance.saturating_add(xor_to_buy_back);
             });
         }
         Ok(())
@@ -304,9 +302,9 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
             }
         }
 
-        let xor_to_vxor = XorToVXor::<T>::take();
-        if xor_to_vxor != 0 {
-            if let Err(e) = Self::remint_vxor(xor_to_vxor) {
+        let xor_to_buy_back = XorToBuyBack::<T>::take();
+        if xor_to_buy_back != 0 {
+            if let Err(e) = Self::remint_buy_back(xor_to_buy_back) {
                 error!("XOR to VXOR remint failed: {:?}", e);
             }
         }
@@ -623,7 +621,8 @@ impl<T: Config> Pallet<T> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
         let val = T::ValId::get();
-        let vxor = T::VXorId::get();
+        let kusd = T::KusdId::get();
+        let tbcd = T::TbcdId::get();
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
@@ -647,25 +646,32 @@ impl<T: Config> Pallet<T> {
         ) {
             Ok(swap_outcome) => {
                 let mut val_to_burn = swap_outcome.amount;
-                T::OnValBurned::on_val_burned(val_to_burn);
+                let tbcd_buy_back = T::RemintTbcdBuyBackPercent::get() * val_to_burn;
+                let kusd_buy_back = T::RemintKusdBuyBackPercent::get() * val_to_burn;
 
-                let val_to_buy_back = T::BuyBackRemintPercent::get() * val_to_burn;
-                let result = common::with_transaction(|| {
+                if let Ok(_) = common::with_transaction(|| {
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
                         &val,
-                        &vxor,
-                        val_to_buy_back,
+                        &tbcd,
+                        tbcd_buy_back,
                     )
-                });
-                match result {
-                    Ok(_) => {
-                        val_to_burn -= val_to_buy_back;
-                    }
-                    Err(err) => {
-                        error!("failed to exchange VAL to VXOR, burning VAL instead of buy back: {err:?}");
-                    }
+                }) {
+                    val_to_burn = val_to_burn.saturating_sub(tbcd_buy_back);
                 }
+
+                if let Ok(_) = common::with_transaction(|| {
+                    T::BuyBackHandler::buy_back_and_burn(
+                        &tech_account_id,
+                        &val,
+                        &kusd,
+                        kusd_buy_back,
+                    )
+                }) {
+                    val_to_burn = val_to_burn.saturating_sub(kusd_buy_back);
+                }
+
+                T::OnValBurned::on_val_burned(val_to_burn);
                 T::AssetManager::burn_from(&val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
@@ -680,14 +686,11 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn remint_vxor(xor_to_vxor: Balance) -> Result<(), DispatchError> {
-        let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
+    pub fn remint_buy_back(xor_to_buy_back: Balance) -> Result<(), DispatchError> {
         let xor = T::XorId::get();
-        let vxor = T::VXorId::get();
+        let kusd = T::KusdId::get();
         common::with_transaction(|| {
-            T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_vxor)?;
-            T::BuyBackHandler::buy_back_and_burn(&tech_account_id, &xor, &vxor, xor_to_vxor)?;
-            DispatchResult::Ok(())
+            T::BuyBackHandler::mint_buy_back_and_burn(&xor, &kusd, xor_to_buy_back)
         })?;
 
         Ok(())
@@ -717,12 +720,14 @@ pub mod pallet {
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<AssetIdOf<Self>>;
         type ValId: Get<AssetIdOf<Self>>;
-        type VXorId: Get<AssetIdOf<Self>>;
-        type ReferrerWeight: Get<u32>;
-        type XorBurnedWeight: Get<u32>;
-        type XorIntoValBurnedWeight: Get<u32>;
-        type XorIntoVXorBurnedWeight: Get<u32>;
-        type BuyBackRemintPercent: Get<Percent>;
+        type KusdId: Get<AssetIdOf<Self>>;
+        type TbcdId: Get<AssetIdOf<Self>>;
+        type FeeReferrerWeight: Get<u32>;
+        type FeeXorBurnedWeight: Get<u32>;
+        type FeeValBurnedWeight: Get<u32>;
+        type FeeKusdBurnedWeight: Get<u32>;
+        type RemintTbcdBuyBackPercent: Get<Percent>;
+        type RemintKusdBuyBackPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type OnValBurned: OnValBurned;
@@ -878,10 +883,10 @@ pub mod pallet {
     #[pallet::getter(fn xor_to_val)]
     pub type XorToVal<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
-    /// The amount of XOR to be reminted and exchanged for VXOR at the end of the session
+    /// The amount of XOR to be reminted and exchanged for KUSD at the end of the session
     #[pallet::storage]
-    #[pallet::getter(fn xor_to_vxor)]
-    pub type XorToVXor<T: Config> = StorageValue<_, Balance, ValueQuery>;
+    #[pallet::getter(fn xor_to_kusd)]
+    pub type XorToBuyBack<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
     #[pallet::type_value]
     pub fn DefaultForFeeMultiplier<T: Config>() -> FixedU128 {

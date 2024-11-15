@@ -41,10 +41,12 @@ use common::{
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
+use frame_support::sp_runtime::Permill;
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use sp_arithmetic::traits::{Saturating, Zero};
+use sp_std::prelude::*;
 
 pub mod weights;
 
@@ -306,11 +308,17 @@ impl<T: Config> Pallet<T> {
                 distribution.liquidity_providers,
             )?;
 
-            T::BuyBackHandler::mint_buy_back_and_burn(
-                &incentive_asset_id,
-                &T::GetBuyBackAssetId::get(),
-                distribution.buy_back_amount,
-            )?;
+            if let Some(total_fraction) = Self::total_buy_back_fraction() {
+                for (asset_id, fraction) in T::GetBuyBackFractions::get() {
+                    // Same as Permill::from_rational(fraction.0, total_fraction.0)
+                    let fraction = fraction / total_fraction;
+                    T::BuyBackHandler::mint_buy_back_and_burn(
+                        &incentive_asset_id,
+                        &asset_id,
+                        fraction * distribution.buy_back_amount,
+                    )?;
+                }
+            }
 
             Self::deposit_event(Event::<T>::IncentiveDistributed(
                 dex_id.clone(),
@@ -348,6 +356,14 @@ impl<T: Config> Pallet<T> {
         Ok(distribution)
     }
 
+    /// Calculate total percent for buy back and burn
+    fn total_buy_back_fraction() -> Option<Permill> {
+        T::GetBuyBackFractions::get()
+            .into_iter()
+            .map(|(_asset_id, fraction)| fraction)
+            .reduce(|a, b| a + b)
+    }
+
     /// Calculates the amount of deposits to the incentive account.
     /// Used by `distribute_incentive` function.
     ///
@@ -355,14 +371,13 @@ impl<T: Config> Pallet<T> {
     fn calculate_pswap_distribution(
         amount_burned: Balance,
     ) -> Result<PswapRemintInfo, DispatchError> {
-        let amount_burned = FixedWrapper::from(amount_burned);
         // Calculate amount for parliament and actual remainder after its fraction.
-        let amount_buy_back = (amount_burned.clone() * BuyBackFraction::<T>::get())
-            .try_into_balance()
-            .map_err(|_| Error::<T>::CalculationError)?;
-        let mut amount_left = (amount_burned.clone() - amount_buy_back)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::CalculationError)?;
+        let amount_buy_back = if let Some(fraction) = Self::total_buy_back_fraction() {
+            fraction * amount_burned
+        } else {
+            0
+        };
+        let mut amount_left = amount_burned.saturating_sub(amount_buy_back);
 
         // Calculate amount for liquidity providers considering remaining amount.
         let fraction_lp = fixed_wrapper!(1) - BurnRate::<T>::get();
@@ -478,7 +493,7 @@ pub mod pallet {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<AssetIdOf<Self>>;
-        type GetBuyBackAssetId: Get<AssetIdOf<Self>>;
+        type GetBuyBackFractions: Get<Vec<(AssetIdOf<Self>, Permill)>>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
@@ -642,17 +657,6 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn claimable_shares)]
     pub type ClaimableShares<T: Config> = StorageValue<_, Fixed, ValueQuery>;
-
-    #[pallet::type_value]
-    pub(super) fn DefaultForBuyBackFraction() -> Fixed {
-        fixed!(0.1)
-    }
-
-    /// Fraction of PSWAP that could be buy backed
-    #[pallet::storage]
-    #[pallet::getter(fn buy_back_fraction)]
-    pub(super) type BuyBackFraction<T: Config> =
-        StorageValue<_, Fixed, ValueQuery, DefaultForBuyBackFraction>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

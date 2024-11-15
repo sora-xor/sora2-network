@@ -1090,8 +1090,10 @@ macro_rules! mock_pswap_distribution_config {
         $buy_back_handler:ty,
         $ensure_dex_manager:ty
     ) => {
+        use sp_runtime::Permill;
         frame_support::parameter_types! {
             pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+            pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::TBCD.into(), Permill::from_rational(39u32, 100u32)), (common::KUSD.into(), Permill::from_rational(1u32, 100u32))];
         }
         impl pswap_distribution::Config for $runtime {
             const PSWAP_BURN_PERCENT: sp_runtime::Percent = sp_runtime::Percent::from_percent(3);
@@ -1101,7 +1103,7 @@ macro_rules! mock_pswap_distribution_config {
             type DexInfoProvider = dex_manager::Pallet<$runtime>;
             type EnsureDEXManager = $ensure_dex_manager;
             type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
-            type GetBuyBackAssetId = GetBuyBackAssetId;
+            type GetBuyBackFractions = GetBuyBackFractions;
             type GetChameleonPools = $chameleon_pools;
             type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
             type GetIncentiveAssetId = GetIncentiveAssetId;
