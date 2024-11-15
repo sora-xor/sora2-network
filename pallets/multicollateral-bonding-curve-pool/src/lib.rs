@@ -204,7 +204,7 @@ pub mod pallet {
         type VestedRewardsPallet: Vesting<Self::AccountId, AssetIdOf<Self>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
-        type BuyBackTBCDPercent: Get<Fixed>;
+        type GetBuyBackAssetId: Get<AssetIdOf<Self>>;
         /// Percent of reserve which is not involved in swap
         #[pallet::constant]
         type IrreducibleReserve: Get<Percent>;
@@ -818,48 +818,12 @@ impl<T: Config> Pallet<T> {
             )?
             .amount
             .into();
-            T::AssetManager::burn_from(&base_asset_id, &holder, &holder, swapped_xor_amount)?;
 
-            let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
-            let mut undistributed_xor_amount = fw_swapped_xor_amount
-                .clone()
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-
-            let distribution_accounts: DistributionAccounts<
-                DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
-            > = DistributionAccountsEntry::<T>::get();
-            for (account, coefficient) in distribution_accounts
-                .xor_distribution_as_array()
-                .iter()
-                .map(|x| (&x.account, x.coefficient))
-            {
-                let amount = fw_swapped_xor_amount.clone() * coefficient;
-                let amount = amount
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let account = match account {
-                    DistributionAccount::Account(account) => account.clone(),
-                    DistributionAccount::TechAccount(account) => {
-                        Technical::<T>::tech_account_id_to_account_id(account)?
-                    }
-                };
-                T::AssetManager::mint_to(&base_asset_id, &holder, &account, amount)?;
-                undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
-            }
-
-            let amount = fw_swapped_xor_amount * T::BuyBackTBCDPercent::get();
-            let amount = amount
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-            undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
-            T::BuyBackHandler::mint_buy_back_and_burn(&base_asset_id, &TBCD.into(), amount)?;
-
-            // undistributed_xor_amount includes xor_allocation and val_holders portions
-            T::BuyBackHandler::mint_buy_back_and_burn(
+            T::BuyBackHandler::buy_back_and_burn(
+                &holder,
                 &base_asset_id,
-                &VAL.into(),
-                undistributed_xor_amount,
+                &T::GetBuyBackAssetId::get(),
+                swapped_xor_amount,
             )?;
             Ok(())
         })
