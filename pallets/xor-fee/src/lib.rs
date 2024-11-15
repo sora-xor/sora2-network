@@ -649,7 +649,7 @@ impl<T: Config> Pallet<T> {
                 let tbcd_buy_back = T::RemintTbcdBuyBackPercent::get() * val_to_burn;
                 let kusd_buy_back = T::RemintKusdBuyBackPercent::get() * val_to_burn;
 
-                if let Ok(_) = common::with_transaction(|| {
+                if let Err(e) = common::with_transaction(|| {
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
                         &val,
@@ -657,10 +657,12 @@ impl<T: Config> Pallet<T> {
                         tbcd_buy_back,
                     )
                 }) {
+                    frame_support::log::error!("Failed to buy back TBCD: {e:?}");
+                } else {
                     val_to_burn = val_to_burn.saturating_sub(tbcd_buy_back);
                 }
 
-                if let Ok(_) = common::with_transaction(|| {
+                if let Err(e) = common::with_transaction(|| {
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
                         &val,
@@ -668,6 +670,8 @@ impl<T: Config> Pallet<T> {
                         kusd_buy_back,
                     )
                 }) {
+                    frame_support::log::error!("Failed to buy back KUSD: {e:?}");
+                } else {
                     val_to_burn = val_to_burn.saturating_sub(kusd_buy_back);
                 }
 

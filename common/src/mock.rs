@@ -1093,7 +1093,7 @@ macro_rules! mock_pswap_distribution_config {
         use sp_runtime::Permill;
         frame_support::parameter_types! {
             pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
-            pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::TBCD.into(), Permill::from_rational(39u32, 100u32)), (common::KUSD.into(), Permill::from_rational(1u32, 100u32))];
+            pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(39u32, 100u32)), (common::TBCD.into(), Permill::from_rational(1u32, 100u32))];
         }
         impl pswap_distribution::Config for $runtime {
             const PSWAP_BURN_PERCENT: sp_runtime::Percent = sp_runtime::Percent::from_percent(3);

@@ -1669,7 +1669,7 @@ impl farming::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::TBCD.into(), Permill::from_rational(39u32, 100u32)), (common::KUSD.into(), Permill::from_rational(1u32, 100u32))];
+    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(39u32, 100u32)), (common::TBCD.into(), Permill::from_rational(1u32, 100u32))];
 }
 
 impl pswap_distribution::Config for Runtime {
