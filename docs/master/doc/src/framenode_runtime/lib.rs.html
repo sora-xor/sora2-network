@@ -3553,6 +3553,7 @@
 <a href="#3538" id="3538">3538</a>
 <a href="#3539" id="3539">3539</a>
 <a href="#3540" id="3540">3540</a>
+<a href="#3541" id="3541">3541</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4469,6 +4470,7 @@
     <span class="kw">pub const </span>GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     <span class="kw">pub const </span>GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     <span class="kw">pub const </span>GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    <span class="kw">pub const </span>GetKusdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
     <span class="kw">pub const </span>GetVXorAssetId: AssetId = common::VXOR;
 
     <span class="kw">pub const </span>GetBaseAssetId: AssetId = GetXorAssetId::get();
@@ -5317,7 +5319,7 @@
     <span class="kw">type </span>VestedRewardsPallet = VestedRewards;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
-    <span class="kw">type </span>BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    <span class="kw">type </span>GetBuyBackAssetId = GetKusdAssetId;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>IrreducibleReserve = GetTbcIrreducibleReservePercent;
     <span class="kw">type </span>WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight&lt;Runtime&gt;;

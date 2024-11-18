@@ -2041,42 +2041,6 @@
 <a href="#2026" id="2026">2026</a>
 <a href="#2027" id="2027">2027</a>
 <a href="#2028" id="2028">2028</a>
-<a href="#2029" id="2029">2029</a>
-<a href="#2030" id="2030">2030</a>
-<a href="#2031" id="2031">2031</a>
-<a href="#2032" id="2032">2032</a>
-<a href="#2033" id="2033">2033</a>
-<a href="#2034" id="2034">2034</a>
-<a href="#2035" id="2035">2035</a>
-<a href="#2036" id="2036">2036</a>
-<a href="#2037" id="2037">2037</a>
-<a href="#2038" id="2038">2038</a>
-<a href="#2039" id="2039">2039</a>
-<a href="#2040" id="2040">2040</a>
-<a href="#2041" id="2041">2041</a>
-<a href="#2042" id="2042">2042</a>
-<a href="#2043" id="2043">2043</a>
-<a href="#2044" id="2044">2044</a>
-<a href="#2045" id="2045">2045</a>
-<a href="#2046" id="2046">2046</a>
-<a href="#2047" id="2047">2047</a>
-<a href="#2048" id="2048">2048</a>
-<a href="#2049" id="2049">2049</a>
-<a href="#2050" id="2050">2050</a>
-<a href="#2051" id="2051">2051</a>
-<a href="#2052" id="2052">2052</a>
-<a href="#2053" id="2053">2053</a>
-<a href="#2054" id="2054">2054</a>
-<a href="#2055" id="2055">2055</a>
-<a href="#2056" id="2056">2056</a>
-<a href="#2057" id="2057">2057</a>
-<a href="#2058" id="2058">2058</a>
-<a href="#2059" id="2059">2059</a>
-<a href="#2060" id="2060">2060</a>
-<a href="#2061" id="2061">2061</a>
-<a href="#2062" id="2062">2062</a>
-<a href="#2063" id="2063">2063</a>
-<a href="#2064" id="2064">2064</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2283,7 +2247,7 @@
         <span class="kw">type </span>VestedRewardsPallet: Vesting&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>BuyBackTBCDPercent: Get&lt;Fixed&gt;;
+        <span class="kw">type </span>GetBuyBackAssetId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="doccomment">/// Percent of reserve which is not involved in swap
         </span><span class="attr">#[pallet::constant]
         </span><span class="kw">type </span>IrreducibleReserve: Get&lt;Percent&gt;;
@@ -2897,48 +2861,12 @@
             )<span class="question-mark">?
             </span>.amount
             .into();
-            T::AssetManager::burn_from(<span class="kw-2">&amp;</span>base_asset_id, <span class="kw-2">&amp;</span>holder, <span class="kw-2">&amp;</span>holder, swapped_xor_amount)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
-            <span class="kw">let </span><span class="kw-2">mut </span>undistributed_xor_amount = fw_swapped_xor_amount
-                .clone()
-                .try_into_balance()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>distribution_accounts: DistributionAccounts&lt;
-                DistributionAccountData&lt;DistributionAccount&lt;T::AccountId, T::TechAccountId&gt;&gt;,
-            &gt; = DistributionAccountsEntry::&lt;T&gt;::get();
-            <span class="kw">for </span>(account, coefficient) <span class="kw">in </span>distribution_accounts
-                .xor_distribution_as_array()
-                .iter()
-                .map(|x| (<span class="kw-2">&amp;</span>x.account, x.coefficient))
-            {
-                <span class="kw">let </span>amount = fw_swapped_xor_amount.clone() * coefficient;
-                <span class="kw">let </span>amount = amount
-                    .try_into_balance()
-                    .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
-                <span class="kw">let </span>account = <span class="kw">match </span>account {
-                    DistributionAccount::Account(account) =&gt; account.clone(),
-                    DistributionAccount::TechAccount(account) =&gt; {
-                        Technical::&lt;T&gt;::tech_account_id_to_account_id(account)<span class="question-mark">?
-                    </span>}
-                };
-                T::AssetManager::mint_to(<span class="kw-2">&amp;</span>base_asset_id, <span class="kw-2">&amp;</span>holder, <span class="kw-2">&amp;</span>account, amount)<span class="question-mark">?</span>;
-                undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
-            }
-
-            <span class="kw">let </span>amount = fw_swapped_xor_amount * T::BuyBackTBCDPercent::get();
-            <span class="kw">let </span>amount = amount
-                .try_into_balance()
-                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::PriceCalculationFailed)<span class="question-mark">?</span>;
-            undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
-            T::BuyBackHandler::mint_buy_back_and_burn(<span class="kw-2">&amp;</span>base_asset_id, <span class="kw-2">&amp;</span>TBCD.into(), amount)<span class="question-mark">?</span>;
-
-            <span class="comment">// undistributed_xor_amount includes xor_allocation and val_holders portions
-            </span>T::BuyBackHandler::mint_buy_back_and_burn(
+            T::BuyBackHandler::buy_back_and_burn(
+                <span class="kw-2">&amp;</span>holder,
                 <span class="kw-2">&amp;</span>base_asset_id,
-                <span class="kw-2">&amp;</span>VAL.into(),
-                undistributed_xor_amount,
+                <span class="kw-2">&amp;</span>T::GetBuyBackAssetId::get(),
+                swapped_xor_amount,
             )<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(())
         })
