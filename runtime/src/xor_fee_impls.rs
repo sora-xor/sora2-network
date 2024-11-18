@@ -33,7 +33,6 @@ use crate::*;
 use bridge_types::{traits::EVMBridgeWithdrawFee, GenericNetworkId};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::prelude::FixedWrapper;
-use common::weights::constants::MINIMAL_FEE;
 use common::LiquidityProxyTrait;
 #[cfg(feature = "wip")] // EVM bridge
 use common::PriceToolsProvider;

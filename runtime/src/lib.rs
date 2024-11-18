@@ -60,7 +60,7 @@ use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::U256;
-use common::prelude::constants::{BIG_FEE, SMALL_FEE};
+use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, KUSD};
 use common::{DOT, XOR, XSTUSD};
