@@ -153,7 +153,7 @@ impl RuntimeCall {
 pub struct CustomFees;
 
 impl CustomFees {
-    fn base_fee(call: &RuntimeCall) -> Option<Balance> {
+    fn match_call(call: &RuntimeCall) -> Option<Balance> {
         match call {
             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
                 swap_batches,
@@ -191,6 +191,12 @@ impl CustomFees {
                 Some(SMALL_FEE)
             }
             _ => None,
+        }
+    }
+    fn base_fee(call: &RuntimeCall) -> Option<Balance> {
+        match call {
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => Self::match_call(call),
+            call => Self::match_call(call),
         }
     }
 }
@@ -421,8 +427,16 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         fee_source: &AccountId,
         call: &RuntimeCall,
         fee: Balance,
-    ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
+    ) -> Result<
+        (
+            AccountId,
+            Option<NegativeImbalanceOf<Runtime>>,
+            Option<AssetId>,
+        ),
+        DispatchError,
+    > {
         match call {
+            // TODO: remake for xorless
             RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
                 // Fee source should be set to referrer by `get_fee_source` method, if not 
                 // it means that user can't set referrer
@@ -434,22 +448,27 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
             RuntimeCall::XorFee(xor_fee::Call::xorless_call {call: _, asset_id}) => {
                 #[cfg(feature = "wip")] // Xorless fee
                 match *asset_id {
-                    XOR => {},
-                    asset_id if XorFee::whitelist_tokens().contains(&asset_id) => {
-                        let asset_fee = PriceTools::get_average_price(&XOR, &asset_id, PriceVariant::Buy)?.saturating_mul(fee);
+                    None => {},
+                    Some(asset_id) if XorFee::whitelist_tokens().contains(&asset_id) => {
+                        let asset_fee = FixedWrapper::from(
+                            PriceTools::get_average_price(
+                                &GetXorAssetId::get(),
+                                &asset_id,
+                                PriceVariant::Buy)?
+                        ) * fee;
                         return Ok((
                             fee_source.clone(),
                             Some(Tokens::withdraw(
                                 asset_id,
                                 fee_source,
-                                asset_fee,
+                                asset_fee.clone().into_balance(),
                             ).map(|_| {
-                                BurntForFee::<Runtime>::mutate(asset_id, |balance| *balance = balance.saturating_sub(asset_fee));
-                                NegativeImbalanceOf::<Runtime>::new(asset_fee)
-                            })?)
+                                NegativeImbalanceOf::<Runtime>::new(asset_fee.into_balance())
+                            })?),
+                            Some(asset_id),
                         ))
                     }
-                    _ => { return Err(xor_fee::Error::<Runtime>::AssetIsNotSupportedForFee.into()) }
+                    _ => { return Err(xor_fee::Error::<Runtime>::AssetNotFound.into()) }
                 }
             }
             _ => {
@@ -465,6 +484,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                 WithdrawReasons::TRANSACTION_PAYMENT,
                 ExistenceRequirement::KeepAlive,
             )?),
+            None,
         ))
     }
 }

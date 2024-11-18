@@ -31,16 +31,19 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use common::mock::{alice, ExistentialDeposits};
+use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 #[cfg(feature = "wip")] // Dynamic fee
 use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Dynamic fee
 use common::DAI;
 use common::{
-    self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_transaction_payment_config,
-    mock_permissions_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    self, balance, mock_assets_config, mock_ceres_liquidity_locker_config, mock_common_config,
+    mock_currencies_config, mock_demeter_farming_platform_config, mock_dex_manager_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_pallet_transaction_payment_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
+    mock_tokens_config, mock_trading_pair_config, Amount, AssetId32, AssetName, AssetSymbol,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
     ReferrerAccountProvider, PSWAP, TBCD, VAL, VXOR, XOR,
 };
@@ -96,7 +99,11 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
     pub GetParliamentAccountId: AccountId = account_from_str("sora-parliament");
-    pub const MaxWhiteListTokens: u32 = 50;
+    pub const MaxWhiteListTokens: u32 = 30;
+
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
 }
 
 construct_runtime! {
@@ -113,17 +120,35 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
         XorFee: xor_fee::{Pallet, Call, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
 }
 
 mock_assets_config!(Runtime);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
 mock_frame_system_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_pallet_transaction_payment_config!(Runtime);
 mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
+mock_pool_xyk_config!(Runtime);
+mock_pswap_distribution_config!(Runtime, PoolXYK);
+mock_dex_manager_config!(Runtime);
+mock_trading_pair_config!(Runtime);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_pallet_timestamp_config!(Runtime);
+mock_price_tools_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
@@ -197,7 +222,14 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         fee_source: &AccountId,
         _call: &RuntimeCall,
         fee: Balance,
-    ) -> Result<(AccountId, Option<crate::NegativeImbalanceOf<Runtime>>), DispatchError> {
+    ) -> Result<
+        (
+            AccountId,
+            Option<crate::NegativeImbalanceOf<Runtime>>,
+            Option<AssetId>,
+        ),
+        DispatchError,
+    > {
         Ok((
             fee_source.clone(),
             Some(Balances::withdraw(
@@ -206,6 +238,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                 WithdrawReasons::TRANSACTION_PAYMENT,
                 ExistenceRequirement::KeepAlive,
             )?),
+            None,
         ))
     }
 }
@@ -239,6 +272,9 @@ impl Config for Runtime {
     type PermittedSetPeriod = EnsureRoot<AccountId>;
     type MaxWhiteListTokens = MaxWhiteListTokens;
     type RuntimeCall = RuntimeCall;
+    type PoolXyk = PoolXYK;
+    type WhiteListOrigin = EnsureRoot<AccountId>;
+    type PriceTools = PriceTools;
 }
 
 #[cfg(feature = "wip")] // Dynamic fee
@@ -401,10 +437,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![
-                (GetXorFeeAccountId::get(), initial_balance()),
-                (alice(), initial_balance()),
-            ],
+            balances: vec![(GetXorFeeAccountId::get(), initial_balance())],
         }
         .assimilate_storage(&mut t)
         .unwrap();

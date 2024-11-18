@@ -1305,7 +1305,7 @@ where
 
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
-    pub const MaxWhiteListTokens: u32 = 50;
+    pub const MaxWhiteListTokens: u32 = 30;
 }
 
 impl xor_fee::Config for Runtime {
@@ -1341,6 +1341,9 @@ impl xor_fee::Config for Runtime {
     type WithdrawFee = xor_fee_impls::WithdrawFee;
     type MaxWhiteListTokens = MaxWhiteListTokens;
     type RuntimeCall = RuntimeCall;
+    type PoolXyk = PoolXYK;
+    type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
+    type PriceTools = PriceTools;
 }
 
 pub struct ConstantFeeMultiplier;
