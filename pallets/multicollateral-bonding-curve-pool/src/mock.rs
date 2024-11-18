@@ -43,8 +43,8 @@ use common::{
     mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
     mock_tokens_config, mock_trading_pair_config, Amount, AssetId32, AssetName, AssetSymbol,
     BuyBackHandler, DEXInfo, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL,
-    VXOR, XOR, XST, XSTUSD,
+    PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, KUSD, PSWAP, TBCD, USDT,
+    VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -286,6 +286,7 @@ impl MockDEXApi {
             (VAL, balance!(100000)),
             (TBCD, balance!(100000)),
             (USDT, balance!(1000000)),
+            (KUSD, balance!(1000000)),
         ])?;
         Ok(())
     }
@@ -299,7 +300,16 @@ impl MockDEXApi {
     }
 
     fn get_price(input_asset_id: &AssetId, output_asset_id: &AssetId) -> Balance {
-        MockPrices::get(&(*input_asset_id, *output_asset_id)).unwrap()
+        MockPrices::get(&(*input_asset_id, *output_asset_id))
+            .or_else(|| {
+                frame_support::log::error!(
+                    "Failed to get price {:?} -> {:?}",
+                    input_asset_id,
+                    output_asset_id
+                );
+                None
+            })
+            .unwrap()
     }
 
     fn inner_quote(
@@ -446,6 +456,8 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((XOR, TBCD), balance!(103.0)),
         // XST
         ((XOR, XST), balance!(0.001)),
+        // KUSD
+        ((XOR, KUSD), balance!(20.0)),
     ];
     prices.into_iter().collect()
 }
@@ -573,6 +585,14 @@ impl Default for ExtBuilder {
                     balance!(100),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"DAI".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    KUSD,
+                    balance!(100),
+                    AssetSymbol(b"KUSD".to_vec()),
+                    AssetName(b"KUSD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
