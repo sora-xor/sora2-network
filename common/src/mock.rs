@@ -757,14 +757,14 @@ macro_rules! mock_multicollateral_bonding_curve_pool_config {
         $vested_rewards:ty
     ) => {
         frame_support::parameter_types! {
-            pub GetTBCBuyBackTBCDPercent: common::Fixed = common::fixed!(0.025);
+            pub GetTBCBuyBackAssetId: AssetId = $crate::KUSD;
             pub GetTbcIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
         }
         impl multicollateral_bonding_curve_pool::Config for $runtime {
             const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
             type AssetInfoProvider = assets::Pallet<$runtime>;
             type BuyBackHandler = $buy_back_handler;
-            type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+            type GetBuyBackAssetId = GetTBCBuyBackAssetId;
             type EnsureDEXManager = dex_manager::Pallet<$runtime>;
             type EnsureTradingPairExists = $trading_pair;
             type IrreducibleReserve = GetTbcIrreducibleReservePercent;

@@ -1778,7 +1778,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type GetBuyBackAssetId = GetKusdAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
