@@ -37,7 +37,7 @@ pub mod remove_vxor_remint {
     use crate::*;
 
     #[frame_support::storage_alias]
-    pub type XorToBuyBack<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
+    pub type XorToVXor<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
 
     pub struct Migrate<T>(PhantomData<T>);
 
@@ -46,7 +46,7 @@ pub mod remove_vxor_remint {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            XorToBuyBack::<T>::kill();
+            XorToVXor::<T>::kill();
             T::DbWeight::get().writes(1)
         }
     }

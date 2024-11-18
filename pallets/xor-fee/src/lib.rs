@@ -305,7 +305,7 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
         let xor_to_buy_back = XorToBuyBack::<T>::take();
         if xor_to_buy_back != 0 {
             if let Err(e) = Self::remint_buy_back(xor_to_buy_back) {
-                error!("XOR to VXOR remint failed: {:?}", e);
+                error!("XOR remint buy back failed: {:?}", e);
             }
         }
 
