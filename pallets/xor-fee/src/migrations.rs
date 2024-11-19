@@ -28,6 +28,30 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+pub mod remove_vxor_remint {
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::pallet_prelude::ValueQuery;
+    use frame_support::traits::OnRuntimeUpgrade;
+
+    use crate::*;
+
+    #[frame_support::storage_alias]
+    pub type XorToVXor<T: Config> = StorageValue<Pallet<T>, Balance, ValueQuery>;
+
+    pub struct Migrate<T>(PhantomData<T>);
+
+    impl<T> OnRuntimeUpgrade for Migrate<T>
+    where
+        T: Config,
+    {
+        fn on_runtime_upgrade() -> Weight {
+            XorToVXor::<T>::kill();
+            T::DbWeight::get().writes(1)
+        }
+    }
+}
+
 #[cfg(feature = "wip")] // Dynamic fee
 pub mod v2 {
     use common::balance;

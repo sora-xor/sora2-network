@@ -42,7 +42,7 @@ use common::{
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_transaction_payment_config,
     mock_permissions_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    ReferrerAccountProvider, PSWAP, TBCD, VAL, VXOR, XOR,
+    ReferrerAccountProvider, KUSD, PSWAP, TBCD, VAL, XOR,
 };
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
@@ -84,14 +84,16 @@ parameter_types! {
     pub GetReferalAccountId: AccountId = account_from_str("referal");
     pub GetReferrerAccountId: AccountId = account_from_str("referrer");
     pub const BlockHashCount: u64 = 250;
-    pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 1;
-    pub const XorIntoVXorBurnedWeight: u32 = 39;
-    pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackValToVXorPercent: Percent = Percent::from_percent(10);
+    pub const FeeReferrerWeight: u32 = 10; // 10%
+    pub const FeeXorBurnedWeight: u32 = 20; // 20%
+    pub const FeeValBurnedWeight: u32 = 50; // 50%
+    pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
+    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
-    pub const VXorId: AssetId = VXOR;
+    pub const KusdId: AssetId = KUSD;
+    pub const TbcdId: AssetId = TBCD;
     pub const DEXIdValue: DEXId = DEXId::Polkaswap;
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
@@ -212,14 +214,16 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type XorCurrency = Balances;
-    type ReferrerWeight = ReferrerWeight;
-    type XorBurnedWeight = XorBurnedWeight;
-    type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackRemintPercent = BuyBackValToVXorPercent;
-    type XorId = XorId;
+    type KusdId = KusdId;
+    type TbcdId = TbcdId;
     type ValId = ValId;
-    type VXorId = VXorId;
+    type XorId = XorId;
+    type FeeReferrerWeight = FeeReferrerWeight;
+    type FeeXorBurnedWeight = FeeXorBurnedWeight;
+    type FeeValBurnedWeight = FeeValBurnedWeight;
+    type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
+    type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator;
