@@ -48,6 +48,7 @@ pub mod constants {
     use frame_support::weights::Weight;
 
     pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_parts(100_000_000, 0);
+    pub const MINIMAL_FEE: Balance = balance!(0.00007);
     pub const SMALL_FEE: Balance = balance!(0.0007);
     pub const BIG_FEE: Balance = balance!(0.007);
 }
