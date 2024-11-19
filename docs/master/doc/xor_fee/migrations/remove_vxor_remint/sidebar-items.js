@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Migrate","XorToVXor_Storage_Instance"],"type":["XorToVXor"]};

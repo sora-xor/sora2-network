@@ -3554,6 +3554,13 @@
 <a href="#3539" id="3539">3539</a>
 <a href="#3540" id="3540">3540</a>
 <a href="#3541" id="3541">3541</a>
+<a href="#3542" id="3542">3542</a>
+<a href="#3543" id="3543">3543</a>
+<a href="#3544" id="3544">3544</a>
+<a href="#3545" id="3545">3545</a>
+<a href="#3546" id="3546">3546</a>
+<a href="#3547" id="3547">3547</a>
+<a href="#3548" id="3548">3548</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3616,7 +3623,7 @@
 </span><span class="kw">use </span>bridge_types::types::LeafExtraData;
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
 </span><span class="kw">use </span>bridge_types::U256;
-<span class="kw">use </span>common::prelude::constants::{BIG_FEE, SMALL_FEE};
+<span class="kw">use </span>common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
 <span class="kw">use </span>common::{AssetId32, Description, PredefinedAssetId, KUSD};
 <span class="kw">use </span>common::{DOT, XOR, XSTUSD};
@@ -4864,6 +4871,15 @@
     <span class="kw">pub const </span>DEXIdValue: DEXId = <span class="number">0</span>;
 }
 
+<span class="macro">parameter_types! </span>{
+    <span class="kw">pub const </span>FeeReferrerWeight: u32 = <span class="number">10</span>; <span class="comment">// 10%
+    </span><span class="kw">pub const </span>FeeXorBurnedWeight: u32 = <span class="number">20</span>; <span class="comment">// 20%
+    </span><span class="kw">pub const </span>FeeValBurnedWeight: u32 = <span class="number">50</span>; <span class="comment">// 50%
+    </span><span class="kw">pub const </span>FeeKusdBurnedWeight: u32 = <span class="number">20</span>; <span class="comment">// 20%
+    </span><span class="kw">pub const </span>RemintTbcdBuyBackPercent: Percent = Percent::from_percent(<span class="number">1</span>);
+    <span class="kw">pub const </span>RemintKusdBuyBackPercent: Percent = Percent::from_percent(<span class="number">39</span>);
+}
+
 <span class="kw">impl </span>xor_fee::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>PermittedSetPeriod = EitherOfDiverse&lt;
         pallet_collective::EnsureProportionAtLeast&lt;AccountId, TechnicalCollective, <span class="number">3</span>, <span class="number">4</span>&gt;,
@@ -4878,12 +4894,14 @@
     </span><span class="kw">type </span>XorCurrency = Balances;
     <span class="kw">type </span>XorId = GetXorAssetId;
     <span class="kw">type </span>ValId = GetValAssetId;
-    <span class="kw">type </span>VXorId = GetVXorAssetId;
-    <span class="kw">type </span>ReferrerWeight = ReferrerWeight;
-    <span class="kw">type </span>XorBurnedWeight = XorBurnedWeight;
-    <span class="kw">type </span>XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    <span class="kw">type </span>XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    <span class="kw">type </span>BuyBackRemintPercent = BuyBackRemintPercent;
+    <span class="kw">type </span>KusdId = GetKusdAssetId;
+    <span class="kw">type </span>TbcdId = GetTbcdAssetId;
+    <span class="kw">type </span>FeeReferrerWeight = FeeReferrerWeight;
+    <span class="kw">type </span>FeeXorBurnedWeight = FeeXorBurnedWeight;
+    <span class="kw">type </span>FeeValBurnedWeight = FeeValBurnedWeight;
+    <span class="kw">type </span>FeeKusdBurnedWeight = FeeKusdBurnedWeight;
+    <span class="kw">type </span>RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    <span class="kw">type </span>RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     <span class="kw">type </span>DEXIdValue = DEXIdValue;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>OnValBurned = ValBurnedAggregator&lt;Staking&gt;;
@@ -5213,11 +5231,15 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
 }
 
+<span class="macro">parameter_types! </span>{
+    <span class="kw">pub </span>GetBuyBackFractions: Vec&lt;(AssetId, Permill)&gt; = <span class="macro">vec!</span>[(common::KUSD.into(), Permill::from_rational(<span class="number">39u32</span>, <span class="number">100u32</span>)), (common::TBCD.into(), Permill::from_rational(<span class="number">1u32</span>, <span class="number">100u32</span>))];
+}
+
 <span class="kw">impl </span>pswap_distribution::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>GetIncentiveAssetId = GetPswapAssetId;
-    <span class="kw">type </span>GetBuyBackAssetId = GetVXorAssetId;
+    <span class="kw">type </span>GetBuyBackFractions = GetBuyBackFractions;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>CompatBalance = Balance;
     <span class="kw">type </span>GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -5699,14 +5721,6 @@
 <span class="doccomment">/// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 </span><span class="kw">pub type </span>SignedPayload = generic::SignedPayload&lt;RuntimeCall, SignedExtra&gt;;
-
-<span class="macro">parameter_types! </span>{
-    <span class="kw">pub const </span>ReferrerWeight: u32 = <span class="number">25</span>; <span class="comment">// 10%
-    </span><span class="kw">pub const </span>XorBurnedWeight: u32 = <span class="number">1</span>; <span class="comment">// 0.4%
-    </span><span class="kw">pub const </span>XorIntoValBurnedWeight: u32 = <span class="number">125</span>; <span class="comment">// 50%
-    </span><span class="kw">pub const </span>XorIntoVXorBurnedWeight: u32 = <span class="number">99</span>; <span class="comment">// 39.6%
-    </span><span class="kw">pub const </span>BuyBackRemintPercent: Percent = Percent::from_percent(<span class="number">10</span>);
-}
 
 <span class="comment">// Ethereum bridge pallets
 

@@ -228,6 +228,7 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -278,6 +279,7 @@
     <span class="kw">use </span>frame_support::weights::Weight;
 
     <span class="kw">pub const </span>EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_parts(<span class="number">100_000_000</span>, <span class="number">0</span>);
+    <span class="kw">pub const </span>MINIMAL_FEE: Balance = <span class="macro">balance!</span>(<span class="number">0.00007</span>);
     <span class="kw">pub const </span>SMALL_FEE: Balance = <span class="macro">balance!</span>(<span class="number">0.0007</span>);
     <span class="kw">pub const </span>BIG_FEE: Balance = <span class="macro">balance!</span>(<span class="number">0.007</span>);
 }

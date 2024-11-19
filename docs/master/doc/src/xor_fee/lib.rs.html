@@ -924,6 +924,15 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1151,14 +1160,20 @@
             }
 
             <span class="comment">// Applying VAL buy-back-and-burn logic
-            </span><span class="kw">let </span><span class="kw-2">mut </span>total_xor_to_vxor = BalanceOf::&lt;T&gt;::zero();
-            <span class="kw">let </span>xor_into_vxor_burned_weight = T::XorIntoVXorBurnedWeight::get();
-            <span class="kw">let </span>xor_burned_weight = T::XorBurnedWeight::get();
-            <span class="kw">let </span>xor_into_val_burned_weight = T::XorIntoValBurnedWeight::get();
-            <span class="kw">let </span>(referrer_xor, adjusted_paid) = adjusted_paid.ration(
-                T::ReferrerWeight::get(),
-                xor_burned_weight + xor_into_val_burned_weight + xor_into_vxor_burned_weight,
+            </span><span class="kw">let </span>(referrer_xor, adjusted_paid) = adjusted_paid.ration(
+                T::FeeReferrerWeight::get(),
+                T::FeeXorBurnedWeight::get()
+                    + T::FeeValBurnedWeight::get()
+                    + T::FeeKusdBurnedWeight::get(),
             );
+            <span class="kw">let </span>(xor_to_val, adjusted_paid) = adjusted_paid.ration(
+                T::FeeValBurnedWeight::get(),
+                T::FeeXorBurnedWeight::get() + T::FeeKusdBurnedWeight::get(),
+            );
+            <span class="kw">let </span>(xor_to_buy_back, _xor_burned) =
+                adjusted_paid.ration(T::FeeKusdBurnedWeight::get(), T::FeeXorBurnedWeight::get());
+            <span class="kw">let </span><span class="kw-2">mut </span>xor_to_buy_back = xor_to_buy_back.peek();
+
             <span class="kw">if let </span><span class="prelude-val">Some</span>(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                 <span class="kw">let </span>referrer_portion = referrer_xor.peek();
                 T::XorCurrency::resolve_creating(<span class="kw-2">&amp;</span>referrer, referrer_xor);
@@ -1168,25 +1183,17 @@
                     referrer_portion.into(),
                 ));
             } <span class="kw">else </span>{
-                total_xor_to_vxor = total_xor_to_vxor.saturating_add(referrer_xor.peek());
+                <span class="comment">// Use XOR to BBB if there&#39;s no referrer
+                </span>xor_to_buy_back = xor_to_buy_back.saturating_add(referrer_xor.peek());
             }
 
-            <span class="comment">// TODO: decide what should be done with XOR if there is no referrer.
-            // Burn XOR for now
-            </span><span class="kw">let </span>(adjusted_paid, xor_to_val) = adjusted_paid.ration(
-                xor_burned_weight + xor_into_vxor_burned_weight,
-                xor_into_val_burned_weight,
-            );
-            <span class="kw">let </span>(_xor_burned, xor_to_vxor) =
-                adjusted_paid.ration(xor_burned_weight, xor_into_vxor_burned_weight);
             <span class="kw">let </span>xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
-            total_xor_to_vxor = total_xor_to_vxor.saturating_add(xor_to_vxor.peek());
-            <span class="kw">let </span>xor_to_vxor: Balance = total_xor_to_vxor.unique_saturated_into();
+            <span class="kw">let </span>xor_to_buy_back: Balance = xor_to_buy_back.unique_saturated_into();
             XorToVal::&lt;T&gt;::mutate(|balance| {
                 <span class="kw-2">*</span>balance = balance.saturating_add(xor_to_val);
             });
-            XorToVXor::&lt;T&gt;::mutate(|balance| {
-                <span class="kw-2">*</span>balance = balance.saturating_add(xor_to_vxor);
+            XorToBuyBack::&lt;T&gt;::mutate(|balance| {
+                <span class="kw-2">*</span>balance = balance.saturating_add(xor_to_buy_back);
             });
         }
         <span class="prelude-val">Ok</span>(())
@@ -1230,10 +1237,10 @@
             }
         }
 
-        <span class="kw">let </span>xor_to_vxor = XorToVXor::&lt;T&gt;::take();
-        <span class="kw">if </span>xor_to_vxor != <span class="number">0 </span>{
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">Self</span>::remint_vxor(xor_to_vxor) {
-                <span class="macro">error!</span>(<span class="string">&quot;XOR to VXOR remint failed: {:?}&quot;</span>, e);
+        <span class="kw">let </span>xor_to_buy_back = XorToBuyBack::&lt;T&gt;::take();
+        <span class="kw">if </span>xor_to_buy_back != <span class="number">0 </span>{
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">Self</span>::remint_buy_back(xor_to_buy_back) {
+                <span class="macro">error!</span>(<span class="string">&quot;XOR remint buy back failed: {:?}&quot;</span>, e);
             }
         }
 
@@ -1549,7 +1556,8 @@
         <span class="kw">let </span>tech_account_id = &lt;T <span class="kw">as </span>Config&gt;::GetTechnicalAccountId::get();
         <span class="kw">let </span>xor = T::XorId::get();
         <span class="kw">let </span>val = T::ValId::get();
-        <span class="kw">let </span>vxor = T::VXorId::get();
+        <span class="kw">let </span>kusd = T::KusdId::get();
+        <span class="kw">let </span>tbcd = T::TbcdId::get();
 
         <span class="comment">// Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
@@ -1573,25 +1581,36 @@
         ) {
             <span class="prelude-val">Ok</span>(swap_outcome) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>val_to_burn = swap_outcome.amount;
-                T::OnValBurned::on_val_burned(val_to_burn);
+                <span class="kw">let </span>tbcd_buy_back = T::RemintTbcdBuyBackPercent::get() * val_to_burn;
+                <span class="kw">let </span>kusd_buy_back = T::RemintKusdBuyBackPercent::get() * val_to_burn;
 
-                <span class="kw">let </span>val_to_buy_back = T::BuyBackRemintPercent::get() * val_to_burn;
-                <span class="kw">let </span>result = common::with_transaction(|| {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = common::with_transaction(|| {
                     T::BuyBackHandler::buy_back_and_burn(
                         <span class="kw-2">&amp;</span>tech_account_id,
                         <span class="kw-2">&amp;</span>val,
-                        <span class="kw-2">&amp;</span>vxor,
-                        val_to_buy_back,
+                        <span class="kw-2">&amp;</span>tbcd,
+                        tbcd_buy_back,
                     )
-                });
-                <span class="kw">match </span>result {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                        val_to_burn -= val_to_buy_back;
-                    }
-                    <span class="prelude-val">Err</span>(err) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;failed to exchange VAL to VXOR, burning VAL instead of buy back: {err:?}&quot;</span>);
-                    }
+                }) {
+                    <span class="macro">frame_support::log::error!</span>(<span class="string">&quot;Failed to buy back TBCD: {e:?}&quot;</span>);
+                } <span class="kw">else </span>{
+                    val_to_burn = val_to_burn.saturating_sub(tbcd_buy_back);
                 }
+
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = common::with_transaction(|| {
+                    T::BuyBackHandler::buy_back_and_burn(
+                        <span class="kw-2">&amp;</span>tech_account_id,
+                        <span class="kw-2">&amp;</span>val,
+                        <span class="kw-2">&amp;</span>kusd,
+                        kusd_buy_back,
+                    )
+                }) {
+                    <span class="macro">frame_support::log::error!</span>(<span class="string">&quot;Failed to buy back KUSD: {e:?}&quot;</span>);
+                } <span class="kw">else </span>{
+                    val_to_burn = val_to_burn.saturating_sub(kusd_buy_back);
+                }
+
+                T::OnValBurned::on_val_burned(val_to_burn);
                 T::AssetManager::burn_from(<span class="kw-2">&amp;</span>val, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, val_to_burn)<span class="question-mark">?</span>;
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -1606,14 +1625,11 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>remint_vxor(xor_to_vxor: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
-        <span class="kw">let </span>tech_account_id = &lt;T <span class="kw">as </span>Config&gt;::GetTechnicalAccountId::get();
+    <span class="kw">pub fn </span>remint_buy_back(xor_to_buy_back: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>xor = T::XorId::get();
-        <span class="kw">let </span>vxor = T::VXorId::get();
+        <span class="kw">let </span>kusd = T::KusdId::get();
         common::with_transaction(|| {
-            T::AssetManager::mint_to(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_vxor)<span class="question-mark">?</span>;
-            T::BuyBackHandler::buy_back_and_burn(<span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>vxor, xor_to_vxor)<span class="question-mark">?</span>;
-            DispatchResult::Ok(())
+            T::BuyBackHandler::mint_buy_back_and_burn(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>kusd, xor_to_buy_back)
         })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
@@ -1643,12 +1659,14 @@
         </span><span class="kw">type </span>XorCurrency: Currency&lt;<span class="self">Self</span>::AccountId&gt; + Send + Sync;
         <span class="kw">type </span>XorId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>ValId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>VXorId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>ReferrerWeight: Get&lt;u32&gt;;
-        <span class="kw">type </span>XorBurnedWeight: Get&lt;u32&gt;;
-        <span class="kw">type </span>XorIntoValBurnedWeight: Get&lt;u32&gt;;
-        <span class="kw">type </span>XorIntoVXorBurnedWeight: Get&lt;u32&gt;;
-        <span class="kw">type </span>BuyBackRemintPercent: Get&lt;Percent&gt;;
+        <span class="kw">type </span>KusdId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>TbcdId: Get&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>FeeReferrerWeight: Get&lt;u32&gt;;
+        <span class="kw">type </span>FeeXorBurnedWeight: Get&lt;u32&gt;;
+        <span class="kw">type </span>FeeValBurnedWeight: Get&lt;u32&gt;;
+        <span class="kw">type </span>FeeKusdBurnedWeight: Get&lt;u32&gt;;
+        <span class="kw">type </span>RemintTbcdBuyBackPercent: Get&lt;Percent&gt;;
+        <span class="kw">type </span>RemintKusdBuyBackPercent: Get&lt;Percent&gt;;
         <span class="kw">type </span>DEXIdValue: Get&lt;<span class="self">Self</span>::DEXId&gt;;
         <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>OnValBurned: OnValBurned;
@@ -1804,10 +1822,10 @@
     #[pallet::getter(<span class="kw">fn </span>xor_to_val)]
     </span><span class="kw">pub type </span>XorToVal&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Balance, ValueQuery&gt;;
 
-    <span class="doccomment">/// The amount of XOR to be reminted and exchanged for VXOR at the end of the session
+    <span class="doccomment">/// The amount of XOR to be reminted and exchanged for KUSD at the end of the session
     </span><span class="attr">#[pallet::storage]
-    #[pallet::getter(<span class="kw">fn </span>xor_to_vxor)]
-    </span><span class="kw">pub type </span>XorToVXor&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Balance, ValueQuery&gt;;
+    #[pallet::getter(<span class="kw">fn </span>xor_to_kusd)]
+    </span><span class="kw">pub type </span>XorToBuyBack&lt;T: Config&gt; = StorageValue&lt;<span class="kw">_</span>, Balance, ValueQuery&gt;;
 
     <span class="attr">#[pallet::type_value]
     </span><span class="kw">pub fn </span>DefaultForFeeMultiplier&lt;T: Config&gt;() -&gt; FixedU128 {
