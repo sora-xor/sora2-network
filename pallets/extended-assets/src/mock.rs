@@ -28,22 +28,17 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as extended_assets};
+use crate as extended_assets;
 use common::mock::ExistentialDeposits;
 use common::{
-    mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
-    mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId, LiquiditySourceType,
+    mock_assets_config, mock_common_config, mock_currencies_config, mock_extended_assets_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, DEXId,
     PredefinedAssetId, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::Everything;
+use frame_support::traits::ConstU32;
 use frame_support::{construct_runtime, parameter_types};
-use hex_literal::hex;
-use sp_core::{ConstU32, H256};
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::MultiSignature;
 
@@ -55,57 +50,28 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type Moment = u64;
 type BlockNumber = u64;
 
+mock_assets_config!(
+    TestRuntime,
+    (
+        extended_assets::Pallet<TestRuntime>,
+        permissions::Pallet<TestRuntime>,
+    )
+);
 mock_common_config!(TestRuntime);
 mock_currencies_config!(TestRuntime);
-mock_tokens_config!(TestRuntime);
-mock_pallet_balances_config!(TestRuntime);
+mock_extended_assets_config!(TestRuntime);
 mock_frame_system_config!(TestRuntime);
+mock_pallet_balances_config!(TestRuntime);
+mock_pallet_timestamp_config!(TestRuntime);
 mock_permissions_config!(TestRuntime);
 mock_technical_config!(TestRuntime);
-mock_pallet_timestamp_config!(TestRuntime);
+mock_tokens_config!(TestRuntime);
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const GetBuyBackAssetId: AssetId = XST;
-    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![];
-    pub const GetBuyBackPercentage: u8 = 0;
-    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
-            "0000000000000000000000000000000000000000000000000000000000000023"
-    ));
-    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
-}
-impl assets::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
-    type GetBuyBackPercentage = GetBuyBackPercentage;
-    type GetBuyBackAccountId = GetBuyBackAccountId;
-    type GetBuyBackDexId = GetBuyBackDexId;
-    type BuyBackLiquidityProxy = ();
-    type Currency = currencies::Pallet<TestRuntime>;
-    type GetTotalBalance = ();
-    type WeightInfo = ();
-    type AssetRegulator = (
-        extended_assets::Pallet<TestRuntime>,
-        permissions::Pallet<TestRuntime>,
-    );
-}
-
-pub type MockMaxRegulatedAssetsPerSBT = ConstU32<10000>;
-
-impl extended_assets::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type AssetInfoProvider = assets::Pallet<TestRuntime>;
-    type MaxRegulatedAssetsPerSBT = MockMaxRegulatedAssetsPerSBT;
-    type WeightInfo = ();
 }
 
 construct_runtime! {
@@ -114,7 +80,6 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},

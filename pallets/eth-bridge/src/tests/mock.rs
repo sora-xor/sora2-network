@@ -44,9 +44,11 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
-    mock_pallet_balances_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
-    DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
+    mock_assets_config, mock_bridge_multisig_config, mock_common_config, mock_currencies_config,
+    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_scheduler_config,
+    mock_pallet_sudo_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -61,10 +63,9 @@ use frame_support::sp_runtime::offchain::testing::{
     OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
 use frame_support::sp_runtime::serde::{Serialize, Serializer};
-use frame_support::sp_runtime::testing::Header;
 use frame_support::sp_runtime::traits::{
-    self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-    IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
+    self, Applyable, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount, PostDispatchInfoOf,
+    SignedExtension, ValidateUnsigned, Verify,
 };
 use frame_support::sp_runtime::transaction_validity::{
     TransactionSource, TransactionValidity, TransactionValidityError,
@@ -72,11 +73,10 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
+use frame_support::traits::{GenesisBuild, Get, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
-use frame_system::EnsureRoot;
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
@@ -108,9 +108,6 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const DepositBase: u64 = 1;
-    pub const DepositFactor: u64 = 1;
-    pub const MaxSignatories: u16 = 4;
     pub const UnsignedPriority: u64 = 100;
     pub const EthNetworkId: <Runtime as Config>::NetworkId = 0;
 }
@@ -259,7 +256,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
-    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
 }
 
 pub struct RemoveTemporaryPeerAccountId;
@@ -274,12 +270,16 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
     }
 }
 
-mock_pallet_balances_config!(Runtime);
+mock_assets_config!(Runtime);
+mock_bridge_multisig_config!(Runtime);
+mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_scheduler_config!(Runtime);
+mock_pallet_sudo_config!(Runtime);
+mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
@@ -331,25 +331,6 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = XST;
 }
 
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl bridge_multisig::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type RuntimeCall = RuntimeCall;
-    type Currency = Balances;
-    type DepositBase = DepositBase;
-    type DepositFactor = DepositFactor;
-    type MaxSignatories = MaxSignatories;
-    type WeightInfo = ();
-}
-
-impl pallet_sudo::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type RuntimeCall = RuntimeCall;
-}
-
 /// Used the compare the privilege of an origin inside the scheduler.
 pub struct OriginPrivilegeCmp;
 
@@ -367,21 +348,7 @@ impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
         }
     }
 }
-
-impl pallet_scheduler::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type RuntimeOrigin = RuntimeOrigin;
-    type PalletsOrigin = OriginCaller;
-    type RuntimeCall = RuntimeCall;
-    type MaximumWeight = SchedulerMaxWeight;
-    type ScheduleOrigin = EnsureRoot<AccountId>;
-    type MaxScheduledPerBlock = ();
-    type WeightInfo = ();
-    type OriginPrivilegeCmp = OriginPrivilegeCmp;
-    type Preimages = ();
-}
-
-impl crate::Config for Runtime {
+impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PeerId = crate::offchain::crypto::TestAuthId;
     type RuntimeCall = RuntimeCall;

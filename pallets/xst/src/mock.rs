@@ -28,28 +28,29 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as xstpool, Config};
-use common::mock::{ExistentialDeposits, GetTradingPairRestrictedFlag};
+use crate::{self as xst, Config};
+use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, PriceToolsProvider};
 use common::{
-    self, balance, fixed, hash, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_technical_config,
-    mock_tokens_config, Amount, AssetId32, AssetIdOf, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, VXOR, XOR,
-    XST, XSTUSD,
+    self, balance, hash, mock_assets_config, mock_band_config, mock_ceres_liquidity_locker_config,
+    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
+    mock_dex_api_config, mock_dex_manager_config, mock_frame_system_config,
+    mock_liquidity_source_config, mock_oracle_proxy_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
+    mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
+    mock_tokens_config, mock_trading_pair_config, mock_xst_config, Amount, AssetId32, AssetIdOf,
+    AssetName, AssetSymbol, DEXInfo, FromGenericPair, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION,
+    PSWAP, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
-use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::traits::Zero;
+use sp_runtime::Perbill;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -59,7 +60,6 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -88,16 +88,10 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub const GetNumSamples: usize = 40;
-    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([151; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
-    pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
-    pub const MinimumPeriod: u64 = 5;
-    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
-    pub const GetBandRateStaleBlockPeriod: u64 = 600;
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -113,7 +107,6 @@ parameter_types! {
         account_id
     };
     pub const GetSyntheticBaseBuySellLimit: Balance = balance!(10000000);
-    pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
 }
 
 construct_runtime! {
@@ -134,7 +127,7 @@ construct_runtime! {
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
-        XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
+        XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
@@ -145,165 +138,40 @@ construct_runtime! {
     }
 }
 
-mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
-mock_currencies_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_frame_system_config!(Runtime);
-mock_common_config!(Runtime);
-mock_tokens_config!(Runtime);
-mock_assets_config!(Runtime);
-
-impl dex_manager::Config for Runtime {}
-
-impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
-    type GetFee = ();
-    type EnsureDEXManager = ();
-    type EnsureTradingPairExists = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-}
-
-impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
-    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type PriceToolsPallet = price_tools::Pallet<Runtime>;
-    type Oracle = oracle_proxy::Pallet<Runtime>;
-    type Symbol = <Runtime as band::Config>::Symbol;
-    type GetSyntheticBaseBuySellLimit = GetSyntheticBaseBuySellLimit;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl band::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type Symbol = common::SymbolName;
-    type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
-    type GetBandRateStalePeriod = GetBandRateStalePeriod;
-    type Time = Timestamp;
-    type OnSymbolDisabledHook = crate::Pallet<Runtime>;
-    type GetBandRateStaleBlockPeriod = GetBandRateStaleBlockPeriod;
-    type MaxRelaySymbols = frame_support::traits::ConstU32<100>;
-}
-
-impl oracle_proxy::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
-    type Symbol = <Runtime as band::Config>::Symbol;
-    type BandChainOracle = band::Pallet<Runtime>;
-}
-
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = VXOR;
 }
 
-impl dex_api::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type MockLiquiditySource = ();
-    type MockLiquiditySource2 = ();
-    type MockLiquiditySource3 = ();
-    type MockLiquiditySource4 = ();
-    type XYKPool = MockLiquiditySource;
-    type XSTPool = XSTPool;
-    type MulticollateralBondingCurvePool = ();
-    type DexInfoProvider = ();
-    type OrderBook = ();
-    type WeightInfo = ();
-}
-
-impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-}
-
-impl pswap_distribution::Config for Runtime {
-    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
-    type RuntimeEvent = RuntimeEvent;
-    type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetBuyBackAssetId = GetBuyBackAssetId;
-    type LiquidityProxy = ();
-    type CompatBalance = Balance;
-    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
-    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
-    type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXManager = ();
-    type OnPswapBurnedAggregator = ();
-    type WeightInfo = ();
-    type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
-    type BuyBackHandler = ();
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type GetChameleonPools = common::mock::GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl price_tools::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
-}
-
-impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type DemeterAssetId = ();
-    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
-    type WeightInfo = ();
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-}
-
-impl pool_xyk::Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.0007);
-    type RuntimeEvent = RuntimeEvent;
-    type PairSwapAction = pool_xyk::PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
-    type DexInfoProvider = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
-    type GetFee = GetXykFee;
-    type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
-    type OnPoolCreated = PswapDistribution;
-    type OnPoolReservesChanged = ();
-    type XSTMarketInfo = ();
-    type GetTradingPairRestrictedFlag = GetTradingPairRestrictedFlag;
-    type GetChameleonPools = common::mock::GetChameleonPools;
-    type AssetInfoProvider = assets::Pallet<Runtime>;
-    type AssetRegulator = ();
-    type IrreducibleReserve = GetXykIrreducibleReservePercent;
-    type PoolAdjustPeriod = sp_runtime::traits::ConstU64<1>;
-    type WeightInfo = ();
-}
-
-impl pallet_timestamp::Config for Runtime {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
-    type XYKPool = PoolXYK;
-    type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = ();
-    type WeightInfo = ();
-}
+mock_assets_config!(Runtime);
+mock_band_config!(
+    Runtime,
+    oracle_proxy::Pallet<Runtime>,
+    crate::Pallet<Runtime>
+);
+mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
+mock_common_config!(Runtime);
+mock_currencies_config!(Runtime);
+mock_demeter_farming_platform_config!(Runtime);
+mock_dex_api_config!(Runtime, (), MockLiquiditySource, XSTPool);
+mock_dex_manager_config!(Runtime);
+mock_frame_system_config!(Runtime);
+mock_liquidity_source_config!(Runtime, mock_liquidity_source::Instance1);
+mock_oracle_proxy_config!(Runtime);
+mock_pallet_balances_config!(Runtime);
+mock_pallet_timestamp_config!(Runtime);
+mock_permissions_config!(Runtime);
+mock_pool_xyk_config!(Runtime);
+mock_price_tools_config!(Runtime);
+mock_pswap_distribution_config!(Runtime, PoolXYK);
+mock_technical_config!(Runtime, pool_xyk::PolySwapAction<DEXId, AssetId, AccountId, TechAccountId>);
+mock_tokens_config!(Runtime);
+mock_trading_pair_config!(Runtime);
+mock_xst_config!(
+    Runtime,
+    price_tools::Pallet<Runtime>,
+    oracle_proxy::Pallet<Runtime>,
+    <Runtime as band::Config>::Symbol
+);
 
 pub fn set_mock_price<T: Config>(asset_id: &AssetId, price_buy: Balance, price_sell: Balance)
 where

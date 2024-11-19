@@ -34,10 +34,10 @@ use crate::Error::ArithmeticError;
 use crate::{
     mock::*, Claim, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos, Event,
 };
-#[cfg(feature = "wip")] // Auto Vesting
+
 use crate::{ClaimSchedules, PendingClaims};
 use crate::{Error, RewardInfo};
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 use crate::{VestingSchedules, VESTING_LOCK_ID};
 use common::mock::charlie;
 use common::{
@@ -1026,8 +1026,7 @@ fn update_rewards_works() {
 }
 
 // Tests for Linear Vesting and Vesting
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
+
 #[test]
 fn linear_vested_transfer_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1081,7 +1080,7 @@ fn linear_vested_transfer_works() {
         );
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 #[test]
 fn self_linear_vesting() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1144,8 +1143,7 @@ fn self_linear_vesting() {
         ));
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
+
 #[test]
 fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1245,8 +1243,6 @@ fn add_new_vesting_schedule_merges_with_current_locked_balance_and_until() {
     });
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn cannot_use_fund_if_not_claimed_from_linear() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1282,7 +1278,6 @@ fn cannot_use_fund_if_not_claimed_from_linear() {
     });
 }
 
-#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn linear_vesting_unlock_correct() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1340,8 +1335,6 @@ fn linear_vesting_unlock_correct() {
     })
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn linear_vested_transfer_fails_if_zero_period_or_count() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1436,8 +1429,6 @@ fn linear_vested_transfer_fails_if_zero_period_or_count() {
     });
 }
 
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
 #[test]
 fn vested_transfer_fails_if_transfer_err() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1469,8 +1460,7 @@ fn vested_transfer_fails_if_transfer_err() {
         );
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
+
 #[test]
 fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1621,7 +1611,7 @@ fn vested_linear_transfer_and_unlock_pending_fails_if_overflow() {
         );
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 #[test]
 fn vested_transfer_check_for_min() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1639,8 +1629,7 @@ fn vested_transfer_check_for_min() {
         );
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
+
 #[test]
 fn claim_linear_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1748,7 +1737,7 @@ fn claim_linear_works() {
         assert!(!VestingSchedules::<Runtime>::contains_key(bob()));
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 #[test]
 fn claim_for_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1795,8 +1784,7 @@ fn claim_for_works() {
         assert!(!VestingSchedules::<Runtime>::contains_key(&bob()));
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
-#[cfg(feature = "wip")] // Pending Vesting
+
 #[test]
 fn update_vesting_schedules_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1908,7 +1896,7 @@ fn update_vesting_schedules_works() {
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 #[test]
 fn multiple_vesting_linear_schedule_claim_works() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1965,7 +1953,7 @@ fn multiple_vesting_linear_schedule_claim_works() {
         assert_eq!(Tokens::locks(bob(), DOT), vec![]);
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 #[test]
 fn exceeding_maximum_schedules_should_fail() {
     ExtBuilder::default().build().execute_with(|| {
@@ -1995,7 +1983,7 @@ fn exceeding_maximum_schedules_should_fail() {
         );
     });
 }
-#[cfg(feature = "wip")] // ORML multi asset vesting
+
 #[test]
 fn cliff_vesting_linear_works() {
     const VESTING_AMOUNT: Balance = 12;
@@ -2055,7 +2043,6 @@ fn cliff_vesting_linear_works() {
     });
 }
 
-#[cfg(feature = "wip")] // Auto Vesting
 #[test]
 fn auto_claim_hook_works_fine() {
     ExtBuilder::default().build().execute_with(|| {
@@ -2150,7 +2137,6 @@ fn auto_claim_hook_works_fine() {
     })
 }
 
-#[cfg(feature = "wip")] // Auto Vesting
 #[test]
 fn auto_claim_hook_works_fine_if_period_lasts_before_transction() {
     ExtBuilder::default().build().execute_with(|| {
@@ -2229,7 +2215,6 @@ fn auto_claim_hook_works_fine_if_period_lasts_before_transction() {
     })
 }
 
-#[cfg(feature = "wip")] // Auto Vesting
 #[test]
 fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
     ExtBuilder::default().build().execute_with(|| {
@@ -2346,7 +2331,6 @@ fn auto_claim_hook_works_fine_for_pending_if_period_lasts_before_transction() {
     })
 }
 
-#[cfg(feature = "wip")] // Auto Vesting
 #[test]
 fn auto_claim_works_fine_for_pending() {
     ExtBuilder::default().build().execute_with(|| {
@@ -2416,7 +2400,6 @@ fn auto_claim_works_fine_for_pending() {
     })
 }
 
-#[cfg(feature = "wip")] // Auto Vesting
 #[test]
 fn auto_claim_works_fine_for_pending_and_block() {
     ExtBuilder::default().build().execute_with(|| {

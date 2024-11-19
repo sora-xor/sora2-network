@@ -149,7 +149,6 @@ impl RuntimeCall {
 pub struct CustomFees;
 
 impl CustomFees {
-    #[cfg(feature = "wip")] // ORML multi asset vesting
     fn base_fee(call: &RuntimeCall) -> Option<Balance> {
         match call {
             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
@@ -181,50 +180,20 @@ impl CustomFees {
             | RuntimeCall::Rewards(..)
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
-            | RuntimeCall::Band(..)
             | RuntimeCall::Referrals(..)
             | RuntimeCall::OrderBook(..)
+            | RuntimeCall::TechnicalCommittee(
+                pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
+            )
+            | RuntimeCall::Council(
+                pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
+            )
             | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => {
                 Some(SMALL_FEE)
             }
-            _ => None,
-        }
-    }
-    #[cfg(not(feature = "wip"))] // ORML multi asset vesting
-    fn base_fee(call: &RuntimeCall) -> Option<Balance> {
-        match call {
-            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
-                swap_batches,
-                ..
-            }) => Some(
-                swap_batches
-                    .iter()
-                    .map(|x| x.receivers.len() as Balance)
-                    .fold(Balance::zero(), |acc, x| acc.saturating_add(x))
-                    .saturating_mul(SMALL_FEE)
-                    .max(SMALL_FEE),
-            ),
-            RuntimeCall::Assets(assets::Call::register { .. })
-            | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
-            | RuntimeCall::BridgeProxy(bridge_proxy::Call::burn { .. })
-            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | RuntimeCall::Rewards(rewards::Call::claim { .. })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
-                ..
-            })
-            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. })
-            | RuntimeCall::OrderBook(order_book::Call::update_orderbook { .. }) => Some(BIG_FEE),
-            RuntimeCall::Assets(..)
-            | RuntimeCall::EthBridge(..)
-            | RuntimeCall::LiquidityProxy(..)
-            | RuntimeCall::MulticollateralBondingCurvePool(..)
-            | RuntimeCall::PoolXYK(..)
-            | RuntimeCall::Rewards(..)
-            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
-            | RuntimeCall::TradingPair(..)
-            | RuntimeCall::Band(..)
-            | RuntimeCall::Referrals(..)
-            | RuntimeCall::OrderBook(..) => Some(SMALL_FEE),
+            RuntimeCall::Band(..) => Some(MINIMAL_FEE),
+            #[cfg(feature = "stage")]
+            RuntimeCall::Soratopia(soratopia::Call::check_in {}) => Some(MINIMAL_FEE),
             _ => None,
         }
     }
@@ -410,7 +379,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         true
     }
 
-    #[allow(unused_variables)]
     fn compute_actual_fee(
         _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
         _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
@@ -428,16 +396,11 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
                 )
             }
             CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims)) => {
-                #[cfg(feature = "wip")] // ORML multi asset vesting
-                {
-                    if _result.is_err() {
-                        return Some(fee_without_claims);
-                    } else {
-                        return Some(fee);
-                    }
+                if _result.is_err() {
+                    Some(fee_without_claims)
+                } else {
+                    Some(fee)
                 }
-                #[cfg(not(feature = "wip"))] // ORML multi asset vesting
-                None
             }
         }
     }
