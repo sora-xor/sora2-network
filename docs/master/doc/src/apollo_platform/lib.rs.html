@@ -1685,9 +1685,6 @@
 <a href="#1670" id="1670">1670</a>
 <a href="#1671" id="1671">1671</a>
 <a href="#1672" id="1672">1672</a>
-<a href="#1673" id="1673">1673</a>
-<a href="#1674" id="1674">1674</a>
-<a href="#1675" id="1675">1675</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
@@ -1770,7 +1767,6 @@
     <span class="attr">#[pallet::config]
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
-        + price_tools::Config
         + liquidity_proxy::Config
         + trading_pair::Config
         + common::Config
@@ -3190,8 +3186,7 @@
                 <span class="kw-2">&amp;</span>APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )
-            .unwrap();
+            )<span class="question-mark">?</span>;
 
             <span class="kw">let </span>buyback_amount = outcome.amount;
 
@@ -3246,8 +3241,7 @@
                 <span class="kw-2">&amp;</span>CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )
-            .unwrap();
+            )<span class="question-mark">?</span>;
 
             T::AssetManager::burn(
                 RawOrigin::Signed(caller).into(),
