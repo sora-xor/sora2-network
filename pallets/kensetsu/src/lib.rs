@@ -151,7 +151,7 @@ pub struct CollateralRiskParameters {
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
-#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
 pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
@@ -226,7 +226,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(5);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
