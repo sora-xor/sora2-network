@@ -608,6 +608,21 @@
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -720,8 +735,10 @@
         <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
         <span class="kw">use </span>common::{AccountIdOf, AssetIdOf, Balance};
         <span class="kw">use </span>frame_support::dispatch::TypeInfo;
+        <span class="kw">use </span>frame_support::log::error;
         <span class="kw">use </span>frame_support::pallet_prelude::ValueQuery;
         <span class="kw">use </span>frame_support::Identity;
+        <span class="kw">use </span>sp_arithmetic::traits::{AtLeast32Bit, Saturating};
         <span class="kw">use </span>sp_arithmetic::FixedU128;
 
         <span class="attr">#[derive(
@@ -736,13 +753,25 @@
             <span class="kw">pub </span>interest_coefficient: FixedU128,
         }
 
-        <span class="kw">impl</span>&lt;Moment&gt; CollateralInfo&lt;Moment&gt; {
+        <span class="kw">impl</span>&lt;Moment: AtLeast32Bit&gt; CollateralInfo&lt;Moment&gt; {
             <span class="kw">pub fn </span>into_v2(<span class="self">self</span>) -&gt; <span class="kw">crate</span>::CollateralInfo&lt;Moment&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>new_risk_parameters = <span class="self">self</span>.risk_parameters;
+                <span class="comment">// It is rough approximation, but it is fast. Need to reset parameters after the
+                // migration.
+                </span>new_risk_parameters.stability_fee_rate = new_risk_parameters
+                    .stability_fee_rate
+                    .saturating_mul(FixedU128::from_u32(<span class="number">1000</span>));
                 <span class="kw">crate</span>::CollateralInfo {
-                    risk_parameters: <span class="self">self</span>.risk_parameters,
+                    risk_parameters: new_risk_parameters,
                     total_collateral: <span class="self">self</span>.total_collateral,
                     stablecoin_supply: <span class="self">self</span>.kusd_supply,
-                    last_fee_update_time: <span class="self">self</span>.last_fee_update_time,
+                    last_fee_update_time: <span class="self">self
+                        </span>.last_fee_update_time
+                        .checked_div(<span class="kw-2">&amp;</span>Moment::from(<span class="number">1000u32</span>))
+                        .unwrap_or_else(|| {
+                            <span class="macro">error!</span>(<span class="string">&quot;Math error. Div by zero.&quot;</span>);
+                            <span class="self">self</span>.last_fee_update_time
+                        }),
                     interest_coefficient: <span class="self">self</span>.interest_coefficient,
                 }
             }
@@ -819,9 +848,9 @@
                             }
                             <span class="prelude-val">Err</span>(err) =&gt; {
                                 <span class="macro">error!</span>(
-                                <span class="string">&quot;Failed to grant permission to technical account id: {:?}, error: {:?}&quot;</span>,
-                                technical_account_id, err
-                            );
+                                    <span class="string">&quot;Failed to grant permission to technical account id: {:?}, error: {:?}&quot;</span>,
+                                    technical_account_id, err
+                                );
                                 weight += &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().reads(<span class="number">1</span>);
                             }
                         }
@@ -896,7 +925,6 @@
                 <span class="kw">let </span>collateral_infos: sp_std::vec::Vec&lt;<span class="kw">_</span>&gt; = v1::CollateralInfos::&lt;T&gt;::drain()
                     .map(|(collateral_asset_id, old_collateral_info)| {
                         weight += &lt;T <span class="kw">as </span>frame_system::Config&gt;::DbWeight::get().writes(<span class="number">1</span>);
-
                         (
                             StablecoinCollateralIdentifier {
                                 collateral_asset_id,
@@ -959,8 +987,8 @@
 
                 <span class="kw">let </span>total_collateral = <span class="macro">balance!</span>(<span class="number">500100</span>);
                 <span class="kw">let </span>kusd_supply = <span class="macro">balance!</span>(<span class="number">100500</span>);
-                <span class="kw">let </span>last_fee_update_time = <span class="number">12345</span>;
-                <span class="kw">let </span>interest_coefficient = FixedU128::from_inner(<span class="number">54321</span>);
+                <span class="kw">let </span>last_fee_update_time = <span class="number">12345000</span>; <span class="comment">// in ms
+                </span><span class="kw">let </span>interest_coefficient = FixedU128::from_inner(<span class="number">54321</span>);
                 <span class="kw">let </span>old_dai_collateral_info = v1::CollateralInfo {
                     risk_parameters: Default::default(),
                     total_collateral,
@@ -1013,7 +1041,9 @@
                     kxor_info.stablecoin_parameters
                 );
 
-                <span class="macro">assert_eq!</span>(<span class="number">2</span>, CollateralInfos::&lt;TestRuntime&gt;::iter().count());
+                <span class="comment">// ms to seconds
+                </span><span class="kw">let </span>new_last_fee_update_time = last_fee_update_time / <span class="number">1000</span>;
+                <span class="macro">assert_eq!</span>(<span class="number">2</span>, <span class="kw">crate</span>::CollateralInfos::&lt;TestRuntime&gt;::iter().count());
                 <span class="kw">let </span>dai_kusd_collateral_info =
                     CollateralInfos::&lt;TestRuntime&gt;::get(StablecoinCollateralIdentifier {
                         collateral_asset_id: DAI,
@@ -1023,7 +1053,7 @@
                 <span class="macro">assert_eq!</span>(total_collateral, dai_kusd_collateral_info.total_collateral);
                 <span class="macro">assert_eq!</span>(kusd_supply, dai_kusd_collateral_info.stablecoin_supply);
                 <span class="macro">assert_eq!</span>(
-                    last_fee_update_time,
+                    new_last_fee_update_time,
                     dai_kusd_collateral_info.last_fee_update_time
                 );
                 <span class="macro">assert_eq!</span>(
@@ -1039,7 +1069,7 @@
                 <span class="macro">assert_eq!</span>(total_collateral, xor_kusd_collateral_info.total_collateral);
                 <span class="macro">assert_eq!</span>(kusd_supply, xor_kusd_collateral_info.stablecoin_supply);
                 <span class="macro">assert_eq!</span>(
-                    last_fee_update_time,
+                    new_last_fee_update_time,
                     xor_kusd_collateral_info.last_fee_update_time
                 );
                 <span class="macro">assert_eq!</span>(

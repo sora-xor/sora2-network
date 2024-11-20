@@ -2400,6 +2400,10 @@
 <a href="#2385" id="2385">2385</a>
 <a href="#2386" id="2386">2386</a>
 <a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
+<a href="#2389" id="2389">2389</a>
+<a href="#2390" id="2390">2390</a>
+<a href="#2391" id="2391">2391</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2544,7 +2548,7 @@
     <span class="doccomment">/// The max amount of collateral can be liquidated in one round
     </span><span class="kw">pub </span>max_liquidation_lot: Balance,
 
-    <span class="doccomment">/// Protocol Interest rate per millisecond
+    <span class="doccomment">/// Protocol Interest rate per second
     </span><span class="kw">pub </span>stability_fee_rate: FixedU128,
 
     <span class="doccomment">/// Minimal deposit in collateral AssetId.
@@ -4194,7 +4198,9 @@
                 stablecoin_asset_id: <span class="kw-2">*</span>stablecoin_asset_id,
             })
             .ok_or(Error::&lt;T&gt;::CollateralInfoNotFound)<span class="question-mark">?</span>;
-            <span class="kw">let </span>now = Timestamp::&lt;T&gt;::get();
+            <span class="kw">let </span>now = Timestamp::&lt;T&gt;::get()
+                .checked_div(<span class="kw-2">&amp;</span>T::Moment::from(<span class="number">1000u32</span>))
+                .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
                 now &gt;= collateral_info.last_fee_update_time,
                 Error::&lt;T&gt;::AccrueWrongTime
@@ -4753,7 +4759,9 @@
                                 risk_parameters: new_risk_parameters,
                                 total_collateral: Balance::zero(),
                                 stablecoin_supply: <span class="macro">balance!</span>(<span class="number">0</span>),
-                                last_fee_update_time: Timestamp::&lt;T&gt;::get(),
+                                last_fee_update_time: Timestamp::&lt;T&gt;::get()
+                                    .checked_div(<span class="kw-2">&amp;</span>T::Moment::from(<span class="number">1000u32</span>))
+                                    .ok_or(Error::&lt;T&gt;::ArithmeticError)<span class="question-mark">?</span>,
                                 interest_coefficient: FixedU128::one(),
                             });
                         }
