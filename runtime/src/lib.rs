@@ -255,10 +255,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 104,
+    spec_version: 105,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 104,
+    transaction_version: 105,
     state_version: 0,
 };
 
@@ -2106,7 +2106,7 @@ parameter_types! {
 impl apollo_platform::Config for Runtime {
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxyPallet = LiquidityProxy;
     type UnsignedPriority = ApolloOffchainWorkerTxPriority;
     type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;

@@ -30,6 +30,7 @@
 
 pub type Migrations = (
     xor_fee::migrations::remove_vxor_remint::Migrate<crate::Runtime>,
+    kensetsu::migrations::v4_to_v5::UpgradeToV5<crate::Runtime>,
     WipMigrations,
 );
 
