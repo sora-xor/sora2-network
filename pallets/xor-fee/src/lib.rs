@@ -97,12 +97,12 @@ type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
     Paid(
-        T::AccountId,
+        AccountIdOf<T>,
         Option<NegativeImbalanceOf<T>>,
         Option<AssetIdOf<T>>,
     ),
     /// The fee payment has been postponed to after the transaction
-    Postponed(T::AccountId),
+    Postponed(AccountIdOf<T>),
     /// The fee should not be paid
     NotPaid,
 }
@@ -163,14 +163,14 @@ impl<T: Config> Default for LiquidityInfo<T> {
 
 impl<T: Config>
     From<(
-        T::AccountId,
+        AccountIdOf<T>,
         Option<NegativeImbalanceOf<T>>,
         Option<AssetIdOf<T>>,
     )> for LiquidityInfo<T>
 {
     fn from(
         (account_id, paid, asset_id): (
-            T::AccountId,
+            AccountIdOf<T>,
             Option<NegativeImbalanceOf<T>>,
             Option<AssetIdOf<T>>,
         ),
@@ -279,8 +279,7 @@ where
                             InvalidTransaction::Payment,
                         ));
                     }
-                    let _ = T::MultiCurrency::deposit(asset_id, &fee_source, refund_amount.into())
-                        .is_ok();
+                    let _ = T::MultiCurrency::deposit(asset_id, &fee_source, refund_amount).is_ok();
 
                     Self::deposit_event(Event::FeeWithdrawn(
                         fee_source,
@@ -294,9 +293,7 @@ where
                             corrected_fee_as_asset,
                         );
 
-                        if let Ok(_) =
-                            T::MultiCurrency::deposit(asset_id, &referrer, referrer_amount.into())
-                        {
+                        if T::MultiCurrency::deposit(asset_id, &referrer, referrer_amount).is_ok() {
                             BurntForFee::<T>::mutate(asset_id, |balance| {
                                 balance.fee = balance.fee.saturating_add(corrected_fee_as_asset)
                             });
@@ -652,7 +649,7 @@ pub trait WithdrawFee<T: Config> {
         fee: Balance,
     ) -> Result<
         (
-            T::AccountId,
+            AccountIdOf<T>,
             Option<NegativeImbalanceOf<T>>,
             Option<AssetIdOf<T>>,
         ),
@@ -986,7 +983,7 @@ impl<T: Config> Pallet<T> {
                     &tech_account_id,
                     xor_to_burn.0.amount,
                 )?;
-                return Ok(xor_to_burn.0.amount);
+                Ok(xor_to_burn.0.amount)
             }
             Err(e) => {
                 error!(
@@ -994,7 +991,7 @@ impl<T: Config> Pallet<T> {
                     asset_id, amount, e
                 );
                 T::AssetManager::burn_from(&asset_id, &tech_account_id, &tech_account_id, amount)?;
-                return Err(e);
+                Err(e)
             }
         }
     }
@@ -1217,13 +1214,13 @@ pub mod pallet {
                 let whole_weight = T::WeightInfo::xorless_call()
                     .saturating_add(extract_actual_weight(&call_result, &call_info));
 
-                return call_result
+                call_result
                     .map_err(|mut err| {
                         err.post_info = Some(whole_weight).into();
                         err
                     })
-                    .map(|_| Some(whole_weight).into());
-            };
+                    .map(|_| Some(whole_weight).into())
+            }
             #[cfg(not(feature = "wip"))] // Xorless fee
             Ok(().into())
         }

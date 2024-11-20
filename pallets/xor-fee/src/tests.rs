@@ -43,12 +43,14 @@ use common::prelude::FixedWrapper;
 use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Xorless fee
 use common::{KUSD, TBCD, VAL};
+#[cfg(feature = "wip")] // Xorless fee
+use frame_support::assert_err;
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
 use frame_support::error::BadOrigin;
 use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{FixedPointNumber, FixedU128};
