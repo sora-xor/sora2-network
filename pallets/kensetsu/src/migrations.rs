@@ -655,14 +655,8 @@ pub mod v4_to_v5 {
     mod tests {
         use crate::migrations::v4_to_v5::UpgradeToV5;
         use crate::mock::{new_test_ext, TestRuntime};
-        use crate::{
-            CollateralInfos, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
-            StablecoinParameters,
-        };
-        use common::{balance, SymbolName, DAI, KGOLD, KUSD, KXOR, XOR};
-        use core::default::Default;
+        use crate::Pallet;
         use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
-        use sp_arithmetic::FixedU128;
 
         #[test]
         fn test() {
