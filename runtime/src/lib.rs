@@ -1314,6 +1314,11 @@ parameter_types! {
     pub const FeeXorBurnedWeight: u32 = 20; // 20%
     pub const FeeValBurnedWeight: u32 = 50; // 50%
     pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    pub const MinimalFeeInAsset: Balance = ((FeeReferrerWeight::get()
+        + FeeXorBurnedWeight::get()
+        + FeeValBurnedWeight::get()
+        + FeeKusdBurnedWeight::get())
+        / FeeReferrerWeight::get()) as Balance;
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
 }
@@ -1356,6 +1361,7 @@ impl xor_fee::Config for Runtime {
     type PoolXyk = PoolXYK;
     type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
     type PriceTools = PriceTools;
+    type MinimalFeeInAsset = MinimalFeeInAsset;
 }
 
 pub struct ConstantFeeMultiplier;

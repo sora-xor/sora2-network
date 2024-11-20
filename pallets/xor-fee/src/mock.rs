@@ -91,6 +91,11 @@ parameter_types! {
     pub const FeeXorBurnedWeight: u32 = 20; // 20%
     pub const FeeValBurnedWeight: u32 = 50; // 50%
     pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    pub const MinimalFeeInAsset: Balance = ((FeeReferrerWeight::get()
+        + FeeXorBurnedWeight::get()
+        + FeeValBurnedWeight::get()
+        + FeeKusdBurnedWeight::get())
+        / FeeReferrerWeight::get()) as Balance;
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
     pub const XorId: AssetId = XOR;
@@ -101,7 +106,7 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
     pub GetParliamentAccountId: AccountId = account_from_str("sora-parliament");
-    pub const MaxWhiteListTokens: u32 = 30;
+    pub const MaxWhiteListTokens: u32 = 2;
 
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
@@ -279,6 +284,7 @@ impl Config for Runtime {
     type PoolXyk = PoolXYK;
     type WhiteListOrigin = EnsureRoot<AccountId>;
     type PriceTools = PriceTools;
+    type MinimalFeeInAsset = ();
 }
 
 #[cfg(feature = "wip")] // Dynamic fee

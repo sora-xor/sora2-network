@@ -388,7 +388,7 @@ macro_rules! mock_ceres_governance_platform_config {
 macro_rules! mock_ceres_liquidity_locker_config {
     ($runtime:ty, $pool_xyk:ty, $ceres_asset_id:ty) => {
         impl ceres_liquidity_locker::Config for $runtime {
-            const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+            const BLOCKS_PER_ONE_DAY: frame_system::pallet_prelude::BlockNumberFor<Self> = 14_440;
             type CeresAssetId = $ceres_asset_id;
             type DemeterFarmingPlatform = DemeterFarmingPlatform;
             type RuntimeEvent = RuntimeEvent;
@@ -448,7 +448,8 @@ macro_rules! mock_currencies_config {
 macro_rules! mock_demeter_farming_platform_config {
     ($runtime:ty, $demeter_asset_id:ty) => {
         impl demeter_farming_platform::Config for $runtime {
-            const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+            const BLOCKS_PER_HOUR_AND_A_HALF: frame_system::pallet_prelude::BlockNumberFor<Self> =
+                900;
             type AssetInfoProvider = assets::Pallet<Runtime>;
             type DemeterAssetId = $demeter_asset_id;
             type RuntimeEvent = RuntimeEvent;

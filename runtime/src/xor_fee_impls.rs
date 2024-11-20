@@ -45,8 +45,6 @@ use sp_runtime::traits::Zero;
 use sp_runtime::FixedU128;
 use vested_rewards::vesting_currencies::VestingSchedule;
 use vested_rewards::{Config, WeightInfo};
-#[cfg(feature = "wip")] // Xorless fee
-use xor_fee::BurntForFee;
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
@@ -464,14 +462,18 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                                 &asset_id,
                                 PriceVariant::Buy)?
                         ) * fee;
+                        let asset_fee = asset_fee.into_balance();
+                        if asset_fee.lt(&MinimalFeeInAsset::get()) {
+                            return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into())
+                        };
                         return Ok((
                             fee_source.clone(),
                             Some(Tokens::withdraw(
                                 asset_id,
                                 fee_source,
-                                asset_fee.clone().into_balance(),
+                                asset_fee,
                             ).map(|_| {
-                                NegativeImbalanceOf::<Runtime>::new(asset_fee.into_balance())
+                                NegativeImbalanceOf::<Runtime>::new(asset_fee)
                             })?),
                             Some(asset_id),
                         ))
