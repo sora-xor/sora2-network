@@ -632,8 +632,7 @@ pub mod v4_to_v5 {
                             .risk_parameters
                             .stability_fee_rate
                             .saturating_mul(FixedU128::from_u32(1000u32));
-                        value.last_fee_update_time =
-                            value.last_fee_update_time / T::Moment::from(1000u32);
+                        value.last_fee_update_time /= T::Moment::from(1000u32);
                         count += 1;
                         Some(value)
                     },
@@ -655,15 +654,104 @@ pub mod v4_to_v5 {
     mod tests {
         use crate::migrations::v4_to_v5::UpgradeToV5;
         use crate::mock::{new_test_ext, TestRuntime};
-        use crate::Pallet;
+        use crate::{
+            CollateralInfo, CollateralInfos, CollateralRiskParameters, Pallet,
+            StablecoinCollateralIdentifier,
+        };
+        use common::{balance, DAI, ETH, KUSD};
         use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+        use sp_runtime::{FixedU128, Perbill};
 
         #[test]
         fn test() {
             new_test_ext().execute_with(|| {
                 StorageVersion::new(4).put::<Pallet<TestRuntime>>();
 
+                CollateralInfos::<TestRuntime>::insert(
+                    StablecoinCollateralIdentifier {
+                        collateral_asset_id: DAI,
+                        stablecoin_asset_id: KUSD,
+                    },
+                    CollateralInfo {
+                        risk_parameters: CollateralRiskParameters {
+                            hard_cap: balance!(1000),
+                            liquidation_ratio: Perbill::from_rational(50u32, 100u32),
+                            max_liquidation_lot: balance!(1),
+                            stability_fee_rate: FixedU128::from_inner(123_456),
+                            minimal_collateral_deposit: balance!(1),
+                        },
+                        total_collateral: balance!(10),
+                        stablecoin_supply: balance!(20),
+                        last_fee_update_time: 123_456_789,
+                        interest_coefficient: FixedU128::from_u32(1),
+                    },
+                );
+
+                CollateralInfos::<TestRuntime>::insert(
+                    StablecoinCollateralIdentifier {
+                        collateral_asset_id: ETH,
+                        stablecoin_asset_id: KUSD,
+                    },
+                    CollateralInfo {
+                        risk_parameters: CollateralRiskParameters {
+                            hard_cap: balance!(10000),
+                            liquidation_ratio: Perbill::from_rational(75u32, 100u32),
+                            max_liquidation_lot: balance!(1),
+                            stability_fee_rate: FixedU128::from_inner(123_456_789),
+                            minimal_collateral_deposit: balance!(1),
+                        },
+                        total_collateral: balance!(1),
+                        stablecoin_supply: balance!(30),
+                        last_fee_update_time: 123_456,
+                        interest_coefficient: FixedU128::from_u32(1),
+                    },
+                );
+
                 UpgradeToV5::<TestRuntime>::on_runtime_upgrade();
+
+                assert_eq!(CollateralInfos::<TestRuntime>::iter().count(), 2);
+
+                assert_eq!(
+                    CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                        collateral_asset_id: DAI,
+                        stablecoin_asset_id: KUSD,
+                    })
+                    .unwrap(),
+                    CollateralInfo {
+                        risk_parameters: CollateralRiskParameters {
+                            hard_cap: balance!(1000),
+                            liquidation_ratio: Perbill::from_rational(50u32, 100u32),
+                            max_liquidation_lot: balance!(1),
+                            stability_fee_rate: FixedU128::from_inner(123_456_000),
+                            minimal_collateral_deposit: balance!(1),
+                        },
+                        total_collateral: balance!(10),
+                        stablecoin_supply: balance!(20),
+                        last_fee_update_time: 123_456,
+                        interest_coefficient: FixedU128::from_u32(1),
+                    },
+                );
+
+                assert_eq!(
+                    CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                        collateral_asset_id: ETH,
+                        stablecoin_asset_id: KUSD,
+                    })
+                    .unwrap(),
+                    CollateralInfo {
+                        risk_parameters: CollateralRiskParameters {
+                            hard_cap: balance!(10000),
+                            liquidation_ratio: Perbill::from_rational(75u32, 100u32),
+                            max_liquidation_lot: balance!(1),
+                            stability_fee_rate: FixedU128::from_inner(123_456_789_000),
+                            minimal_collateral_deposit: balance!(1),
+                        },
+                        total_collateral: balance!(1),
+                        stablecoin_supply: balance!(30),
+                        last_fee_update_time: 123,
+                        interest_coefficient: FixedU128::from_u32(1),
+                    },
+                );
 
                 assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 5);
             });

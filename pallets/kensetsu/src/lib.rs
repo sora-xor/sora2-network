@@ -151,7 +151,7 @@ pub struct CollateralRiskParameters {
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
-#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
 pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
