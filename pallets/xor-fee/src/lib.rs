@@ -1230,7 +1230,7 @@ pub mod pallet {
 
         #[allow(unused_variables)] // Used in extension
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::xorless_call())]
+        #[pallet::weight(<T as Config>::WeightInfo::add_asset_to_white_list())]
         pub fn add_asset_to_white_list(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -1244,7 +1244,7 @@ pub mod pallet {
 
         #[allow(unused_variables)] // Used in extension
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::xorless_call())]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_asset_from_white_list())]
         pub fn remove_asset_from_white_list(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,

@@ -28,4 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type Migrations = (xor_fee::migrations::remove_vxor_remint::Migrate<crate::Runtime>,);
+pub type Migrations = (
+    xor_fee::migrations::remove_vxor_remint::Migrate<crate::Runtime>,
+    WipMigrations,
+);
+
+#[cfg(feature = "wip")]
+pub type WipMigrations =
+    (xor_fee::migrations::add_white_listed_assets_for_xorless_fee::Migrate<crate::Runtime>,);
+
+#[cfg(not(feature = "wip"))]
+pub type WipMigrations = ();

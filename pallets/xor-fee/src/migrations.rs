@@ -52,6 +52,80 @@ pub mod remove_vxor_remint {
     }
 }
 
+#[allow(unused_imports)]
+#[cfg(feature = "wip")] // Xorless fee
+pub mod add_white_listed_assets_for_xorless_fee {
+    use crate::{Config, Pallet};
+    use common::{
+        AssetId32, AssetIdOf, APOLLO_ASSET_ID, DAI, ETH, KSM, KUSD, KXOR, PSWAP, TBCD, VAL, XSTUSD,
+    };
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::pallet_prelude::ValueQuery;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use hex_literal::hex;
+    use sp_core::bounded::BoundedVec;
+    use sp_core::Get;
+    use sp_std::vec;
+    use sp_std::vec::Vec;
+
+    #[frame_support::storage_alias]
+    pub type WhitelistTokensForFee<T: Config> = StorageValue<
+        Pallet<T>,
+        BoundedVec<AssetIdOf<T>, <T as Config>::MaxWhiteListTokens>,
+        ValueQuery,
+    >;
+
+    pub struct Migrate<T>(PhantomData<T>);
+
+    impl<T> OnRuntimeUpgrade for Migrate<T>
+    where
+        T: Config,
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let assets: Vec<AssetIdOf<T>> = vec![
+                KXOR.into(),
+                ETH.into(),
+                KUSD.into(),
+                APOLLO_ASSET_ID.into(),
+                VAL.into(),
+                AssetId32::from_bytes(hex!(
+                    "00513be65493a7fc3e2128d4230061a530acf40478a4affa20bbba27a310673e"
+                ))
+                .into(), // LLD
+                PSWAP.into(),
+                DAI.into(),
+                AssetId32::from_bytes(hex!(
+                    "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
+                ))
+                .into(), // HMX
+                XSTUSD.into(),
+                AssetId32::from_bytes(hex!(
+                    "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
+                ))
+                .into(), //DOT
+                AssetId32::from_bytes(hex!(
+                    "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
+                ))
+                .into(), //DEO
+                KSM.into(),
+                TBCD.into(),
+                AssetId32::from_bytes(hex!(
+                    "00ab83f36ff0cbbdd12fd88a094818820eaf155c08c4159969f1fb21534c1eb0"
+                ))
+                .into(), //RLST
+            ];
+
+            let bounded_assets: BoundedVec<AssetIdOf<T>, T::MaxWhiteListTokens> =
+                BoundedVec::try_from(assets).expect("Whitelist exceeds maximum allowed size");
+
+            WhitelistTokensForFee::<T>::put(bounded_assets);
+
+            T::DbWeight::get().writes(1)
+        }
+    }
+}
+
 #[cfg(feature = "wip")] // Dynamic fee
 pub mod v2 {
     use common::balance;

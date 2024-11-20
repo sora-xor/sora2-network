@@ -64,6 +64,9 @@ pub trait WeightInfo {
 	fn set_fee_update_period() -> Weight;
 	fn set_small_reference_amount() -> Weight;
 	fn xorless_call() -> Weight;
+	fn add_asset_to_white_list() -> Weight;
+
+	fn remove_asset_from_white_list() -> Weight;
 }
 
 /// Weights for xor_fee using the Substrate node and recommended hardware.
@@ -95,7 +98,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 
 	fn xorless_call() -> Weight {
-		Weight::from_parts(1_000_000, 0)
+		Weight::from_parts(2_000_000, 0)
+	}
+
+	fn add_asset_to_white_list() -> Weight {
+		Weight::from_parts(2_000_000, 0)
+	}
+
+	fn remove_asset_from_white_list() -> Weight {
+		Weight::from_parts(2_000_000, 0)
 	}
 }
 
@@ -127,6 +138,14 @@ impl WeightInfo for () {
 	}
 
 	fn xorless_call() -> Weight {
-		Weight::from_parts(1_000_000, 0)
+		Weight::from_parts(2_000_000, 0)
+	}
+	
+	fn add_asset_to_white_list() -> Weight {
+		Weight::from_parts(2_000_000, 0)
+	}
+
+	fn remove_asset_from_white_list() -> Weight {
+		Weight::from_parts(2_000_000, 0)
 	}
 }
