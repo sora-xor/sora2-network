@@ -608,3 +608,71 @@ pub mod v3_to_v4 {
         }
     }
 }
+
+/// Kensetsu version 5 replaces milliseconds to seconds in parameters
+pub mod v4_to_v5 {
+    use crate::{CollateralInfos, Config, Pallet};
+    use core::marker::PhantomData;
+    use frame_support::dispatch::Weight;
+    use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use sp_core::Get;
+    use sp_runtime::traits::Saturating;
+    use sp_runtime::FixedU128;
+
+    pub struct UpgradeToV5<T>(PhantomData<T>);
+
+    impl<T: Config + pallet_timestamp::Config> OnRuntimeUpgrade for UpgradeToV5<T> {
+        fn on_runtime_upgrade() -> Weight {
+            if Pallet::<T>::on_chain_storage_version() == 4 {
+                let mut count = 0;
+
+                CollateralInfos::<T>::translate_values::<crate::CollateralInfo<T::Moment>, _>(
+                    |mut value| {
+                        value.risk_parameters.stability_fee_rate = value
+                            .risk_parameters
+                            .stability_fee_rate
+                            .saturating_mul(FixedU128::from_u32(1000u32));
+                        value.last_fee_update_time =
+                            value.last_fee_update_time / T::Moment::from(1000u32);
+                        count += 1;
+                        Some(value)
+                    },
+                );
+
+                StorageVersion::new(5).put::<Pallet<T>>();
+                count += 1;
+
+                frame_support::log::info!("Migration to V5 applied");
+                T::DbWeight::get().reads_writes(count, count)
+            } else {
+                frame_support::log::info!("Migration to V5 already applied, skipping...");
+                T::DbWeight::get().reads(1)
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::migrations::v4_to_v5::UpgradeToV5;
+        use crate::mock::{new_test_ext, TestRuntime};
+        use crate::{
+            CollateralInfos, Pallet, PegAsset, StablecoinCollateralIdentifier, StablecoinInfos,
+            StablecoinParameters,
+        };
+        use common::{balance, SymbolName, DAI, KGOLD, KUSD, KXOR, XOR};
+        use core::default::Default;
+        use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+        use sp_arithmetic::FixedU128;
+
+        #[test]
+        fn test() {
+            new_test_ext().execute_with(|| {
+                StorageVersion::new(4).put::<Pallet<TestRuntime>>();
+
+                UpgradeToV5::<TestRuntime>::on_runtime_upgrade();
+
+                assert_eq!(Pallet::<TestRuntime>::on_chain_storage_version(), 5);
+            });
+        }
+    }
+}
