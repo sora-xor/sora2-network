@@ -80,7 +80,6 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + price_tools::Config
         + liquidity_proxy::Config
         + trading_pair::Config
         + common::Config
@@ -1500,8 +1499,7 @@ pub mod pallet {
                 &APOLLO_ASSET_ID.into(),
                 SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )
-            .unwrap();
+            )?;
 
             let buyback_amount = outcome.amount;
 
@@ -1556,8 +1554,7 @@ pub mod pallet {
                 &CERES_ASSET_ID.into(),
                 SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
                 LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )
-            .unwrap();
+            )?;
 
             T::AssetManager::burn(
                 RawOrigin::Signed(caller).into(),
