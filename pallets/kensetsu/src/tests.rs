@@ -1162,7 +1162,7 @@ fn test_borrow_cdp_accrue() {
         let debt = balance!(10);
         let collateral = balance!(100);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(initial_total_kusd_supply, balance!(10));
 
@@ -1174,7 +1174,7 @@ fn test_borrow_cdp_accrue() {
         ));
 
         // interest is 10*10%*1 = 1,
-        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 10% - per second rate, 1 - second passed
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1435,12 +1435,12 @@ fn test_repay_debt_accrue() {
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         let initial_total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(initial_total_kusd_supply, debt);
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(0)));
 
         // interest is 10*10%*1 = 1,
-        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 10% - per second rate, 1 - second passed
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1522,11 +1522,11 @@ fn test_liquidate_accrue() {
             FixedU128::from_float(0.1),
             balance!(0),
         );
-        // the CDP will be unsafe in the next millisecond
+        // the CDP will be unsafe in the next second
         let collateral = balance!(10000);
         let debt = balance!(1000);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         MockLiquidityProxy::set_amounts_for_the_next_exchange(KUSD, balance!(0));
         let initial_total_kusd_supply = get_total_supply(&KUSD);
         assert_eq!(initial_total_kusd_supply, debt);
@@ -1534,7 +1534,7 @@ fn test_liquidate_accrue() {
         assert_ok!(KensetsuPallet::liquidate(alice(), cdp_id));
 
         // interest is 1000*10%*1 = 100,
-        // where 1000 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
+        // where 1000 - initial balance, 10% - per second rate, 1 - second passed
         let interest = balance!(100);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -1806,7 +1806,7 @@ fn test_liquidate_kusd_amount_does_not_cover_cdp_debt() {
         let liquidation_income = balance!(100);
         MockLiquidityProxy::set_amounts_for_the_next_exchange(KUSD, collateral);
         // CDP debt now is 110 KUSD, it is unsafe
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         // 100 KUSD debt + 100 KUSD liquidity provider
         let initial_kusd_supply = get_total_supply(&KUSD);
 
@@ -1886,7 +1886,7 @@ fn test_liquidate_kusd_bad_debt() {
         let liquidation_income = balance!(100);
         MockLiquidityProxy::set_amounts_for_the_next_exchange(KUSD, collateral);
         // CDP debt now is 110 KUSD, it is unsafe
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
         // withdraw 10 KUSD from interest, so the protocol can not cover bad debt
         let interest = balance!(10);
@@ -1985,7 +1985,7 @@ fn test_liquidate_zero_lot() {
         let debt = balance!(100);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         // Make CDP unsafe in the next call
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_noop!(
             KensetsuPallet::liquidate(alice(), cdp_id),
@@ -2030,7 +2030,7 @@ fn test_accrue_no_debt() {
 #[test]
 fn test_accrue_wrong_time() {
     new_test_ext().execute_with(|| {
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10000);
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
@@ -2038,7 +2038,7 @@ fn test_accrue_wrong_time() {
             balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
@@ -2059,7 +2059,7 @@ fn test_accrue_overflow() {
             balance!(0),
         );
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(50));
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(9999);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(9999000);
 
         assert_noop!(
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
@@ -2077,7 +2077,7 @@ fn test_accrue_profit() {
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 10% per millisecond
+            // 10% per second
             FixedU128::from_float(0.1),
             balance!(0),
         );
@@ -2085,13 +2085,13 @@ fn test_accrue_profit() {
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         // 1 sec passed
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
         // interest is 10*10%*1 = 1,
-        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 10% - per second rate, 1 - second passed
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
             collateral_asset_id: XOR,
@@ -2109,6 +2109,43 @@ fn test_accrue_profit() {
     });
 }
 
+/// Checks stability fee 1% accrue over 1 year.
+#[test]
+fn test_accrue_one_year() {
+    new_test_ext().execute_with(|| {
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            // 1% per year
+            FixedU128::from_inner(315313433),
+            balance!(0),
+        );
+        let collateral = balance!(1000);
+        let debt = balance!(100);
+        let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
+        // 1 year passed
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(31556952000);
+        let initial_kusd_supply = get_total_supply(&KUSD);
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+
+        // interest is 100*1% = 1, with some precision error
+        let interest = 1000000000663351100u128;
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .expect("must exists");
+        assert_eq!(collateral_info.stablecoin_supply, debt + interest);
+        assert_eq!(collateral_info.total_collateral, collateral);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, debt + interest);
+        let total_kusd_supply = get_total_supply(&KUSD);
+        assert_eq!(total_kusd_supply, initial_kusd_supply + interest);
+        assert_balance(&treasury_tech_account_id(), &KUSD, interest);
+    });
+}
+
 /// Given: CDP with debt, was updated this time, protocol has no bad debt.
 /// When: accrue is called again with the same time.
 /// Then: failed, minimal threshold is not satisfied.
@@ -2118,13 +2155,13 @@ fn test_accrue_profit_same_time() {
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 10% per millisecond
+            // 10% per second
             FixedU128::from_float(0.1),
             balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
@@ -2145,13 +2182,13 @@ fn test_accrue_profit_from_past() {
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 10% per millisecond
+            // 10% per second
             FixedU128::from_float(0.1),
             balance!(0),
         );
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(10);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
@@ -2172,7 +2209,7 @@ fn test_accrue_interest_less_bad_debt() {
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 10% per millisecond
+            // 10% per second
             FixedU128::from_float(0.1),
             balance!(0),
         );
@@ -2181,13 +2218,13 @@ fn test_accrue_interest_less_bad_debt() {
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         // 1 sec passed
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
         // interest is 10*10%*1 = 1 KUSD,
-        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 10% - per second rate, 1 - second passed
         // and 1 KUSD covers the part of bad debt
         let interest = balance!(1);
         let new_bad_debt = balance!(1);
@@ -2218,7 +2255,7 @@ fn test_accrue_interest_eq_bad_debt() {
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 10% per millisecond
+            // 10% per second
             FixedU128::from_float(0.1),
             balance!(0),
         );
@@ -2228,12 +2265,12 @@ fn test_accrue_interest_eq_bad_debt() {
         let cdp_id = create_cdp_for_xor(alice(), collateral, debt);
         let initial_kusd_supply = get_total_supply(&KUSD);
         // 1 sec passed
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
         // interest is 10*10%*1 = 1 KUSD,
-        // where 10 - initial balance, 10% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 10% - per second rate, 1 - second passed
         // and 1 KUSD covers bad debt
         let interest = balance!(1);
         let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
@@ -2263,7 +2300,7 @@ fn test_accrue_interest_gt_bad_debt() {
         configure_kensetsu_dollar_for_xor(
             Balance::MAX,
             Perbill::from_percent(50),
-            // 20% per millisecond
+            // 20% per second
             FixedU128::from_float(0.2),
             balance!(0),
         );
@@ -2272,13 +2309,13 @@ fn test_accrue_interest_gt_bad_debt() {
         let debt = balance!(10);
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
         // 1 sec passed
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
         assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
 
         // interest is 10*20%*1 = 2 KUSD,
-        // where 10 - initial balance, 20% - per millisecond rate, 1 - millisecond passed
+        // where 10 - initial balance, 20% - per second rate, 1 - second passed
         // and 1 KUSD covers bad debt, 1 KUSD is a protocol profit
         let interest = balance!(2);
         let profit = balance!(1);
@@ -2391,7 +2428,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             stability_fee_rate,
             minimal_collateral_deposit: balance!(0),
         };
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             RuntimeOrigin::root(),
             asset_id,
@@ -2414,7 +2451,7 @@ fn test_update_collateral_risk_parameters_no_rate_change() {
             stability_fee_rate: FixedU128::from_float(0.2),
             minimal_collateral_deposit: balance!(0),
         };
-        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2);
+        pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2000);
         assert_ok!(KensetsuPallet::update_collateral_risk_parameters(
             RuntimeOrigin::root(),
             asset_id,
