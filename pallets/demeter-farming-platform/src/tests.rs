@@ -3999,4 +3999,68 @@ mod tests {
             }
         });
     }
+
+    #[test]
+    fn activate_removed_pool_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XOR;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: 0,
+                rewards: 100,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                base_asset: XOR,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::remove_pool(
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                pool_asset,
+                pool_asset,
+                reward_asset,
+                is_farm,
+            ));
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm && pool_info.base_asset == pool_asset {
+                    assert_eq!(pool_info.is_removed, true);
+                }
+            }
+
+            assert_ok!(
+                demeter_farming_platform::Pallet::<Runtime>::activate_removed_pool(
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
+                    pool_asset,
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                )
+            );
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm && pool_info.base_asset == pool_asset {
+                    assert_eq!(pool_info.is_removed, false);
+                }
+            }
+        });
+    }
 }

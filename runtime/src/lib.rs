@@ -2094,7 +2094,7 @@ parameter_types! {
 impl apollo_platform::Config for Runtime {
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxyPallet = LiquidityProxy;
     type UnsignedPriority = ApolloOffchainWorkerTxPriority;
     type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
