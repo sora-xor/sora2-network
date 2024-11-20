@@ -2557,7 +2557,7 @@
 }
 
 <span class="doccomment">/// Collateral parameters, includes risk info and additional data for interest rate calculation
-</span><span class="attr">#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+</span><span class="attr">#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>CollateralInfo&lt;Moment&gt; {
     <span class="doccomment">/// Collateral Risk parameters set by risk management
     </span><span class="kw">pub </span>risk_parameters: CollateralRiskParameters,
@@ -2632,7 +2632,7 @@
     </span><span class="kw">pub type </span>CdpId = u128;
 
     <span class="doccomment">/// The current storage version.
-    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">4</span>);
+    </span><span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">5</span>);
 
     <span class="attr">#[pallet::pallet]
     #[pallet::generate_store(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">trait </span>Store)]

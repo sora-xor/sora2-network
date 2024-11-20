@@ -44,6 +44,9 @@
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -74,6 +77,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">pub type </span>Migrations = (xor_fee::migrations::remove_vxor_remint::Migrate&lt;<span class="kw">crate</span>::Runtime&gt;,);
+</span><span class="kw">pub type </span>Migrations = (
+    xor_fee::migrations::remove_vxor_remint::Migrate&lt;<span class="kw">crate</span>::Runtime&gt;,
+    kensetsu::migrations::v4_to_v5::UpgradeToV5&lt;<span class="kw">crate</span>::Runtime&gt;,
+);
 </code></pre></div>
 </section></main></body></html>
