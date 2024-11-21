@@ -78,7 +78,7 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-    # "hex-literal",
+    # "hex-literal", TODO: After applying migrations change to optional
 ]
 
 try-runtime = [

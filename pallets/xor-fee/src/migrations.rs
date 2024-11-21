@@ -82,6 +82,7 @@ pub mod add_white_listed_assets_for_xorless_fee {
     where
         T: Config,
     {
+        // TODO: change assets
         fn on_runtime_upgrade() -> Weight {
             let assets: Vec<AssetIdOf<T>> = vec![
                 KXOR.into(),

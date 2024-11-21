@@ -270,7 +270,7 @@ where
                                 &asset_id,
                                 PriceVariant::Sell,
                             )
-                            .map_err(|err| {
+                            .map_err(|_| {
                                 TransactionValidityError::Invalid(InvalidTransaction::Payment)
                             })?,
                         ))
