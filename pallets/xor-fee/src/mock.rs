@@ -284,7 +284,7 @@ impl Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type PoolXyk = PoolXYK;
     type WhiteListOrigin = EnsureRoot<AccountId>;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type MinimalFeeInAsset = ();
 }
 

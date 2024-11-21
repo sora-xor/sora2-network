@@ -1360,7 +1360,7 @@ impl xor_fee::Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type PoolXyk = PoolXYK;
     type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type MinimalFeeInAsset = MinimalFeeInAsset;
 }
 
