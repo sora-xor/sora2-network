@@ -43,6 +43,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 #[cfg(feature = "wip")] // Xorless fee
 use sp_core::bounded::BoundedVec;
+use sp_std::vec;
 use traits::MultiCurrency;
 
 fn alice<T: Config>() -> T::AccountId {

@@ -56,6 +56,7 @@ use frame_support::pallet_prelude::{Hooks, ValueQuery};
 use frame_support::traits::{Currency, ExistenceRequirement, GenesisBuild, WithdrawReasons};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, storage_alias};
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_runtime::{AccountId32, DispatchError, Percent};
