@@ -332,8 +332,6 @@ fn end_session_for_xorless_works() {
 
         crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), KUSD.into())
             .unwrap();
-        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), TBCD.into())
-            .unwrap();
 
         for target in [KUSD, TBCD, VAL] {
             increase_balance(bob(), target.into(), 2 * INITIAL_RESERVES);
@@ -509,8 +507,6 @@ fn end_session_for_xorless_fails_right() {
 
         crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), KUSD.into())
             .unwrap();
-        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), TBCD.into())
-            .unwrap();
 
         increase_balance(bob(), VAL.into(), 2 * INITIAL_RESERVES);
         ensure_pool_initialized(XOR.into(), VAL.into());
@@ -654,8 +650,6 @@ fn notify_val_burned_works() {
         increase_balance(bob(), XOR.into(), 3 * INITIAL_RESERVES);
 
         crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), KUSD.into())
-            .unwrap();
-        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), TBCD.into())
             .unwrap();
 
         for target in [VAL, KUSD, TBCD] {

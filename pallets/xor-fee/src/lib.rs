@@ -93,6 +93,12 @@ type BalanceOf<T> =
 
 type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
 
+type PaidFeeOf<T> = (
+    AccountIdOf<T>,
+    Option<NegativeImbalanceOf<T>>,
+    Option<AssetIdOf<T>>,
+);
+
 // #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
@@ -647,14 +653,7 @@ pub trait WithdrawFee<T: Config> {
         fee_source: &T::AccountId,
         call: &CallOf<T>,
         fee: Balance,
-    ) -> Result<
-        (
-            AccountIdOf<T>,
-            Option<NegativeImbalanceOf<T>>,
-            Option<AssetIdOf<T>>,
-        ),
-        DispatchError,
-    >;
+    ) -> Result<PaidFeeOf<T>, DispatchError>;
 }
 
 /// Trait for dynamic fee update via multiplier
