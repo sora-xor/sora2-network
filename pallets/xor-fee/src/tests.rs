@@ -32,6 +32,8 @@
 #![allow(clippy::all)]
 
 use crate::extension::ChargeTransactionPayment;
+#[cfg(feature = "wip")] // Xorless fee
+use crate::WeightInfo;
 use crate::{mock::*, LiquidityInfo, XorToVal};
 #[cfg(feature = "wip")] // Dynamic fee
 use crate::{CalculateMultiplier, Error, Multiplier, UpdatePeriod};
@@ -45,6 +47,8 @@ use common::weights::constants::SMALL_FEE;
 use common::{KUSD, TBCD, VAL};
 #[cfg(feature = "wip")] // Xorless fee
 use frame_support::assert_err;
+#[cfg(feature = "wip")] // Xorless fee
+use frame_support::dispatch::GetDispatchInfo;
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
 use frame_support::error::BadOrigin;
@@ -637,5 +641,76 @@ fn remove_from_white_list_works_correct() {
         System::assert_last_event(RuntimeEvent::XorFee(
             crate::Event::AssetRemovedFromWhiteList(VAL),
         ));
+    });
+}
+
+#[cfg(feature = "wip")] // Xorless fee
+#[test]
+fn test_xorless_call_weight() {
+    ExtBuilder::build().execute_with(|| {
+        let _ = Balances::deposit_creating(&bob(), balance!(1000));
+        let asset_id = Some(VAL.into());
+
+        let mock_call = RuntimeCall::Assets(assets::Call::transfer {
+            asset_id: common::XOR.into(),
+            to: alice(),
+            amount: balance!(1),
+        });
+
+        let xorless_weight = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(mock_call.clone()),
+            asset_id,
+        })
+        .get_dispatch_info()
+        .weight;
+        let mock_call_weight = mock_call.get_dispatch_info().weight;
+
+        let expected_weight =
+            <Runtime as Config>::WeightInfo::xorless_call().saturating_add(mock_call_weight);
+
+        assert_eq!(xorless_weight, expected_weight);
+
+        let result = XorFee::xorless_call(
+            RuntimeOrigin::signed(bob()),
+            Box::new(mock_call.clone()),
+            asset_id,
+        );
+
+        assert_ok!(result);
+
+        let post_info = result.unwrap();
+        assert_eq!(
+            post_info.actual_weight.expect("Error while get weight"),
+            expected_weight
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // Xorless fee
+#[test]
+fn test_xorless_call_failed_inner_call() {
+    ExtBuilder::build().execute_with(|| {
+        let _ = Balances::deposit_creating(&bob(), balance!(1));
+        let mock_call = RuntimeCall::Assets(assets::Call::transfer {
+            asset_id: VAL.into(),
+            to: alice(),
+            amount: balance!(1),
+        });
+        let mock_call_weight = mock_call.get_dispatch_info().weight;
+
+        let asset_id = None;
+
+        let expected_weight =
+            <Runtime as Config>::WeightInfo::xorless_call().saturating_add(mock_call_weight);
+
+        let result = XorFee::xorless_call(
+            RuntimeOrigin::signed(bob()),
+            Box::new(mock_call.clone()),
+            asset_id,
+        );
+
+        let err = result.unwrap_err();
+        assert_eq!(err.error, tokens::Error::<Runtime>::BalanceTooLow.into());
+        assert_eq!(err.post_info.actual_weight.unwrap(), expected_weight);
     });
 }

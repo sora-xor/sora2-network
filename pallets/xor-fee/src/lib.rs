@@ -1195,11 +1195,18 @@ pub mod pallet {
         /// Allow use assets from white list to pay for fee
         /// # Parameters:
         /// - `origin`: caller
-        /// - `call`: call for which pay fee
+        /// - `call`: dispatch call for which pay fee
         /// - `asset_id`: asset in which pay fee, where None - XOR
         #[allow(unused_variables)] // Used in extension
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::xorless_call())]
+        #[pallet::weight({
+            let dispatch_info = call.get_dispatch_info();
+            (
+				<T as Config>::WeightInfo::xorless_call()
+					.saturating_add(dispatch_info.weight),
+				dispatch_info.class,
+			)
+        })]
         pub fn xorless_call(
             origin: OriginFor<T>,
             call: Box<<T as Config>::RuntimeCall>,
