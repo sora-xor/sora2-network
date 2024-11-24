@@ -40,5 +40,8 @@ main-net-coded = []
 test = ["common/test"]
 
 private-net = ["faucet", "framenode-runtime/private-net"]
-wip = ["framenode-runtime/wip"]
+wip = [
+    "common/wip",
+    "framenode-runtime/wip",
+]
 stage = ["framenode-runtime/stage"]

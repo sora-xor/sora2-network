@@ -79,4 +79,4 @@ private-net = []
 
 try-runtime = ["frame-support/try-runtime"]
 
-wip = []
+wip = ["common/wip"]

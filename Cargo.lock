@@ -7746,6 +7746,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "presto"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
 name = "prettyplease"
 version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"

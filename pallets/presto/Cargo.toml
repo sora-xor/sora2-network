@@ -1,0 +1,42 @@
+[package]
+name = "presto"
+authors = ["Soramitsu"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = 'https://github.com/sora-xor/sora2-network'
+edition = "2021"
+version = "0.1.0"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+common = { path = "../../common", default-features = false }
+technical = { path = "../technical", default-features = false }
+
+[dev-dependencies]
+
+[features]
+default = ["std"]
+std = [
+    "common/std",
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "scale-info/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "technical/std",
+]
+
+wip = [
+    "common/wip",
+]

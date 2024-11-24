@@ -121,6 +121,7 @@ private-net = [
 ]
 
 wip = [
+    "common/wip",
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
     "beefy-light-client",

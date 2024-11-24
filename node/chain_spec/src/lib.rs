@@ -38,6 +38,8 @@
 #![allow(clippy::all)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
+#[cfg(feature = "wip")] // presto
+use common::PRUSD;
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
@@ -1483,6 +1485,18 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    PRUSD,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"PRUSD".to_vec()),
+                    AssetName(b"Presto USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
         },
         permissions: PermissionsConfig {
@@ -2222,6 +2236,18 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"VXOR".to_vec()),
             AssetName(b"Vested XOR".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        #[cfg(feature = "wip")] // presto
+        (
+            PRUSD,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PRUSD".to_vec()),
+            AssetName(b"Presto USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
