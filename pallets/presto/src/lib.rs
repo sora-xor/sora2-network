@@ -50,6 +50,12 @@ pub use pallet::*;
 
 pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
 
+pub const TECH_ACCOUNT_PREFIX: &[u8] = b"presto";
+/// Main treasury tech account
+pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+/// Buffer tech account for temp holding of withdraw request liquidity
+pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -73,7 +79,6 @@ pub mod pallet {
         type PrestoUsdAssetId: Get<AssetIdOf<Self>>;
         type PrestoTechAccount: Get<Self::TechAccountId>;
         type PrestoBufferTechAccount: Get<Self::TechAccountId>;
-        type PrestoKycSbtTokenAssetId: Get<AssetIdOf<Self>>;
         type RequestId: Parameter
             + Member
             + MaybeSerializeDeserialize
@@ -107,6 +112,9 @@ pub mod pallet {
 
         #[pallet::constant]
         type MaxPrestoAuditorsCount: Get<u32>;
+
+        #[pallet::constant]
+        type MaxUserRequestCount: Get<u32>;
 
         #[pallet::constant]
         type MaxRequestPaymentReferenceSize: Get<u32> + Debug + Clone + PartialEq + Eq;
@@ -151,6 +159,17 @@ pub mod pallet {
     #[pallet::getter(fn requests)]
     pub type Requests<T: Config> =
         StorageMap<_, Twox64Concat, T::RequestId, Request<T>, OptionQuery>;
+
+    /// Requests index by users
+    #[pallet::storage]
+    #[pallet::getter(fn user_requests)]
+    pub type UserRequests<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        AccountIdOf<T>,
+        BoundedVec<T::RequestId, T::MaxUserRequestCount>,
+        ValueQuery,
+    >;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -210,6 +229,8 @@ pub mod pallet {
         CallerIsNotManager,
         /// This account is not an auditor
         CallerIsNotAuditor,
+        /// This account has reached the max count of requests
+        RequestsCountForUserOverloaded,
         /// There is no such request
         RequestIsNotExists,
         /// This request was already processed by manager
@@ -357,6 +378,11 @@ pub mod pallet {
             });
 
             Requests::<T>::insert(id, request);
+            UserRequests::<T>::try_mutate(&owner, |ids| {
+                ids.try_push(id)
+                    .map_err(|_| Error::<T>::RequestsCountForUserOverloaded)?;
+                Ok::<(), Error<T>>(())
+            })?;
 
             Self::deposit_event(Event::<T>::RequestCreated { id, by: owner });
 
@@ -373,18 +399,15 @@ pub mod pallet {
             let owner = ensure_signed(origin)?;
 
             let id = Self::next_request_id();
-            let time = T::Time::now();
 
-            let request = Request::Withdraw(WithdrawRequest {
-                owner: owner.clone(),
-                time,
-                amount,
-                payment_reference: None,
-                details,
-                status: RequestStatus::<T>::Pending,
-            });
+            let request = Request::Withdraw(WithdrawRequest::new(owner.clone(), amount, details)?);
 
             Requests::<T>::insert(id, request);
+            UserRequests::<T>::try_mutate(&owner, |ids| {
+                ids.try_push(id)
+                    .map_err(|_| Error::<T>::RequestsCountForUserOverloaded)?;
+                Ok::<(), Error<T>>(())
+            })?;
 
             Self::deposit_event(Event::<T>::RequestCreated { id, by: owner });
 
@@ -499,6 +522,7 @@ pub mod pallet {
             _crop_receipt: CropReceipt,
         ) -> DispatchResult {
             let _who = ensure_signed(origin)?;
+            let _id = Self::next_crop_receipt_id();
 
             // TODO
 
@@ -541,6 +565,12 @@ impl<T: Config> Pallet<T> {
     pub fn next_request_id() -> T::RequestId {
         let id = LastRequestId::<T>::get().saturating_add(T::RequestId::one());
         LastRequestId::<T>::set(id);
+        id
+    }
+
+    pub fn next_crop_receipt_id() -> T::CropReceiptId {
+        let id = LastCropReceiptId::<T>::get().saturating_add(T::CropReceiptId::one());
+        LastCropReceiptId::<T>::set(id);
         id
     }
 }
