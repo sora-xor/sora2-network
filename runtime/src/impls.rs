@@ -308,17 +308,11 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 post_info: Default::default(),
                 error: DispatchError::Other("Unavailable"),
             }),
-            #[cfg(feature = "stage")] // TON bridge
             bridge_types::substrate::BridgeCall::JettonApp(msg) => {
                 let call: jetton_app::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            #[cfg(not(feature = "stage"))] // TON bridge
-            bridge_types::substrate::BridgeCall::JettonApp(_) => Err(DispatchErrorWithPostInfo {
-                post_info: Default::default(),
-                error: DispatchError::Other("Unavailable"),
-            }),
         }
     }
 }
@@ -354,13 +348,10 @@ impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
             }
             #[cfg(not(feature = "wip"))] // EVM bridge
             bridge_types::substrate::BridgeCall::FAApp(_) => Default::default(),
-            #[cfg(feature = "stage")] // TON bridge
             bridge_types::substrate::BridgeCall::JettonApp(msg) => {
                 let call: jetton_app::Call<crate::Runtime> = msg.clone().into();
                 call.get_dispatch_info()
             }
-            #[cfg(not(feature = "stage"))] // TON bridge
-            bridge_types::substrate::BridgeCall::JettonApp(_) => Default::default(),
         }
     }
 }
@@ -536,31 +527,27 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
             bridge_types::substrate::BridgeCall::FAApp(_) => true,
             #[cfg(not(feature = "wip"))] // EVM bridge
             bridge_types::substrate::BridgeCall::FAApp(_) => false,
-            #[cfg(feature = "stage")] // TON bridge
             bridge_types::substrate::BridgeCall::JettonApp(_) => true,
-            #[cfg(not(feature = "stage"))] // TON bridge
-            bridge_types::substrate::BridgeCall::JettonApp(_) => false,
         }
     }
 }
 
-#[cfg(feature = "wip")] // EVM bridge
-pub struct EVMBridgeCallFilter;
+pub struct GenericBridgeCallFilter;
 
-#[cfg(all(feature = "wip", not(feature = "runtime-benchmarks")))] // EVM bridge
-impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
-    fn contains(call: &crate::RuntimeCall) -> bool {
-        match call {
-            crate::RuntimeCall::EVMFungibleApp(_) => true,
-            _ => false,
+impl Contains<DispatchableSubstrateBridgeCall> for GenericBridgeCallFilter {
+    fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
+        match &call.0 {
+            bridge_types::substrate::BridgeCall::ParachainApp(_) => false,
+            bridge_types::substrate::BridgeCall::XCMApp(_) => false,
+            bridge_types::substrate::BridgeCall::DataSigner(_) => false,
+            bridge_types::substrate::BridgeCall::MultisigVerifier(_) => false,
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => false,
+            #[cfg(feature = "wip")] // EVM bridge
+            bridge_types::substrate::BridgeCall::FAApp(_) => true,
+            #[cfg(not(feature = "wip"))] // EVM bridge
+            bridge_types::substrate::BridgeCall::FAApp(_) => false,
+            bridge_types::substrate::BridgeCall::JettonApp(_) => true,
         }
-    }
-}
-
-#[cfg(all(feature = "wip", feature = "runtime-benchmarks"))] // EVM bridge
-impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
-    fn contains(_call: &crate::RuntimeCall) -> bool {
-        true
     }
 }
 
