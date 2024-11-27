@@ -1212,7 +1212,6 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
-        #[cfg(feature = "stage")] // TON bridge
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -1222,7 +1221,6 @@ fn testnet_genesis(
         #[cfg(feature = "wip")] // Trustless substrate bridge
         beefy_light_client: Default::default(),
 
-        #[cfg(feature = "stage")] // EVM/TON bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: 10,
             ..Default::default()

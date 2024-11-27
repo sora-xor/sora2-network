@@ -62,8 +62,9 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId, KUSD};
-use common::{DOT, XOR, XSTUSD};
+#[cfg(feature = "wip")] // presto
+use common::PRUSD;
+use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -2495,6 +2496,40 @@ impl extended_assets::Config for Runtime {
     type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "wip")] // presto
+parameter_types! {
+    pub const PrestoUsdAssetId: AssetId = PRUSD;
+    pub PrestoTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            presto::TECH_ACCOUNT_PREFIX.to_vec(),
+            presto::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
+    pub PrestoBufferTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            presto::TECH_ACCOUNT_PREFIX.to_vec(),
+            presto::TECH_ACCOUNT_BUFFER.to_vec(),
+        )
+    };
+}
+
+#[cfg(feature = "wip")] // presto
+impl presto::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type PrestoUsdAssetId = PrestoUsdAssetId;
+    type PrestoTechAccount = PrestoTechAccountId;
+    type PrestoBufferTechAccount = PrestoBufferTechAccountId;
+    type RequestId = u64;
+    type CropReceiptId = u64;
+    type MaxPrestoManagersCount = ConstU32<100>;
+    type MaxPrestoAuditorsCount = ConstU32<100>;
+    type MaxUserRequestCount = ConstU32<65536>;
+    type MaxRequestPaymentReferenceSize = ConstU32<100>;
+    type MaxRequestDetailsSize = ConstU32<200>;
+    type Time = Timestamp;
+    type WeightInfo = presto::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2568,6 +2603,8 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
+        #[cfg(feature = "wip")] // presto
+        Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

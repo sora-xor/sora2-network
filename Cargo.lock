@@ -3770,6 +3770,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pool-xyk-benchmarking",
+ "presto",
  "price-tools",
  "pswap-distribution",
  "pswap-distribution-benchmarking",

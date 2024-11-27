@@ -87,6 +87,7 @@ order-book-benchmarking = { path = "../pallets/order-book/benchmarking", default
 permissions = { path = "../pallets/permissions", default-features = false }
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
+presto = { path = "../pallets/presto", default-features = false, optional = true }
 price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
@@ -262,6 +263,7 @@ std = [
     "pallet-utility/std",
     "permissions/std",
     "pool-xyk/std",
+    "presto/std",
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
@@ -313,6 +315,7 @@ wip = [
     "evm-fungible-app",
     "pallet-beefy",
     "pallet-beefy-mmr",
+    "presto/wip",
     "xor-fee/wip",
     "vested-rewards/wip",
 ]
@@ -446,6 +449,7 @@ try-runtime = [
     "pallet-utility/try-runtime",
     "permissions/try-runtime",
     "pool-xyk/try-runtime",
+    "presto/try-runtime",
     "price-tools/try-runtime",
     "pswap-distribution/try-runtime",
     "referrals/try-runtime",
