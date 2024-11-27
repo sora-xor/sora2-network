@@ -3539,28 +3539,6 @@
 <a href="#3524" id="3524">3524</a>
 <a href="#3525" id="3525">3525</a>
 <a href="#3526" id="3526">3526</a>
-<a href="#3527" id="3527">3527</a>
-<a href="#3528" id="3528">3528</a>
-<a href="#3529" id="3529">3529</a>
-<a href="#3530" id="3530">3530</a>
-<a href="#3531" id="3531">3531</a>
-<a href="#3532" id="3532">3532</a>
-<a href="#3533" id="3533">3533</a>
-<a href="#3534" id="3534">3534</a>
-<a href="#3535" id="3535">3535</a>
-<a href="#3536" id="3536">3536</a>
-<a href="#3537" id="3537">3537</a>
-<a href="#3538" id="3538">3538</a>
-<a href="#3539" id="3539">3539</a>
-<a href="#3540" id="3540">3540</a>
-<a href="#3541" id="3541">3541</a>
-<a href="#3542" id="3542">3542</a>
-<a href="#3543" id="3543">3543</a>
-<a href="#3544" id="3544">3544</a>
-<a href="#3545" id="3545">3545</a>
-<a href="#3546" id="3546">3546</a>
-<a href="#3547" id="3547">3547</a>
-<a href="#3548" id="3548">3548</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3712,7 +3690,8 @@
 <span class="kw">use </span>eth_bridge::offchain::SignatureParams;
 <span class="kw">use </span>eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 <span class="kw">use </span>impls::{
-    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+    CollectiveWeightInfo, DemocracyWeightInfo, GenericBridgeCallFilter, NegativeImbalanceOf,
+    OnUnbalancedDemocracySlash,
 };
 
 <span class="kw">use </span>frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
@@ -3818,10 +3797,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">105</span>,
+    spec_version: <span class="number">106</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">105</span>,
+    transaction_version: <span class="number">106</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4554,8 +4533,7 @@
     <span class="kw">pub const </span>CheckInTransferAmount: Balance = <span class="macro">balance!</span>(<span class="number">1000</span>);
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// Soratopia
-</span><span class="kw">impl </span>soratopia::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>soratopia::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>AdminAccount = AdminAccount;
     <span class="kw">type </span>CheckInTransferAmount = CheckInTransferAmount;
@@ -5724,7 +5702,6 @@
 
 <span class="comment">// Ethereum bridge pallets
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
 </span><span class="kw">impl </span>dispatch::Config&lt;dispatch::Instance1&gt; <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>OriginOutput = bridge_types::types::CallOriginOutput&lt;
@@ -5736,7 +5713,7 @@
     <span class="kw">type </span>MessageId = bridge_types::types::MessageId;
     <span class="kw">type </span>Hashing = Keccak256;
     <span class="kw">type </span>Call = DispatchableSubstrateBridgeCall;
-    <span class="kw">type </span>CallFilter = SubstrateBridgeCallFilter;
+    <span class="kw">type </span>CallFilter = GenericBridgeCallFilter;
     <span class="kw">type </span>WeightInfo = dispatch::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
@@ -5764,8 +5741,7 @@
     <span class="kw">pub const </span>ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-</span><span class="kw">impl </span>bridge_channel::inbound::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>bridge_channel::inbound::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>Verifier = MultiVerifier;
     <span class="kw">type </span>MessageDispatch = Dispatch;
@@ -5789,8 +5765,7 @@
     </span><span class="kw">type </span>EVMPriorityFee = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-</span><span class="kw">impl </span>bridge_channel::outbound::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>bridge_channel::outbound::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     <span class="kw">type </span>MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
@@ -5844,8 +5819,7 @@
     <span class="kw">type </span>WeightInfo = ();
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
-</span><span class="kw">impl </span>jetton_app::Config <span class="kw">for </span>Runtime {
+<span class="kw">impl </span>jetton_app::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>CallOrigin = dispatch::EnsureAccount&lt;
         bridge_types::types::CallOriginOutput&lt;
@@ -5929,8 +5903,7 @@
     </span>Beefy(&lt;BeefyLightClient <span class="kw">as </span>Verifier&gt;::Proof),
     <span class="attr">#[codec(index = <span class="number">1</span>)]
     </span>Multisig(&lt;MultisigVerifier <span class="kw">as </span>Verifier&gt;::Proof),
-    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-    </span><span class="attr">#[codec(index = <span class="number">2</span>)]
+    <span class="attr">#[codec(index = <span class="number">2</span>)]
     </span>EVMMultisig(&lt;multisig_verifier::MultiEVMVerifier&lt;Runtime&gt; <span class="kw">as </span>Verifier&gt;::Proof),
     <span class="doccomment">/// This proof is only used for benchmarking purposes
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
@@ -5950,8 +5923,7 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
             </span>MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) =&gt; MultisigVerifier::verify(network_id, message, proof),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-            </span>MultiProof::EVMMultisig(proof) =&gt; {
+            MultiProof::EVMMultisig(proof) =&gt; {
                 multisig_verifier::MultiEVMVerifier::&lt;Runtime&gt;::verify(network_id, message, proof)
             }
             <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
@@ -5964,8 +5936,7 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
             </span>MultiProof::Beefy(proof) =&gt; BeefyLightClient::verify_weight(proof),
             MultiProof::Multisig(proof) =&gt; MultisigVerifier::verify_weight(proof),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-            </span>MultiProof::EVMMultisig(proof) =&gt; {
+            MultiProof::EVMMultisig(proof) =&gt; {
                 multisig_verifier::MultiEVMVerifier::&lt;Runtime&gt;::verify_weight(proof)
             }
             <span class="attr">#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
@@ -6146,16 +6117,12 @@
         </span>BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = <span class="number">103</span>,
 
         <span class="comment">// Trustless EVM bridge
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
         </span>BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">96</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-        </span>BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;} = <span class="number">97</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-        </span>Dispatch: dispatch::&lt;Instance1&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">98</span>,
+        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config&lt;T&gt;, Storage, Event&lt;T&gt;} = <span class="number">97</span>,
+        Dispatch: dispatch::&lt;Instance1&gt;::{Pallet, Storage, Event&lt;T&gt;, Origin&lt;T&gt;} = <span class="number">98</span>,
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">100</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
-        </span>JettonApp: jetton_app::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">101</span>,
+        JettonApp: jetton_app::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">101</span>,
 
         <span class="comment">// Trustless substrate bridge
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
@@ -6193,8 +6160,7 @@
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">115</span>,
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)]
-        </span>Soratopia: soratopia::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">116</span>,
+        Soratopia: soratopia::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">116</span>,
     }
 }
 
@@ -6933,19 +6899,15 @@
             <span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, bridge_inbound_channel, BridgeInboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-            </span><span class="macro">list_benchmark!</span>(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
+            <span class="macro">list_benchmark!</span>(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, evm_fungible_app, EVMFungibleApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
-            </span><span class="macro">list_benchmark!</span>(list, extra, jetton_app, JettonApp);
+            <span class="macro">list_benchmark!</span>(list, extra, jetton_app, JettonApp);
 
             <span class="macro">list_benchmark!</span>(list, extra, evm_bridge_proxy, BridgeProxy);
             <span class="comment">// Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, dispatch, Dispatch);
             <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             <span class="macro">list_benchmark!</span>(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -6955,8 +6917,7 @@
             <span class="macro">list_benchmark!</span>(list, extra, multisig_verifier, MultisigVerifier);
             <span class="macro">list_benchmark!</span>(list, extra, extended_assets, ExtendedAssets);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// Soratopia
-            </span><span class="macro">list_benchmark!</span>(list, extra, soratopia, Soratopia);
+            <span class="macro">list_benchmark!</span>(list, extra, soratopia, Soratopia);
 
             <span class="kw">let </span>storage_info = AllPalletsWithSystem::storage_info();
 
@@ -7034,19 +6995,15 @@
             <span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
 
             <span class="comment">// Trustless bridge
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, bridge_inbound_channel, BridgeInboundChannel);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-            </span><span class="macro">add_benchmark!</span>(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
+            <span class="macro">add_benchmark!</span>(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, evm_fungible_app, EVMFungibleApp);
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
-            </span><span class="macro">add_benchmark!</span>(params, batches, jetton_app, JettonApp);
+            <span class="macro">add_benchmark!</span>(params, batches, jetton_app, JettonApp);
 
             <span class="macro">add_benchmark!</span>(params, batches, evm_bridge_proxy, BridgeProxy);
             <span class="comment">// Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, dispatch, Dispatch);
             <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             <span class="macro">add_benchmark!</span>(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -7056,8 +7013,7 @@
             <span class="macro">add_benchmark!</span>(params, batches, multisig_verifier, MultisigVerifier);
             <span class="macro">add_benchmark!</span>(params, batches, extended_assets, ExtendedAssets);
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// Soratopia
-            </span><span class="macro">add_benchmark!</span>(params, batches, soratopia, Soratopia);
+            <span class="macro">add_benchmark!</span>(params, batches, soratopia, Soratopia);
 
             <span class="kw">if </span>batches.is_empty() { <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Benchmark not found for this pallet.&quot;</span>.into()) }
             <span class="prelude-val">Ok</span>(batches)

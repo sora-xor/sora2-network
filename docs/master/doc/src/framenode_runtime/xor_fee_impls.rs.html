@@ -626,7 +626,6 @@
 <a href="#611" id="611">611</a>
 <a href="#612" id="612">612</a>
 <a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -821,8 +820,7 @@
                 <span class="prelude-val">Some</span>(SMALL_FEE)
             }
             RuntimeCall::Band(..) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)]
-            </span>RuntimeCall::Soratopia(soratopia::Call::check_in {}) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
+            RuntimeCall::Soratopia(soratopia::Call::check_in {}) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
