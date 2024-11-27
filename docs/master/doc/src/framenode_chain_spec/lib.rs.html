@@ -2662,8 +2662,6 @@
 <a href="#2647" id="2647">2647</a>
 <a href="#2648" id="2648">2648</a>
 <a href="#2649" id="2649">2649</a>
-<a href="#2650" id="2650">2650</a>
-<a href="#2651" id="2651">2651</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3876,8 +3874,7 @@
         TBCD.into(),
     ];
     GenesisConfig {
-        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// TON bridge
-        </span>jetton_app: Default::default(),
+        jetton_app: Default::default(),
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
         </span>evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
@@ -3886,8 +3883,7 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless substrate bridge
         </span>beefy_light_client: Default::default(),
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// EVM/TON bridge
-        </span>bridge_outbound_channel: BridgeOutboundChannelConfig {
+        bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: <span class="number">10</span>,
             ..Default::default()
         },
