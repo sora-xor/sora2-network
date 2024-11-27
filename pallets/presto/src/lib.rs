@@ -517,34 +517,6 @@ pub mod pallet {
                 Ok(())
             })
         }
-
-        #[pallet::call_index(13)]
-        #[pallet::weight(<T as Config>::WeightInfo::create_crop_receipt())]
-        pub fn create_crop_receipt(
-            origin: OriginFor<T>,
-            _crop_receipt: CropReceipt,
-        ) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
-            let _id = Self::next_crop_receipt_id();
-
-            // TODO
-
-            Ok(())
-        }
-
-        #[pallet::call_index(14)]
-        #[pallet::weight(<T as Config>::WeightInfo::rate_crop_receipt())]
-        pub fn rate_crop_receipt(
-            origin: OriginFor<T>,
-            _crop_receipt: CropReceipt,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_is_auditor(&who)?;
-
-            // TODO
-
-            Ok(())
-        }
     }
 }
 
