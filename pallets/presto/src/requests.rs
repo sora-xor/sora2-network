@@ -111,8 +111,8 @@ impl<T: Config> Clone for DepositRequest<T> {
     fn clone(&self) -> Self {
         Self {
             owner: self.owner.clone(),
-            time: self.time.clone(),
-            amount: self.amount.clone(),
+            time: self.time,
+            amount: self.amount,
             payment_reference: self.payment_reference.clone(),
             details: self.details.clone(),
             status: self.status.clone(),
@@ -186,8 +186,8 @@ impl<T: Config> Clone for WithdrawRequest<T> {
     fn clone(&self) -> Self {
         Self {
             owner: self.owner.clone(),
-            time: self.time.clone(),
-            amount: self.amount.clone(),
+            time: self.time,
+            amount: self.amount,
             payment_reference: self.payment_reference.clone(),
             details: self.details.clone(),
             status: self.status.clone(),
