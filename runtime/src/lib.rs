@@ -149,7 +149,8 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{
-    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+    CollectiveWeightInfo, DemocracyWeightInfo, GenericBridgeCallFilter, NegativeImbalanceOf,
+    OnUnbalancedDemocracySlash,
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
@@ -255,10 +256,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 105,
+    spec_version: 106,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 105,
+    transaction_version: 106,
     state_version: 0,
 };
 
@@ -991,7 +992,6 @@ parameter_types! {
     pub const CheckInTransferAmount: Balance = balance!(1000);
 }
 
-#[cfg(feature = "stage")] // Soratopia
 impl soratopia::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AdminAccount = AdminAccount;
@@ -2161,7 +2161,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
 // Ethereum bridge pallets
 
-#[cfg(feature = "stage")] // EVM/TON bridge
 impl dispatch::Config<dispatch::Instance1> for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OriginOutput = bridge_types::types::CallOriginOutput<
@@ -2173,7 +2172,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
     type Call = DispatchableSubstrateBridgeCall;
-    type CallFilter = SubstrateBridgeCallFilter;
+    type CallFilter = GenericBridgeCallFilter;
     type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
 
@@ -2201,7 +2200,6 @@ parameter_types! {
     pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-#[cfg(feature = "stage")] // EVM/TON bridge
 impl bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
@@ -2226,7 +2224,6 @@ impl bridge_channel::inbound::Config for Runtime {
     type EVMPriorityFee = ();
 }
 
-#[cfg(feature = "stage")] // EVM/TON bridge
 impl bridge_channel::outbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -2281,7 +2278,6 @@ impl evm_fungible_app::Config for Runtime {
     type WeightInfo = ();
 }
 
-#[cfg(feature = "stage")] // TON bridge
 impl jetton_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CallOrigin = dispatch::EnsureAccount<
@@ -2366,7 +2362,6 @@ pub enum MultiProof {
     Beefy(<BeefyLightClient as Verifier>::Proof),
     #[codec(index = 1)]
     Multisig(<MultisigVerifier as Verifier>::Proof),
-    #[cfg(feature = "stage")] // EVM/TON bridge
     #[codec(index = 2)]
     EVMMultisig(<multisig_verifier::MultiEVMVerifier<Runtime> as Verifier>::Proof),
     /// This proof is only used for benchmarking purposes
@@ -2387,7 +2382,6 @@ impl Verifier for MultiVerifier {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
-            #[cfg(feature = "stage")] // EVM/TON bridge
             MultiProof::EVMMultisig(proof) => {
                 multisig_verifier::MultiEVMVerifier::<Runtime>::verify(network_id, message, proof)
             }
@@ -2401,7 +2395,6 @@ impl Verifier for MultiVerifier {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify_weight(proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
-            #[cfg(feature = "stage")] // EVM/TON bridge
             MultiProof::EVMMultisig(proof) => {
                 multisig_verifier::MultiEVMVerifier::<Runtime>::verify_weight(proof)
             }
@@ -2583,15 +2576,11 @@ construct_runtime! {
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
-        #[cfg(feature = "stage")] // EVM/TON bridge
         BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
-        #[cfg(feature = "stage")] // EVM/TON bridge
         BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        #[cfg(feature = "stage")] // EVM/TON bridge
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
         EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        #[cfg(feature = "stage")] // TON bridge
         JettonApp: jetton_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
 
         // Trustless substrate bridge
@@ -2630,7 +2619,6 @@ construct_runtime! {
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
 
-        #[cfg(feature = "stage")]
         Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
     }
 }
@@ -3370,19 +3358,15 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
-            #[cfg(feature = "stage")] // EVM/TON bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
-            #[cfg(feature = "stage")] // EVM/TON bridge
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
-            #[cfg(feature = "stage")] // TON bridge
             list_benchmark!(list, extra, jetton_app, JettonApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            #[cfg(feature = "stage")] // EVM/TON bridge
             list_benchmark!(list, extra, dispatch, Dispatch);
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -3392,7 +3376,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
-            #[cfg(feature = "stage")] // Soratopia
             list_benchmark!(list, extra, soratopia, Soratopia);
 
             let storage_info = AllPalletsWithSystem::storage_info();
@@ -3471,19 +3454,15 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
-            #[cfg(feature = "stage")] // EVM/TON bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
-            #[cfg(feature = "stage")] // EVM/TON bridge
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
-            #[cfg(feature = "stage")] // TON bridge
             add_benchmark!(params, batches, jetton_app, JettonApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            #[cfg(feature = "stage")] // EVM/TON bridge
             add_benchmark!(params, batches, dispatch, Dispatch);
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -3493,7 +3472,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
-            #[cfg(feature = "stage")] // Soratopia
             add_benchmark!(params, batches, soratopia, Soratopia);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

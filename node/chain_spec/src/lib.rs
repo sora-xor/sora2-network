@@ -51,18 +51,17 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
-#[cfg(feature = "stage")] // EVM/TON bridge
-use framenode_runtime::BridgeOutboundChannelConfig;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, KensetsuConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig,
+    BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
+    EthBridgeConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
+    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
+    IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
+    SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
+    TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
@@ -2277,7 +2276,6 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        #[cfg(feature = "stage")] // TON bridge
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -2287,7 +2285,6 @@ fn mainnet_genesis(
         #[cfg(feature = "wip")] // Trustless substrate bridge
         beefy_light_client: Default::default(),
 
-        #[cfg(feature = "stage")] // EVM/TON bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             interval: 10,
         },
