@@ -256,10 +256,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 105,
+    spec_version: 106,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 105,
+    transaction_version: 106,
     state_version: 0,
 };
 
