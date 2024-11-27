@@ -1,11 +1,44 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::treasury::Treasury;
 use crate::{Config, MomentOf};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
 use frame_support::traits::Time;
+use sp_core::RuntimeDebug;
 use sp_runtime::{DispatchError, DispatchResult};
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(
+    RuntimeDebug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[scale_info(skip_type_params(T))]
 pub enum RequestStatus<T: Config> {
     Pending,
@@ -20,7 +53,9 @@ pub enum RequestStatus<T: Config> {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(
+    RuntimeDebug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[scale_info(skip_type_params(T))]
 pub enum Request<T: Config> {
     Deposit(DepositRequest<T>),
@@ -61,7 +96,7 @@ impl<T: Config> Request<T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct DepositRequest<T: Config> {
     pub owner: AccountIdOf<T>,
@@ -71,6 +106,32 @@ pub struct DepositRequest<T: Config> {
     pub details: Option<BoundedString<T::MaxRequestDetailsSize>>,
     pub status: RequestStatus<T>,
 }
+
+impl<T: Config> Clone for DepositRequest<T> {
+    fn clone(&self) -> Self {
+        Self {
+            owner: self.owner.clone(),
+            time: self.time.clone(),
+            amount: self.amount.clone(),
+            payment_reference: self.payment_reference.clone(),
+            details: self.details.clone(),
+            status: self.status.clone(),
+        }
+    }
+}
+
+impl<T: Config> PartialEq for DepositRequest<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.owner == other.owner
+            && self.time == other.time
+            && self.amount == other.amount
+            && self.payment_reference == other.payment_reference
+            && self.details == other.details
+            && self.status == other.status
+    }
+}
+
+impl<T: Config> Eq for DepositRequest<T> {}
 
 impl<T: Config> DepositRequest<T> {
     pub fn new(
@@ -110,7 +171,7 @@ impl<T: Config> DepositRequest<T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct WithdrawRequest<T: Config> {
     pub owner: AccountIdOf<T>,
@@ -120,6 +181,32 @@ pub struct WithdrawRequest<T: Config> {
     pub details: Option<BoundedString<T::MaxRequestDetailsSize>>,
     pub status: RequestStatus<T>,
 }
+
+impl<T: Config> Clone for WithdrawRequest<T> {
+    fn clone(&self) -> Self {
+        Self {
+            owner: self.owner.clone(),
+            time: self.time.clone(),
+            amount: self.amount.clone(),
+            payment_reference: self.payment_reference.clone(),
+            details: self.details.clone(),
+            status: self.status.clone(),
+        }
+    }
+}
+
+impl<T: Config> PartialEq for WithdrawRequest<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.owner == other.owner
+            && self.time == other.time
+            && self.amount == other.amount
+            && self.payment_reference == other.payment_reference
+            && self.details == other.details
+            && self.status == other.status
+    }
+}
+
+impl<T: Config> Eq for WithdrawRequest<T> {}
 
 impl<T: Config> WithdrawRequest<T> {
     pub fn new(

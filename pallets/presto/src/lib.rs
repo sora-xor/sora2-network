@@ -31,7 +31,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod crop_receipt;
+#[cfg(test)]
+mod mock;
 mod requests;
+#[cfg(test)]
+mod test;
 mod treasury;
 pub mod weights;
 
@@ -117,10 +121,10 @@ pub mod pallet {
         type MaxUserRequestCount: Get<u32>;
 
         #[pallet::constant]
-        type MaxRequestPaymentReferenceSize: Get<u32> + Debug + Clone + PartialEq + Eq;
+        type MaxRequestPaymentReferenceSize: Get<u32>;
 
         #[pallet::constant]
-        type MaxRequestDetailsSize: Get<u32> + Debug + Clone + PartialEq + Eq;
+        type MaxRequestDetailsSize: Get<u32>;
 
         type Time: Time;
         type WeightInfo: WeightInfo;
@@ -233,6 +237,8 @@ pub mod pallet {
         RequestsCountForUserOverloaded,
         /// There is no such request
         RequestIsNotExists,
+        /// This account is not an owner of the request
+        CallerIsNotRequestOwner,
         /// This request was already processed by manager
         RequestAlreadyProcessed,
         /// The actual request type by provided RequestId is different
@@ -366,16 +372,13 @@ pub mod pallet {
             let owner = ensure_signed(origin)?;
 
             let id = Self::next_request_id();
-            let time = T::Time::now();
 
-            let request = Request::Deposit(DepositRequest {
-                owner: owner.clone(),
-                time,
+            let request = Request::Deposit(DepositRequest::new(
+                owner.clone(),
                 amount,
                 payment_reference,
                 details,
-                status: RequestStatus::<T>::Pending,
-            });
+            ));
 
             Requests::<T>::insert(id, request);
             UserRequests::<T>::try_mutate(&owner, |ids| {
@@ -422,7 +425,7 @@ pub mod pallet {
             Requests::<T>::try_mutate(id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
-                ensure!(*request.owner() == who, Error::<T>::RequestAlreadyProcessed);
+                ensure!(*request.owner() == who, Error::<T>::CallerIsNotRequestOwner);
 
                 ensure!(
                     *request.status() == RequestStatus::Pending,
