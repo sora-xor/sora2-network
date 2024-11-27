@@ -27,7 +27,9 @@ band = { path = "../band", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 oracle-proxy = { path = "../oracle-proxy", default-features = false }
 order-book = { path = "../order-book", default-features = false }
+permissions = { path = "../permissions", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
+presto = { path = "../presto", default-features = false, optional = true }
 price-tools = { path = "../price-tools", default-features = false }
 technical = { path = "../technical", default-features = false }
 xst = { path = "../xst", default-features = false }
@@ -66,3 +68,8 @@ private-net = [
 ]
 
 try-runtime = ["frame-support/try-runtime"]
+
+wip = [
+    "common/wip",
+    "presto/wip",
+]
