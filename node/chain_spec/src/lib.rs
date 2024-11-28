@@ -41,7 +41,7 @@ use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PRUSD, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -994,6 +994,20 @@ fn testnet_genesis(
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
+    #[cfg(feature = "wip")] // presto
+    let presto_tech_account_id = framenode_runtime::PrestoTechAccountId::get();
+    #[cfg(feature = "wip")] // presto
+    let presto_account_id =
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_tech_account_id)
+            .unwrap();
+
+    #[cfg(feature = "wip")] // presto
+    let presto_buffer_tech_account_id = framenode_runtime::PrestoBufferTechAccountId::get();
+    #[cfg(feature = "wip")] // presto
+    let presto_buffer_account_id =
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_buffer_tech_account_id)
+            .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -1057,6 +1071,13 @@ fn testnet_genesis(
             kensetsu_depository_account_id.clone(),
             kensetsu_depository_tech_account_id.clone(),
         ),
+        #[cfg(feature = "wip")] // presto
+        (presto_account_id.clone(), presto_tech_account_id.clone()),
+        #[cfg(feature = "wip")] // presto
+        (
+            presto_buffer_account_id.clone(),
+            presto_buffer_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     for account in &accounts.accounts() {
@@ -1083,6 +1104,10 @@ fn testnet_genesis(
         (xst_pool_permissioned_account_id.clone(), 0),
         (kensetsu_depository_account_id.clone(), 0),
         (kensetsu_treasury_account_id.clone(), 0),
+        #[cfg(feature = "wip")] // presto
+        (presto_account_id.clone(), 0),
+        #[cfg(feature = "wip")] // presto
+        (presto_buffer_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(
@@ -1480,6 +1505,18 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    PRUSD,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"PRUSD".to_vec()),
+                    AssetName(b"Presto USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
         },
         permissions: PermissionsConfig {
@@ -1555,6 +1592,12 @@ fn testnet_genesis(
                 (
                     kensetsu_treasury_account_id.clone(),
                     Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&PRUSD)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
@@ -1952,6 +1995,20 @@ fn mainnet_genesis(
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
+    #[cfg(feature = "wip")] // presto
+    let presto_tech_account_id = framenode_runtime::PrestoTechAccountId::get();
+    #[cfg(feature = "wip")] // presto
+    let presto_account_id =
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_tech_account_id)
+            .unwrap();
+
+    #[cfg(feature = "wip")] // presto
+    let presto_buffer_tech_account_id = framenode_runtime::PrestoBufferTechAccountId::get();
+    #[cfg(feature = "wip")] // presto
+    let presto_buffer_account_id =
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_buffer_tech_account_id)
+            .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -2014,6 +2071,13 @@ fn mainnet_genesis(
         (
             kensetsu_depository_account_id.clone(),
             kensetsu_depository_tech_account_id.clone(),
+        ),
+        #[cfg(feature = "wip")] // presto
+        (presto_account_id.clone(), presto_tech_account_id.clone()),
+        #[cfg(feature = "wip")] // presto
+        (
+            presto_buffer_account_id.clone(),
+            presto_buffer_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -2225,6 +2289,18 @@ fn mainnet_genesis(
             None,
             None,
         ),
+        #[cfg(feature = "wip")] // presto
+        (
+            PRUSD,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PRUSD".to_vec()),
+            AssetName(b"Presto USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
     ];
     let bridge_assets_data: Vec<BridgeAssetData<Runtime>> = Vec::new();
     bridge_assets.extend(bridge_assets_data.iter().map(|x| {
@@ -2392,6 +2468,12 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&PRUSD)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         },
         balances: BalancesConfig {
@@ -2411,6 +2493,10 @@ fn mainnet_genesis(
                 (xst_pool_permissioned_account_id.clone(), 0),
                 (kensetsu_depository_account_id.clone(), 0),
                 (kensetsu_treasury_account_id.clone(), 0),
+                #[cfg(feature = "wip")] // presto
+                (presto_account_id.clone(), 0),
+                #[cfg(feature = "wip")] // presto
+                (presto_buffer_account_id.clone(), 0),
             ]
             .into_iter()
             .chain(

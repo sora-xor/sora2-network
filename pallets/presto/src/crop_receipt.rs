@@ -28,37 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(rustfmt, rustfmt_skip)]
-#![allow(unused_parens)]
-#![allow(unused_imports)]
+use codec::{Decode, Encode, MaxEncodedLen};
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
-use core::marker::PhantomData;
-
-pub trait WeightInfo {
-    fn order_book_create_and_fill_batch() -> Weight {
-        Weight::zero()
-    }
-    fn order_book_fill_batch() -> Weight {
-        Weight::zero()
-    }
-    fn xyk_initialize() -> Weight {
-        Weight::zero()
-    }
-    fn xst_initialize() -> Weight {
-        Weight::zero()
-    }
-    fn price_tools_set_reference_asset_price() -> Weight {
-        Weight::zero()
-    }
-    fn presto_initialize_assets() -> Weight {
-        Weight::zero()
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+pub struct CropReceipt {
+    // TODO
 }
-
-impl WeightInfo for () {}
-
-// This pallet is intended for use only in `private-net`
-// and for testing purposes, thus weights are not important.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {}

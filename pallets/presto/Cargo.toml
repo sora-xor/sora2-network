@@ -1,0 +1,61 @@
+[package]
+name = "presto"
+authors = ["Soramitsu"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = 'https://github.com/sora-xor/sora2-network'
+edition = "2021"
+version = "0.1.0"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+derivative = { version = "2.2.0", features = ["use_core"] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+common = { path = "../../common", default-features = false }
+technical = { path = "../technical", default-features = false }
+
+[dev-dependencies]
+common = { path = "../../common", features = ["test"] }
+assets = { path = "../assets", default-features = false }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+permissions = { path = "../permissions" }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "assets/std",
+    "common/std",
+    "codec/std",
+    "currencies/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-balances/std",
+    "pallet-timestamp/std",
+    "permissions/std",
+    "scale-info/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "technical/std",
+    "tokens/std",
+]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]
+
+wip = []

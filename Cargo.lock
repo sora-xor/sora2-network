@@ -3770,6 +3770,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pool-xyk-benchmarking",
+ "presto",
  "price-tools",
  "pswap-distribution",
  "pswap-distribution-benchmarking",
@@ -7746,6 +7747,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "presto"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "derivative",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
 name = "prettyplease"
 version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8067,7 +8091,9 @@ dependencies = [
  "order-book",
  "pallet-balances",
  "parity-scale-codec",
+ "permissions",
  "pool-xyk",
+ "presto",
  "price-tools",
  "rand 0.8.5",
  "rand_chacha 0.3.1",

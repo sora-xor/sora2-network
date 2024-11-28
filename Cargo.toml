@@ -264,6 +264,7 @@ members = [
     "pallets/soratopia",
     "pallets/technical",
     "pallets/pool-xyk",
+    "pallets/presto",
     "pallets/rewards",
     "pallets/xor-fee",
     "pallets/referrals",
