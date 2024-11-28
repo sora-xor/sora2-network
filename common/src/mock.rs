@@ -117,7 +117,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KGOLD => Tomato,
             PredefinedAssetId::KXOR => Potato,
             PredefinedAssetId::KARMA => Table,
-            #[cfg(feature = "wip")] // presto
             PredefinedAssetId::PRUSD => Pan,
         }
     }

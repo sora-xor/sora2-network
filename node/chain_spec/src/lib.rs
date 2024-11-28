@@ -38,12 +38,10 @@
 #![allow(clippy::all)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
-#[cfg(feature = "wip")] // presto
-use common::PRUSD;
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
     SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    KARMA, KEN, KGOLD, KUSD, KXOR, PRUSD, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};

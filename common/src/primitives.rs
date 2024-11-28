@@ -200,7 +200,6 @@ mod _allowed_deprecated {
         KGOLD = 13,
         KXOR = 14,
         KARMA = 15,
-        #[cfg(feature = "wip")] // presto
         PRUSD = 16,
     }
 }
@@ -219,7 +218,6 @@ pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
 pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
-#[cfg(feature = "wip")] // presto
 pub const PRUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PRUSD);
 pub const VXOR: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "006a271832f44c93bd8692584d85415f0f3dccef9748fecd129442c8edcb4361"

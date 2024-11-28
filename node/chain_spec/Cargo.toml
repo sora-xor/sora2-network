@@ -41,7 +41,6 @@ test = ["common/test"]
 
 private-net = ["faucet", "framenode-runtime/private-net"]
 wip = [
-    "common/wip",
     "framenode-runtime/wip",
 ]
 stage = ["framenode-runtime/stage"]
