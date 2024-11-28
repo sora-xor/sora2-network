@@ -32,6 +32,7 @@ use crate::treasury::Treasury;
 use crate::{Config, MomentOf};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
+use derivative::Derivative;
 use frame_support::traits::Time;
 use sp_core::RuntimeDebug;
 use sp_runtime::{DispatchError, DispatchResult};
@@ -96,7 +97,8 @@ impl<T: Config> Request<T> {
     }
 }
 
-#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
+#[derivative(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct DepositRequest<T: Config> {
     pub owner: AccountIdOf<T>,
@@ -106,32 +108,6 @@ pub struct DepositRequest<T: Config> {
     pub details: Option<BoundedString<T::MaxRequestDetailsSize>>,
     pub status: RequestStatus<T>,
 }
-
-impl<T: Config> Clone for DepositRequest<T> {
-    fn clone(&self) -> Self {
-        Self {
-            owner: self.owner.clone(),
-            time: self.time,
-            amount: self.amount,
-            payment_reference: self.payment_reference.clone(),
-            details: self.details.clone(),
-            status: self.status.clone(),
-        }
-    }
-}
-
-impl<T: Config> PartialEq for DepositRequest<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.owner == other.owner
-            && self.time == other.time
-            && self.amount == other.amount
-            && self.payment_reference == other.payment_reference
-            && self.details == other.details
-            && self.status == other.status
-    }
-}
-
-impl<T: Config> Eq for DepositRequest<T> {}
 
 impl<T: Config> DepositRequest<T> {
     pub fn new(
@@ -171,7 +147,8 @@ impl<T: Config> DepositRequest<T> {
     }
 }
 
-#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
+#[derivative(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct WithdrawRequest<T: Config> {
     pub owner: AccountIdOf<T>,
@@ -181,32 +158,6 @@ pub struct WithdrawRequest<T: Config> {
     pub details: Option<BoundedString<T::MaxRequestDetailsSize>>,
     pub status: RequestStatus<T>,
 }
-
-impl<T: Config> Clone for WithdrawRequest<T> {
-    fn clone(&self) -> Self {
-        Self {
-            owner: self.owner.clone(),
-            time: self.time,
-            amount: self.amount,
-            payment_reference: self.payment_reference.clone(),
-            details: self.details.clone(),
-            status: self.status.clone(),
-        }
-    }
-}
-
-impl<T: Config> PartialEq for WithdrawRequest<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.owner == other.owner
-            && self.time == other.time
-            && self.amount == other.amount
-            && self.payment_reference == other.payment_reference
-            && self.details == other.details
-            && self.status == other.status
-    }
-}
-
-impl<T: Config> Eq for WithdrawRequest<T> {}
 
 impl<T: Config> WithdrawRequest<T> {
     pub fn new(
