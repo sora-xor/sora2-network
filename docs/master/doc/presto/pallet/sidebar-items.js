@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["Auditors","CropReceipts","LastCropReceiptId","LastRequestId","Managers","Module","Requests","UserRequests"]};

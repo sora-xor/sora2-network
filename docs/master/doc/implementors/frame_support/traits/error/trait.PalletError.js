@@ -25,6 +25,7 @@
 "order_book":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"order_book/pallet/enum.Error.html\" title=\"enum order_book::pallet::Error\">Error</a>&lt;T&gt;"]],
 "permissions":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"permissions/pallet/enum.Error.html\" title=\"enum permissions::pallet::Error\">Error</a>&lt;T&gt;"]],
 "pool_xyk":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"pool_xyk/pallet/enum.Error.html\" title=\"enum pool_xyk::pallet::Error\">Error</a>&lt;T&gt;"]],
+"presto":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"presto/pallet/enum.Error.html\" title=\"enum presto::pallet::Error\">Error</a>&lt;T&gt;"]],
 "price_tools":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"price_tools/pallet/enum.Error.html\" title=\"enum price_tools::pallet::Error\">Error</a>&lt;T&gt;"]],
 "pswap_distribution":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"pswap_distribution/pallet/enum.Error.html\" title=\"enum pswap_distribution::pallet::Error\">Error</a>&lt;T&gt;"]],
 "qa_tools":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"qa_tools/pallet/enum.Error.html\" title=\"enum qa_tools::pallet::Error\">Error</a>&lt;T&gt;"]],
