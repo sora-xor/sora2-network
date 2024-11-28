@@ -80,7 +80,7 @@ pub fn register_presto_usd<T: Config>() -> DispatchResult {
     let permission_ids = [MINT, BURN];
 
     for permission_id in &permission_ids {
-        let permission_owner = permissions::Owners::<T>::get(permission_id, &scope)
+        let permission_owner = permissions::Owners::<T>::get(permission_id, scope)
             .pop()
             .unwrap_or(system_account_id.clone());
 
