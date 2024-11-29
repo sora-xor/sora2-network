@@ -49,6 +49,8 @@ pub trait WeightInfo {
     fn create_withdraw_request() -> Weight;
     fn create_crop_receipt() -> Weight;
     fn rate_crop_receipt() -> Weight;
+    fn decline_crop_receipt() -> Weight;
+    fn publish_crop_receipt() -> Weight;
 }
 
 pub struct SubstrateWeight<T>(PhantomData<T>);
@@ -108,6 +110,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn rate_crop_receipt() -> Weight {
         Weight::zero()
     }
+
+    fn decline_crop_receipt() -> Weight {
+        Weight::zero()
+    }
+
+    fn publish_crop_receipt() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl WeightInfo for () {
@@ -164,6 +174,14 @@ impl WeightInfo for () {
     }
 
     fn rate_crop_receipt() -> Weight {
+        Weight::zero()
+    }
+
+    fn decline_crop_receipt() -> Weight {
+        Weight::zero()
+    }
+
+    fn publish_crop_receipt() -> Weight {
         Weight::zero()
     }
 }

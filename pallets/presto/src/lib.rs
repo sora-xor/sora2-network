@@ -245,6 +245,20 @@ pub mod pallet {
             id: T::RequestId,
             by: AccountIdOf<T>,
         },
+        CropReceiptCreated {
+            id: T::CropReceiptId,
+            by: AccountIdOf<T>,
+        },
+        CropReceiptRated {
+            id: T::CropReceiptId,
+            by: AccountIdOf<T>,
+        },
+        CropReceiptDeclined {
+            id: T::CropReceiptId,
+        },
+        CropReceiptPublished {
+            id: T::CropReceiptId,
+        },
     }
 
     #[pallet::error]
@@ -275,6 +289,10 @@ pub mod pallet {
         RequestAlreadyProcessed,
         /// The actual request type by provided RequestId is different
         WrongRequestType,
+        /// This account has reached the max count of crop receipts
+        CropReceiptsCountForUserOverloaded,
+        /// There is no such crop receipt
+        CropReceiptIsNotExists,
         /// The crop receipt already has been rated
         CropReceiptAlreadyRated,
         /// This account is not an owner of the crop receipt
@@ -459,10 +477,10 @@ pub mod pallet {
 
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::create_withdraw_request())]
-        pub fn cancel_request(origin: OriginFor<T>, id: T::RequestId) -> DispatchResult {
+        pub fn cancel_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 request.ensure_is_owner(&who)?;
@@ -474,7 +492,7 @@ pub mod pallet {
 
                 request.cancel()?;
 
-                Self::deposit_event(Event::<T>::RequestCancelled { id });
+                Self::deposit_event(Event::<T>::RequestCancelled { id: request_id });
 
                 Ok(())
             })
@@ -482,11 +500,14 @@ pub mod pallet {
 
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::approve_deposit_request())]
-        pub fn approve_deposit_request(origin: OriginFor<T>, id: T::RequestId) -> DispatchResult {
+        pub fn approve_deposit_request(
+            origin: OriginFor<T>,
+            request_id: T::RequestId,
+        ) -> DispatchResult {
             let manager = ensure_signed(origin)?;
             Self::ensure_is_manager(&manager)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 ensure!(
@@ -500,7 +521,10 @@ pub mod pallet {
                     return Err(Error::<T>::WrongRequestType.into());
                 }
 
-                Self::deposit_event(Event::<T>::RequestApproved { id, by: manager });
+                Self::deposit_event(Event::<T>::RequestApproved {
+                    id: request_id,
+                    by: manager,
+                });
 
                 Ok(())
             })
@@ -510,13 +534,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::approve_withdraw_request())]
         pub fn approve_withdraw_request(
             origin: OriginFor<T>,
-            id: T::RequestId,
+            request_id: T::RequestId,
             payment_reference: BoundedString<T::MaxRequestPaymentReferenceSize>,
         ) -> DispatchResult {
             let manager = ensure_signed(origin)?;
             Self::ensure_is_manager(&manager)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 ensure!(
@@ -530,7 +554,10 @@ pub mod pallet {
                     return Err(Error::<T>::WrongRequestType.into());
                 }
 
-                Self::deposit_event(Event::<T>::RequestApproved { id, by: manager });
+                Self::deposit_event(Event::<T>::RequestApproved {
+                    id: request_id,
+                    by: manager,
+                });
 
                 Ok(())
             })
@@ -538,11 +565,11 @@ pub mod pallet {
 
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::decline_request())]
-        pub fn decline_request(origin: OriginFor<T>, id: T::RequestId) -> DispatchResult {
+        pub fn decline_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let manager = ensure_signed(origin)?;
             Self::ensure_is_manager(&manager)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 ensure!(
@@ -552,7 +579,103 @@ pub mod pallet {
 
                 request.decline(manager.clone())?;
 
-                Self::deposit_event(Event::<T>::RequestDeclined { id, by: manager });
+                Self::deposit_event(Event::<T>::RequestDeclined {
+                    id: request_id,
+                    by: manager,
+                });
+
+                Ok(())
+            })
+        }
+
+        #[pallet::call_index(13)]
+        #[pallet::weight(<T as Config>::WeightInfo::create_crop_receipt())]
+        pub fn create_crop_receipt(
+            origin: OriginFor<T>,
+            amount: Balance,
+            close_initial_period: MomentOf<T>,
+            date_of_issue: MomentOf<T>,
+            place_of_issue: BoundedString<T::MaxPlaceOfIssueSize>,
+            debtor: BoundedString<T::MaxDebtorSize>,
+            creditor: BoundedString<T::MaxCreditorSize>,
+            perfomance_time: MomentOf<T>,
+            data: BoundedString<T::MaxCropReceiptContentSize>,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+            let id = Self::next_crop_receipt_id();
+
+            let crop_receipt = CropReceipt::<T>::new(
+                owner.clone(),
+                amount,
+                close_initial_period,
+                date_of_issue,
+                place_of_issue,
+                debtor,
+                creditor,
+                perfomance_time,
+            );
+
+            let content = CropReceiptContent::<T> { json: data };
+
+            CropReceipts::<T>::insert(id, crop_receipt);
+            CropReceiptsContent::<T>::insert(id, content);
+
+            UserCropReceipts::<T>::try_mutate(&owner, |ids| {
+                ids.try_push(id)
+                    .map_err(|_| Error::<T>::CropReceiptsCountForUserOverloaded)?;
+                Ok::<(), Error<T>>(())
+            })?;
+
+            Self::deposit_event(Event::<T>::CropReceiptCreated { id, by: owner });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(14)]
+        #[pallet::weight(<T as Config>::WeightInfo::rate_crop_receipt())]
+        pub fn rate_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+            rating: Rating,
+        ) -> DispatchResult {
+            let auditor = ensure_signed(origin)?;
+            Self::ensure_is_auditor(&auditor)?;
+
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.rate(rating, auditor.clone())?;
+
+                Self::deposit_event(Event::<T>::CropReceiptRated {
+                    id: crop_receipt_id,
+                    by: auditor,
+                });
+
+                Ok(())
+            })
+        }
+
+        #[pallet::call_index(15)]
+        #[pallet::weight(<T as Config>::WeightInfo::decline_crop_receipt())]
+        pub fn decline_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.ensure_is_owner(&who)?;
+                crop_receipt.decline()?;
+
+                Self::deposit_event(Event::<T>::CropReceiptDeclined {
+                    id: crop_receipt_id,
+                });
 
                 Ok(())
             })
