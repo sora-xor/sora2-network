@@ -29,10 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::treasury::Treasury;
-use crate::{Config, MomentOf};
+use crate::{Config, Error, MomentOf};
+
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
 use derivative::Derivative;
+use frame_support::ensure;
 use frame_support::traits::Time;
 use sp_core::RuntimeDebug;
 use sp_runtime::{DispatchError, DispatchResult};
@@ -64,11 +66,14 @@ pub enum Request<T: Config> {
 }
 
 impl<T: Config> Request<T> {
-    pub fn owner(&self) -> &AccountIdOf<T> {
-        match self {
+    pub fn ensure_is_owner(&self, who: &AccountIdOf<T>) -> DispatchResult {
+        let owner = match self {
             Self::Deposit(request) => &request.owner,
             Self::Withdraw(request) => &request.owner,
-        }
+        };
+
+        ensure!(owner == who, Error::<T>::CallerIsNotRequestOwner);
+        Ok(())
     }
 
     pub fn status(&self) -> &RequestStatus<T> {

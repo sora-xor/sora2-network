@@ -121,8 +121,13 @@ impl presto::Config for Runtime {
     type MaxPrestoManagersCount = ConstU32<100>;
     type MaxPrestoAuditorsCount = ConstU32<100>;
     type MaxUserRequestCount = ConstU32<65536>;
+    type MaxUserCropReceiptCount = ConstU32<65536>;
     type MaxRequestPaymentReferenceSize = ConstU32<100>;
     type MaxRequestDetailsSize = ConstU32<200>;
+    type MaxPlaceOfIssueSize = ConstU32<100>;
+    type MaxDebtorSize = ConstU32<80>;
+    type MaxCreditorSize = ConstU32<80>;
+    type MaxCropReceiptContentSize = ConstU32<30720>;
     type Time = Timestamp;
     type WeightInfo = ();
 }

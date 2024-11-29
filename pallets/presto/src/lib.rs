@@ -45,7 +45,7 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
 use sp_runtime::traits::{One, Saturating};
 
-use crop_receipt::CropReceipt;
+use crop_receipt::{CropReceipt, CropReceiptContent, Rating};
 use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
 use treasury::Treasury;
 use weights::WeightInfo;
@@ -121,10 +121,25 @@ pub mod pallet {
         type MaxUserRequestCount: Get<u32>;
 
         #[pallet::constant]
+        type MaxUserCropReceiptCount: Get<u32>;
+
+        #[pallet::constant]
         type MaxRequestPaymentReferenceSize: Get<u32>;
 
         #[pallet::constant]
         type MaxRequestDetailsSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxPlaceOfIssueSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxDebtorSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxCreditorSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxCropReceiptContentSize: Get<u32>;
 
         type Time: Time;
         type WeightInfo: WeightInfo;
@@ -151,7 +166,24 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn crop_receipts)]
     pub type CropReceipts<T: Config> =
-        StorageMap<_, Twox64Concat, T::CropReceiptId, CropReceipt, OptionQuery>;
+        StorageMap<_, Twox64Concat, T::CropReceiptId, CropReceipt<T>, OptionQuery>;
+
+    /// Crop receipts content
+    #[pallet::storage]
+    #[pallet::getter(fn crop_receipts_content)]
+    pub type CropReceiptsContent<T: Config> =
+        StorageMap<_, Twox64Concat, T::CropReceiptId, CropReceiptContent<T>, OptionQuery>;
+
+    /// Crop receipts index by user
+    #[pallet::storage]
+    #[pallet::getter(fn user_crop_receipts)]
+    pub type UserCropReceipts<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        AccountIdOf<T>,
+        BoundedVec<T::CropReceiptId, T::MaxUserCropReceiptCount>,
+        ValueQuery,
+    >;
 
     /// Counter to generate new Request Ids
     #[pallet::storage]
@@ -243,6 +275,14 @@ pub mod pallet {
         RequestAlreadyProcessed,
         /// The actual request type by provided RequestId is different
         WrongRequestType,
+        /// The crop receipt already has been rated
+        CropReceiptAlreadyRated,
+        /// This account is not an owner of the crop receipt
+        CallerIsNotCropReceiptOwner,
+        /// The operation cannot be performed until the crop receipt has been rated
+        CropReceiptWaitingForRate,
+        /// The crop receipt already has a decision
+        CropReceiptAlreadyHasDecision,
     }
 
     #[pallet::call]
@@ -425,7 +465,7 @@ pub mod pallet {
             Requests::<T>::try_mutate(id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
-                ensure!(*request.owner() == who, Error::<T>::CallerIsNotRequestOwner);
+                request.ensure_is_owner(&who)?;
 
                 ensure!(
                     *request.status() == RequestStatus::Pending,
