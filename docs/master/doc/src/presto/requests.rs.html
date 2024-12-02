@@ -224,6 +224,11 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -255,10 +260,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::treasury::Treasury;
-<span class="kw">use crate</span>::{Config, MomentOf};
+<span class="kw">use crate</span>::{Config, Error, MomentOf};
+
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
 <span class="kw">use </span>common::{AccountIdOf, Balance, BoundedString};
 <span class="kw">use </span>derivative::Derivative;
+<span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>sp_core::RuntimeDebug;
 <span class="kw">use </span>sp_runtime::{DispatchError, DispatchResult};
@@ -290,11 +297,14 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; Request&lt;T&gt; {
-    <span class="kw">pub fn </span>owner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
+    <span class="kw">pub fn </span>ensure_is_owner(<span class="kw-2">&amp;</span><span class="self">self</span>, who: <span class="kw-2">&amp;</span>AccountIdOf&lt;T&gt;) -&gt; DispatchResult {
+        <span class="kw">let </span>owner = <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Deposit(request) =&gt; <span class="kw-2">&amp;</span>request.owner,
             <span class="self">Self</span>::Withdraw(request) =&gt; <span class="kw-2">&amp;</span>request.owner,
-        }
+        };
+
+        <span class="macro">ensure!</span>(owner == who, Error::&lt;T&gt;::CallerIsNotRequestOwner);
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">pub fn </span>status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>RequestStatus&lt;T&gt; {
