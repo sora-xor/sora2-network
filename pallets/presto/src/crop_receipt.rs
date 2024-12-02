@@ -32,6 +32,7 @@ use crate::{Config, Error, MomentOf};
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
+use derivative::Derivative;
 use frame_support::ensure;
 use frame_support::traits::Time;
 use sp_runtime::DispatchResult;
@@ -46,6 +47,7 @@ pub enum Status {
     Published,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
 )]
@@ -70,13 +72,15 @@ pub struct Score<T: Config> {
     pub by_auditor: AccountIdOf<T>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
+#[derivative(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct CropReceiptContent<T: Config> {
     pub json: BoundedString<T::MaxCropReceiptContentSize>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
+#[derivative(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct CropReceipt<T: Config> {
     pub owner: AccountIdOf<T>,
@@ -93,6 +97,7 @@ pub struct CropReceipt<T: Config> {
 }
 
 impl<T: Config> CropReceipt<T> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         owner: AccountIdOf<T>,
         amount: Balance,
@@ -126,13 +131,9 @@ impl<T: Config> CropReceipt<T> {
     }
 
     pub fn rate(&mut self, rating: Rating, auditor: AccountIdOf<T>) -> DispatchResult {
-        if self.status == Status::Rating {
-            return Err(Error::<T>::CropReceiptWaitingForRate.into());
-        }
-
         ensure!(
-            self.status == Status::Decision,
-            Error::<T>::CropReceiptAlreadyHasDecision
+            self.status == Status::Rating,
+            Error::<T>::CropReceiptAlreadyRated
         );
 
         self.score = Some(Score {
@@ -160,9 +161,13 @@ impl<T: Config> CropReceipt<T> {
     }
 
     pub fn publish(&mut self) -> DispatchResult {
+        if self.status == Status::Rating {
+            return Err(Error::<T>::CropReceiptWaitingForRate.into());
+        }
+
         ensure!(
             self.status == Status::Decision,
-            Error::<T>::CropReceiptWaitingForRate
+            Error::<T>::CropReceiptAlreadyHasDecision
         );
 
         self.status = Status::Published;

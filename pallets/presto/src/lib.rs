@@ -61,6 +61,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
 
 #[frame_support::pallet]
+#[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
     use common::{AssetIdOf, Balance, BoundedString};
