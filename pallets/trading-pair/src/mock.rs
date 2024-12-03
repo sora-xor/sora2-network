@@ -36,7 +36,7 @@ use common::{
     mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
     mock_tokens_config, mock_trading_pair_config, AssetId32, AssetName, AssetSymbol,
     BalancePrecision, ContentSource, DEXId, Description, DEFAULT_BALANCE_PRECISION, DOT, KSM, KUSD,
-    VXOR, XOR, XST, XSTUSD,
+    PRUSD, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -232,6 +232,17 @@ impl Default for ExtBuilder {
                     None,
                     None,
                 ),
+                (
+                    PRUSD,
+                    ALICE,
+                    AssetSymbol(b"PRUSD".to_vec()),
+                    AssetName(b"Presto USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
             endowed_accounts: vec![],
             dex_list: vec![
@@ -263,6 +274,14 @@ impl Default for ExtBuilder {
                     DEXId::PolkaswapVXOR,
                     DEXInfo {
                         base_asset_id: VXOR,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEXId::PolkaswapPresto,
+                    DEXInfo {
+                        base_asset_id: PRUSD,
                         synthetic_base_asset_id: XST,
                         is_public: true,
                     },
