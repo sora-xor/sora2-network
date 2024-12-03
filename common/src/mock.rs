@@ -78,6 +78,7 @@ pub enum ComicAssetId {
     Tomato,
     Potato,
     Table,
+    Pan,
     Future,
 }
 
@@ -116,6 +117,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KGOLD => Tomato,
             PredefinedAssetId::KXOR => Potato,
             PredefinedAssetId::KARMA => Table,
+            PredefinedAssetId::PRUSD => Pan,
         }
     }
 }

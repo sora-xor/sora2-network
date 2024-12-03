@@ -194,7 +194,6 @@ impl CustomFees {
                 Some(SMALL_FEE)
             }
             RuntimeCall::Band(..) => Some(MINIMAL_FEE),
-            #[cfg(feature = "stage")]
             RuntimeCall::Soratopia(soratopia::Call::check_in {}) => Some(MINIMAL_FEE),
             _ => None,
         }
