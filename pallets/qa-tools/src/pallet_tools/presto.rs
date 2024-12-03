@@ -28,13 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // presto
-
 use crate::Config;
 
 use common::{
-    AccountIdOf, AssetManager, AssetName, AssetSymbol, AssetType, FromGenericPair,
-    DEFAULT_BALANCE_PRECISION, PRUSD,
+    AccountIdOf, AssetManager, AssetName, AssetSymbol, AssetType, DEXId, DEXInfo, DexIdOf,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, XST,
 };
 use frame_support::sp_runtime::{DispatchError, DispatchResult};
 use permissions::{Scope, BURN, MINT};
@@ -90,6 +88,19 @@ pub fn register_presto_usd<T: Config>() -> DispatchResult {
             *permission_id,
             scope,
         )?;
+    }
+
+    let dex_id: DexIdOf<T> = DEXId::PolkaswapPresto.into();
+
+    if !dex_manager::DEXInfos::<T>::contains_key(dex_id) {
+        dex_manager::DEXInfos::<T>::insert(
+            dex_id,
+            DEXInfo {
+                base_asset_id: PRUSD.into(),
+                synthetic_base_asset_id: XST.into(),
+                is_public: true,
+            },
+        );
     }
 
     Ok(())

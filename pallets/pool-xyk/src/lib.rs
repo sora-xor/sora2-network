@@ -1197,6 +1197,11 @@ pub mod pallet {
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
 
+                ensure!(
+                    dex_id != common::DEXId::PolkaswapPresto.into(),
+                    Error::<T>::DexIsForbidden
+                );
+
                 let (trading_pair, tech_account_id, fees_account_id) =
                     Pallet::<T>::initialize_pool_unchecked(
                         source.clone(),
@@ -1381,6 +1386,8 @@ pub mod pallet {
         NotEnoughOutputReserves,
         /// Asset Regulations Check failed
         AssetRegulationsCheckFailed,
+        /// It is not allowed to initialize pools in this Dex
+        DexIsForbidden,
     }
 
     /// Updated after last liquidity change operation.
