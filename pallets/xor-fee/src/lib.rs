@@ -1097,6 +1097,7 @@ pub mod pallet {
         >;
         type WhiteListOrigin: EnsureOrigin<Self::RuntimeOrigin>;
         type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
+        /// Main goal of the constant is to prevent zero fees
         type MinimalFeeInAsset: Get<Balance>;
     }
 

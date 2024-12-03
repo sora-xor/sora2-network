@@ -1314,11 +1314,10 @@ parameter_types! {
     pub const FeeXorBurnedWeight: u32 = 20; // 20%
     pub const FeeValBurnedWeight: u32 = 50; // 50%
     pub const FeeKusdBurnedWeight: u32 = 20; // 20%
-    pub const MinimalFeeInAsset: Balance = ((FeeReferrerWeight::get()
-        + FeeXorBurnedWeight::get()
-        + FeeValBurnedWeight::get()
-        + FeeKusdBurnedWeight::get())
-        / FeeReferrerWeight::get()) as Balance;
+    // Minimal amount for proportions right calculations
+    // now weights are equal to 1, 2, 5, 2, so max weight equal to 10
+    // max weight always right amount for calculations: weight / max_weight * max_weight = weight
+    pub const MinimalFeeInAsset: Balance = 10;
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
 }
