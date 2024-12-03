@@ -1269,7 +1269,7 @@ macro_rules! mock_vested_rewards_config {
         impl vested_rewards::Config for $runtime {
             const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
             type AssetInfoProvider = assets::Pallet<$runtime>;
-            type Currency = Tokens;
+            type Currency = Currencies;
             type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
             type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
             type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
