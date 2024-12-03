@@ -1454,6 +1454,13 @@
 <a href="#1439" id="1439">1439</a>
 <a href="#1440" id="1440">1440</a>
 <a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2653,6 +2660,11 @@
                     Error::&lt;T&gt;::UnableToCreatePoolWithIndivisibleAssets
                 );
 
+                <span class="macro">ensure!</span>(
+                    dex_id != common::DEXId::PolkaswapPresto.into(),
+                    Error::&lt;T&gt;::DexIsForbidden
+                );
+
                 <span class="kw">let </span>(trading_pair, tech_account_id, fees_account_id) =
                     Pallet::&lt;T&gt;::initialize_pool_unchecked(
                         source.clone(),
@@ -2837,6 +2849,8 @@
         </span>NotEnoughOutputReserves,
         <span class="doccomment">/// Asset Regulations Check failed
         </span>AssetRegulationsCheckFailed,
+        <span class="doccomment">/// It is not allowed to initialize pools in this Dex
+        </span>DexIsForbidden,
     }
 
     <span class="doccomment">/// Updated after last liquidity change operation.

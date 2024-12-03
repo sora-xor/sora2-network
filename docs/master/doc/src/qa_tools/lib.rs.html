@@ -565,6 +565,7 @@
     </span><span class="kw">pub trait </span>Config:
         frame_system::Config
         + common::Config
+        + dex_manager::Config
         + order_book::Config
         + pool_xyk::Config
         + xst::Config
@@ -947,8 +948,7 @@
         </span><span class="kw">pub fn </span>presto_initialize_assets(origin: OriginFor&lt;T&gt;) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
-            </span>pallet_tools::presto::register_presto_usd::&lt;T&gt;()<span class="question-mark">?</span>;
+            pallet_tools::presto::register_presto_usd::&lt;T&gt;()<span class="question-mark">?</span>;
 
             <span class="comment">// Extrinsic is only for testing, so we return all fees
             // for simplicity.
