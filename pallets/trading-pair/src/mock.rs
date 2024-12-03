@@ -234,7 +234,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     PRUSD,
-                    assets_and_permissions_account_id.clone(),
+                    ALICE,
                     AssetSymbol(b"PRUSD".to_vec()),
                     AssetName(b"Presto USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
