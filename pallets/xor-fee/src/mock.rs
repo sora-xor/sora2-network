@@ -92,7 +92,7 @@ parameter_types! {
     pub const FeeXorBurnedWeight: u32 = 20; // 20%
     pub const FeeValBurnedWeight: u32 = 50; // 50%
     pub const FeeKusdBurnedWeight: u32 = 20; // 20%
-    pub const MinimalFeeInAsset: Balance = 10; // Minimal amount for proportions right calculations
+    pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001); // Minimal amount for proportions right calculations
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
     pub const XorId: AssetId = XOR;
