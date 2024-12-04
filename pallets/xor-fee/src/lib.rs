@@ -1229,7 +1229,7 @@ pub mod pallet {
                     .map(|_| Some(whole_weight).into())
             }
             #[cfg(not(feature = "wip"))] // Xorless fee
-            Ok(().into())
+            Err(DispatchError::Unavailable.into())
         }
 
         #[allow(unused_variables)] // Used in extension
