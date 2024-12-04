@@ -728,6 +728,14 @@
 <a href="#713" id="713">713</a>
 <a href="#714" id="714">714</a>
 <a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -798,7 +806,7 @@
     <span class="kw">use </span>core::fmt::Debug;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
+    <span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
     <span class="kw">use </span>sp_runtime::BoundedVec;
 
     <span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">0</span>);
@@ -1010,6 +1018,8 @@
         </span>CallerIsNotManager,
         <span class="doccomment">/// This account is not an auditor
         </span>CallerIsNotAuditor,
+        <span class="doccomment">/// Zero amount doesn&#39;t make sense
+        </span>AmountIsZero,
         <span class="doccomment">/// This account has reached the max count of requests
         </span>RequestsCountForUserOverloaded,
         <span class="doccomment">/// There is no such request
@@ -1117,6 +1127,7 @@
         </span><span class="kw">pub fn </span>mint_presto_usd(origin: OriginFor&lt;T&gt;, amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="self">Self</span>::ensure_is_manager(<span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(!amount.is_zero(), Error::&lt;T&gt;::AmountIsZero);
             Treasury::&lt;T&gt;::mint_presto_usd(amount)<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::PrestoUsdMinted { amount, by: who });
@@ -1129,6 +1140,7 @@
         </span><span class="kw">pub fn </span>burn_presto_usd(origin: OriginFor&lt;T&gt;, amount: Balance) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="self">Self</span>::ensure_is_manager(<span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(!amount.is_zero(), Error::&lt;T&gt;::AmountIsZero);
             Treasury::&lt;T&gt;::burn_presto_usd(amount)<span class="question-mark">?</span>;
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::PrestoUsdBurned { amount, by: who });
@@ -1145,6 +1157,7 @@
         ) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
             <span class="self">Self</span>::ensure_is_manager(<span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(!amount.is_zero(), Error::&lt;T&gt;::AmountIsZero);
             Treasury::&lt;T&gt;::send_presto_usd(amount, <span class="kw-2">&amp;</span>to)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(())
@@ -1160,6 +1173,7 @@
         ) -&gt; DispatchResult {
             <span class="kw">let </span>owner = ensure_signed(origin)<span class="question-mark">?</span>;
 
+            <span class="macro">ensure!</span>(!amount.is_zero(), Error::&lt;T&gt;::AmountIsZero);
             <span class="kw">let </span>id = <span class="self">Self</span>::next_request_id();
 
             <span class="kw">let </span>request = Request::Deposit(DepositRequest::new(
@@ -1190,6 +1204,7 @@
         ) -&gt; DispatchResult {
             <span class="kw">let </span>owner = ensure_signed(origin)<span class="question-mark">?</span>;
 
+            <span class="macro">ensure!</span>(!amount.is_zero(), Error::&lt;T&gt;::AmountIsZero);
             <span class="kw">let </span>id = <span class="self">Self</span>::next_request_id();
 
             <span class="kw">let </span>request = Request::Withdraw(WithdrawRequest::new(owner.clone(), amount, details)<span class="question-mark">?</span>);
@@ -1333,6 +1348,7 @@
             data: BoundedString&lt;T::MaxCropReceiptContentSize&gt;,
         ) -&gt; DispatchResult {
             <span class="kw">let </span>owner = ensure_signed(origin)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(!amount.is_zero(), Error::&lt;T&gt;::AmountIsZero);
             <span class="kw">let </span>id = <span class="self">Self</span>::next_crop_receipt_id();
 
             <span class="kw">let </span>crop_receipt = CropReceipt::&lt;T&gt;::new(
