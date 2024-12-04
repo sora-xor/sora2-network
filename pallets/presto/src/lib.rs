@@ -68,7 +68,7 @@ pub mod pallet {
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -280,6 +280,8 @@ pub mod pallet {
         CallerIsNotManager,
         /// This account is not an auditor
         CallerIsNotAuditor,
+        /// Zero amount doesn't make sense
+        AmountIsZero,
         /// This account has reached the max count of requests
         RequestsCountForUserOverloaded,
         /// There is no such request
@@ -387,6 +389,7 @@ pub mod pallet {
         pub fn mint_presto_usd(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_is_manager(&who)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             Treasury::<T>::mint_presto_usd(amount)?;
 
             Self::deposit_event(Event::<T>::PrestoUsdMinted { amount, by: who });
@@ -399,6 +402,7 @@ pub mod pallet {
         pub fn burn_presto_usd(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_is_manager(&who)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             Treasury::<T>::burn_presto_usd(amount)?;
 
             Self::deposit_event(Event::<T>::PrestoUsdBurned { amount, by: who });
@@ -415,6 +419,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_is_manager(&who)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             Treasury::<T>::send_presto_usd(amount, &to)?;
 
             Ok(())
@@ -430,6 +435,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let owner = ensure_signed(origin)?;
 
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             let id = Self::next_request_id();
 
             let request = Request::Deposit(DepositRequest::new(
@@ -460,6 +466,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let owner = ensure_signed(origin)?;
 
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             let id = Self::next_request_id();
 
             let request = Request::Withdraw(WithdrawRequest::new(owner.clone(), amount, details)?);
@@ -603,6 +610,7 @@ pub mod pallet {
             data: BoundedString<T::MaxCropReceiptContentSize>,
         ) -> DispatchResult {
             let owner = ensure_signed(origin)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             let id = Self::next_crop_receipt_id();
 
             let crop_receipt = CropReceipt::<T>::new(
