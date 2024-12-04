@@ -1015,7 +1015,7 @@ impl technical::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetFee: Fixed = fixed!(0.003);
+    pub GetFee: Fixed = fixed!(0.006);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
