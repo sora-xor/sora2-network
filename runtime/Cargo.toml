@@ -312,6 +312,7 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
+    "order-book/wip",
     "pallet-beefy",
     "pallet-beefy-mmr",
     "presto/wip",

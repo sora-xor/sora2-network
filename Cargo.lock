@@ -8082,6 +8082,7 @@ dependencies = [
  "assets",
  "band",
  "common",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
