@@ -164,7 +164,7 @@ benchmarks! {
         );
         assert_eq!(
             Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap()),
-            Into::<u128>::into(initial_target_balance) + balance!(997.997997997997997997)
+            Into::<u128>::into(initial_target_balance) + balance!(995.991983967935871743)
         );
     }
 
