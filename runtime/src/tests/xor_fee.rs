@@ -330,7 +330,7 @@ fn calc_xyk_swap_result(reserve_a: Balance, reserve_b: Balance, input: Balance) 
     let x = FixedWrapper::from(reserve_a);
     let y = FixedWrapper::from(reserve_b);
     let x_in = FixedWrapper::from(input);
-    let res = (x_in.clone() * y) / (x + x_in) * fixed_wrapper!(0.997);
+    let res = (x_in.clone() * y) / (x + x_in) * fixed_wrapper!(0.994);
     res.try_into_balance().unwrap()
 }
 
@@ -1271,7 +1271,7 @@ fn fee_payment_postponed_xorless_transfer() {
         );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice()).unwrap(),
-            balance!(989.999297892695135179)
+            balance!(989.999295773656019233)
         );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &bob()).unwrap(),

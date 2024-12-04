@@ -90,8 +90,8 @@ fn check_xyk_pool_small_reserves() {
         assert_eq!(
             info.outcome,
             SwapOutcome::new(
-                balance!(1011.13217566127906472),
-                OutcomeFee::xor(balance!(0.033396526983837194))
+                balance!(1011.165773776956969342),
+                OutcomeFee::xor(balance!(0.066994642661741815))
             )
         );
     });
@@ -387,10 +387,10 @@ fn check_alt_without_limits_select_only_xyk_pool_source() {
             AggregatedSwapOutcome::new(
                 vec![(
                     LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
-                    SwapAmount::with_desired_input(balance!(100), balance!(906.610893880149131581))
+                    SwapAmount::with_desired_input(balance!(100), balance!(904.129525195561215208))
                 )],
-                balance!(906.610893880149131581),
-                OutcomeFee::xor(balance!(0.3))
+                balance!(904.129525195561215208),
+                OutcomeFee::xor(balance!(0.6))
             )
         );
 
@@ -506,7 +506,7 @@ fn check_alt_without_limits_select_xyk_pool_and_order_book_sources() {
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
                         SwapAmount::with_desired_input(
                             balance!(60),
-                            balance!(564.435470174180521220)
+                            balance!(562.832660148729757276)
                         )
                     ),
                     (
@@ -514,8 +514,8 @@ fn check_alt_without_limits_select_xyk_pool_and_order_book_sources() {
                         SwapAmount::with_desired_input(balance!(40), balance!(400))
                     )
                 ],
-                balance!(964.435470174180521220),
-                OutcomeFee::xor(balance!(0.18))
+                balance!(962.832660148729757276),
+                OutcomeFee::xor(balance!(0.36))
             )
         );
 
@@ -565,7 +565,7 @@ fn check_alt_without_limits_select_xyk_pool_and_tbc_pool_sources() {
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
                         SwapAmount::with_desired_input(
                             balance!(90),
-                            balance!(823.414974351444853312)
+                            balance!(821.140748627760541919)
                         )
                     ),
                     (
@@ -579,8 +579,8 @@ fn check_alt_without_limits_select_xyk_pool_and_tbc_pool_sources() {
                         )
                     )
                 ],
-                balance!(923.414894243331784112),
-                OutcomeFee::xor(balance!(1.2))
+                balance!(921.140668519647472719),
+                OutcomeFee::xor(balance!(1.47))
             )
         );
 
@@ -708,7 +708,7 @@ fn check_alt_without_limits_select_all_sources() {
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
                         SwapAmount::with_desired_input(
                             balance!(50),
-                            balance!(474.829737581559270371)
+                            balance!(473.468610079070210536)
                         )
                     ),
                     (
@@ -726,8 +726,8 @@ fn check_alt_without_limits_select_all_sources() {
                         SwapAmount::with_desired_input(balance!(40), balance!(400))
                     )
                 ],
-                balance!(974.829657473443442852),
-                OutcomeFee::xor(balance!(1.08))
+                balance!(973.468529970954383017),
+                OutcomeFee::xor(balance!(1.23))
             )
         );
 
@@ -786,7 +786,7 @@ fn check_alt_with_min_limits() {
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
                         SwapAmount::with_desired_input(
                             balance!(0.9009),
-                            balance!(8.474520252682988152)
+                            balance!(8.450456772826685116)
                         )
                     ),
                     (
@@ -800,8 +800,8 @@ fn check_alt_with_min_limits() {
                         )
                     ),
                 ],
-                balance!(18.474440228612411261),
-                OutcomeFee::xor(balance!(0.012012))
+                balance!(18.450376748756108225),
+                OutcomeFee::xor(balance!(0.0147147))
             )
         );
 
@@ -859,7 +859,7 @@ fn check_alt_with_max_limits() {
                         LiquiditySourceId::new(DEX.into(), LiquiditySourceType::XYKPool),
                         SwapAmount::with_desired_input(
                             balance!(162),
-                            balance!(1389.183811480589129619)
+                            balance!(1385.586414376365786990)
                         )
                     ),
                     (
@@ -877,8 +877,8 @@ fn check_alt_with_max_limits() {
                         SwapAmount::with_desired_input(balance!(108), balance!(1000)) // max amount
                     )
                 ],
-                balance!(3389.181141329977251770),
-                OutcomeFee::xor(balance!(3.276))
+                balance!(3385.583744225753909141),
+                OutcomeFee::xor(balance!(3.762))
             )
         );
 
