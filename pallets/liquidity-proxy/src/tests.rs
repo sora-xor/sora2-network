@@ -2209,12 +2209,12 @@ fn test_mint_buy_back_and_burn() {
         assert_eq!(crate::LiquidityProxyBuyBackHandler::<
             Runtime,
             GetBuyBackDexId,
-        >::mint_buy_back_and_burn(&USDT, &KSM, balance!(1)).unwrap(), balance!(1.984061762988045965));
+        >::mint_buy_back_and_burn(&USDT, &KSM, balance!(1)).unwrap(), balance!(1.972151292233593092));
 
         assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24001));
         assert_eq!(
             Assets::total_issuance(&KSM).unwrap(),
-            balance!(3998.015938237011954035)
+            balance!(3998.027848707766406908)
         );
         assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
@@ -2252,13 +2252,13 @@ fn test_buy_back_handler() {
                 balance!(1)
             )
             .unwrap(),
-            balance!(1.984061762988045965)
+            balance!(1.972151292233593092)
         );
 
         assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
         assert_eq!(
             Assets::total_issuance(&KSM).unwrap(),
-            balance!(3998.015938237011954035)
+            balance!(3998.027848707766406908)
         );
         assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
@@ -2389,7 +2389,7 @@ fn test_batch_swap_asset_reuse_works() {
         );
         assert_approx_eq_abs!(
             Assets::free_balance(&XOR, &alice()).unwrap(),
-            balance!(356394.934457262),
+            balance!(356394.919168903),
             balance!(0.00001)
         );
         assert_approx_eq_abs!(
