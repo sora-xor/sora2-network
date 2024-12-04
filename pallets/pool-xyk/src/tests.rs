@@ -413,8 +413,8 @@ fn quote_case_exact_input_for_output_base_first() {
                 )
                 .unwrap()),
                 (
-                    99849774661992989484226,
-                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(300))
+                    99699097291875626880641,
+                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(600))
                 )
             );
         })],
@@ -439,8 +439,8 @@ fn test_deducing_fee() {
             assert_eq!(
                 (amount_a, fee_a),
                 (
-                    99849774661992989484226,
-                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(300))
+                    99699097291875626880641,
+                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(600))
                 )
             );
             let (_, fee_b) = simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -468,8 +468,8 @@ fn test_deducing_fee() {
             assert_eq!(
                 (amount_a, fee_a),
                 (
-                    100300902708124373119360,
-                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.902708124373119358))
+                    100603621730382293762577,
+                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(603.621730382293762575))
                 )
             );
             let (_, fee_b) = simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -504,8 +504,8 @@ fn quote_case_exact_input_for_output_base_second() {
                 )
                 .unwrap()),
                 (
-                    balance!(33233.333333333333333333),
-                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(100))
+                    balance!(33133.333333333333333333),
+                    OutcomeFee::from_asset(GoldenTicket.into(), balance!(200))
                 )
             );
         })],
@@ -529,8 +529,8 @@ fn quote_case_exact_output_for_input_base_first() {
                 )
                 .unwrap()),
                 (
-                    100300902708124373119360,
-                    OutcomeFee::from_asset(GoldenTicket.into(), 300902708124373119358)
+                    100603621730382293762577,
+                    OutcomeFee::from_asset(GoldenTicket.into(), 603621730382293762575)
                 )
             );
         })],
@@ -554,8 +554,8 @@ fn quote_case_exact_output_for_input_base_second() {
                 )
                 .unwrap()),
                 (
-                    10559662090813093980992,
-                    OutcomeFee::from_asset(GoldenTicket.into(), 15045135406218655967)
+                    10593220338983050847458,
+                    OutcomeFee::from_asset(GoldenTicket.into(), 30181086519114688128)
                 )
             );
         })],
@@ -986,53 +986,53 @@ fn check_step_quote_with_fee() {
                 chunks: VecDeque::from([
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.938012180185635492),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.878024124402034437),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.934037333141407095),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.874073158658093209),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.930063674618442918),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.870123370740908884),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.926091204142949627),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.866174760182363670),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.922119921241369960),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.862227326514572307),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.918149825440382581),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.858281069269881944),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.914180916266901942),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.854335987980871985),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.910213193248078135),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.850392082180353959),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.906246655911296762),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.846449351401371382),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                     SwapChunk::new(
                         balance!(10),
-                        balance!(19.902281303784178786),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.03))
+                        balance!(19.842507795177199617),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.06))
                     ),
                 ]),
                 limits: Default::default()
@@ -1053,54 +1053,54 @@ fn check_step_quote_with_fee() {
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(
-                        balance!(10.031093380150452357),
+                        balance!(10.061368309869216297),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030093280140451357))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060368209859215297))
                     ),
                     SwapChunk::new(
-                        balance!(10.033100000150482453),
+                        balance!(10.063380986066429584),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030099300000451447))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060380285916398578))
                     ),
                     SwapChunk::new(
-                        balance!(10.035107222317162555),
+                        balance!(10.065394266247697250),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030105321666951488))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060392365597486183))
                     ),
                     SwapChunk::new(
-                        balance!(10.037115046891455704),
+                        balance!(10.067408150654709595),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030111345140674367))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060404448903928258))
                     ),
                     SwapChunk::new(
-                        balance!(10.039123474114445489),
+                        balance!(10.069422639529277820),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030117370422343336))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060416535837175667))
                     ),
                     SwapChunk::new(
-                        balance!(10.041132504227336114),
+                        balance!(10.071437733113334109),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030123397512682009))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060428626398680004))
                     ),
                     SwapChunk::new(
-                        balance!(10.043142137471452462),
+                        balance!(10.073453431648931696),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030129426412414357))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060440720589893591))
                     ),
                     SwapChunk::new(
-                        balance!(10.045152374088240182),
+                        balance!(10.075469735378244931),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030135457122264720))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060452818412269469))
                     ),
                     SwapChunk::new(
-                        balance!(10.047163214319265755),
+                        balance!(10.077486644543569373),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030141489642957798))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060464919867261416))
                     ),
                     SwapChunk::new(
-                        balance!(10.049174658406216557),
+                        balance!(10.079504159387321839),
                         balance!(20),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030147523975218649))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060477024956323931))
                     ),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(198000))), None)
@@ -1122,53 +1122,53 @@ fn check_step_quote_with_fee() {
                 chunks: VecDeque::from([
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.969003099690030996),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029997000299970003))
+                        balance!(9.939006099390060993),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059994000599940006))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.967009697750480901),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029991002099550093))
+                        balance!(9.937018695650930808),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059982004199100186))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.965016893652160301),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029985005698050633))
+                        balance!(9.935031887954109668),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059970011396101266))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.963024687156028321),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029979011094752342))
+                        balance!(9.933045676061275979),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059958022189504684))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.961033078023163548),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029973018288936300))
+                        balance!(9.931060059734227249),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059946036577872599))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.959042066014763955),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029967027279883944))
+                        balance!(9.929075038734880011),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059934054559767888))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.957051650892146835),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029961038066877071))
+                        balance!(9.927090612825269763),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059922076133754143))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.955061832416748723),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029955050649197840))
+                        balance!(9.925106781767550884),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059910101298395679))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.953072610350125335),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029949065026128762))
+                        balance!(9.923123545323996572),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059898130052257525))
                     ),
                     SwapChunk::new(
                         balance!(20),
-                        balance!(9.951083984453951483),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.029943081196952713))
+                        balance!(9.921140903256998771),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.059886162393905425))
                     ),
                 ]),
                 limits: Default::default()
@@ -1189,57 +1189,57 @@ fn check_step_quote_with_fee() {
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(
-                        balance!(20.062192797672785635),
+                        balance!(20.122748767481637993),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437311))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.066218117254983225),
+                        balance!(20.126798425112445324),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.070244648431316120),
+                        balance!(20.130849305342919803),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.074272391688075365),
+                        balance!(20.134901408665251310),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229377))
                     ),
                     SwapChunk::new(
-                        balance!(20.078301347511796002),
+                        balance!(20.138954735571877428),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.082331516389257222),
+                        balance!(20.143009286555483604),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.086362898807482507),
+                        balance!(20.147065062109003283),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.090395495253739781),
+                        balance!(20.151122062725618067),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229377))
                     ),
                     SwapChunk::new(
-                        balance!(20.094429306215541556),
+                        balance!(20.155180288898757852),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                     SwapChunk::new(
-                        balance!(20.098464332180645078),
+                        balance!(20.159239741122101006),
                         balance!(10),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.030090270812437312))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.060362173038229376))
                     ),
                 ]),
-                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(98703))), None)
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(98406))), None)
             }
         );
     })]);
@@ -1405,8 +1405,8 @@ fn check_exceed_reserves() {
             )
             .unwrap()),
             (
-                balance!(99850.274658368380604529),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.003))
+                balance!(99699.597284856062452727),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(600.006))
             )
         );
 
@@ -1436,8 +1436,8 @@ fn check_exceed_reserves() {
             )
             .unwrap()),
             (
-                balance!(49850.124624688438278904),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(150.000374999062502344))
+                balance!(49700.124249689375776560),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.000749998125004688))
             )
         );
 
@@ -1474,8 +1474,8 @@ fn check_exceed_reserves() {
             ),
             (
                 gt_reserve + balance!(1),
-                balance!(99850.274658368380604529),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.003))
+                balance!(99699.597284856062452727),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(600.006))
             )
         );
 
@@ -1496,9 +1496,9 @@ fn check_exceed_reserves() {
                 .0,
             ),
             (
-                balance!(9929789.368104312938821464),
+                balance!(9959758.551307847082500000),
                 balance!(198000),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(29789.368104312938816464))
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(59758.551307847082495000))
             )
         );
 
@@ -1519,8 +1519,8 @@ fn check_exceed_reserves() {
             ),
             (
                 bp_reserve + balance!(1),
-                balance!(49850.124624688438278904),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(150.000374999062502344))
+                balance!(49700.124249689375776560),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(300.000749998125004688))
             )
         );
 
@@ -1542,8 +1542,8 @@ fn check_exceed_reserves() {
             ),
             (
                 balance!(19800000.00000000000002),
-                balance!(98703),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(297))
+                balance!(98406),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(594))
             )
         );
     })]);
@@ -2032,7 +2032,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 ));
                 assert_eq!(
                     gt_balance - assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                    balance!(107349.074249776356095316)
+                    balance!(107673.065419544292783733)
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&bp, &ALICE()).unwrap() - bp_balance,
@@ -2049,7 +2049,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                    balance!(322.047222749329068285)
+                    balance!(646.038392517265756702)
                 );
 
                 // a = sqrt ( 467027 * 111000 ) / 8784 = 25.92001146000573
@@ -2123,7 +2123,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                    322047222749329068285
+                    646038392517265756702
                 );
 
                 let gt_balance = assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap();
@@ -2143,7 +2143,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
 
                 common::assert_approx_eq_abs!(
                     gt_balance - assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                    balance!(201605.603818778020949073),
+                    balance!(202214.071435937310750730),
                     balance!(0.00000001),
                 );
                 common::assert_approx_eq_abs!(
@@ -2164,7 +2164,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                    926864034205663131132
+                    1859322821132889621206
                 );
             },
         )],
@@ -2196,20 +2196,20 @@ fn exchange_desired_input() {
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&bp, &ALICE()).unwrap() - bp_balance,
-                    balance!(12058.365847885345163285)
+                    balance!(12025.111888432339957535)
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &repr.clone()).unwrap()
                         + assets::Pallet::<Runtime>::free_balance(&pt, &repr.clone()).unwrap(),
-                    balance!(392901)
+                    balance!(392802)
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
-                    balance!(131941.634152114654836715)
+                    balance!(131974.888111567660042465)
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                    balance!(99)
+                    balance!(198)
                 );
             },
         )],
@@ -2329,7 +2329,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                    balance!(31230.802697411355231672),
+                    balance!(31157.161515019590770570),
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
@@ -2392,7 +2392,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                    balance!(147098.360655737704918032),
+                    balance!(146655.737704918032786884),
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
@@ -2423,7 +2423,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
                 )
                 .expect("Failed to transfer balance");
 
-                let desired_out = balance!(31230.802697411355231672);
+                let desired_out = balance!(31157.161515019590770569);
                 let (quote_outcome, _) = crate::Pallet::<Runtime>::quote(
                     &dex_id,
                     &GoldenTicket.into(),
@@ -2448,14 +2448,14 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
                 .expect("Failed to perform swap.");
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                    0,
+                    3,
                 );
                 assert_eq!(
                     assets::Pallet::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
                     desired_out,
                 );
-                assert_eq!(balance!(100000), quote_outcome.amount,);
-                assert_eq!(balance!(100000), outcome.amount);
+                assert_eq!(balance!(100000) - 3, quote_outcome.amount,);
+                assert_eq!(balance!(100000) - 3, outcome.amount);
             },
         )],
     );
@@ -2481,7 +2481,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
                     assets::Pallet::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
                     balance!(1756000),
                 );
-                let desired_out = balance!(147098.360655737704918032);
+                let desired_out = balance!(146655.737704918032786884);
                 let (quote_outcome, _) = crate::Pallet::<Runtime>::quote(
                     &dex_id,
                     &BlackPepper.into(),
@@ -2808,9 +2808,9 @@ fn swapping_should_not_affect_k_1() {
         let initial_reserve_base = balance!(9.000000000000000001);
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_out = balance!(4);
-        let expected_in = balance!(18.054162487462387185);
+        let expected_in = balance!(18.108651911468812901);
         let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.054162487462387161));
+            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.108651911468812877));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -2870,9 +2870,9 @@ fn swapping_should_not_affect_k_2() {
         let initial_reserve_base = balance!(9.000000000000000001);
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_out = balance!(4);
-        let expected_in = balance!(4.826060727930826461);
+        let expected_in = balance!(4.852405984634047714);
         let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.012036108324974924));
+            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.024144869215291750));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -2933,9 +2933,8 @@ fn swapping_should_not_affect_k_3() {
         let initial_reserve_base = balance!(9.000000000000000001);
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_in = balance!(4);
-        let expected_out = balance!(1.842315983985217123);
-        let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.012000000000000000));
+        let expected_out = balance!(1.838471023427866830);
+        let expected_fee = OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.024));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -2996,9 +2995,8 @@ fn swapping_should_not_affect_k_4() {
         let initial_reserve_base = balance!(9.000000000000000001);
         let initial_reserve_target = balance!(5.999999999999999999);
         let desired_in = balance!(4);
-        let expected_out = balance!(3.589200000000000000);
-        let expected_fee =
-            OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010800000000000000));
+        let expected_out = balance!(3.5784);
+        let expected_fee = OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.0216));
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -3469,10 +3467,10 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_a.amount, balance!(2.492482691092422969));
+                assert_eq!(quote_outcome_a.amount, balance!(2.484982743175394615));
                 assert_eq!(
                     quote_without_impact_a.amount,
-                    balance!(2.492500000000000000)
+                    balance!(2.485000000000000000)
                 );
                 assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
@@ -3493,10 +3491,10 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_b.amount, balance!(0.401204728643510095));
+                assert_eq!(quote_outcome_b.amount, balance!(0.402415611490083529));
                 assert_eq!(
                     quote_without_impact_b.amount,
-                    balance!(0.401203610832497492)
+                    balance!(0.402414486921529174)
                 );
                 assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
@@ -3517,10 +3515,10 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_c.amount, balance!(0.398798895548614272));
+                assert_eq!(quote_outcome_c.amount, balance!(0.397598902185253410));
                 assert_eq!(
                     quote_without_impact_c.amount,
-                    balance!(0.398800000000000000)
+                    balance!(0.397600000000000000)
                 );
                 assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
@@ -3541,10 +3539,10 @@ fn price_without_impact_small_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_d.amount, balance!(2.507539981175200824));
+                assert_eq!(quote_outcome_d.amount, balance!(2.515108009287399619));
                 assert_eq!(
                     quote_without_impact_d.amount,
-                    balance!(2.507522567703109327)
+                    balance!(2.515090543259557344)
                 );
                 assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
             },
@@ -3576,10 +3574,10 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_a.amount, balance!(147098.360655737704918032));
+                assert_eq!(quote_outcome_a.amount, balance!(146655.737704918032786884));
                 assert_eq!(
                     quote_without_impact_a.amount,
-                    balance!(249250.000000000000000000)
+                    balance!(248500.000000000000000000)
                 );
                 assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
@@ -3600,10 +3598,10 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_b.amount, balance!(55615.634172717441680828));
+                assert_eq!(quote_outcome_b.amount, balance!(55848.588271796462922743));
                 assert_eq!(
                     quote_without_impact_b.amount,
-                    balance!(40120.361083249749247743)
+                    balance!(40241.448692152917505030)
                 );
                 assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
@@ -3624,10 +3622,10 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_c.amount, balance!(31230.802697411355231672));
+                assert_eq!(quote_outcome_c.amount, balance!(31157.161515019590770570));
                 assert_eq!(
                     quote_without_impact_c.amount,
-                    balance!(39880.000000000000000000)
+                    balance!(39760.000000000000000000)
                 );
                 assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
@@ -3648,10 +3646,10 @@ fn price_without_impact_large_amount() {
                     true,
                 )
                 .expect("Failed to quote without impact.");
-                assert_eq!(quote_outcome_d.amount, balance!(820643.749430108507340228));
+                assert_eq!(quote_outcome_d.amount, balance!(823120.541430400585330189));
                 assert_eq!(
                     quote_without_impact_d.amount,
-                    balance!(250752.256770310932798395)
+                    balance!(251509.054325955734406438)
                 );
                 assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
             },
@@ -3876,18 +3874,18 @@ fn check_step_quote_chameleon_limits() {
                 chunks: VecDeque::from([
                     SwapChunk::new(
                         balance!(33),
-                        balance!(16.447786386607548998),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049491834663814090))
+                        balance!(16.398294551943734909),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.098983669327628179))
                     ),
                     SwapChunk::new(
                         balance!(33),
-                        balance!(16.442360950037693547),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049475509378247824))
+                        balance!(16.392885440659445723),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.098951018756495648))
                     ),
                     SwapChunk::new(
                         balance!(33),
-                        balance!(16.436938197461963666),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.049459192168892569))
+                        balance!(16.387479005293071097),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.098918384337785138))
                     ),
                 ]),
                 limits: Default::default(),
@@ -3908,24 +3906,24 @@ fn check_step_quote_chameleon_limits() {
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(
-                        balance!(6.687397532149040098),
-                        balance!(3.333556216843500771),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030760933330494))
+                        balance!(6.707582855013125092),
+                        balance!(3.333556889575266166),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.020122073780132392))
                     ),
                     SwapChunk::new(
-                        balance!(6.687397532149040098),
-                        balance!(3.333333325882023583),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090248391245))
+                        balance!(6.707582855013125092),
+                        balance!(3.333333325836975716),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.020120724300826815))
                     ),
                     SwapChunk::new(
-                        balance!(6.687397532149040099),
-                        balance!(3.333110457274475645),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010029419630715573))
+                        balance!(6.707582855013125092),
+                        balance!(3.333109784587758117),
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.020119374957270170))
                     ),
                 ]),
                 limits: SwapLimits::new(
                     None,
-                    Some(SideAmount::Input(balance!(20.062192596447120295))),
+                    Some(SideAmount::Input(balance!(20.122748565039375276))),
                     None
                 )
             }
@@ -3945,19 +3943,19 @@ fn check_step_quote_chameleon_limits() {
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(
-                        balance!(6.686950393907246094),
+                        balance!(6.707133013493201088),
                         balance!(3.333333333333333333),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.020120724346076458))
                     ),
                     SwapChunk::new(
-                        balance!(6.687397517200078968),
+                        balance!(6.707582839928393143),
                         balance!(3.333333333333333333),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.020120724346076459))
                     ),
                     SwapChunk::new(
-                        balance!(6.687844685339795233),
+                        balance!(6.708032711617781045),
                         balance!(3.333333333333333334),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.010030090270812437))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.020120724346076459))
                     ),
                 ]),
                 limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(10))), None)
@@ -3978,26 +3976,22 @@ fn check_step_quote_chameleon_limits() {
             DiscreteQuotation {
                 chunks: VecDeque::from([
                     SwapChunk::new(
-                        balance!(66.220512120302212237),
+                        balance!(66.420439188407290464),
                         balance!(33),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043129))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.199195171026156941))
                     ),
                     SwapChunk::new(
-                        balance!(66.264373819107869477),
+                        balance!(66.464566177798237524),
                         balance!(33),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043129))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.199195171026156942))
                     ),
                     SwapChunk::new(
-                        balance!(66.308279110583909913),
+                        balance!(66.508737156018106185),
                         balance!(33),
-                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.099297893681043130))
+                        OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.199195171026156941))
                     ),
                 ]),
-                limits: SwapLimits::new(
-                    None,
-                    Some(SideAmount::Output(balance!(98712.870300000000000000))),
-                    None
-                )
+                limits: SwapLimits::new(None, Some(SideAmount::Output(balance!(98415.8406))), None)
             }
         );
     })]);
@@ -4038,8 +4032,8 @@ fn check_quote_chameleon_limits() {
             .unwrap()
             .0,
             SwapOutcome::new(
-                balance!(49.327085534107206211),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.148426536210954483))
+                balance!(49.178658997896251729),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.296853072421908965))
             ),
         );
 
@@ -4076,8 +4070,8 @@ fn check_quote_chameleon_limits() {
             .unwrap()
             .0,
             SwapOutcome::new(
-                balance!(198.793165049993991627),
-                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.297893681043129388))
+                balance!(199.393742522223634173),
+                OutcomeFee::from_asset(GoldenTicket.into(), balance!(0.597585513078470824))
             ),
         );
     })]);

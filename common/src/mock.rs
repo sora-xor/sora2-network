@@ -975,7 +975,7 @@ macro_rules! mock_pool_xyk_config {
         $min_xor:expr
     ) => {
         frame_support::parameter_types! {
-            pub GetXykFee: common::Fixed = common::fixed!(0.003);
+            pub GetXykFee: common::Fixed = common::fixed!(0.006);
             pub GetXykIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
             pub GetXykMaxIssuanceRatio: common::Fixed = common::fixed!(1.5);
         }
