@@ -220,6 +220,11 @@ fn should_mint_presto_usd() {
             alice()
         ));
 
+        assert_err!(
+            PrestoPallet::mint_presto_usd(RuntimeOrigin::signed(alice()), balance!(0)),
+            E::AmountIsZero
+        );
+
         assert_ok!(PrestoPallet::mint_presto_usd(
             RuntimeOrigin::signed(alice()),
             amount
@@ -253,6 +258,11 @@ fn should_burn_presto_usd() {
         assert_err!(
             PrestoPallet::burn_presto_usd(RuntimeOrigin::signed(bob()), balance!(200)),
             E::CallerIsNotManager
+        );
+
+        assert_err!(
+            PrestoPallet::burn_presto_usd(RuntimeOrigin::signed(alice()), balance!(0)),
+            E::AmountIsZero
         );
 
         assert_ok!(PrestoPallet::burn_presto_usd(
@@ -291,6 +301,11 @@ fn should_send_presto_usd() {
             E::CallerIsNotManager
         );
 
+        assert_err!(
+            PrestoPallet::send_presto_usd(RuntimeOrigin::signed(alice()), balance!(0), dave()),
+            E::AmountIsZero
+        );
+
         assert_ok!(PrestoPallet::send_presto_usd(
             RuntimeOrigin::signed(alice()),
             balance!(200),
@@ -316,6 +331,16 @@ fn should_create_deposit_request() {
 
         assert_eq!(PrestoPallet::requests(1), None);
         assert_eq!(PrestoPallet::requests(2), None);
+
+        assert_err!(
+            PrestoPallet::create_deposit_request(
+                RuntimeOrigin::signed(bob()),
+                balance!(0),
+                BoundedString::truncate_from("payment reference"),
+                Some(BoundedString::truncate_from("details"))
+            ),
+            E::AmountIsZero
+        );
 
         assert_ok!(PrestoPallet::create_deposit_request(
             RuntimeOrigin::signed(bob()),
@@ -388,6 +413,15 @@ fn should_create_withdraw_request() {
         // test
 
         assert_eq!(PrestoPallet::requests(1), None);
+
+        assert_err!(
+            PrestoPallet::create_withdraw_request(
+                RuntimeOrigin::signed(bob()),
+                balance!(0),
+                Some(BoundedString::truncate_from("details"))
+            ),
+            E::AmountIsZero
+        );
 
         assert_ok!(PrestoPallet::create_withdraw_request(
             RuntimeOrigin::signed(bob()),
@@ -895,6 +929,21 @@ fn should_create_crop_receipt() {
         let creditor = BoundedString::truncate_from("creditor");
         let perfomance_time = 345;
         let data = mock::crop_receipt_content_template();
+
+        assert_err!(
+            PrestoPallet::create_crop_receipt(
+                RuntimeOrigin::signed(bob()),
+                balance!(0),
+                close_initial_period,
+                date_of_issue,
+                place_of_issue.clone(),
+                debtor.clone(),
+                creditor.clone(),
+                perfomance_time,
+                data.clone()
+            ),
+            E::AmountIsZero
+        );
 
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
