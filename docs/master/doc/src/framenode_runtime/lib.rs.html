@@ -3581,6 +3581,17 @@
 <a href="#3566" id="3566">3566</a>
 <a href="#3567" id="3567">3567</a>
 <a href="#3568" id="3568">3568</a>
+<a href="#3569" id="3569">3569</a>
+<a href="#3570" id="3570">3570</a>
+<a href="#3571" id="3571">3571</a>
+<a href="#3572" id="3572">3572</a>
+<a href="#3573" id="3573">3573</a>
+<a href="#3574" id="3574">3574</a>
+<a href="#3575" id="3575">3575</a>
+<a href="#3576" id="3576">3576</a>
+<a href="#3577" id="3577">3577</a>
+<a href="#3578" id="3578">3578</a>
+<a href="#3579" id="3579">3579</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4890,6 +4901,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>DEXIdValue: DEXId = <span class="number">0</span>;
+    <span class="kw">pub const </span>MaxWhiteListTokens: u32 = <span class="number">30</span>;
 }
 
 <span class="macro">parameter_types! </span>{
@@ -4897,7 +4909,11 @@
     </span><span class="kw">pub const </span>FeeXorBurnedWeight: u32 = <span class="number">20</span>; <span class="comment">// 20%
     </span><span class="kw">pub const </span>FeeValBurnedWeight: u32 = <span class="number">50</span>; <span class="comment">// 50%
     </span><span class="kw">pub const </span>FeeKusdBurnedWeight: u32 = <span class="number">20</span>; <span class="comment">// 20%
-    </span><span class="kw">pub const </span>RemintTbcdBuyBackPercent: Percent = Percent::from_percent(<span class="number">1</span>);
+    // Minimal amount for proportions right calculations
+    // now weights are equal to 1, 2, 5, 2, so max weight equal to 10
+    // max weight always right amount for calculations: weight / max_weight * max_weight = weight
+    </span><span class="kw">pub const </span>MinimalFeeInAsset: Balance = <span class="macro">balance!</span>(<span class="number">0.00000000000000001</span>);
+    <span class="kw">pub const </span>RemintTbcdBuyBackPercent: Percent = Percent::from_percent(<span class="number">1</span>);
     <span class="kw">pub const </span>RemintKusdBuyBackPercent: Percent = Percent::from_percent(<span class="number">39</span>);
 }
 
@@ -4934,6 +4950,12 @@
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>WeightInfo = xor_fee::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>WithdrawFee = xor_fee_impls::WithdrawFee;
+    <span class="kw">type </span>MaxWhiteListTokens = MaxWhiteListTokens;
+    <span class="kw">type </span>RuntimeCall = RuntimeCall;
+    <span class="kw">type </span>PoolXyk = PoolXYK;
+    <span class="kw">type </span>WhiteListOrigin = EitherOfDiverse&lt;AtLeastHalfCouncil, EnsureRoot&lt;AccountId&gt;&gt;;
+    <span class="kw">type </span>PriceTools = price_tools::FastPriceTools&lt;Runtime&gt;;
+    <span class="kw">type </span>MinimalFeeInAsset = MinimalFeeInAsset;
 }
 
 <span class="kw">pub struct </span>ConstantFeeMultiplier;
