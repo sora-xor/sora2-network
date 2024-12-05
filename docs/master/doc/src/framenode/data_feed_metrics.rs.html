@@ -253,8 +253,8 @@
             .map_err(|rpc_error| <span class="macro">format!</span>(<span class="string">&quot;RPC error: {:?}&quot;</span>, rpc_error))<span class="question-mark">?
             </span>.map_err(|dispatch_error| <span class="macro">format!</span>(<span class="string">&quot;Dispatch error: {:?}&quot;</span>, dispatch_error))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>outdated_threshold: u128 = <span class="number">300 </span>* MILLISECS_MULTIPLIER; <span class="comment">// 5 minutes in milliseconds
-        </span><span class="kw">let </span>now = std::time::SystemTime::now()
+        <span class="kw">let </span>outdated_threshold = framenode_runtime::GetBandRateStalePeriod::get() <span class="kw">as </span>u128;
+        <span class="kw">let </span>now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect(<span class="string">&quot;Time went backwards&quot;</span>)
             .as_millis();
