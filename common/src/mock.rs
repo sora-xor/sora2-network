@@ -450,7 +450,8 @@ macro_rules! mock_currencies_config {
 macro_rules! mock_demeter_farming_platform_config {
     ($runtime:ty, $demeter_asset_id:ty) => {
         impl demeter_farming_platform::Config for $runtime {
-            const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+            const BLOCKS_PER_HOUR_AND_A_HALF: frame_system::pallet_prelude::BlockNumberFor<Self> =
+                900;
             type AssetInfoProvider = assets::Pallet<Runtime>;
             type DemeterAssetId = $demeter_asset_id;
             type RuntimeEvent = RuntimeEvent;
