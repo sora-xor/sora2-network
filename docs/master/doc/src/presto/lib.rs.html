@@ -736,6 +736,8 @@
 <a href="#721" id="721">721</a>
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -783,11 +785,6 @@
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>sp_runtime::traits::{One, Saturating};
 
-<span class="kw">use </span>crop_receipt::{CropReceipt, CropReceiptContent, Rating};
-<span class="kw">use </span>requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
-<span class="kw">use </span>treasury::Treasury;
-<span class="kw">use </span>weights::WeightInfo;
-
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 
 <span class="kw">pub type </span>MomentOf&lt;T&gt; = &lt;&lt;T <span class="kw">as </span>Config&gt;::Time <span class="kw">as </span>Time&gt;::Moment;
@@ -808,6 +805,11 @@
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
     <span class="kw">use </span>sp_runtime::BoundedVec;
+
+    <span class="kw">use </span>crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
+    <span class="kw">use </span>requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
+    <span class="kw">use </span>treasury::Treasury;
+    <span class="kw">use </span>weights::WeightInfo;
 
     <span class="kw">const </span>STORAGE_VERSION: StorageVersion = StorageVersion::new(<span class="number">0</span>);
 
@@ -1339,6 +1341,7 @@
         </span><span class="kw">pub fn </span>create_crop_receipt(
             origin: OriginFor&lt;T&gt;,
             amount: Balance,
+            country: Country,
             close_initial_period: MomentOf&lt;T&gt;,
             date_of_issue: MomentOf&lt;T&gt;,
             place_of_issue: BoundedString&lt;T::MaxPlaceOfIssueSize&gt;,
@@ -1354,6 +1357,7 @@
             <span class="kw">let </span>crop_receipt = CropReceipt::&lt;T&gt;::new(
                 owner.clone(),
                 amount,
+                country,
                 close_initial_period,
                 date_of_issue,
                 place_of_issue,
