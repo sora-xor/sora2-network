@@ -26,7 +26,7 @@ frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "po
 secp256k1 = { version = "0.7", features = [
     'hmac',
 ], default-features = false, package = "libsecp256k1" }
-thiserror = "1.0"
+thiserror = { version = "2.0", default-features = false }
 num-traits = { version = "0.2.12", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 paste = "1.0.0"
@@ -73,6 +73,7 @@ std = [
     'sp-std/std',
     'currencies/std',
     'orml-traits/std',
+    'thiserror/std',
 ]
 
 test = ["env_logger"]
