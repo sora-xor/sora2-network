@@ -31,15 +31,25 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-
-use common::balance;
-use frame_benchmarking::benchmarks;
-use frame_support::sp_runtime::FixedU128;
-use frame_system::RawOrigin;
+use codec::Decode;
 
 #[cfg(feature = "wip")] // Dynamic fee
 use crate::pallet::UpdatePeriod;
 use crate::{Config, Pallet};
+use common::{balance, AssetIdOf, VAL, XOR};
+use frame_benchmarking::benchmarks;
+use frame_support::sp_runtime::FixedU128;
+use frame_system::RawOrigin;
+use hex_literal::hex;
+#[cfg(feature = "wip")] // Xorless fee
+use sp_core::bounded::BoundedVec;
+use sp_std::vec;
+use traits::MultiCurrency;
+
+fn alice<T: Config>() -> T::AccountId {
+    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
 
 benchmarks! {
     update_multiplier {
@@ -63,6 +73,39 @@ benchmarks! {
     verify {
         #[cfg(feature = "wip")] // Dynamic fee
         assert_eq!(<SmallReferenceAmount<T>>::get(), new_reference_amount);
+    }
+
+    xorless_call {
+        let caller = alice::<T>();
+        <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1))?;
+        let call: Box<<T as Config>::RuntimeCall> = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+        let asset_id: AssetIdOf<T> = XOR.into();
+    }: _(RawOrigin::Signed(caller), call, Some(asset_id))
+
+    add_asset_to_white_list {}: _(RawOrigin::Root, VAL.into())
+    verify {
+        #[cfg(feature = "wip")] // Xorless fee
+        {
+            let mut white_list: BoundedVec<AssetIdOf<T>, T::MaxWhiteListTokens> = BoundedVec::default();
+            white_list.try_push(VAL.into()).expect("Error while push asset to bounded vec");
+            assert_eq!(<WhitelistTokensForFee<T>>::get(), white_list)
+        }
+    }
+    remove_asset_from_white_list {
+        #[cfg(feature = "wip")] // Xorless fee
+        WhitelistTokensForFee::<T>::try_mutate(|whitelist| {
+            whitelist
+                .try_push(VAL.into())
+                .map_err(|_| Error::<T>::WhitelistFull)?;
+            Ok::<(), Error<T>>(())
+        }).expect("Error while push asset to storage");
+    }: _(RawOrigin::Root, VAL.into())
+    verify {
+        #[cfg(feature = "wip")] // Xorless fee
+        {
+            let white_list: BoundedVec<AssetIdOf<T>, T::MaxWhiteListTokens> = BoundedVec::default();
+            assert_eq!(<WhitelistTokensForFee<T>>::get(), white_list)
+        }
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);

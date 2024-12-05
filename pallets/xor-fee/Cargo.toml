@@ -31,6 +31,7 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 smallvec = "1.5.0"
 common = { path = "../../common", default-features = false }
+hex-literal = { version = "0.4.1"}
 
 [dev-dependencies]
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
@@ -38,16 +39,26 @@ pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = 
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
+price-tools = { path = "../price-tools", default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+technical = { path = "../technical", default-features = false }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
 
 [features]
 default = ["std"]
 
 std = [
     "codec/std",
+    "dex-manager/std",
+    "demeter-farming-platform/std",
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
@@ -67,6 +78,7 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
+    # "hex-literal", TODO: After applying migrations change to optional
 ]
 
 try-runtime = [
