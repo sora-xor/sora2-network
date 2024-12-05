@@ -64,7 +64,7 @@ pub mod pallet {
     use super::*;
     use common::{
         AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, Balance, BoundedString, DEXId,
-        TradingPairSourceManager, PRUSD,
+        OrderBookManager, TradingPairSourceManager, PRUSD,
     };
     use core::fmt::Debug;
     use core::str::FromStr;
@@ -89,6 +89,12 @@ pub mod pallet {
     pub trait Config: frame_system::Config + common::Config + technical::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type OrderBookManager: OrderBookManager<
+            AccountIdOf<Self>,
+            AssetIdOf<Self>,
+            Self::DEXId,
+            MomentOf<Self>,
+        >;
         type PrestoUsdAssetId: Get<AssetIdOf<Self>>;
         type PrestoTechAccount: Get<Self::TechAccountId>;
         type PrestoBufferTechAccount: Get<Self::TechAccountId>;

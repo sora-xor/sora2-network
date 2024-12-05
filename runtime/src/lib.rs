@@ -2528,6 +2528,7 @@ parameter_types! {
 impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type OrderBookManager = OrderBook;
     type PrestoUsdAssetId = PrestoUsdAssetId;
     type PrestoTechAccount = PrestoTechAccountId;
     type PrestoBufferTechAccount = PrestoBufferTechAccountId;

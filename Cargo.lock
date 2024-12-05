@@ -7756,6 +7756,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
