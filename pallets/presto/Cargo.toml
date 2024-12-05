@@ -1,5 +1,5 @@
 [package]
-name = "order-book"
+name = "presto"
 authors = ["Soramitsu"]
 license = "BSD-4-Clause"
 homepage = "https://sora.org"
@@ -14,61 +14,48 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
+derivative = { version = "2.2.0", features = ["use_core"] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 common = { path = "../../common", default-features = false }
 technical = { path = "../technical", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
-hex-literal = "0.4.1"
-serde = { version = "1.0", features = [
-    "derive",
-], optional = true, default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
-framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "test"] }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+common = { path = "../../common", features = ["test"] }
+assets = { path = "../assets", default-features = false }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-assets = { path = "../assets"}
+permissions = { path = "../permissions" }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 
 [features]
 default = ["std"]
 std = [
+    "assets/std",
     "common/std",
     "codec/std",
+    "currencies/std",
     "frame-support/std",
     "frame-system/std",
+    "pallet-balances/std",
     "pallet-timestamp/std",
+    "permissions/std",
     "scale-info/std",
-    "serde",
+    "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
     "technical/std",
-    "trading-pair/std",
+    "tokens/std",
 ]
 
-runtime-benchmarks = [
-    "frame-system/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
+try-runtime = [
+    "frame-support/try-runtime",
 ]
 
-try-runtime = ["frame-support/try-runtime"]
-
-private-net = [
-    "framenode-chain-spec/private-net",
-    "framenode-runtime/private-net",
-]
-
-test = []
-
-wip = [
-    "framenode-chain-spec/wip",
-    "framenode-runtime/wip",
-]
+wip = []

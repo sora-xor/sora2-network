@@ -78,6 +78,7 @@ pub enum ComicAssetId {
     Tomato,
     Potato,
     Table,
+    Pan,
     Future,
 }
 
@@ -116,6 +117,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KGOLD => Tomato,
             PredefinedAssetId::KXOR => Potato,
             PredefinedAssetId::KARMA => Table,
+            PredefinedAssetId::PRUSD => Pan,
         }
     }
 }
@@ -448,7 +450,8 @@ macro_rules! mock_currencies_config {
 macro_rules! mock_demeter_farming_platform_config {
     ($runtime:ty, $demeter_asset_id:ty) => {
         impl demeter_farming_platform::Config for $runtime {
-            const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+            const BLOCKS_PER_HOUR_AND_A_HALF: frame_system::pallet_prelude::BlockNumberFor<Self> =
+                900;
             type AssetInfoProvider = assets::Pallet<Runtime>;
             type DemeterAssetId = $demeter_asset_id;
             type RuntimeEvent = RuntimeEvent;
@@ -757,14 +760,14 @@ macro_rules! mock_multicollateral_bonding_curve_pool_config {
         $vested_rewards:ty
     ) => {
         frame_support::parameter_types! {
-            pub GetTBCBuyBackTBCDPercent: common::Fixed = common::fixed!(0.025);
+            pub GetTBCBuyBackAssetId: AssetId = $crate::KUSD;
             pub GetTbcIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
         }
         impl multicollateral_bonding_curve_pool::Config for $runtime {
             const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
             type AssetInfoProvider = assets::Pallet<$runtime>;
             type BuyBackHandler = $buy_back_handler;
-            type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+            type GetBuyBackAssetId = GetTBCBuyBackAssetId;
             type EnsureDEXManager = dex_manager::Pallet<$runtime>;
             type EnsureTradingPairExists = $trading_pair;
             type IrreducibleReserve = GetTbcIrreducibleReservePercent;
@@ -973,7 +976,7 @@ macro_rules! mock_pool_xyk_config {
         $min_xor:expr
     ) => {
         frame_support::parameter_types! {
-            pub GetXykFee: common::Fixed = common::fixed!(0.003);
+            pub GetXykFee: common::Fixed = common::fixed!(0.006);
             pub GetXykIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
             pub GetXykMaxIssuanceRatio: common::Fixed = common::fixed!(1.5);
         }
@@ -1090,8 +1093,10 @@ macro_rules! mock_pswap_distribution_config {
         $buy_back_handler:ty,
         $ensure_dex_manager:ty
     ) => {
+        use sp_runtime::Permill;
         frame_support::parameter_types! {
             pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+            pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(39u32, 100u32)), (common::TBCD.into(), Permill::from_rational(1u32, 100u32))];
         }
         impl pswap_distribution::Config for $runtime {
             const PSWAP_BURN_PERCENT: sp_runtime::Percent = sp_runtime::Percent::from_percent(3);
@@ -1101,7 +1106,7 @@ macro_rules! mock_pswap_distribution_config {
             type DexInfoProvider = dex_manager::Pallet<$runtime>;
             type EnsureDEXManager = $ensure_dex_manager;
             type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
-            type GetBuyBackAssetId = GetBuyBackAssetId;
+            type GetBuyBackFractions = GetBuyBackFractions;
             type GetChameleonPools = $chameleon_pools;
             type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
             type GetIncentiveAssetId = GetIncentiveAssetId;

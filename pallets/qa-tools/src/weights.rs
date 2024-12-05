@@ -51,6 +51,9 @@ pub trait WeightInfo {
     fn price_tools_set_reference_asset_price() -> Weight {
         Weight::zero()
     }
+    fn presto_initialize_assets() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl WeightInfo for () {}

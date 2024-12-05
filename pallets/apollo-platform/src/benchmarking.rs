@@ -52,7 +52,7 @@ fn run_to_block<T: Config>(n: u32) {
     }
 }
 
-fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
+fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     let pallet_account: AccountIdOf<T> = PalletId(*b"apollolb").into_account_truncating();
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
@@ -219,6 +219,10 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 }
 
 benchmarks! {
+    where_clause {
+        where T: price_tools::Config
+    }
+
     add_pool {
         let caller = pallet::AuthorityAccount::<T>::get();
         let asset_id = XOR;

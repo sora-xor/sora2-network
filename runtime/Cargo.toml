@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "4.3.2"
+version = "4.5.1"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -45,8 +45,8 @@ parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", d
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 evm-fungible-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
-jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false, optional = true }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 
 apollo-platform = { path = "../pallets/apollo-platform", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
@@ -87,6 +87,7 @@ order-book-benchmarking = { path = "../pallets/order-book/benchmarking", default
 permissions = { path = "../pallets/permissions", default-features = false }
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
+presto = { path = "../pallets/presto", default-features = false, optional = true }
 price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
@@ -96,7 +97,7 @@ referrals = { path = "../pallets/referrals", default-features = false }
 extended-assets = { path = "../pallets/extended-assets", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
-soratopia = { path = "../pallets/soratopia", default-features = false, optional = true }
+soratopia = { path = "../pallets/soratopia", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
 trading-pair = { path = "../pallets/trading-pair", default-features = false }
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
@@ -262,6 +263,7 @@ std = [
     "pallet-utility/std",
     "permissions/std",
     "pool-xyk/std",
+    "presto/std",
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
@@ -310,18 +312,15 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
+    "order-book/wip",
     "pallet-beefy",
     "pallet-beefy-mmr",
+    "presto/wip",
     "xor-fee/wip",
     "vested-rewards/wip",
 ]
 
-stage = [
-    "framenode-chain-spec/stage",
-    "jetton-app",
-    "bridge-channel",
-    "soratopia",
-]
+stage = ["framenode-chain-spec/stage"]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",
@@ -450,6 +449,7 @@ try-runtime = [
     "pallet-utility/try-runtime",
     "permissions/try-runtime",
     "pool-xyk/try-runtime",
+    "presto/try-runtime",
     "price-tools/try-runtime",
     "pswap-distribution/try-runtime",
     "referrals/try-runtime",

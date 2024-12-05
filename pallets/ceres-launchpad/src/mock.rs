@@ -3,6 +3,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+#[cfg(feature = "runtime-benchmarks")]
+use common::PSWAP;
 use common::{
     balance, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
     mock_ceres_token_locker_config, mock_common_config, mock_currencies_config,
@@ -11,7 +13,7 @@ use common::{
     mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
     mock_pswap_distribution_config, mock_technical_config, mock_tokens_config,
     mock_trading_pair_config, mock_vested_rewards_config, AssetName, AssetSymbol, BalancePrecision,
-    ContentSource, DEXId, DEXInfo, Description, CERES_ASSET_ID, PSWAP, VXOR, XOR, XST, XSTUSD,
+    ContentSource, DEXId, DEXInfo, Description, CERES_ASSET_ID, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};

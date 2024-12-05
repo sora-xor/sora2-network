@@ -142,7 +142,7 @@ pub struct CollateralRiskParameters {
     /// The max amount of collateral can be liquidated in one round
     pub max_liquidation_lot: Balance,
 
-    /// Protocol Interest rate per millisecond
+    /// Protocol Interest rate per second
     pub stability_fee_rate: FixedU128,
 
     /// Minimal deposit in collateral AssetId.
@@ -151,7 +151,7 @@ pub struct CollateralRiskParameters {
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
-#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
 pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
@@ -226,7 +226,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(5);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -1792,7 +1792,9 @@ pub mod pallet {
                 stablecoin_asset_id: *stablecoin_asset_id,
             })
             .ok_or(Error::<T>::CollateralInfoNotFound)?;
-            let now = Timestamp::<T>::get();
+            let now = Timestamp::<T>::get()
+                .checked_div(&T::Moment::from(1000u32))
+                .ok_or(Error::<T>::ArithmeticError)?;
             ensure!(
                 now >= collateral_info.last_fee_update_time,
                 Error::<T>::AccrueWrongTime
@@ -2351,7 +2353,9 @@ pub mod pallet {
                                 risk_parameters: new_risk_parameters,
                                 total_collateral: Balance::zero(),
                                 stablecoin_supply: balance!(0),
-                                last_fee_update_time: Timestamp::<T>::get(),
+                                last_fee_update_time: Timestamp::<T>::get()
+                                    .checked_div(&T::Moment::from(1000u32))
+                                    .ok_or(Error::<T>::ArithmeticError)?,
                                 interest_coefficient: FixedU128::one(),
                             });
                         }

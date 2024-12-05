@@ -76,6 +76,8 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
+        + common::Config
+        + dex_manager::Config
         + order_book::Config
         + pool_xyk::Config
         + xst::Config
@@ -440,6 +442,25 @@ pub mod pallet {
 
             let asset_id = asset_id.resolve::<T>();
             pallet_tools::price_tools::set_xor_prices::<T>(&asset_id, asset_per_xor)?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Allows to initialize necessary Presto assets in testnet without migration.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::presto_initialize_assets())]
+        pub fn presto_initialize_assets(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            pallet_tools::presto::register_presto_usd::<T>()?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.

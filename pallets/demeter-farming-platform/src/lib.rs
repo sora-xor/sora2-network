@@ -263,6 +263,14 @@ pub mod pallet {
             bool,
             Balance,
         ),
+        /// Removed pool activated [who, base_asset, pool_asset, reward_asset, is_farm]
+        RemovedPoolActivated(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+        ),
     }
 
     #[pallet::error]
@@ -1040,6 +1048,45 @@ pub mod pallet {
 
             // Emit an event
             Self::deposit_event(Event::TokenInfoChanged(user, pool_asset));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Activate removed pool
+        #[pallet::call_index(11)]
+        #[pallet::weight(<T as Config>::WeightInfo::activate_removed_pool())]
+        pub fn activate_removed_pool(
+            origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            // Get pool info
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm && pool_info.base_asset == base_asset {
+                    pool_info.is_removed = false;
+                }
+            }
+
+            <Pools<T>>::insert(&pool_asset, &reward_asset, &pool_infos);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::RemovedPoolActivated(
+                user,
+                base_asset,
+                pool_asset,
+                reward_asset,
+                is_farm,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())

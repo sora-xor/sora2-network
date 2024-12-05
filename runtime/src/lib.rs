@@ -60,10 +60,11 @@ use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::U256;
-use common::prelude::constants::{BIG_FEE, SMALL_FEE};
+use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId, KUSD};
-use common::{DOT, XOR, XSTUSD};
+#[cfg(feature = "wip")] // presto
+use common::PRUSD;
+use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -149,7 +150,8 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{
-    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+    CollectiveWeightInfo, DemocracyWeightInfo, GenericBridgeCallFilter, NegativeImbalanceOf,
+    OnUnbalancedDemocracySlash,
 };
 
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
@@ -255,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 104,
+    spec_version: 107,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 104,
+    transaction_version: 107,
     state_version: 0,
 };
 
@@ -914,6 +916,7 @@ parameter_types! {
     pub const GetEthAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::ETH);
     pub const GetXstAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::XST);
     pub const GetTbcdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
+    pub const GetKusdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
     pub const GetVXorAssetId: AssetId = common::VXOR;
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
@@ -990,7 +993,6 @@ parameter_types! {
     pub const CheckInTransferAmount: Balance = balance!(1000);
 }
 
-#[cfg(feature = "stage")] // Soratopia
 impl soratopia::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type AdminAccount = AdminAccount;
@@ -1013,7 +1015,7 @@ impl technical::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetFee: Fixed = fixed!(0.003);
+    pub GetFee: Fixed = fixed!(0.006);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
@@ -1305,6 +1307,20 @@ where
 
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
+    pub const MaxWhiteListTokens: u32 = 30;
+}
+
+parameter_types! {
+    pub const FeeReferrerWeight: u32 = 10; // 10%
+    pub const FeeXorBurnedWeight: u32 = 20; // 20%
+    pub const FeeValBurnedWeight: u32 = 50; // 50%
+    pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    // Minimal amount for proportions right calculations
+    // now weights are equal to 1, 2, 5, 2, so max weight equal to 10
+    // max weight always right amount for calculations: weight / max_weight * max_weight = weight
+    pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
+    pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
+    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
 }
 
 impl xor_fee::Config for Runtime {
@@ -1321,12 +1337,14 @@ impl xor_fee::Config for Runtime {
     type XorCurrency = Balances;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
-    type VXorId = GetVXorAssetId;
-    type ReferrerWeight = ReferrerWeight;
-    type XorBurnedWeight = XorBurnedWeight;
-    type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type XorIntoVXorBurnedWeight = XorIntoVXorBurnedWeight;
-    type BuyBackRemintPercent = BuyBackRemintPercent;
+    type KusdId = GetKusdAssetId;
+    type TbcdId = GetTbcdAssetId;
+    type FeeReferrerWeight = FeeReferrerWeight;
+    type FeeXorBurnedWeight = FeeXorBurnedWeight;
+    type FeeValBurnedWeight = FeeValBurnedWeight;
+    type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
+    type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
@@ -1338,6 +1356,12 @@ impl xor_fee::Config for Runtime {
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
+    type MaxWhiteListTokens = MaxWhiteListTokens;
+    type RuntimeCall = RuntimeCall;
+    type PoolXyk = PoolXYK;
+    type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
+    type MinimalFeeInAsset = MinimalFeeInAsset;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1656,11 +1680,15 @@ impl farming::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
+parameter_types! {
+    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(39u32, 100u32)), (common::TBCD.into(), Permill::from_rational(1u32, 100u32))];
+}
+
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
-    type GetBuyBackAssetId = GetVXorAssetId;
+    type GetBuyBackFractions = GetBuyBackFractions;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -1762,7 +1790,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type BuyBackTBCDPercent = GetTBCBuyBackTBCDPercent;
+    type GetBuyBackAssetId = GetKusdAssetId;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type IrreducibleReserve = GetTbcIrreducibleReservePercent;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
@@ -2078,7 +2106,7 @@ parameter_types! {
 impl apollo_platform::Config for Runtime {
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
-    type PriceTools = PriceTools;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxyPallet = LiquidityProxy;
     type UnsignedPriority = ApolloOffchainWorkerTxPriority;
     type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
@@ -2143,17 +2171,8 @@ impl order_book::Config for Runtime {
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
-parameter_types! {
-    pub const ReferrerWeight: u32 = 25; // 10%
-    pub const XorBurnedWeight: u32 = 1; // 0.4%
-    pub const XorIntoValBurnedWeight: u32 = 125; // 50%
-    pub const XorIntoVXorBurnedWeight: u32 = 99; // 39.6%
-    pub const BuyBackRemintPercent: Percent = Percent::from_percent(10);
-}
-
 // Ethereum bridge pallets
 
-#[cfg(feature = "stage")] // EVM/TON bridge
 impl dispatch::Config<dispatch::Instance1> for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OriginOutput = bridge_types::types::CallOriginOutput<
@@ -2165,7 +2184,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
     type Call = DispatchableSubstrateBridgeCall;
-    type CallFilter = SubstrateBridgeCallFilter;
+    type CallFilter = GenericBridgeCallFilter;
     type WeightInfo = dispatch::weights::SubstrateWeight<Runtime>;
 }
 
@@ -2193,7 +2212,6 @@ parameter_types! {
     pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-#[cfg(feature = "stage")] // EVM/TON bridge
 impl bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
@@ -2218,7 +2236,6 @@ impl bridge_channel::inbound::Config for Runtime {
     type EVMPriorityFee = ();
 }
 
-#[cfg(feature = "stage")] // EVM/TON bridge
 impl bridge_channel::outbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -2273,7 +2290,6 @@ impl evm_fungible_app::Config for Runtime {
     type WeightInfo = ();
 }
 
-#[cfg(feature = "stage")] // TON bridge
 impl jetton_app::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CallOrigin = dispatch::EnsureAccount<
@@ -2358,7 +2374,6 @@ pub enum MultiProof {
     Beefy(<BeefyLightClient as Verifier>::Proof),
     #[codec(index = 1)]
     Multisig(<MultisigVerifier as Verifier>::Proof),
-    #[cfg(feature = "stage")] // EVM/TON bridge
     #[codec(index = 2)]
     EVMMultisig(<multisig_verifier::MultiEVMVerifier<Runtime> as Verifier>::Proof),
     /// This proof is only used for benchmarking purposes
@@ -2379,7 +2394,6 @@ impl Verifier for MultiVerifier {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
-            #[cfg(feature = "stage")] // EVM/TON bridge
             MultiProof::EVMMultisig(proof) => {
                 multisig_verifier::MultiEVMVerifier::<Runtime>::verify(network_id, message, proof)
             }
@@ -2393,7 +2407,6 @@ impl Verifier for MultiVerifier {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify_weight(proof),
             MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
-            #[cfg(feature = "stage")] // EVM/TON bridge
             MultiProof::EVMMultisig(proof) => {
                 multisig_verifier::MultiEVMVerifier::<Runtime>::verify_weight(proof)
             }
@@ -2494,6 +2507,45 @@ impl extended_assets::Config for Runtime {
     type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
+#[cfg(feature = "wip")] // presto
+parameter_types! {
+    pub const PrestoUsdAssetId: AssetId = PRUSD;
+    pub PrestoTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            presto::TECH_ACCOUNT_PREFIX.to_vec(),
+            presto::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
+    pub PrestoBufferTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            presto::TECH_ACCOUNT_PREFIX.to_vec(),
+            presto::TECH_ACCOUNT_BUFFER.to_vec(),
+        )
+    };
+}
+
+#[cfg(feature = "wip")] // presto
+impl presto::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type PrestoUsdAssetId = PrestoUsdAssetId;
+    type PrestoTechAccount = PrestoTechAccountId;
+    type PrestoBufferTechAccount = PrestoBufferTechAccountId;
+    type RequestId = u64;
+    type CropReceiptId = u64;
+    type MaxPrestoManagersCount = ConstU32<100>;
+    type MaxPrestoAuditorsCount = ConstU32<100>;
+    type MaxUserRequestCount = ConstU32<65536>;
+    type MaxUserCropReceiptCount = ConstU32<65536>;
+    type MaxRequestPaymentReferenceSize = ConstU32<100>;
+    type MaxRequestDetailsSize = ConstU32<200>;
+    type MaxPlaceOfIssueSize = ConstU32<100>;
+    type MaxDebtorSize = ConstU32<80>;
+    type MaxCreditorSize = ConstU32<80>;
+    type MaxCropReceiptContentSize = ConstU32<30720>;
+    type Time = Timestamp;
+    type WeightInfo = presto::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2567,6 +2619,8 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
+        #[cfg(feature = "wip")] // presto
+        Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
@@ -2575,15 +2629,11 @@ construct_runtime! {
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         // Trustless EVM bridge
-        #[cfg(feature = "stage")] // EVM/TON bridge
         BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
-        #[cfg(feature = "stage")] // EVM/TON bridge
         BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        #[cfg(feature = "stage")] // EVM/TON bridge
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         #[cfg(feature = "wip")] // EVM bridge
         EVMFungibleApp: evm_fungible_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        #[cfg(feature = "stage")] // TON bridge
         JettonApp: jetton_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
 
         // Trustless substrate bridge
@@ -2622,7 +2672,6 @@ construct_runtime! {
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
         ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
 
-        #[cfg(feature = "stage")]
         Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
     }
 }
@@ -3362,19 +3411,15 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
-            #[cfg(feature = "stage")] // EVM/TON bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
-            #[cfg(feature = "stage")] // EVM/TON bridge
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
-            #[cfg(feature = "stage")] // TON bridge
             list_benchmark!(list, extra, jetton_app, JettonApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            #[cfg(feature = "stage")] // EVM/TON bridge
             list_benchmark!(list, extra, dispatch, Dispatch);
             list_benchmark!(list, extra, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             list_benchmark!(list, extra, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -3384,7 +3429,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
-            #[cfg(feature = "stage")] // Soratopia
             list_benchmark!(list, extra, soratopia, Soratopia);
 
             let storage_info = AllPalletsWithSystem::storage_info();
@@ -3463,19 +3507,15 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
 
             // Trustless bridge
-            #[cfg(feature = "stage")] // EVM/TON bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
-            #[cfg(feature = "stage")] // EVM/TON bridge
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
-            #[cfg(feature = "stage")] // TON bridge
             add_benchmark!(params, batches, jetton_app, JettonApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
             // Dispatch pallet benchmarks is strictly linked to EVM bridge params
             // TODO: fix
-            #[cfg(feature = "stage")] // EVM/TON bridge
             add_benchmark!(params, batches, dispatch, Dispatch);
             add_benchmark!(params, batches, substrate_bridge_channel::inbound, SubstrateBridgeInboundChannel);
             add_benchmark!(params, batches, substrate_bridge_channel::outbound, SubstrateBridgeOutboundChannel);
@@ -3485,7 +3525,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
-            #[cfg(feature = "stage")] // Soratopia
             add_benchmark!(params, batches, soratopia, Soratopia);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

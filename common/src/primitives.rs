@@ -200,6 +200,7 @@ mod _allowed_deprecated {
         KGOLD = 13,
         KXOR = 14,
         KARMA = 15,
+        PRUSD = 16,
     }
 }
 
@@ -217,6 +218,7 @@ pub const KUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefin
 pub const KGOLD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KGOLD);
 pub const KXOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KXOR);
 pub const KARMA: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KARMA);
+pub const PRUSD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PRUSD);
 pub const VXOR: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "006a271832f44c93bd8692584d85415f0f3dccef9748fecd129442c8edcb4361"
 ));
@@ -476,6 +478,7 @@ pub enum DEXId {
     PolkaswapXSTUSD = 1,
     PolkaswapKUSD = 2,
     PolkaswapVXOR = 3,
+    PolkaswapPresto = 4,
 }
 
 impl From<DEXId> for u32 {
