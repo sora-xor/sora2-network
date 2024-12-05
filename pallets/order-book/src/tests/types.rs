@@ -30,12 +30,11 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-use common::{balance, PriceVariant, DAI, VAL, XOR};
+use common::{balance, OrderBookId, PriceVariant, DAI, VAL, XOR};
 use frame_support::assert_ok;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    CancelReason, Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderBookId,
-    OrderVolume, Payment,
+    CancelReason, Config, DealInfo, LimitOrder, MarketChange, OrderAmount, OrderVolume, Payment,
 };
 use framenode_runtime::Runtime;
 use sp_std::collections::btree_map::BTreeMap;

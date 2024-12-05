@@ -42,7 +42,7 @@ use common::AssetIdOf;
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    Description, DexInfoProvider, LiquiditySource, OrderBookId, PriceVariant, RewardReason,
     SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
@@ -86,8 +86,8 @@ pub use traits::{
 };
 pub use types::{
     CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
-    OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
-    PriceOrders, UserOrders,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment, PriceOrders,
+    UserOrders,
 };
 pub use weights::WeightInfo;
 

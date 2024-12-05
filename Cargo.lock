@@ -7753,6 +7753,7 @@ dependencies = [
  "assets",
  "common",
  "derivative",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "orml-currencies",
