@@ -463,13 +463,19 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     }
 
     fn get_fee_source(who: &AccountId, call: &RuntimeCall, _fee: Balance) -> AccountId {
-        match call {
-            RuntimeCall::Referrals(referrals::Call::set_referrer { .. })
-                if Referrals::can_set_referrer(who) =>
-            {
-                ReferralsReservesAcc::get()
+        let fee_source = |call: &RuntimeCall| -> AccountId {
+            match call {
+                RuntimeCall::Referrals(referrals::Call::set_referrer { .. })
+                    if Referrals::can_set_referrer(who) =>
+                {
+                    ReferralsReservesAcc::get()
+                }
+                _ => who.clone(),
             }
-            _ => who.clone(),
+        };
+        match call {
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => fee_source(call),
+            call => fee_source(call),
         }
     }
 }
@@ -491,7 +497,6 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         DispatchError,
     > {
         match call {
-            // TODO: remake for xorless
             RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
                 // Fee source should be set to referrer by `get_fee_source` method, if not 
                 // it means that user can't set referrer
@@ -500,38 +505,48 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                 Referrals::withdraw_fee(referrer, fee)?;
             }
             #[allow(unused_variables)] // Xorless fee
-            RuntimeCall::XorFee(xor_fee::Call::xorless_call {call: _, asset_id}) => {
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call {call, asset_id}) => {
                 #[cfg(feature = "wip")] // Xorless fee
-                match *asset_id {
-                    None => {},
-                    Some(asset_id) if XorFee::whitelist_tokens().contains(&asset_id) => {
-                        let asset_fee = FixedWrapper::from(
-                            PriceTools::get_average_price(
-                                &GetXorAssetId::get(),
-                                &asset_id,
-                                PriceVariant::Buy)?
-                        ) * fee;
-                        let asset_fee = asset_fee.into_balance();
-                        if asset_fee.lt(&MinimalFeeInAsset::get()) {
-                            return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into())
-                        };
-                        return Ok((
-                            fee_source.clone(),
-                            Some(Tokens::withdraw(
-                                asset_id,
-                                fee_source,
-                                asset_fee,
-                            ).map(|_| {
-                                NegativeImbalanceOf::<Runtime>::new(asset_fee)
-                            })?),
-                            Some(asset_id),
-                        ))
+                match call.as_ref() {
+                    RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
+                    // Fee source should be set to referrer by `get_fee_source` method, if not 
+                    // it means that user can't set referrer
+                    if Referrals::can_set_referrer(who) =>
+                        {
+                            Referrals::withdraw_fee(referrer, fee)?;
+                        }
+                    _ => {
+                        match *asset_id {
+                            None => {},
+                            Some(asset_id) if XorFee::whitelist_tokens().contains(&asset_id) => {
+                                let asset_fee = FixedWrapper::from(
+                                    PriceTools::get_average_price(
+                                        &GetXorAssetId::get(),
+                                        &asset_id,
+                                        PriceVariant::Buy)?
+                                ) * fee;
+                                let asset_fee = asset_fee.into_balance();
+                                if asset_fee.lt(&MinimalFeeInAsset::get()) {
+                                    return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into())
+                                };
+                                return Ok((
+                                    fee_source.clone(),
+                                    Some(Tokens::withdraw(
+                                        asset_id,
+                                        fee_source,
+                                        asset_fee,
+                                    ).map(|_| {
+                                        NegativeImbalanceOf::<Runtime>::new(asset_fee)
+                                    })?),
+                                    Some(asset_id),
+                                ))
+                            }
+                            _ => { return Err(xor_fee::Error::<Runtime>::AssetNotFound.into()) }
+                        }
                     }
-                    _ => { return Err(xor_fee::Error::<Runtime>::AssetNotFound.into()) }
                 }
             }
-            _ => {
-            }
+            _ => {}
         }
         #[cfg(feature = "wip")] // EVM bridge
         call.withdraw_evm_fee_nested(who)?;
