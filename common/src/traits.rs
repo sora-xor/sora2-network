@@ -34,7 +34,7 @@ use crate::prelude::{
 use crate::{
     Amount, AssetId32, AssetName, AssetSymbol, AssetType, BalancePrecision, ContentSource,
     Description, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle,
-    PredefinedAssetId, PriceVariant, PswapRemintInfo, RewardReason,
+    OrderBookId, PredefinedAssetId, PriceVariant, PswapRemintInfo, RewardReason,
 };
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
@@ -1550,6 +1550,63 @@ impl<AccountId, AssetId> AssetRegulator<AccountId, AssetId> for () {
         _affected_account: &AccountId,
         _asset_id: &AssetId,
         _permission_id: &PermissionId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
+/// Trait to manage and interact with order book
+pub trait OrderBookManager<AccountId, AssetId, DEXId, Moment> {
+    fn assemble_order_book_id(
+        dex_id: DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Option<OrderBookId<AssetId, DEXId>>;
+
+    fn initialize_orderbook(
+        order_book_id: &OrderBookId<AssetId, DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -> Result<(), DispatchError>;
+
+    fn place_limit_order(
+        owner: AccountId,
+        order_book_id: OrderBookId<AssetId, DEXId>,
+        price: Balance,
+        amount: Balance,
+        side: PriceVariant,
+        lifespan: Option<Moment>,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<AccountId, AssetId, DEXId, Moment> OrderBookManager<AccountId, AssetId, DEXId, Moment> for () {
+    fn assemble_order_book_id(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+    ) -> Option<OrderBookId<AssetId, DEXId>> {
+        None
+    }
+
+    fn initialize_orderbook(
+        _order_book_id: &OrderBookId<AssetId, DEXId>,
+        _tick_size: Balance,
+        _step_lot_size: Balance,
+        _min_lot_size: Balance,
+        _max_lot_size: Balance,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn place_limit_order(
+        _owner: AccountId,
+        _order_book_id: OrderBookId<AssetId, DEXId>,
+        _price: Balance,
+        _amount: Balance,
+        _side: PriceVariant,
+        _lifespan: Option<Moment>,
     ) -> Result<(), DispatchError> {
         Ok(())
     }
