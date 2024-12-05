@@ -45,11 +45,6 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
 use sp_runtime::traits::{One, Saturating};
 
-use crop_receipt::{CropReceipt, CropReceiptContent, Rating};
-use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
-use treasury::Treasury;
-use weights::WeightInfo;
-
 pub use pallet::*;
 
 pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
@@ -70,6 +65,11 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
+
+    use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
+    use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
+    use treasury::Treasury;
+    use weights::WeightInfo;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -601,6 +601,7 @@ pub mod pallet {
         pub fn create_crop_receipt(
             origin: OriginFor<T>,
             amount: Balance,
+            country: Country,
             close_initial_period: MomentOf<T>,
             date_of_issue: MomentOf<T>,
             place_of_issue: BoundedString<T::MaxPlaceOfIssueSize>,
@@ -616,6 +617,7 @@ pub mod pallet {
             let crop_receipt = CropReceipt::<T>::new(
                 owner.clone(),
                 amount,
+                country,
                 close_initial_period,
                 date_of_issue,
                 place_of_issue,

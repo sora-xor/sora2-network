@@ -65,6 +65,43 @@ pub enum Rating {
     NR,
 }
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+)]
+pub enum Country {
+    Brazil,
+    Indonesia,
+    Nigeria,
+    Ukraine,
+    Usa,
+    Other,
+}
+
+#[allow(unused)] // TODO remove
+impl Country {
+    pub fn symbol(&self) -> &str {
+        match self {
+            Self::Brazil => "BR",
+            Self::Indonesia => "ID",
+            Self::Nigeria => "NG",
+            Self::Ukraine => "UA",
+            Self::Usa => "US",
+            Self::Other => "RR",
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Brazil => "Brazil",
+            Self::Indonesia => "Indonesia",
+            Self::Nigeria => "Nigeria",
+            Self::Ukraine => "Ukraine",
+            Self::Usa => "United States of America",
+            Self::Other => "Other",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct Score<T: Config> {
@@ -87,6 +124,7 @@ pub struct CropReceipt<T: Config> {
     pub time: MomentOf<T>,
     pub status: Status,
     pub amount: Balance,
+    pub country: Country,
     pub score: Option<Score<T>>,
     pub close_initial_period: MomentOf<T>,
     pub date_of_issue: MomentOf<T>,
@@ -101,6 +139,7 @@ impl<T: Config> CropReceipt<T> {
     pub fn new(
         owner: AccountIdOf<T>,
         amount: Balance,
+        country: Country,
         close_initial_period: MomentOf<T>,
         date_of_issue: MomentOf<T>,
         place_of_issue: BoundedString<T::MaxPlaceOfIssueSize>,
@@ -115,6 +154,7 @@ impl<T: Config> CropReceipt<T> {
             time,
             status: Status::Rating,
             amount,
+            country,
             score: None,
             close_initial_period,
             date_of_issue,

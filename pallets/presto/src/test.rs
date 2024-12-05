@@ -39,7 +39,7 @@ use crate::mock::{
 use crate::requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
 
 use common::{balance, AssetInfoProvider, Balance, BoundedString, PRUSD};
-use crop_receipt::{Score, Status};
+use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating, Score, Status};
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -934,6 +934,7 @@ fn should_create_crop_receipt() {
             PrestoPallet::create_crop_receipt(
                 RuntimeOrigin::signed(bob()),
                 balance!(0),
+                Country::Brazil,
                 close_initial_period,
                 date_of_issue,
                 place_of_issue.clone(),
@@ -948,6 +949,7 @@ fn should_create_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             amount,
+            Country::Brazil,
             close_initial_period,
             date_of_issue,
             place_of_issue.clone(),
@@ -964,6 +966,7 @@ fn should_create_crop_receipt() {
                 time: 0,
                 status: Status::Rating,
                 amount,
+                country: Country::Brazil,
                 score: None,
                 close_initial_period,
                 date_of_issue,
@@ -996,6 +999,7 @@ fn should_rate_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(10000),
+            Country::Brazil,
             100,
             200,
             BoundedString::truncate_from("place of issue"),
@@ -1055,6 +1059,7 @@ fn should_decline_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(10000),
+            Country::Brazil,
             100,
             200,
             BoundedString::truncate_from("place of issue"),
