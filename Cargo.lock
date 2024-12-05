@@ -356,7 +356,7 @@ dependencies = [
  "nom",
  "num-traits",
  "rusticata-macros",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "time",
 ]
 
@@ -372,7 +372,7 @@ dependencies = [
  "nom",
  "num-traits",
  "rusticata-macros",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "time",
 ]
 
@@ -811,7 +811,7 @@ dependencies = [
  "sp-mmr-primitives",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasm-timer",
 ]
 
@@ -831,7 +831,7 @@ dependencies = [
  "sp-beefy",
  "sp-core",
  "sp-runtime",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -2911,7 +2911,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3 0.10.8",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "uint",
 ]
 
@@ -3372,7 +3372,7 @@ dependencies = [
  "sp-std",
  "sp-storage",
  "sp-trie",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "thousands",
 ]
 
@@ -4134,7 +4134,7 @@ dependencies = [
  "pest_derive",
  "serde",
  "serde_json",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -4579,7 +4579,7 @@ dependencies = [
  "rand 0.8.5",
  "rtcp",
  "rtp",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "waitgroup",
  "webrtc-srtp",
@@ -4771,7 +4771,7 @@ dependencies = [
  "pin-project",
  "rustls-native-certs",
  "soketto",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "tokio-rustls 0.24.1",
  "tokio-util",
@@ -4802,7 +4802,7 @@ dependencies = [
  "serde",
  "serde_json",
  "soketto",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "tracing",
 ]
@@ -4852,7 +4852,7 @@ dependencies = [
  "beef",
  "serde",
  "serde_json",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tracing",
 ]
 
@@ -5123,7 +5123,7 @@ dependencies = [
  "sec1",
  "sha2 0.10.8",
  "smallvec",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "unsigned-varint",
  "void",
  "zeroize",
@@ -5152,7 +5152,7 @@ dependencies = [
  "rand 0.8.5",
  "rw-stream-sink",
  "smallvec",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "unsigned-varint",
  "void",
 ]
@@ -5188,7 +5188,7 @@ dependencies = [
  "prost-build",
  "prost-codec",
  "smallvec",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "void",
 ]
 
@@ -5206,7 +5206,7 @@ dependencies = [
  "quick-protobuf",
  "rand 0.8.5",
  "sha2 0.10.8",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "zeroize",
 ]
 
@@ -5232,7 +5232,7 @@ dependencies = [
  "rand 0.8.5",
  "sha2 0.10.8",
  "smallvec",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "uint",
  "unsigned-varint",
  "void",
@@ -5308,7 +5308,7 @@ dependencies = [
  "sha2 0.10.8",
  "snow",
  "static_assertions",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "x25519-dalek 1.1.1",
  "zeroize",
 ]
@@ -5346,7 +5346,7 @@ dependencies = [
  "quinn-proto",
  "rand 0.8.5",
  "rustls 0.20.9",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
 ]
 
@@ -5385,7 +5385,7 @@ dependencies = [
  "pin-project",
  "rand 0.8.5",
  "smallvec",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "void",
 ]
@@ -5430,7 +5430,7 @@ dependencies = [
  "rcgen 0.10.0",
  "ring 0.16.20",
  "rustls 0.20.9",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "webpki 0.22.4",
  "x509-parser 0.14.0",
  "yasna",
@@ -5474,7 +5474,7 @@ dependencies = [
  "rcgen 0.9.3",
  "serde",
  "stun",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tinytemplate",
  "tokio",
  "tokio-util",
@@ -5510,7 +5510,7 @@ dependencies = [
  "libp2p-core 0.38.0",
  "log",
  "parking_lot 0.12.3",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "yamux",
 ]
 
@@ -6279,7 +6279,7 @@ dependencies = [
  "anyhow",
  "byteorder",
  "paste",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -6293,7 +6293,7 @@ dependencies = [
  "log",
  "netlink-packet-core",
  "netlink-sys",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
 ]
 
@@ -7441,7 +7441,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879952a81a83930934cbf1786752d6dedc3b1f29e8f8fb2ad1d0a36f377cf442"
 dependencies = [
  "memchr",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "ucd-trie",
 ]
 
@@ -7767,6 +7767,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -7829,7 +7830,7 @@ version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e17d47ce914bf4de440332250b0edd23ce48c005f59fab39d3335866b114f11a"
 dependencies = [
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "toml",
 ]
 
@@ -7886,7 +7887,7 @@ dependencies = [
  "lazy_static",
  "memchr",
  "parking_lot 0.12.3",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -7953,7 +7954,7 @@ dependencies = [
  "asynchronous-codec",
  "bytes",
  "prost",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "unsigned-varint",
 ]
 
@@ -8146,7 +8147,7 @@ dependencies = [
  "rustc-hash",
  "rustls 0.20.9",
  "slab",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tinyvec",
  "tracing",
  "webpki 0.22.4",
@@ -8334,7 +8335,7 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom 0.2.15",
  "libredox",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -8595,7 +8596,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1919efd6d4a6a85d13388f9487549bb8e359f17198cc03ffd72f79b553873691"
 dependencies = [
  "bytes",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "webrtc-util",
 ]
 
@@ -8610,7 +8611,7 @@ dependencies = [
  "netlink-packet-route",
  "netlink-proto",
  "nix 0.24.3",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
 ]
 
@@ -8634,7 +8635,7 @@ dependencies = [
  "bytes",
  "rand 0.8.5",
  "serde",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "webrtc-util",
 ]
 
@@ -8827,7 +8828,7 @@ dependencies = [
  "log",
  "sp-core",
  "sp-wasm-interface",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -8930,7 +8931,7 @@ dependencies = [
  "sp-panic-handler",
  "sp-runtime",
  "sp-version",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tiny-bip39",
  "tokio",
 ]
@@ -9009,7 +9010,7 @@ dependencies = [
  "sp-runtime",
  "sp-state-machine",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9038,7 +9039,7 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9076,7 +9077,7 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9147,7 +9148,7 @@ dependencies = [
  "sc-allocator",
  "sp-maybe-compressed-blob",
  "sp-wasm-interface",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasm-instrument",
  "wasmi",
 ]
@@ -9219,7 +9220,7 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9249,7 +9250,7 @@ dependencies = [
  "sp-application-crypto",
  "sp-core",
  "sp-keystore",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9289,7 +9290,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "unsigned-varint",
  "zeroize",
 ]
@@ -9309,7 +9310,7 @@ dependencies = [
  "sc-network-common 0.10.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-blockchain",
  "sp-runtime",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "unsigned-varint",
 ]
 
@@ -9336,7 +9337,7 @@ dependencies = [
  "sp-finality-grandpa",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9362,7 +9363,7 @@ dependencies = [
  "sp-finality-grandpa",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9401,7 +9402,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core",
  "sp-runtime",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9433,7 +9434,7 @@ dependencies = [
  "sp-finality-grandpa",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9596,7 +9597,7 @@ dependencies = [
  "sp-rpc",
  "sp-runtime",
  "sp-version",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9636,7 +9637,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-version",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio-stream",
 ]
 
@@ -9700,7 +9701,7 @@ dependencies = [
  "static_init",
  "substrate-prometheus-endpoint",
  "tempfile",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -9729,7 +9730,7 @@ dependencies = [
  "sc-client-db",
  "sc-utils 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-core",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
 ]
 
@@ -9767,7 +9768,7 @@ dependencies = [
  "sc-utils 4.0.0-dev (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "serde",
  "serde_json",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasm-timer",
 ]
 
@@ -9796,7 +9797,7 @@ dependencies = [
  "sp-rpc",
  "sp-runtime",
  "sp-tracing",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -9837,7 +9838,7 @@ dependencies = [
  "sp-tracing",
  "sp-transaction-pool",
  "substrate-prometheus-endpoint",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9851,7 +9852,7 @@ dependencies = [
  "serde",
  "sp-blockchain",
  "sp-runtime",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -9986,7 +9987,7 @@ checksum = "4d22a5ef407871893fd72b4562ee15e4742269b173959db4b8df6f538c414e13"
 dependencies = [
  "rand 0.8.5",
  "substring",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "url",
 ]
 
@@ -10391,7 +10392,7 @@ dependencies = [
  "sp-std",
  "sp-trie",
  "sp-version",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -10477,7 +10478,7 @@ dependencies = [
  "sp-database",
  "sp-runtime",
  "sp-state-machine",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -10495,7 +10496,7 @@ dependencies = [
  "sp-state-machine",
  "sp-std",
  "sp-version",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -10601,7 +10602,7 @@ dependencies = [
  "sp-storage",
  "ss58-registry",
  "substrate-bip39",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tiny-bip39",
  "zeroize",
 ]
@@ -10700,7 +10701,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -10753,7 +10754,7 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-externalities",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -10761,7 +10762,7 @@ name = "sp-maybe-compressed-blob"
 version = "4.1.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "zstd",
 ]
 
@@ -10780,7 +10781,7 @@ dependencies = [
  "sp-debug-derive 5.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38)",
  "sp-runtime",
  "sp-std",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -10921,7 +10922,7 @@ dependencies = [
  "sp-panic-handler",
  "sp-std",
  "sp-trie",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tracing",
 ]
 
@@ -10955,7 +10956,7 @@ dependencies = [
  "sp-inherents",
  "sp-runtime",
  "sp-std",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -11012,7 +11013,7 @@ dependencies = [
  "schnellru",
  "sp-core",
  "sp-std",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tracing",
  "trie-db",
  "trie-root",
@@ -11032,7 +11033,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-version-proc-macro",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -11252,7 +11253,7 @@ dependencies = [
  "rand 0.8.5",
  "ring 0.16.20",
  "subtle",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "url",
  "webrtc-util",
@@ -11354,7 +11355,7 @@ dependencies = [
  "hyper",
  "log",
  "prometheus",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
 ]
 
@@ -11528,7 +11529,7 @@ version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d50af8abc119fb8bb6dbabcfa89656f46f84aa0ac7688088608076ad2b459a84"
 dependencies = [
- "thiserror-impl 1.0.60",
+ "thiserror-impl 1.0.64",
 ]
 
 [[package]]
@@ -11639,7 +11640,7 @@ dependencies = [
  "rand 0.8.5",
  "rustc-hash",
  "sha2 0.10.8",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "unicode-normalization",
  "wasm-bindgen",
  "zeroize",
@@ -11997,7 +11998,7 @@ dependencies = [
  "rand 0.8.5",
  "smallvec",
  "socket2 0.4.10",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tinyvec",
  "tokio",
  "tracing",
@@ -12018,7 +12019,7 @@ dependencies = [
  "parking_lot 0.12.3",
  "resolv-conf",
  "smallvec",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "tracing",
  "trust-dns-proto",
@@ -12081,7 +12082,7 @@ dependencies = [
  "rand 0.8.5",
  "ring 0.16.20",
  "stun",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "webrtc-util",
 ]
@@ -12449,7 +12450,7 @@ dependencies = [
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "tempfile",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasm-opt-cxx-sys",
  "wasm-opt-sys",
 ]
@@ -12609,7 +12610,7 @@ dependencies = [
  "log",
  "object 0.29.0",
  "target-lexicon",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasmparser",
  "wasmtime-environ",
 ]
@@ -12628,7 +12629,7 @@ dependencies = [
  "object 0.29.0",
  "serde",
  "target-lexicon",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasmparser",
  "wasmtime-types",
 ]
@@ -12651,7 +12652,7 @@ dependencies = [
  "rustix 0.35.16",
  "serde",
  "target-lexicon",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasmtime-environ",
  "wasmtime-jit-debug",
  "wasmtime-runtime",
@@ -12687,7 +12688,7 @@ dependencies = [
  "paste",
  "rand 0.8.5",
  "rustix 0.35.16",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasmtime-asm-macros",
  "wasmtime-environ",
  "wasmtime-jit-debug",
@@ -12702,7 +12703,7 @@ checksum = "d23d61cb4c46e837b431196dd06abb11731541021916d03476a178b54dc07aeb"
 dependencies = [
  "cranelift-entity",
  "serde",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "wasmparser",
 ]
 
@@ -12776,7 +12777,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.8",
  "stun",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "time",
  "tokio",
  "turn",
@@ -12801,7 +12802,7 @@ dependencies = [
  "bytes",
  "derive_builder",
  "log",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "webrtc-sctp",
  "webrtc-util",
@@ -12839,7 +12840,7 @@ dependencies = [
  "sha2 0.10.8",
  "signature 1.6.4",
  "subtle",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "webpki 0.21.4",
  "webrtc-util",
@@ -12861,7 +12862,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stun",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "turn",
  "url",
@@ -12879,7 +12880,7 @@ checksum = "f08dfd7a6e3987e255c4dbe710dde5d94d0f0574f8a21afa95d171376c143106"
 dependencies = [
  "log",
  "socket2 0.4.10",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "webrtc-util",
 ]
@@ -12894,7 +12895,7 @@ dependencies = [
  "bytes",
  "rand 0.8.5",
  "rtp",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
 ]
 
 [[package]]
@@ -12909,7 +12910,7 @@ dependencies = [
  "crc",
  "log",
  "rand 0.8.5",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "webrtc-util",
 ]
@@ -12933,7 +12934,7 @@ dependencies = [
  "rtp",
  "sha-1",
  "subtle",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "webrtc-util",
 ]
@@ -12954,7 +12955,7 @@ dependencies = [
  "log",
  "nix 0.24.3",
  "rand 0.8.5",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "tokio",
  "winapi",
 ]
@@ -13350,7 +13351,7 @@ dependencies = [
  "oid-registry 0.4.0",
  "ring 0.16.20",
  "rusticata-macros",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "time",
 ]
 
@@ -13368,7 +13369,7 @@ dependencies = [
  "nom",
  "oid-registry 0.6.1",
  "rusticata-macros",
- "thiserror 1.0.60",
+ "thiserror 1.0.64",
  "time",
 ]
 
@@ -13404,7 +13405,10 @@ name = "xor-fee"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
+ "demeter-farming-platform",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -13418,6 +13422,9 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
  "scale-info",
  "smallvec",
  "sp-arithmetic",
@@ -13426,6 +13433,8 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]

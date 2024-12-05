@@ -594,8 +594,7 @@ pub mod pallet {
                 Either::Right(()) => None,
             };
 
-            Self::verify_create_orderbook_params(&order_book_id)?;
-            Self::verify_orderbook_attributes(
+            Self::inner_create_orderbook(
                 &order_book_id,
                 tick_size,
                 step_lot_size,
@@ -603,20 +602,6 @@ pub mod pallet {
                 max_lot_size,
             )?;
 
-            T::TradingPairSourceManager::enable_source_for_trading_pair(
-                &order_book_id.dex_id,
-                &order_book_id.quote,
-                &order_book_id.base,
-                LiquiditySourceType::OrderBook,
-            )?;
-
-            Self::create_orderbook_unchecked(
-                &order_book_id,
-                tick_size,
-                step_lot_size,
-                min_lot_size,
-                max_lot_size,
-            )?;
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id,
                 creator: maybe_who,
@@ -1379,6 +1364,38 @@ impl<T: Config> Pallet<T> {
         };
         <OrderBooks<T>>::insert(order_book_id, order_book);
         Self::register_tech_account(*order_book_id)
+    }
+
+    pub fn inner_create_orderbook(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -> Result<(), DispatchError> {
+        Self::verify_create_orderbook_params(&order_book_id)?;
+        Self::verify_orderbook_attributes(
+            &order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )?;
+
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
+            &order_book_id.dex_id,
+            &order_book_id.quote,
+            &order_book_id.base,
+            LiquiditySourceType::OrderBook,
+        )?;
+
+        Self::create_orderbook_unchecked(
+            &order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )
     }
 }
 

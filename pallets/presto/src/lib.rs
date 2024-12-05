@@ -55,12 +55,19 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 /// Buffer tech account for temp holding of withdraw request liquidity
 pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
 
+const COUPON_SYMBOL: &str = "CPN";
+const COUPON_NAME: &str = "Coupon";
+
 #[frame_support::pallet]
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{AssetIdOf, Balance, BoundedString};
+    use common::{
+        AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, Balance, BoundedString, DEXId,
+        TradingPairSourceManager, PRUSD,
+    };
     use core::fmt::Debug;
+    use core::str::FromStr;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
@@ -81,6 +88,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + technical::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
         type PrestoUsdAssetId: Get<AssetIdOf<Self>>;
         type PrestoTechAccount: Get<Self::TechAccountId>;
         type PrestoBufferTechAccount: Get<Self::TechAccountId>;
@@ -99,6 +107,20 @@ pub mod pallet {
             + scale_info::TypeInfo;
 
         type CropReceiptId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy
+            + Ord
+            + PartialEq
+            + Eq
+            + MaxEncodedLen
+            + scale_info::TypeInfo;
+
+        type CouponId: Parameter
             + Member
             + MaybeSerializeDeserialize
             + Debug
@@ -208,6 +230,17 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Counter to generate new Coupon Ids
+    #[pallet::storage]
+    #[pallet::getter(fn last_coupon_id)]
+    pub type LastCouponId<T: Config> = StorageValue<_, T::CouponId, ValueQuery>;
+
+    /// Coupons
+    #[pallet::storage]
+    #[pallet::getter(fn coupons)]
+    pub type Coupons<T: Config> =
+        StorageMap<_, Twox64Concat, AssetIdOf<T>, T::CropReceiptId, OptionQuery>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -259,6 +292,7 @@ pub mod pallet {
         },
         CropReceiptPublished {
             id: T::CropReceiptId,
+            coupon_asset_id: AssetIdOf<T>,
         },
     }
 
@@ -691,6 +725,69 @@ pub mod pallet {
                 Ok(())
             })
         }
+
+        #[pallet::call_index(16)]
+        #[pallet::weight(<T as Config>::WeightInfo::publish_crop_receipt())]
+        pub fn publish_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+            supply: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            let mut country = Country::Other;
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.ensure_is_owner(&who)?;
+                country = crop_receipt.country;
+                crop_receipt.publish()?;
+                DispatchResult::Ok(())
+            })?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            let coupon_id = Self::next_coupon_id();
+
+            let symbol =
+                AssetSymbol::from_str(&format!("{}.{COUPON_SYMBOL} {coupon_id}", country.symbol()))
+                    .unwrap();
+            let name =
+                AssetName::from_str(&format!("{} {COUPON_NAME} {coupon_id}", country.name()))
+                    .unwrap();
+
+            let coupon_asset_id = T::AssetManager::register_from(
+                &presto_tech_account_id,
+                symbol,
+                name,
+                0,
+                supply,
+                false,
+                AssetType::Regular,
+                None,
+                None,
+            )?;
+
+            T::TradingPairSourceManager::register_pair(
+                DEXId::PolkaswapPresto.into(),
+                PRUSD.into(),
+                coupon_asset_id,
+            )?;
+
+            // TODO: create an order-book
+            // TODO: deposit the liquidity in order-book
+
+            Self::deposit_event(Event::<T>::CropReceiptPublished {
+                id: crop_receipt_id,
+                coupon_asset_id,
+            });
+
+            Ok(())
+        }
     }
 }
 
@@ -720,6 +817,12 @@ impl<T: Config> Pallet<T> {
     pub fn next_crop_receipt_id() -> T::CropReceiptId {
         let id = LastCropReceiptId::<T>::get().saturating_add(T::CropReceiptId::one());
         LastCropReceiptId::<T>::set(id);
+        id
+    }
+
+    pub fn next_coupon_id() -> T::CouponId {
+        let id = LastCouponId::<T>::get().saturating_add(T::CouponId::one());
+        LastCouponId::<T>::set(id);
         id
     }
 }

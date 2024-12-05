@@ -114,11 +114,13 @@ parameter_types! {
 
 impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type PrestoUsdAssetId = PrestoUsdAssetId;
     type PrestoTechAccount = PrestoTechAccountId;
     type PrestoBufferTechAccount = PrestoBufferTechAccountId;
     type RequestId = u64;
     type CropReceiptId = u64;
+    type CouponId = u64;
     type MaxPrestoManagersCount = ConstU32<100>;
     type MaxPrestoAuditorsCount = ConstU32<100>;
     type MaxUserRequestCount = ConstU32<65536>;
