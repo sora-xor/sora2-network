@@ -46,6 +46,18 @@ use sp_runtime::FixedU128;
 use vested_rewards::vesting_currencies::VestingSchedule;
 use vested_rewards::{Config, WeightInfo};
 
+#[derive(Debug, PartialEq)]
+pub struct CallDepth {
+    pub swap_count: u32,
+    pub depth: u32,
+}
+
+impl From<(u32, u32)> for CallDepth {
+    fn from((swap_count, depth): (u32, u32)) -> Self {
+        CallDepth { swap_count, depth }
+    }
+}
+
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
     pub fn withdraw_evm_fee(&self, who: &AccountId) -> DispatchResult {
@@ -92,20 +104,49 @@ impl RuntimeCall {
         Ok(())
     }
 
-    pub fn swap_count(&self) -> u32 {
+    /// `vested_transfer` may be called only through `xorless_call` or manually
+    /// so for other extrinsics depth is 2 or more
+    pub fn swap_count_and_depth(&self, depth: u32) -> CallDepth {
         match self {
             Self::Multisig(pallet_multisig::Call::as_multi_threshold_1 { call, .. })
             | Self::Multisig(pallet_multisig::Call::as_multi { call, .. })
-            | Self::Utility(UtilityCall::as_derivative { call, .. }) => call.swap_count(),
+            | Self::Utility(UtilityCall::as_derivative { call, .. }) => {
+                call.swap_count_and_depth(depth.saturating_add(2))
+            }
             Self::Utility(UtilityCall::batch { calls })
             | Self::Utility(UtilityCall::batch_all { calls })
-            | Self::Utility(UtilityCall::force_batch { calls }) => {
-                calls.iter().map(|call| call.swap_count()).sum()
-            }
+            | Self::Utility(UtilityCall::force_batch { calls }) => calls
+                .iter()
+                .map(|call| call.swap_count_and_depth(depth.saturating_add(2)))
+                .fold(
+                    CallDepth {
+                        swap_count: 0,
+                        depth: 0,
+                    },
+                    |acc, call_depth| CallDepth {
+                        swap_count: acc.swap_count.saturating_add(call_depth.swap_count),
+                        depth: acc.depth.max(call_depth.depth),
+                    },
+                ),
             Self::LiquidityProxy(liquidity_proxy::Call::swap { .. })
             | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer { .. })
-            | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch { .. }) => 1,
-            _ => 0,
+            | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch { .. }) => {
+                CallDepth {
+                    depth: 0,
+                    swap_count: 1,
+                }
+            }
+            Self::XorFee(xor_fee::Call::xorless_call { call, .. }) => {
+                call.swap_count_and_depth(depth.saturating_add(1))
+            }
+            Self::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => CallDepth {
+                depth,
+                swap_count: 0,
+            },
+            _ => CallDepth {
+                depth: 0,
+                swap_count: 0,
+            },
         }
     }
 
@@ -521,9 +562,11 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
 
 #[cfg(test)]
 mod tests {
+    use crate::xor_fee_impls::CallDepth;
     use pallet_utility::Call as UtilityCall;
     use sp_core::H256;
     use sp_runtime::AccountId32;
+    use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 
     use common::{balance, VAL, XOR};
 
@@ -569,7 +612,34 @@ mod tests {
             amount: balance!(100),
         });
 
-        assert_eq!(call.swap_count(), 0);
+        assert_eq!(
+            call.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: From::from([1; 32]),
+            schedule: schedule.clone(),
+        });
+
+        assert_eq!(
+            call.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
     }
 
     #[test]
@@ -594,8 +664,93 @@ mod tests {
         });
         let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
-        assert_eq!(call_batch.swap_count(), 0);
-        assert_eq!(call_batch_all.swap_count(), 0);
+        assert_eq!(
+            call_batch.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+        assert_eq!(
+            call_batch_all.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn regular_batch_should_not_pass_for_vesting() {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: From::from([1; 32]),
+            schedule: schedule.clone(),
+        });
+        let batch_calls = vec![
+            call,
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
+            }
+            .into(),
+        ];
+
+        let call_batch = RuntimeCall::Utility(UtilityCall::batch {
+            calls: batch_calls.clone(),
+        });
+        let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
+
+        assert_eq!(
+            call_batch.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 2,
+            }
+        );
+        assert_eq!(
+            call_batch_all.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn no_direct_call_not_work_for_vesting() {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = Box::new(RuntimeCall::VestedRewards(
+            vested_rewards::Call::vested_transfer {
+                dest: From::from([1; 32]),
+                schedule: schedule.clone(),
+            },
+        ));
+
+        let utility_call = RuntimeCall::Utility(UtilityCall::as_derivative { index: 0, call });
+
+        assert_eq!(
+            utility_call.swap_count_and_depth(0),
+            CallDepth {
+                depth: 2,
+                swap_count: 0
+            }
+        );
     }
 
     fn test_swap_in_batch(call: RuntimeCall) {
@@ -614,8 +769,20 @@ mod tests {
         });
         let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
-        assert_eq!(call_batch.swap_count(), 1);
-        assert_eq!(call_batch_all.swap_count(), 1);
+        assert_eq!(
+            call_batch.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 1,
+                depth: 0,
+            }
+        );
+        assert_eq!(
+            call_batch_all.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 1,
+                depth: 0,
+            }
+        );
 
         assert!(crate::BaseCallFilter::contains(&call_batch));
         assert!(crate::BaseCallFilter::contains(&call_batch_all));
