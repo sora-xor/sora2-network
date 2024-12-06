@@ -1856,7 +1856,7 @@ impl vested_rewards::Config for Runtime {
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type MaxVestingSchedules = MaxVestingSchedules;
-    type Currency = Tokens;
+    type Currency = Currencies;
     type MinVestedTransfer = MinVestedTransfer;
     type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
