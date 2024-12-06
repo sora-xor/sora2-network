@@ -198,7 +198,7 @@ curl -H "Content-Type: application/json" --data '{ "jsonrpc":"2.0", "method":"sy
 
 The Parity Polkadot client connects to telemetry by default. You can disable it with ```--no-telemetry```, or connect only to specified telemetry servers with the ```--telemetry-url``` option (see the help options for instructions). Connecting to public telemetry may expose information that puts your node at higher risk of attack. You can run your own, private telemetry server or deploy a substrate-telemetry instance to a Kubernetes cluster using this Helm chart.
 
-The node also exposes a Prometheus endpoint by default (disable with ```--no-prometheus```). Substrate has a vizualizing node metrics tutorial which uses this endpoint.
+The node also exposes a Prometheus endpoint by default (disable with ```--no-prometheus```). Substrate has a visualizing node metrics tutorial which uses this endpoint.
 
 # License
 
