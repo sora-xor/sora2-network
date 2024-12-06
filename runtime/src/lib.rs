@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 106,
+    spec_version: 107,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 106,
+    transaction_version: 107,
     state_version: 0,
 };
 
@@ -1015,7 +1015,7 @@ impl technical::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetFee: Fixed = fixed!(0.003);
+    pub GetFee: Fixed = fixed!(0.006);
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
@@ -1307,6 +1307,7 @@ where
 
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
+    pub const MaxWhiteListTokens: u32 = 30;
 }
 
 parameter_types! {
@@ -1314,6 +1315,10 @@ parameter_types! {
     pub const FeeXorBurnedWeight: u32 = 20; // 20%
     pub const FeeValBurnedWeight: u32 = 50; // 50%
     pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    // Minimal amount for proportions right calculations
+    // now weights are equal to 1, 2, 5, 2, so max weight equal to 10
+    // max weight always right amount for calculations: weight / max_weight * max_weight = weight
+    pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
 }
@@ -1351,6 +1356,12 @@ impl xor_fee::Config for Runtime {
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = xor_fee_impls::WithdrawFee;
+    type MaxWhiteListTokens = MaxWhiteListTokens;
+    type RuntimeCall = RuntimeCall;
+    type PoolXyk = PoolXYK;
+    type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
+    type PriceTools = price_tools::FastPriceTools<Runtime>;
+    type MinimalFeeInAsset = MinimalFeeInAsset;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -2524,8 +2535,13 @@ impl presto::Config for Runtime {
     type MaxPrestoManagersCount = ConstU32<100>;
     type MaxPrestoAuditorsCount = ConstU32<100>;
     type MaxUserRequestCount = ConstU32<65536>;
+    type MaxUserCropReceiptCount = ConstU32<65536>;
     type MaxRequestPaymentReferenceSize = ConstU32<100>;
     type MaxRequestDetailsSize = ConstU32<200>;
+    type MaxPlaceOfIssueSize = ConstU32<100>;
+    type MaxDebtorSize = ConstU32<80>;
+    type MaxCreditorSize = ConstU32<80>;
+    type MaxCropReceiptContentSize = ConstU32<30720>;
     type Time = Timestamp;
     type WeightInfo = presto::weights::SubstrateWeight<Runtime>;
 }

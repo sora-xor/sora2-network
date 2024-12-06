@@ -77,6 +77,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config
         + common::Config
+        + dex_manager::Config
         + order_book::Config
         + pool_xyk::Config
         + xst::Config
@@ -459,7 +460,6 @@ pub mod pallet {
         pub fn presto_initialize_assets(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            #[cfg(feature = "wip")] // presto
             pallet_tools::presto::register_presto_usd::<T>()?;
 
             // Extrinsic is only for testing, so we return all fees

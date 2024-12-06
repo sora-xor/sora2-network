@@ -37,7 +37,9 @@ use crate::mock::{
     RuntimeOrigin, TechAccountId,
 };
 use crate::requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
+
 use common::{balance, AssetInfoProvider, Balance, BoundedString, PRUSD};
+use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating, Score, Status};
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -218,6 +220,11 @@ fn should_mint_presto_usd() {
             alice()
         ));
 
+        assert_err!(
+            PrestoPallet::mint_presto_usd(RuntimeOrigin::signed(alice()), balance!(0)),
+            E::AmountIsZero
+        );
+
         assert_ok!(PrestoPallet::mint_presto_usd(
             RuntimeOrigin::signed(alice()),
             amount
@@ -251,6 +258,11 @@ fn should_burn_presto_usd() {
         assert_err!(
             PrestoPallet::burn_presto_usd(RuntimeOrigin::signed(bob()), balance!(200)),
             E::CallerIsNotManager
+        );
+
+        assert_err!(
+            PrestoPallet::burn_presto_usd(RuntimeOrigin::signed(alice()), balance!(0)),
+            E::AmountIsZero
         );
 
         assert_ok!(PrestoPallet::burn_presto_usd(
@@ -289,6 +301,11 @@ fn should_send_presto_usd() {
             E::CallerIsNotManager
         );
 
+        assert_err!(
+            PrestoPallet::send_presto_usd(RuntimeOrigin::signed(alice()), balance!(0), dave()),
+            E::AmountIsZero
+        );
+
         assert_ok!(PrestoPallet::send_presto_usd(
             RuntimeOrigin::signed(alice()),
             balance!(200),
@@ -314,6 +331,16 @@ fn should_create_deposit_request() {
 
         assert_eq!(PrestoPallet::requests(1), None);
         assert_eq!(PrestoPallet::requests(2), None);
+
+        assert_err!(
+            PrestoPallet::create_deposit_request(
+                RuntimeOrigin::signed(bob()),
+                balance!(0),
+                BoundedString::truncate_from("payment reference"),
+                Some(BoundedString::truncate_from("details"))
+            ),
+            E::AmountIsZero
+        );
 
         assert_ok!(PrestoPallet::create_deposit_request(
             RuntimeOrigin::signed(bob()),
@@ -386,6 +413,15 @@ fn should_create_withdraw_request() {
         // test
 
         assert_eq!(PrestoPallet::requests(1), None);
+
+        assert_err!(
+            PrestoPallet::create_withdraw_request(
+                RuntimeOrigin::signed(bob()),
+                balance!(0),
+                Some(BoundedString::truncate_from("details"))
+            ),
+            E::AmountIsZero
+        );
 
         assert_ok!(PrestoPallet::create_withdraw_request(
             RuntimeOrigin::signed(bob()),
@@ -876,6 +912,199 @@ fn should_decline_request() {
         assert_err!(
             PrestoPallet::decline_request(RuntimeOrigin::signed(alice()), 2),
             E::RequestAlreadyProcessed
+        );
+    });
+}
+
+#[test]
+fn should_create_crop_receipt() {
+    ext().execute_with(|| {
+        assert_eq!(PrestoPallet::user_crop_receipts(bob()), vec![]);
+
+        let amount = balance!(10000);
+        let close_initial_period = 123;
+        let date_of_issue = 234;
+        let place_of_issue = BoundedString::truncate_from("place of issue");
+        let debtor = BoundedString::truncate_from("debtor");
+        let creditor = BoundedString::truncate_from("creditor");
+        let perfomance_time = 345;
+        let data = mock::crop_receipt_content_template();
+
+        assert_err!(
+            PrestoPallet::create_crop_receipt(
+                RuntimeOrigin::signed(bob()),
+                balance!(0),
+                Country::Brazil,
+                close_initial_period,
+                date_of_issue,
+                place_of_issue.clone(),
+                debtor.clone(),
+                creditor.clone(),
+                perfomance_time,
+                data.clone()
+            ),
+            E::AmountIsZero
+        );
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            amount,
+            Country::Brazil,
+            close_initial_period,
+            date_of_issue,
+            place_of_issue.clone(),
+            debtor.clone(),
+            creditor.clone(),
+            perfomance_time,
+            data.clone()
+        ));
+
+        assert_eq!(
+            PrestoPallet::crop_receipts(1).unwrap(),
+            CropReceipt::<Runtime> {
+                owner: bob(),
+                time: 0,
+                status: Status::Rating,
+                amount,
+                country: Country::Brazil,
+                score: None,
+                close_initial_period,
+                date_of_issue,
+                place_of_issue,
+                debtor,
+                creditor,
+                perfomance_time
+            }
+        );
+
+        assert_eq!(
+            PrestoPallet::crop_receipts_content(1).unwrap(),
+            CropReceiptContent::<Runtime> { json: data }
+        );
+
+        assert_eq!(PrestoPallet::user_crop_receipts(bob()), vec![1]);
+    });
+}
+
+#[test]
+fn should_rate_crop_receipt() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(10000),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            mock::crop_receipt_content_template()
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::rate_crop_receipt(RuntimeOrigin::signed(charlie()), 1, Rating::AA),
+            E::CallerIsNotAuditor
+        );
+
+        assert_err!(
+            PrestoPallet::rate_crop_receipt(RuntimeOrigin::signed(alice()), 2, Rating::AA),
+            E::CropReceiptIsNotExists
+        );
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        let crop_receipt = PrestoPallet::crop_receipts(1).unwrap();
+
+        assert_eq!(crop_receipt.status, Status::Decision);
+
+        assert_eq!(
+            crop_receipt.score.unwrap(),
+            Score {
+                rating: Rating::AA,
+                by_auditor: alice()
+            }
+        );
+
+        assert_err!(
+            PrestoPallet::rate_crop_receipt(RuntimeOrigin::signed(alice()), 1, Rating::A),
+            E::CropReceiptAlreadyRated
+        );
+    });
+}
+
+#[test]
+fn should_decline_crop_receipt() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(10000),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            mock::crop_receipt_content_template()
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::decline_crop_receipt(RuntimeOrigin::signed(bob()), 2),
+            E::CropReceiptIsNotExists
+        );
+
+        assert_err!(
+            PrestoPallet::decline_crop_receipt(RuntimeOrigin::signed(charlie()), 1),
+            E::CallerIsNotCropReceiptOwner
+        );
+
+        assert_err!(
+            PrestoPallet::decline_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptWaitingForRate
+        );
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        assert_ok!(PrestoPallet::decline_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1
+        ));
+
+        assert_eq!(
+            PrestoPallet::crop_receipts(1).unwrap().status,
+            Status::Declined
+        );
+
+        assert_err!(
+            PrestoPallet::decline_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptAlreadyHasDecision
         );
     });
 }

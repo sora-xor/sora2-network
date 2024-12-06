@@ -45,11 +45,6 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
 use sp_runtime::traits::{One, Saturating};
 
-use crop_receipt::CropReceipt;
-use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
-use treasury::Treasury;
-use weights::WeightInfo;
-
 pub use pallet::*;
 
 pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
@@ -61,14 +56,20 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
 
 #[frame_support::pallet]
+#[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
     use common::{AssetIdOf, Balance, BoundedString};
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
+
+    use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
+    use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
+    use treasury::Treasury;
+    use weights::WeightInfo;
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 
@@ -121,10 +122,25 @@ pub mod pallet {
         type MaxUserRequestCount: Get<u32>;
 
         #[pallet::constant]
+        type MaxUserCropReceiptCount: Get<u32>;
+
+        #[pallet::constant]
         type MaxRequestPaymentReferenceSize: Get<u32>;
 
         #[pallet::constant]
         type MaxRequestDetailsSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxPlaceOfIssueSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxDebtorSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxCreditorSize: Get<u32>;
+
+        #[pallet::constant]
+        type MaxCropReceiptContentSize: Get<u32>;
 
         type Time: Time;
         type WeightInfo: WeightInfo;
@@ -151,7 +167,24 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn crop_receipts)]
     pub type CropReceipts<T: Config> =
-        StorageMap<_, Twox64Concat, T::CropReceiptId, CropReceipt, OptionQuery>;
+        StorageMap<_, Twox64Concat, T::CropReceiptId, CropReceipt<T>, OptionQuery>;
+
+    /// Crop receipts content
+    #[pallet::storage]
+    #[pallet::getter(fn crop_receipts_content)]
+    pub type CropReceiptsContent<T: Config> =
+        StorageMap<_, Twox64Concat, T::CropReceiptId, CropReceiptContent<T>, OptionQuery>;
+
+    /// Crop receipts index by user
+    #[pallet::storage]
+    #[pallet::getter(fn user_crop_receipts)]
+    pub type UserCropReceipts<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        AccountIdOf<T>,
+        BoundedVec<T::CropReceiptId, T::MaxUserCropReceiptCount>,
+        ValueQuery,
+    >;
 
     /// Counter to generate new Request Ids
     #[pallet::storage]
@@ -213,6 +246,20 @@ pub mod pallet {
             id: T::RequestId,
             by: AccountIdOf<T>,
         },
+        CropReceiptCreated {
+            id: T::CropReceiptId,
+            by: AccountIdOf<T>,
+        },
+        CropReceiptRated {
+            id: T::CropReceiptId,
+            by: AccountIdOf<T>,
+        },
+        CropReceiptDeclined {
+            id: T::CropReceiptId,
+        },
+        CropReceiptPublished {
+            id: T::CropReceiptId,
+        },
     }
 
     #[pallet::error]
@@ -233,6 +280,8 @@ pub mod pallet {
         CallerIsNotManager,
         /// This account is not an auditor
         CallerIsNotAuditor,
+        /// Zero amount doesn't make sense
+        AmountIsZero,
         /// This account has reached the max count of requests
         RequestsCountForUserOverloaded,
         /// There is no such request
@@ -243,6 +292,18 @@ pub mod pallet {
         RequestAlreadyProcessed,
         /// The actual request type by provided RequestId is different
         WrongRequestType,
+        /// This account has reached the max count of crop receipts
+        CropReceiptsCountForUserOverloaded,
+        /// There is no such crop receipt
+        CropReceiptIsNotExists,
+        /// The crop receipt already has been rated
+        CropReceiptAlreadyRated,
+        /// This account is not an owner of the crop receipt
+        CallerIsNotCropReceiptOwner,
+        /// The operation cannot be performed until the crop receipt has been rated
+        CropReceiptWaitingForRate,
+        /// The crop receipt already has a decision
+        CropReceiptAlreadyHasDecision,
     }
 
     #[pallet::call]
@@ -328,6 +389,7 @@ pub mod pallet {
         pub fn mint_presto_usd(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_is_manager(&who)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             Treasury::<T>::mint_presto_usd(amount)?;
 
             Self::deposit_event(Event::<T>::PrestoUsdMinted { amount, by: who });
@@ -340,6 +402,7 @@ pub mod pallet {
         pub fn burn_presto_usd(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_is_manager(&who)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             Treasury::<T>::burn_presto_usd(amount)?;
 
             Self::deposit_event(Event::<T>::PrestoUsdBurned { amount, by: who });
@@ -356,6 +419,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_is_manager(&who)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             Treasury::<T>::send_presto_usd(amount, &to)?;
 
             Ok(())
@@ -371,6 +435,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let owner = ensure_signed(origin)?;
 
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             let id = Self::next_request_id();
 
             let request = Request::Deposit(DepositRequest::new(
@@ -401,6 +466,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let owner = ensure_signed(origin)?;
 
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
             let id = Self::next_request_id();
 
             let request = Request::Withdraw(WithdrawRequest::new(owner.clone(), amount, details)?);
@@ -419,13 +485,13 @@ pub mod pallet {
 
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::create_withdraw_request())]
-        pub fn cancel_request(origin: OriginFor<T>, id: T::RequestId) -> DispatchResult {
+        pub fn cancel_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
-                ensure!(*request.owner() == who, Error::<T>::CallerIsNotRequestOwner);
+                request.ensure_is_owner(&who)?;
 
                 ensure!(
                     *request.status() == RequestStatus::Pending,
@@ -434,7 +500,7 @@ pub mod pallet {
 
                 request.cancel()?;
 
-                Self::deposit_event(Event::<T>::RequestCancelled { id });
+                Self::deposit_event(Event::<T>::RequestCancelled { id: request_id });
 
                 Ok(())
             })
@@ -442,11 +508,14 @@ pub mod pallet {
 
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::approve_deposit_request())]
-        pub fn approve_deposit_request(origin: OriginFor<T>, id: T::RequestId) -> DispatchResult {
+        pub fn approve_deposit_request(
+            origin: OriginFor<T>,
+            request_id: T::RequestId,
+        ) -> DispatchResult {
             let manager = ensure_signed(origin)?;
             Self::ensure_is_manager(&manager)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 ensure!(
@@ -460,7 +529,10 @@ pub mod pallet {
                     return Err(Error::<T>::WrongRequestType.into());
                 }
 
-                Self::deposit_event(Event::<T>::RequestApproved { id, by: manager });
+                Self::deposit_event(Event::<T>::RequestApproved {
+                    id: request_id,
+                    by: manager,
+                });
 
                 Ok(())
             })
@@ -470,13 +542,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::approve_withdraw_request())]
         pub fn approve_withdraw_request(
             origin: OriginFor<T>,
-            id: T::RequestId,
+            request_id: T::RequestId,
             payment_reference: BoundedString<T::MaxRequestPaymentReferenceSize>,
         ) -> DispatchResult {
             let manager = ensure_signed(origin)?;
             Self::ensure_is_manager(&manager)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 ensure!(
@@ -490,7 +562,10 @@ pub mod pallet {
                     return Err(Error::<T>::WrongRequestType.into());
                 }
 
-                Self::deposit_event(Event::<T>::RequestApproved { id, by: manager });
+                Self::deposit_event(Event::<T>::RequestApproved {
+                    id: request_id,
+                    by: manager,
+                });
 
                 Ok(())
             })
@@ -498,11 +573,11 @@ pub mod pallet {
 
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::decline_request())]
-        pub fn decline_request(origin: OriginFor<T>, id: T::RequestId) -> DispatchResult {
+        pub fn decline_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let manager = ensure_signed(origin)?;
             Self::ensure_is_manager(&manager)?;
 
-            Requests::<T>::try_mutate(id, |request| {
+            Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
 
                 ensure!(
@@ -512,7 +587,106 @@ pub mod pallet {
 
                 request.decline(manager.clone())?;
 
-                Self::deposit_event(Event::<T>::RequestDeclined { id, by: manager });
+                Self::deposit_event(Event::<T>::RequestDeclined {
+                    id: request_id,
+                    by: manager,
+                });
+
+                Ok(())
+            })
+        }
+
+        #[pallet::call_index(13)]
+        #[pallet::weight(<T as Config>::WeightInfo::create_crop_receipt())]
+        pub fn create_crop_receipt(
+            origin: OriginFor<T>,
+            amount: Balance,
+            country: Country,
+            close_initial_period: MomentOf<T>,
+            date_of_issue: MomentOf<T>,
+            place_of_issue: BoundedString<T::MaxPlaceOfIssueSize>,
+            debtor: BoundedString<T::MaxDebtorSize>,
+            creditor: BoundedString<T::MaxCreditorSize>,
+            perfomance_time: MomentOf<T>,
+            data: BoundedString<T::MaxCropReceiptContentSize>,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+            ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
+            let id = Self::next_crop_receipt_id();
+
+            let crop_receipt = CropReceipt::<T>::new(
+                owner.clone(),
+                amount,
+                country,
+                close_initial_period,
+                date_of_issue,
+                place_of_issue,
+                debtor,
+                creditor,
+                perfomance_time,
+            );
+
+            let content = CropReceiptContent::<T> { json: data };
+
+            CropReceipts::<T>::insert(id, crop_receipt);
+            CropReceiptsContent::<T>::insert(id, content);
+
+            UserCropReceipts::<T>::try_mutate(&owner, |ids| {
+                ids.try_push(id)
+                    .map_err(|_| Error::<T>::CropReceiptsCountForUserOverloaded)?;
+                Ok::<(), Error<T>>(())
+            })?;
+
+            Self::deposit_event(Event::<T>::CropReceiptCreated { id, by: owner });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(14)]
+        #[pallet::weight(<T as Config>::WeightInfo::rate_crop_receipt())]
+        pub fn rate_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+            rating: Rating,
+        ) -> DispatchResult {
+            let auditor = ensure_signed(origin)?;
+            Self::ensure_is_auditor(&auditor)?;
+
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.rate(rating, auditor.clone())?;
+
+                Self::deposit_event(Event::<T>::CropReceiptRated {
+                    id: crop_receipt_id,
+                    by: auditor,
+                });
+
+                Ok(())
+            })
+        }
+
+        #[pallet::call_index(15)]
+        #[pallet::weight(<T as Config>::WeightInfo::decline_crop_receipt())]
+        pub fn decline_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.ensure_is_owner(&who)?;
+                crop_receipt.decline()?;
+
+                Self::deposit_event(Event::<T>::CropReceiptDeclined {
+                    id: crop_receipt_id,
+                });
 
                 Ok(())
             })
