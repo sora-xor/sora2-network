@@ -62,15 +62,17 @@ const COUPON_NAME: &str = "Coupon";
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
+    use common::fixnum::ops::RoundMode;
+    use common::prelude::BalanceUnit;
     use common::{
-        AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, Balance, BoundedString, DEXId,
-        OrderBookManager, TradingPairSourceManager, PRUSD,
+        balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, Balance,
+        BoundedString, DEXId, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
     };
     use core::fmt::Debug;
     use core::str::FromStr;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
+    use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
 
     use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
@@ -344,6 +346,12 @@ pub mod pallet {
         CropReceiptWaitingForRate,
         /// The crop receipt already has a decision
         CropReceiptAlreadyHasDecision,
+        /// Coupon supply cannot be bigger than requested amount in crop receipt
+        TooBigCouponSupply,
+        /// Fail of coupon public offering
+        CouponOfferingFail,
+        /// Error during calculations
+        CalculationError,
     }
 
     #[pallet::call]
@@ -740,8 +748,12 @@ pub mod pallet {
             supply: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!supply.is_zero(), Error::<T>::AmountIsZero);
+
+            let coupon_supply = BalanceUnit::indivisible(supply);
 
             let mut country = Country::Other;
+            let mut amount = BalanceUnit::default();
             CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
                 let crop_receipt = crop_receipt
                     .as_mut()
@@ -749,6 +761,11 @@ pub mod pallet {
 
                 crop_receipt.ensure_is_owner(&who)?;
                 country = crop_receipt.country;
+                amount = BalanceUnit::divisible(crop_receipt.amount);
+
+                // The initial price (amount / supply) must be >= 1.00
+                ensure!(coupon_supply <= amount, Error::<T>::TooBigCouponSupply);
+
                 crop_receipt.publish()?;
                 DispatchResult::Ok(())
             })?;
@@ -784,8 +801,85 @@ pub mod pallet {
                 coupon_asset_id,
             )?;
 
-            // TODO: create an order-book
-            // TODO: deposit the liquidity in order-book
+            let order_book_id = T::OrderBookManager::assemble_order_book_id(
+                DEXId::PolkaswapPresto.into(),
+                &PRUSD.into(),
+                &coupon_asset_id,
+            )
+            .ok_or(Error::<T>::CouponOfferingFail)?;
+
+            // Tick size always is 0.01 PRUSD
+            let tick_size = balance!(0.01);
+            // Since Coupon is non-divisible asset, the step lot size is always 1 Coupon
+            let step_lot_size = 1;
+
+            // This value must correlate with `order_book::Config` const `MaxLimitOrdersForPrice`.
+            // It shouldn't be equal, but it must always be not higher: `max_orders_count` <= `MaxLimitOrdersForPrice`
+            let max_orders_count = BalanceUnit::divisible(balance!(1000));
+
+            // This value must correlate with `order_book::Config` const `SOFT_MIN_MAX_RATIO`.
+            // It shouldn't be equal, but it must always be not higher: `max_orders_count` <= `SOFT_MIN_MAX_RATIO`
+            let min_max_ratio = BalanceUnit::divisible(balance!(1000));
+
+            // Calculate the max lot size amount that is suitable to offer all Coupon supply at one price in order book
+            let max = coupon_supply
+                .checked_div(&max_orders_count)
+                .ok_or(Error::<T>::CalculationError)?;
+
+            // default values
+            let default_min_lot_size = 1;
+            let default_max_lot_size = 1000;
+
+            let (min_lot_size, max_lot_size) =
+                if max <= BalanceUnit::indivisible(default_max_lot_size) {
+                    (default_min_lot_size, default_max_lot_size)
+                } else {
+                    // if necessary max lot size exceeds the default value 1000 - calculate suitable min value
+                    let min = max
+                        .checked_div(&min_max_ratio)
+                        .ok_or(Error::<T>::CalculationError)?;
+                    (
+                        *min.into_indivisible(RoundMode::Ceil).balance(),
+                        *max.into_indivisible(RoundMode::Ceil).balance(),
+                    )
+                };
+
+            let price = *amount
+                .checked_div(&coupon_supply)
+                .ok_or(Error::<T>::CalculationError)?
+                .into_divisible()
+                .ok_or(Error::<T>::CalculationError)?
+                .balance();
+
+            // create order book
+            T::OrderBookManager::initialize_orderbook(
+                &order_book_id,
+                tick_size,
+                step_lot_size,
+                min_lot_size,
+                max_lot_size,
+            )?;
+
+            // place all supply in order book in according with `max_lot_size` limitation
+            let mut remaining_amount = supply;
+            while !remaining_amount.is_zero() {
+                let qty = if remaining_amount > max_lot_size {
+                    max_lot_size
+                } else {
+                    remaining_amount
+                };
+
+                T::OrderBookManager::place_limit_order(
+                    who.clone(),
+                    order_book_id,
+                    price,
+                    qty,
+                    PriceVariant::Sell,
+                    None,
+                )?;
+
+                remaining_amount = remaining_amount.saturating_sub(qty);
+            }
 
             Self::deposit_event(Event::<T>::CropReceiptPublished {
                 id: crop_receipt_id,
