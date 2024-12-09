@@ -1348,9 +1348,9 @@ impl<T: Config> Pallet<T> {
         min_lot_size: Balance,
         max_lot_size: Balance,
     ) -> Result<(), DispatchError> {
-        Self::verify_create_orderbook_params(&order_book_id)?;
+        Self::verify_create_orderbook_params(order_book_id)?;
         Self::verify_orderbook_attributes(
-            &order_book_id,
+            order_book_id,
             tick_size,
             step_lot_size,
             min_lot_size,
@@ -1365,7 +1365,7 @@ impl<T: Config> Pallet<T> {
         )?;
 
         Self::create_orderbook_unchecked(
-            &order_book_id,
+            order_book_id,
             tick_size,
             step_lot_size,
             min_lot_size,

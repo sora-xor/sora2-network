@@ -39,7 +39,7 @@ mod test;
 mod treasury;
 pub mod weights;
 
-use common::AccountIdOf;
+use common::{AccountIdOf, Balance};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
@@ -55,7 +55,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 /// Buffer tech account for temp holding of withdraw request liquidity
 pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
 
-const COUPON_SYMBOL: &str = "CPN";
+const COUPON_SYMBOL: &str = "C";
 const COUPON_NAME: &str = "Coupon";
 
 #[frame_support::pallet]
@@ -65,8 +65,8 @@ pub mod pallet {
     use common::fixnum::ops::RoundMode;
     use common::prelude::BalanceUnit;
     use common::{
-        balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, Balance,
-        BoundedString, DEXId, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
+        balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString, DEXId,
+        OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
     };
     use core::fmt::Debug;
     use core::str::FromStr;
@@ -777,7 +777,7 @@ pub mod pallet {
             let coupon_id = Self::next_coupon_id();
 
             let symbol =
-                AssetSymbol::from_str(&format!("{}.{COUPON_SYMBOL} {coupon_id}", country.symbol()))
+                AssetSymbol::from_str(&format!("{}{COUPON_SYMBOL}{coupon_id}", country.symbol()))
                     .unwrap();
             let name =
                 AssetName::from_str(&format!("{} {COUPON_NAME} {coupon_id}", country.name()))
@@ -793,6 +793,15 @@ pub mod pallet {
                 AssetType::Regular,
                 None,
                 None,
+            )?;
+
+            Coupons::<T>::insert(coupon_asset_id, crop_receipt_id);
+
+            T::AssetManager::transfer_from(
+                &coupon_asset_id,
+                &presto_tech_account_id,
+                &who,
+                supply,
             )?;
 
             T::TradingPairSourceManager::register_pair(
@@ -850,6 +859,7 @@ pub mod pallet {
                 .into_divisible()
                 .ok_or(Error::<T>::CalculationError)?
                 .balance();
+            let price = Self::align_price(price, tick_size)?;
 
             // create order book
             T::OrderBookManager::initialize_orderbook(
@@ -924,5 +934,11 @@ impl<T: Config> Pallet<T> {
         let id = LastCouponId::<T>::get().saturating_add(T::CouponId::one());
         LastCouponId::<T>::set(id);
         id
+    }
+
+    fn align_price(price: Balance, tick_size: Balance) -> Result<Balance, DispatchError> {
+        ensure!(tick_size != 0, Error::<T>::CalculationError);
+        let steps = price.saturating_div(tick_size);
+        Ok(tick_size.saturating_mul(steps))
     }
 }

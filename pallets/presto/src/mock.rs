@@ -37,8 +37,8 @@ use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_manager_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, mock_trading_pair_config,
-    Amount, AssetId32, AssetName, AssetSymbol, BoundedString, DEXId, FromGenericPair,
-    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, KUSD, PRUSD, XOR,
+    Amount, AssetId32, AssetName, AssetSymbol, BoundedString, DEXId, DEXInfo, FromGenericPair,
+    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, KUSD, PRUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, EitherOfDiverse, GenesisBuild};
@@ -253,6 +253,29 @@ pub fn ext() -> sp_io::TestExternalities {
                 true,
                 None,
                 None,
+            ),
+        ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    DexManagerConfig {
+        dex_list: vec![
+            (
+                DEXId::Polkaswap,
+                DEXInfo {
+                    base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
+                    is_public: true,
+                },
+            ),
+            (
+                DEXId::PolkaswapPresto,
+                DEXInfo {
+                    base_asset_id: PRUSD,
+                    synthetic_base_asset_id: XST,
+                    is_public: true,
+                },
             ),
         ],
     }
