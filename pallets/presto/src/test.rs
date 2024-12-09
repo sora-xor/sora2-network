@@ -1189,7 +1189,7 @@ fn should_publish_crop_receipt() {
             .unwrap()
             .0;
 
-        let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(&coupon_asset_id);
+        let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(coupon_asset_id);
 
         assert_eq!(coupon_asset_info.0, AssetSymbol(b"BRC1".to_vec()));
         assert_eq!(coupon_asset_info.1, AssetName(b"Brazil Coupon 1".to_vec()));
