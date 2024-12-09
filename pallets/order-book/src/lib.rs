@@ -42,8 +42,9 @@ use common::AssetIdOf;
 use common::LiquiditySourceType;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
-    SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
+    Description, DexInfoProvider, LiquiditySource, OrderBookId, OrderBookManager, PriceVariant,
+    RewardReason, SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair,
+    TradingPairSourceManager,
 };
 use core::fmt::Debug;
 use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
@@ -86,8 +87,8 @@ pub use traits::{
 };
 pub use types::{
     CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
-    OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
-    PriceOrders, UserOrders,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment, PriceOrders,
+    UserOrders,
 };
 pub use weights::WeightInfo;
 
@@ -594,8 +595,7 @@ pub mod pallet {
                 Either::Right(()) => None,
             };
 
-            Self::verify_create_orderbook_params(&order_book_id)?;
-            Self::verify_orderbook_attributes(
+            Self::inner_create_orderbook(
                 &order_book_id,
                 tick_size,
                 step_lot_size,
@@ -603,20 +603,6 @@ pub mod pallet {
                 max_lot_size,
             )?;
 
-            T::TradingPairSourceManager::enable_source_for_trading_pair(
-                &order_book_id.dex_id,
-                &order_book_id.quote,
-                &order_book_id.base,
-                LiquiditySourceType::OrderBook,
-            )?;
-
-            Self::create_orderbook_unchecked(
-                &order_book_id,
-                tick_size,
-                step_lot_size,
-                min_lot_size,
-                max_lot_size,
-            )?;
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id,
                 creator: maybe_who,
@@ -851,35 +837,9 @@ pub mod pallet {
             lifespan: Option<MomentOf<T>>,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            let mut order_book =
-                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
-            let order_id = order_book.next_order_id();
-            let now = T::Time::now();
-            let current_block = frame_system::Pallet::<T>::block_number();
-            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
-            let amount = if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base)
-            {
-                OrderVolume::indivisible(amount)
-            } else {
-                OrderVolume::divisible(amount)
-            };
-            let order = LimitOrder::<T>::new(
-                order_id,
-                who,
-                side,
-                OrderPrice::divisible(price),
-                amount,
-                now,
-                lifespan,
-                current_block,
-            );
 
-            let mut data = CacheDataLayer::<T>::new();
-
-            let executed_orders_count = order_book.place_limit_order(order, &mut data)?;
-
-            data.commit();
-            <OrderBooks<T>>::insert(order_book_id, order_book);
+            let executed_orders_count =
+                Self::inner_place_limit_order(who, order_book_id, price, amount, side, lifespan)?;
 
             // Note: be careful with changing the weight. The fee depends on it,
             // the market-maker fee is charged for some weight, and the regular fee for none weight
@@ -1380,6 +1340,78 @@ impl<T: Config> Pallet<T> {
         <OrderBooks<T>>::insert(order_book_id, order_book);
         Self::register_tech_account(*order_book_id)
     }
+
+    pub fn inner_create_orderbook(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -> Result<(), DispatchError> {
+        Self::verify_create_orderbook_params(order_book_id)?;
+        Self::verify_orderbook_attributes(
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )?;
+
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
+            &order_book_id.dex_id,
+            &order_book_id.quote,
+            &order_book_id.base,
+            LiquiditySourceType::OrderBook,
+        )?;
+
+        Self::create_orderbook_unchecked(
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )
+    }
+
+    pub fn inner_place_limit_order(
+        owner: T::AccountId,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: Balance,
+        amount: Balance,
+        side: PriceVariant,
+        lifespan: Option<MomentOf<T>>,
+    ) -> Result<usize, DispatchError> {
+        let mut order_book =
+            <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let order_id = order_book.next_order_id();
+        let now = T::Time::now();
+        let current_block = frame_system::Pallet::<T>::block_number();
+        let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
+        let amount = if <T as Config>::AssetInfoProvider::is_non_divisible(&order_book_id.base) {
+            OrderVolume::indivisible(amount)
+        } else {
+            OrderVolume::divisible(amount)
+        };
+        let order = LimitOrder::<T>::new(
+            order_id,
+            owner,
+            side,
+            OrderPrice::divisible(price),
+            amount,
+            now,
+            lifespan,
+            current_block,
+        );
+
+        let mut data = CacheDataLayer::<T>::new();
+
+        let executed_orders_count = order_book.place_limit_order(order, &mut data)?;
+
+        data.commit();
+        <OrderBooks<T>>::insert(order_book_id, order_book);
+
+        Ok(executed_orders_count)
+    }
 }
 
 #[cfg(feature = "private-net")]
@@ -1387,6 +1419,44 @@ impl<T: Config> Pallet<T> {
     /// Specifically created for `qa-tools` pallet
     pub fn deposit_event_exposed(event: Event<T>) {
         Self::deposit_event(event)
+    }
+}
+
+impl<T: Config> OrderBookManager<T::AccountId, AssetIdOf<T>, T::DEXId, MomentOf<T>> for Pallet<T> {
+    fn assemble_order_book_id(
+        dex_id: T::DEXId,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Option<OrderBookId<AssetIdOf<T>, T::DEXId>> {
+        Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id)
+    }
+
+    fn initialize_orderbook(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -> Result<(), DispatchError> {
+        Self::inner_create_orderbook(
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )
+    }
+
+    fn place_limit_order(
+        owner: T::AccountId,
+        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        price: Balance,
+        amount: Balance,
+        side: PriceVariant,
+        lifespan: Option<MomentOf<T>>,
+    ) -> Result<(), DispatchError> {
+        let _ = Self::inner_place_limit_order(owner, order_book_id, price, amount, side, lifespan)?;
+        Ok(())
     }
 }
 

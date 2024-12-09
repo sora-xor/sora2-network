@@ -31,15 +31,14 @@
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::QuoteAmount;
-use common::{balance, AssetName, AssetSymbol, PriceVariant, DOT, KSM, VAL, XOR};
+use common::{balance, AssetName, AssetSymbol, OrderBookId, PriceVariant, DOT, KSM, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     CancelReason, Config, DataLayer, DealInfo, LimitOrder, MarketChange, MarketOrder, MarketRole,
-    OrderAmount, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice,
-    OrderVolume, Payment,
+    OrderAmount, OrderBook, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;

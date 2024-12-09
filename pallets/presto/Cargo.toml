@@ -28,11 +28,14 @@ technical = { path = "../technical", default-features = false }
 common = { path = "../../common", features = ["test"] }
 assets = { path = "../assets", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+order-book = { path = "../order-book", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 permissions = { path = "../permissions" }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 
 [features]
 default = ["std"]
@@ -41,6 +44,7 @@ std = [
     "common/std",
     "codec/std",
     "currencies/std",
+    "dex-manager/std",
     "frame-support/std",
     "frame-system/std",
     "pallet-balances/std",
