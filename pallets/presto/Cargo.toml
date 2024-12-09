@@ -15,6 +15,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 derivative = { version = "2.2.0", features = ["use_core"] }
+itoa = "1.0"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }

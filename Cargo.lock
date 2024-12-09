@@ -7756,6 +7756,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
+ "itoa",
  "order-book",
  "orml-currencies",
  "orml-tokens",
