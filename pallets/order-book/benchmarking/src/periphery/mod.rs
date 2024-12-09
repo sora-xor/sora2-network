@@ -45,7 +45,7 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use common::{AssetIdOf, AssetInfoProvider, PriceVariant, VAL, XOR};
+use common::{AssetIdOf, AssetInfoProvider, OrderBookId, PriceVariant, VAL, XOR};
 use frame_system::RawOrigin;
 use order_book_benchmarking_imported::Config;
 use order_book_imported::Pallet as OrderBookPallet;
@@ -55,7 +55,7 @@ use order_book_imported::{
         fill_tools::{AmountVariant, FillSettings},
     },
     CancelReason, Event, LimitOrder, LimitOrders, MarketRole, MomentOf, OrderAmount, OrderBook,
-    OrderBookId, OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
+    OrderBookStatus, OrderBooks, OrderPrice, OrderVolume,
 };
 
 use crate::{assert_last_event, assert_orders_numbers, DEX};

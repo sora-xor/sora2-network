@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
-use crate::order_book::OrderBookId;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, FeeKusdBurnedWeight,
@@ -44,9 +43,8 @@ use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 use common::XykPool;
 use common::{
     assert_approx_eq_abs, balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode,
-    PriceVariant, TBCD, VAL, XOR,
+    OrderBookId, PriceVariant, DOT, KUSD, TBCD, VAL, XOR,
 };
-use common::{DOT, KUSD};
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};

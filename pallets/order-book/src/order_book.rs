@@ -30,13 +30,12 @@
 
 use crate::{
     CancelReason, DataLayer, DealInfo, Delegate, Error, ExpirationScheduler, LimitOrder,
-    MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookId,
-    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
+    MarketChange, MarketOrder, MarketRole, OrderAmount, OrderBookEvent, OrderBookStatus,
+    OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::QuoteAmount;
-use common::AssetIdOf;
-use common::{Balance, PriceVariant};
+use common::{AssetIdOf, Balance, OrderBookId, PriceVariant};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
