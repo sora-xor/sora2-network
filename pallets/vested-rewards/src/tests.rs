@@ -2403,8 +2403,14 @@ fn auto_claim_works_fine_for_pending() {
 #[test]
 fn auto_claim_works_fine_for_pending_and_block() {
     ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(Currencies::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            XOR,
+            ALICE_BALANCE as i128
+        ));
         let schedule_alice = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
-            asset_id: DOT,
+            asset_id: XOR,
             start: 0u64,
             period: 11u64,
             period_count: 2u32,
@@ -2420,7 +2426,7 @@ fn auto_claim_works_fine_for_pending_and_block() {
             remainder_amount: 10,
         });
         let schedule_eve = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
-            asset_id: DOT,
+            asset_id: XOR,
             start: 0u64,
             period: 23u64,
             period_count: 1u32,
@@ -2447,7 +2453,7 @@ fn auto_claim_works_fine_for_pending_and_block() {
         // Check claim from pending and from block fine
         PendingClaims::<Runtime>::put(Vec::from([Claim {
             account_id: alice(),
-            asset_id: DOT,
+            asset_id: XOR,
         }]));
         System::set_block_number(11);
         assert_eq!(
@@ -2455,7 +2461,7 @@ fn auto_claim_works_fine_for_pending_and_block() {
             Vec::from([
                 Claim {
                     account_id: alice(),
-                    asset_id: DOT
+                    asset_id: XOR
                 },
                 Claim {
                     account_id: bob(),
@@ -2468,19 +2474,19 @@ fn auto_claim_works_fine_for_pending_and_block() {
             claim_weight.saturating_mul(2)
         );
         assert_eq!(PendingClaims::<Runtime>::try_get(), Err(()));
-        assert_ok!(Tokens::transfer(
+        assert_ok!(Currencies::transfer(
             RuntimeOrigin::signed(bob()),
             alice(),
             KSM,
             10,
         ));
-        assert_eq!(Tokens::free_balance(KSM, &bob()), 10);
+        assert_eq!(Currencies::free_balance(KSM, &bob()), 10);
 
         // Check claim from pending and add block to pending fine
         PendingClaims::<Runtime>::put(Vec::from([
             Claim {
                 account_id: alice(),
-                asset_id: DOT,
+                asset_id: XOR,
             },
             Claim {
                 account_id: bob(),
@@ -2496,16 +2502,16 @@ fn auto_claim_works_fine_for_pending_and_block() {
             PendingClaims::<Runtime>::get(),
             Vec::from([Claim {
                 account_id: eve(),
-                asset_id: DOT
+                asset_id: XOR
             }])
         );
-        assert_ok!(Tokens::transfer(
+        assert_ok!(Currencies::transfer(
             RuntimeOrigin::signed(bob()),
             alice(),
             KSM,
             10,
         ));
-        assert_eq!(Tokens::free_balance(KSM, &bob()), 0);
+        assert_eq!(Currencies::free_balance(KSM, &bob()), 0);
 
         // Claim remaining
         assert_eq!(
@@ -2513,13 +2519,13 @@ fn auto_claim_works_fine_for_pending_and_block() {
             claim_weight.saturating_mul(1)
         );
         assert_eq!(PendingClaims::<Runtime>::try_get(), Err(()));
-        assert_ok!(Tokens::transfer(
+        assert_ok!(Currencies::transfer(
             RuntimeOrigin::signed(eve()),
             alice(),
-            DOT,
+            XOR,
             10,
         ));
-        assert_eq!(Tokens::free_balance(DOT, &eve()), 0);
+        assert_eq!(Currencies::free_balance(XOR, &eve()), 0);
 
         assert_eq!(
             VestedRewards::auto_claim(23, claim_weight),
