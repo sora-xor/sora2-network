@@ -608,6 +608,7 @@ fn referrer_gets_bonus_from_tx_fee() {
         let initial_balance = FixedWrapper::from(INITIAL_BALANCE);
         let referrer_fee = SMALL_FEE * referrer_weight / weights_sum;
         let expected_referrer_balance = referrer_fee.clone() + initial_balance;
+        #[cfg(feature = "wip")] // Xorless fee
         assert_eq!(
             frame_system::Pallet::<Runtime>::events()
                 .into_iter()
@@ -625,6 +626,26 @@ fn referrer_gets_bonus_from_tx_fee() {
                 alice(),
                 charlie(),
                 XOR,
+                referrer_fee.into_balance(),
+            ))
+        );
+        #[cfg(not(feature = "wip"))] // Xorless fee
+        assert_eq!(
+            frame_system::Pallet::<Runtime>::events()
+                .into_iter()
+                .find_map(|EventRecord { event, .. }| match event {
+                    crate::RuntimeEvent::XorFee(event) => {
+                        if let xor_fee::Event::ReferrerRewarded(_, _, _) = event {
+                            Some(event)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                }),
+            Some(xor_fee::Event::ReferrerRewarded(
+                alice(),
+                charlie(),
                 referrer_fee.into_balance(),
             ))
         );
