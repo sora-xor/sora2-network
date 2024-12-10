@@ -39,7 +39,7 @@ mod test;
 mod treasury;
 pub mod weights;
 
-use common::AccountIdOf;
+use common::{AccountIdOf, Balance};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
@@ -55,15 +55,23 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 /// Buffer tech account for temp holding of withdraw request liquidity
 pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
 
+const COUPON_SYMBOL: &[u8] = b"C";
+const COUPON_NAME: &[u8] = b"Coupon";
+
 #[frame_support::pallet]
 #[allow(clippy::too_many_arguments)]
 pub mod pallet {
     use super::*;
-    use common::{AssetIdOf, Balance, BoundedString};
+    use common::fixnum::ops::RoundMode;
+    use common::prelude::BalanceUnit;
+    use common::{
+        balance, itoa, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString,
+        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
+    };
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
+    use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
 
     use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
@@ -81,6 +89,13 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + technical::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type OrderBookManager: OrderBookManager<
+            AccountIdOf<Self>,
+            AssetIdOf<Self>,
+            Self::DEXId,
+            MomentOf<Self>,
+        >;
         type PrestoUsdAssetId: Get<AssetIdOf<Self>>;
         type PrestoTechAccount: Get<Self::TechAccountId>;
         type PrestoBufferTechAccount: Get<Self::TechAccountId>;
@@ -111,6 +126,21 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
+
+        type CouponId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy
+            + Ord
+            + PartialEq
+            + Eq
+            + MaxEncodedLen
+            + scale_info::TypeInfo
+            + ItoaInteger;
 
         #[pallet::constant]
         type MaxPrestoManagersCount: Get<u32>;
@@ -208,6 +238,17 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Counter to generate new Coupon Ids
+    #[pallet::storage]
+    #[pallet::getter(fn last_coupon_id)]
+    pub type LastCouponId<T: Config> = StorageValue<_, T::CouponId, ValueQuery>;
+
+    /// Coupons
+    #[pallet::storage]
+    #[pallet::getter(fn coupons)]
+    pub type Coupons<T: Config> =
+        StorageMap<_, Twox64Concat, AssetIdOf<T>, T::CropReceiptId, OptionQuery>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -259,6 +300,7 @@ pub mod pallet {
         },
         CropReceiptPublished {
             id: T::CropReceiptId,
+            coupon_asset_id: AssetIdOf<T>,
         },
     }
 
@@ -304,6 +346,12 @@ pub mod pallet {
         CropReceiptWaitingForRate,
         /// The crop receipt already has a decision
         CropReceiptAlreadyHasDecision,
+        /// Coupon supply cannot be bigger than requested amount in crop receipt
+        TooBigCouponSupply,
+        /// Fail of coupon public offering
+        CouponOfferingFail,
+        /// Error during calculations
+        CalculationError,
     }
 
     #[pallet::call]
@@ -691,6 +739,162 @@ pub mod pallet {
                 Ok(())
             })
         }
+
+        #[pallet::call_index(16)]
+        #[pallet::weight(<T as Config>::WeightInfo::publish_crop_receipt())]
+        pub fn publish_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+            supply: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            ensure!(!supply.is_zero(), Error::<T>::AmountIsZero);
+
+            let coupon_supply = BalanceUnit::indivisible(supply);
+
+            let mut country = Country::Other;
+            let mut amount = BalanceUnit::default();
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.ensure_is_owner(&who)?;
+                country = crop_receipt.country;
+                amount = BalanceUnit::divisible(crop_receipt.amount);
+
+                // The initial price (amount / supply) must be >= 1.00
+                ensure!(coupon_supply <= amount, Error::<T>::TooBigCouponSupply);
+
+                crop_receipt.publish()?;
+                DispatchResult::Ok(())
+            })?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            // use `itoa` to convert `CouponId` to Vec<u8> string in no-std env.
+            let coupon_id = itoa(Self::next_coupon_id());
+
+            let symbol = AssetSymbol([country.symbol(), COUPON_SYMBOL, &coupon_id].concat());
+            let name = AssetName([country.name(), COUPON_NAME, &coupon_id].join(&b' '));
+
+            let coupon_asset_id = T::AssetManager::register_from(
+                &presto_tech_account_id,
+                symbol,
+                name,
+                0,
+                supply,
+                false,
+                AssetType::Regular,
+                None,
+                None,
+            )?;
+
+            Coupons::<T>::insert(coupon_asset_id, crop_receipt_id);
+
+            T::AssetManager::transfer_from(
+                &coupon_asset_id,
+                &presto_tech_account_id,
+                &who,
+                supply,
+            )?;
+
+            T::TradingPairSourceManager::register_pair(
+                DEXId::PolkaswapPresto.into(),
+                PRUSD.into(),
+                coupon_asset_id,
+            )?;
+
+            let order_book_id = T::OrderBookManager::assemble_order_book_id(
+                DEXId::PolkaswapPresto.into(),
+                &PRUSD.into(),
+                &coupon_asset_id,
+            )
+            .ok_or(Error::<T>::CouponOfferingFail)?;
+
+            // Tick size always is 0.01 PRUSD
+            let tick_size = balance!(0.01);
+            // Since Coupon is non-divisible asset, the step lot size is always 1 Coupon
+            let step_lot_size = 1;
+
+            // This value must correlate with `order_book::Config` const `MaxLimitOrdersForPrice`.
+            // It shouldn't be equal, but it must always be not higher: `max_orders_count` <= `MaxLimitOrdersForPrice`
+            let max_orders_count = BalanceUnit::divisible(balance!(1000));
+
+            // This value must correlate with `order_book::Config` const `SOFT_MIN_MAX_RATIO`.
+            // It shouldn't be equal, but it must always be not higher: `max_orders_count` <= `SOFT_MIN_MAX_RATIO`
+            let min_max_ratio = BalanceUnit::divisible(balance!(1000));
+
+            // Calculate the max lot size amount that is suitable to offer all Coupon supply at one price in order book
+            let max = coupon_supply
+                .checked_div(&max_orders_count)
+                .ok_or(Error::<T>::CalculationError)?;
+
+            // default values
+            let default_min_lot_size = 1;
+            let default_max_lot_size = 1000;
+
+            let (min_lot_size, max_lot_size) =
+                if max <= BalanceUnit::indivisible(default_max_lot_size) {
+                    (default_min_lot_size, default_max_lot_size)
+                } else {
+                    // if necessary max lot size exceeds the default value 1000 - calculate suitable min value
+                    let min = max
+                        .checked_div(&min_max_ratio)
+                        .ok_or(Error::<T>::CalculationError)?;
+                    (
+                        *min.into_indivisible(RoundMode::Ceil).balance(),
+                        *max.into_indivisible(RoundMode::Ceil).balance(),
+                    )
+                };
+
+            let price = *amount
+                .checked_div(&coupon_supply)
+                .ok_or(Error::<T>::CalculationError)?
+                .into_divisible()
+                .ok_or(Error::<T>::CalculationError)?
+                .balance();
+            let price = Self::align_price(price, tick_size)?;
+
+            // create order book
+            T::OrderBookManager::initialize_orderbook(
+                &order_book_id,
+                tick_size,
+                step_lot_size,
+                min_lot_size,
+                max_lot_size,
+            )?;
+
+            // place all supply in order book in according with `max_lot_size` limitation
+            let mut remaining_amount = supply;
+            while !remaining_amount.is_zero() {
+                let qty = if remaining_amount > max_lot_size {
+                    max_lot_size
+                } else {
+                    remaining_amount
+                };
+
+                T::OrderBookManager::place_limit_order(
+                    who.clone(),
+                    order_book_id,
+                    price,
+                    qty,
+                    PriceVariant::Sell,
+                    None,
+                )?;
+
+                remaining_amount = remaining_amount.saturating_sub(qty);
+            }
+
+            Self::deposit_event(Event::<T>::CropReceiptPublished {
+                id: crop_receipt_id,
+                coupon_asset_id,
+            });
+
+            Ok(())
+        }
     }
 }
 
@@ -721,5 +925,17 @@ impl<T: Config> Pallet<T> {
         let id = LastCropReceiptId::<T>::get().saturating_add(T::CropReceiptId::one());
         LastCropReceiptId::<T>::set(id);
         id
+    }
+
+    pub fn next_coupon_id() -> T::CouponId {
+        let id = LastCouponId::<T>::get().saturating_add(T::CouponId::one());
+        LastCouponId::<T>::set(id);
+        id
+    }
+
+    fn align_price(price: Balance, tick_size: Balance) -> Result<Balance, DispatchError> {
+        ensure!(tick_size != 0, Error::<T>::CalculationError);
+        let steps = price.saturating_div(tick_size);
+        Ok(tick_size.saturating_mul(steps))
     }
 }

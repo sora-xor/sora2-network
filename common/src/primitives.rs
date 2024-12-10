@@ -1292,6 +1292,49 @@ pub struct AssetInfo {
     pub description: Option<Description>,
 }
 
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    Hash,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OrderBookId<AssetId, DEXId> {
+    /// DEX id
+    pub dex_id: DEXId,
+    /// Base asset.
+    pub base: AssetId,
+    /// Quote asset. It should be a base asset of DEX.
+    pub quote: AssetId,
+}
+
+impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> {
+    fn from(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
+        Self {
+            base_asset_id: order_book_id.quote,
+            target_asset_id: order_book_id.base,
+        }
+    }
+}
+
+pub trait ItoaInteger: itoa::Integer {}
+impl<T: itoa::Integer> ItoaInteger for T {}
+
+/// Converts integer into Vec<u8> string.
+/// Works with no-std
+pub fn itoa(int: impl ItoaInteger) -> Vec<u8> {
+    let mut buffer = itoa::Buffer::new();
+    buffer.format(int).as_bytes().to_vec()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1377,5 +1420,13 @@ mod tests {
                 "030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000"
             ))
         );
+    }
+
+    #[test]
+    fn check_itoa() {
+        assert_eq!(itoa(10u8), b"10");
+        assert_eq!(itoa(123u64), b"123");
+        assert_eq!(itoa(-234i32), b"-234");
+        assert_eq!(itoa(0), b"0");
     }
 }

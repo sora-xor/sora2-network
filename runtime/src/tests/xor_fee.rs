@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
-use crate::order_book::OrderBookId;
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, FeeKusdBurnedWeight,
@@ -44,9 +43,8 @@ use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 use common::XykPool;
 use common::{
     assert_approx_eq_abs, balance, fixed_wrapper, AssetInfoProvider, DEXId, FilterMode,
-    PriceVariant, TBCD, VAL, XOR,
+    OrderBookId, PriceVariant, DOT, KUSD, TBCD, VAL, XOR,
 };
-use common::{DOT, KUSD};
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};
@@ -610,6 +608,7 @@ fn referrer_gets_bonus_from_tx_fee() {
         let initial_balance = FixedWrapper::from(INITIAL_BALANCE);
         let referrer_fee = SMALL_FEE * referrer_weight / weights_sum;
         let expected_referrer_balance = referrer_fee.clone() + initial_balance;
+        #[cfg(feature = "wip")] // Xorless fee
         assert_eq!(
             frame_system::Pallet::<Runtime>::events()
                 .into_iter()
@@ -627,6 +626,26 @@ fn referrer_gets_bonus_from_tx_fee() {
                 alice(),
                 charlie(),
                 XOR,
+                referrer_fee.into_balance(),
+            ))
+        );
+        #[cfg(not(feature = "wip"))] // Xorless fee
+        assert_eq!(
+            frame_system::Pallet::<Runtime>::events()
+                .into_iter()
+                .find_map(|EventRecord { event, .. }| match event {
+                    crate::RuntimeEvent::XorFee(event) => {
+                        if let xor_fee::Event::ReferrerRewarded(_, _, _) = event {
+                            Some(event)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                }),
+            Some(xor_fee::Event::ReferrerRewarded(
+                alice(),
+                charlie(),
                 referrer_fee.into_balance(),
             ))
         );

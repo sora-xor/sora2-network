@@ -31,13 +31,13 @@
 use crate::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::BalanceUnit;
-use common::{balance, PriceVariant, ETH, PSWAP, VAL, XOR};
+use common::{balance, OrderBookId, PriceVariant, ETH, PSWAP, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
-    Config, DataLayer, LimitOrder, OrderBook, OrderBookId, OrderBooks, OrderPrice,
+    Config, DataLayer, LimitOrder, OrderBook, OrderBooks, OrderPrice,
 };
 use framenode_runtime::Runtime;
 use sp_core::Get;

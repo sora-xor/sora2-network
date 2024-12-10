@@ -1729,6 +1729,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "itoa",
  "libsecp256k1",
  "num-traits",
  "orml-currencies",
@@ -7753,8 +7754,10 @@ dependencies = [
  "assets",
  "common",
  "derivative",
+ "dex-manager",
  "frame-support",
  "frame-system",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -7767,6 +7770,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "trading-pair",
 ]
 
 [[package]]

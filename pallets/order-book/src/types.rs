@@ -31,7 +31,7 @@
 use crate::traits::{CurrencyLocker, CurrencyUnlocker};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::BalanceUnit;
-use common::{PriceVariant, TradingPair};
+use common::{OrderBookId, PriceVariant};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{BoundedBTreeMap, BoundedVec};
 use sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
@@ -187,39 +187,6 @@ impl Sub for OrderAmount {
 pub enum MarketRole {
     Maker,
     Taker,
-}
-
-#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    Debug,
-    Hash,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OrderBookId<AssetId, DEXId> {
-    /// DEX id
-    pub dex_id: DEXId,
-    /// Base asset.
-    pub base: AssetId,
-    /// Quote asset. It should be a base asset of DEX.
-    pub quote: AssetId,
-}
-
-impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> {
-    fn from(order_book_id: OrderBookId<AssetId, DEXId>) -> Self {
-        Self {
-            base_asset_id: order_book_id.quote,
-            target_asset_id: order_book_id.base,
-        }
-    }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
