@@ -1,0 +1,25 @@
+FROM debian:bookworm-slim AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    ca-certificates libc6 libstdc++6 && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    find /var/lib/apt/lists/ -type f -not -name lock -delete
+
+COPY ./framenode /usr/local/bin/framenode
+
+RUN mkdir -p /libs && \
+    ldd /usr/local/bin/framenode | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' /libs/
+
+FROM gcr.io/distroless/base-debian12
+
+COPY --from=builder /libs/* /usr/lib/
+COPY --from=builder /usr/local/bin/framenode /usr/local/bin/framenode
+
+USER 10000
+
+WORKDIR /chain
+ENTRYPOINT ["/usr/local/bin/framenode"]
